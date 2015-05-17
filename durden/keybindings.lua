@@ -20,15 +20,24 @@ tbl["m1_RIGHT"] = "step_right";
 tbl["m1_UP"] = "step_up";
 tbl["m1_LEFT"] = "step_left";
 tbl["m1_DOWN"] = "step_down";
-tbl["m1_d"] = "destroy";
-tbl["m1_v"] = "vertical";
-tbl["m1_h"] = "horizontal";
+tbl["m1_m2_d"] = "destroy";
+tbl["m1_v"] = "mode_vertical";
+tbl["m1_h"] = "mode_horizontal";
 tbl["m1_m2_LEFT"] = "shrink_h";
 tbl["m1_m2_RIGHT"] = "grow_h";
 tbl["m1_m2_UP"] = "shrink_v";
 tbl["m1_m2_DOWN"] = "grow_v";
 tbl["m1_f"] = "fullscreen";
-tbl["m1_t"] = "tab";
+tbl["m1_t"] = "mode_tab_tile";
+tbl["m1_TAB"] = "context_popup";
+tbl["m1_m"] = "merge";
+tbl["m1_m2_m"] = "collapse";
+tbl["m1_1"] = "switch_ws1";
+tbl["m1_2"] = "switch_ws2";
+tbl["m1_3"] = "switch_ws3";
+tbl["m1_4"] = "switch_ws4";
+tbl["m1_m2_1"] = "assign_ws1";
+tbl["m1_l"] = "lock_input";
 
 --
 -- we assume that all relevant input related functions go
@@ -41,6 +50,7 @@ function dispatch_lookup(iotbl, keysym)
 	if (keysym == meta_1) then
 		meta_1_state = iotbl.active;
 		return true;
+
 	elseif (keysym == meta_2) then
 		meta_2_state = iotbl.active;
 		return true;

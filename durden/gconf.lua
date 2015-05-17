@@ -5,12 +5,18 @@
 -- senseye, tracks default font, border, layout and other settings.
 --
 local defaults = {
-	point_size = 1.0,
-	hlight_r = 0.0,
-	hlight_g = 1.0,
-	hlight_b = 0.0,
 	msg_timeout = 100,
-	show_help = 1
+	font_str = "\\fdefault.ttf,12",
+	text_color = "\\#aaaaaa",
+-- sbar
+	sbar_sz = 16,
+	sbar_bg = {0x00, 0x00, 0x00},
+-- popup
+	pcol_bg = {0x40, 0x40, 0x40},
+	pcol_border = {0xaa, 0xaa, 0xaa},
+-- tile
+	tcol_border = {0x00, 0xff, 0x00},
+	tcol_inactive_border = {0x10, 0x10, 0x10},
 };
 
 function gconfig_set(key, val)
@@ -32,6 +38,9 @@ local function gconfig_setup()
 		if (v) then
 			if (type(vl) == "number") then
 				defaults[k] = tonumber(v);
+-- no packing format for tables, ignore for now
+			elseif (type(vl) == "table") then
+				defaults[k] = defaults[k];
 			else
 				defaults[k] = v;
 			end
@@ -43,7 +52,9 @@ function gconfig_shutdown()
 	local ktbl = {};
 
 	for k,v in pairs(defaults) do
-		ktbl[k] = tostring(v);
+		if (type(ktbl[k]) ~= "table") then
+			ktbl[k] = tostring(v);
+		end
 	end
 
 	store_key(ktbl);

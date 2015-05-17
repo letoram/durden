@@ -12,7 +12,7 @@ local connection_path = "durden";
 -- hotplugging events can be configured to destroy, or "background" the
 -- associated tiler (and switch between foreground / background sets of tiled
 -- workspaces).
-local displays = {};
+displays = {};
 
 function durden()
 -- usual configuration management, gestures, mini UI components etc.
@@ -22,6 +22,7 @@ function durden()
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("composition_surface.lua")();
+	system_load("fglobal.lua")();
 	system_load("tiler.lua")();
 
 	displays.main = tiler_create(VRESW, VRESH, {});
@@ -35,6 +36,11 @@ function durden()
 end
 
 --
+-- grab a format string from a socket, sanitize, poll periodically
+-- add to statusbar
+--
+
+--
 -- create both an external single-shot connection and a reference color
 -- the connection is needed for frameserver- specific operations to work
 --
@@ -42,7 +48,7 @@ function spawn_test()
 	local img = fill_surface(math.random(200, 600), math.random(200, 600),
 		math.random(64, 255), math.random(64, 255), math.random(64, 255));
 	show_image(img);
-	local wnd = displays.main:add_window(img);
+	local wnd = displays.main:add_window(img, {auto_resize = true});
 end
 
 local function tile_changed(wnd)
@@ -51,7 +57,7 @@ end
 
 function spawn_terminal()
 	local vid = launch_avfeed(
-		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
+		"extclock:env=ARCAN_CONNPATH=" .. connection_path, "terminal");
 
 	if (valid_vid(vid)) then
 		local wnd = displays.main:add_window(vid);
@@ -129,60 +135,4 @@ end
 
 function durden_clock_pulse()
 	displays.main:tick();
-end
-
--- dispatch table using string identification entries for common functions, the
--- normal use is for keybindings etc. see keybindings.lua for details on that.
--- this indirection is used both to provide a namespace to avoid collisions,
--- and to later provide limited scripting or external / remote control.
-GLOBAL_FUNCTIONS = {};
-GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
-GLOBAL_FUNCTIONS["exit"] = query_exit;
-GLOBAL_FUNCTIONS["spawn_test"] = spawn_test;
-GLOBAL_FUNCTIONS["vertical"] = function()
-end
-GLOBAL_FUNCTIONS["grow_h"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0.05, 0);
-	end
-end
-GLOBAL_FUNCTIONS["shrink_h"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(-0.05, 0);
-	end
-end
-GLOBAL_FUNCTIONS["grow_v"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0, 0.05);
-	end
-end
-GLOBAL_FUNCTIONS["shrink_v"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0, -0.05);
-	end
-end
-GLOBAL_FUNCTIONS["step_up"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:prev(1);
-	end
-end
-GLOBAL_FUNCTIONS["step_down"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:next(1);
-	end
-end
-GLOBAL_FUNCTIONS["step_left"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:prev();
-	end
-end
-GLOBAL_FUNCTIONS["step_right"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:next();
-	end
-end
-GLOBAL_FUNCTIONS["destroy"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:destroy();
-	end
 end
