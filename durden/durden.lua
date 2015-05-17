@@ -1,0 +1,188 @@
+-- Copyright: 2015, Björn Ståhl
+-- License: 3-Clause BSD
+-- Reference: http://durden.arcan-fe.com
+-- Description: Durden is a simple tiling window manager for Arcan that
+-- re-uses much of the same support scripts as the Senseye project. This
+-- code module covers basic I/O and event routing, and basic setup.
+--
+
+local connection_path = "durden";
+
+-- we run a separate tiler instance for each display, dynamic plugging /
+-- hotplugging events can be configured to destroy, or "background" the
+-- associated tiler (and switch between foreground / background sets of tiled
+-- workspaces).
+local displays = {};
+
+function durden()
+-- usual configuration management, gestures, mini UI components etc.
+-- will get BINDINGS, ERRNO, SYMTABLE as global lookup tables
+	system_load("gconf.lua")();
+	system_load("mouse.lua")();
+	system_load("popup_menu.lua")();
+	system_load("keybindings.lua")();
+	system_load("composition_surface.lua")();
+	system_load("tiler.lua")();
+
+	displays.main = tiler_create(VRESW, VRESH, {});
+	ERRNO = system_load("errc.lua")();
+	SYMTABLE = system_load("symtable.lua")();
+	mouse_setup_native(load_image("cursor.png"), 1, 1);
+
+-- dropping this call means that only controlled invocation is possible
+-- (i.e. no non-authoritative connections)
+	new_connection();
+end
+
+--
+-- create both an external single-shot connection and a reference color
+-- the connection is needed for frameserver- specific operations to work
+--
+function spawn_test()
+	local img = fill_surface(math.random(200, 600), math.random(200, 600),
+		math.random(64, 255), math.random(64, 255), math.random(64, 255));
+	show_image(img);
+	local wnd = displays.main:add_window(img);
+end
+
+local function tile_changed(wnd)
+	target_displayhint(wnd.source, wnd.effective_w, wnd.effective_h);
+end
+
+function spawn_terminal()
+	local vid = launch_avfeed(
+		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
+
+	if (valid_vid(vid)) then
+		local wnd = displays.main:add_window(vid);
+		wnd.resize_hook = tile_changed;
+		wnd.tick = function() stepframe_target(vid, 1); end
+		tile_changed(wnd);
+		show_image(vid);
+		target_updatehandler(vid, def_handler);
+	else
+		displays.main:error_message( ERRNO["BROKEN_TERMINAL"] );
+	end
+end
+
+function query_exit()
+	return shutdown();
+end
+
+function def_handler(source, stat)
+	local wnd = tiler_find(source);
+	assert(wnd ~= nil);
+
+	if (stat.kind == "resized") then
+		local w = stat.width > wnd.effective_w and wnd.effective_w or stat.width;
+		local h = stat.height > wnd.effective_h and wnd.effective_h or stat.height;
+		resize_image(source, w, h);
+
+	elseif (stat.kind == "terminated") then
+		if (wnd.autoclose) then
+			wnd:destroy();
+		end
+	end
+end
+
+function new_connection(source, status)
+	if (status == nil or status.kind == "connected") then
+		local vid = target_alloc(connection_path, new_connection);
+
+	elseif (status.kind == "resized") then
+		resize_image(source, status.width, status.height);
+		local wnd = displays.main:add_window(source);
+		wnd.resize_hook = tile_changed;
+		target_updatehandler(source, def_handler);
+		tile_changed(wnd);
+-- sweet spot for adding type- specific handlers
+	end
+end
+
+local mid_c = 0;
+local mid_v = {0, 0};
+function durden_input(iotbl)
+	if (iotbl.source == "mouse") then
+		if (iotbl.kind == "digital") then
+			mouse_button_input(iotbl.subid, iotbl.active);
+		else
+			mid_v[iotbl.subid+1] = iotbl.samples[1];
+			mid_c = mid_c + 1;
+
+			if (mid_c == 2) then
+				mouse_absinput(mid_v[1], mid_v[2]);
+				mid_c = 0;
+			end
+		end
+
+	elseif (iotbl.translated) then
+		local sym = SYMTABLE[ iotbl.keysym ];
+		if (not dispatch_lookup(iotbl, sym)) then
+			local sel = displays.main.selected;
+			if (sel and valid_vid(sel.source, TYPE_FRAMESERVER)) then
+-- possible injection site for higher level inputs
+				target_input(sel.source, iotbl);
+			end
+		end
+	end
+end
+
+function durden_clock_pulse()
+	displays.main:tick();
+end
+
+-- dispatch table using string identification entries for common functions, the
+-- normal use is for keybindings etc. see keybindings.lua for details on that.
+-- this indirection is used both to provide a namespace to avoid collisions,
+-- and to later provide limited scripting or external / remote control.
+GLOBAL_FUNCTIONS = {};
+GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
+GLOBAL_FUNCTIONS["exit"] = query_exit;
+GLOBAL_FUNCTIONS["spawn_test"] = spawn_test;
+GLOBAL_FUNCTIONS["vertical"] = function()
+end
+GLOBAL_FUNCTIONS["grow_h"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:grow(0.05, 0);
+	end
+end
+GLOBAL_FUNCTIONS["shrink_h"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:grow(-0.05, 0);
+	end
+end
+GLOBAL_FUNCTIONS["grow_v"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:grow(0, 0.05);
+	end
+end
+GLOBAL_FUNCTIONS["shrink_v"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:grow(0, -0.05);
+	end
+end
+GLOBAL_FUNCTIONS["step_up"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:prev(1);
+	end
+end
+GLOBAL_FUNCTIONS["step_down"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:next(1);
+	end
+end
+GLOBAL_FUNCTIONS["step_left"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:prev();
+	end
+end
+GLOBAL_FUNCTIONS["step_right"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:next();
+	end
+end
+GLOBAL_FUNCTIONS["destroy"] = function()
+	if (displays.main.selected) then
+		displays.main.selected:destroy();
+	end
+end
