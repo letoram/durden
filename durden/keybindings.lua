@@ -36,7 +36,22 @@ tbl["m1_1"] = "switch_ws1";
 tbl["m1_2"] = "switch_ws2";
 tbl["m1_3"] = "switch_ws3";
 tbl["m1_4"] = "switch_ws4";
+tbl["m1_5"] = "switch_ws5";
+tbl["m1_6"] = "switch_ws6";
+tbl["m1_7"] = "switch_ws7";
+tbl["m1_8"] = "switch_ws8";
+tbl["m1_9"] = "switch_ws9";
+tbl["m1_10"] = "switch_ws10";
 tbl["m1_m2_1"] = "assign_ws1";
+tbl["m1_m2_2"] = "assign_ws2";
+tbl["m1_m2_3"] = "assign_ws3";
+tbl["m1_m2_4"] = "assign_ws4";
+tbl["m1_m2_5"] = "assign_ws5";
+tbl["m1_m2_6"] = "assign_ws6";
+tbl["m1_m2_7"] = "assign_ws7";
+tbl["m1_m2_8"] = "assign_ws8";
+tbl["m1_m2_9"] = "assign_ws9";
+tbl["m1_m2_10"] = "assign_ws10";
 tbl["m1_l"] = "lock_input";
 
 --

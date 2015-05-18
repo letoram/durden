@@ -33,6 +33,12 @@ function durden()
 -- dropping this call means that only controlled invocation is possible
 -- (i.e. no non-authoritative connections)
 	new_connection();
+	control_channel = open_nonblock("durden_cmd");
+	if (control_channel == nil) then
+		warning("no control channel found, use: (mkfifo c durden/durden_cmd)");
+	else
+		warning("control channel active (durden_cmd)");
+	end
 end
 
 --
@@ -105,6 +111,32 @@ function new_connection(source, status)
 	end
 end
 
+--
+-- line over fifo API for doing status bar updates, etc.
+--
+function poll_control_channel()
+	local line = control_channel:read();
+	if (line == nil or string.len(line) == 0) then
+		return;
+	end
+
+	local cmd = string.split(line, ":");
+	cmd = cmd == nil and {} or cmd;
+
+	if (cmd[1] == "rescan-display") then
+		video_displaymodes();
+
+	elseif (cmd[1] == "status") then
+ -- unkown command, just draw (allows us to just pipe i3status)
+		local msg = string.gsub(string.sub(line, 6), "\\", "\\\\");
+		local vid = render_text(
+			string.format("%s \\#ffffff %s", gconfig_get("font_str"), msg));
+		if (valid_vid(vid)) then
+			displays.main:update_statusbar(vid);
+		end
+	end
+end
+
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl)
@@ -135,4 +167,7 @@ end
 
 function durden_clock_pulse()
 	displays.main:tick();
+	if (CLOCK % 4 == 0) then
+		poll_control_channel();
+	end
 end

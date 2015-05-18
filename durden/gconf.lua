@@ -12,8 +12,10 @@ local defaults = {
 	sbar_sz = 16,
 	sbar_bg = {0x00, 0x00, 0x00},
 -- popup
-	pcol_bg = {0x40, 0x40, 0x40},
-	pcol_border = {0xaa, 0xaa, 0xaa},
+	pcol_bg = {0.2, 0.2, 0.2},
+	pcol_border = {0.6, 0.6, 0.6},
+	pcol_act_bg = {0.3, 0.3, 0.8},
+	pcol_act_border = {0.6, 0.6, 1.0},
 -- tile
 	tcol_border = {0x00, 0xff, 0x00},
 	tcol_inactive_border = {0x10, 0x10, 0x10},
