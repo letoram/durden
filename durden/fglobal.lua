@@ -80,3 +80,17 @@ GLOBAL_FUNCTIONS["destroy"] = function()
 		displays.main.selected:destroy();
 	end
 end
+
+for i=1,10 do
+	GLOBAL_FUNCTIONS["switch_ws" .. tostring(i)] = function()
+		if (displays.main.selected) then
+			displays.main:switch_ws(i);
+		end
+	end
+
+	GLOBAL_FUNCTIONS["assign_ws" .. tostring(i)] = function()
+		if (displays.main.selected) then
+			displays.main.selected:assign_ws(i);
+		end
+	end
+end

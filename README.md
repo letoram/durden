@@ -23,6 +23,14 @@ Default meta keys are MENU (1) and RSHIFT(2), look into keybindings.lua for the
 currently mapped functions. Make sure that arcan is built with support for builtin
 frameservers for terminal, decode, encode, etc.
 
+Durde looks for a named pipe (FIFO) in APPLTEMP (usually the same as the appl dir
+specified as last argument to arcan) with the name durden\_cmd. This pipe can be
+used so send external commands (request rescanning displays and other costly
+operations) and to update the statusbar. For instance, using i3status:
+
+    mkfifo c ~/durden/durden_cmd
+    i3status | sed -e 's/^/status:/' > ~/durden/durden_cmd
+
 Repository
 =====
 

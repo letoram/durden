@@ -37,11 +37,48 @@ local border_shader = [[
 	}
 ]];
 
-local border_act   = build_shader(nil, border_shader, "border_act");
-local border_inact = build_shader(nil, border_shader, "border_inact");
+-- used for drawing both highlight and background
+local tile_shader = [[
+uniform float border;
+uniform vec3 col_border;
+uniform vec3 col_bg;
+uniform vec2 obj_output_sz;
+varying vec2 texco;
 
-shader_uniform(border_act, "border", "f", PERSIST, 1);
-shader_uniform(border_inact, "border", "f", PERSIST, 1);
+void main()
+{
+	float bstep_x = border/obj_output_sz.x;
+	float bstep_y = border/obj_output_sz.y;
+
+	bvec2 marg1 = greaterThan(texco, vec2(1.0 - bstep_x, 1.0 - bstep_y));
+	bvec2 marg2 = lessThan(texco, vec2(bstep_x, bstep_y));
+	float f = float( !(any(marg1) || any(marg2)) );
+
+	gl_FragColor = vec4(mix(col_border, col_bg, f), 1.0);
+}
+]];
+
+local function build_shaders()
+	local a = build_shader(nil, border_shader, "border_act");
+	shader_uniform(a, "border", "f", PERSIST, 1);
+
+	a = build_shader(nil, border_shader, "border_inact");
+	shader_uniform(a, "border", "f", PERSIST, 1);
+
+	a = build_shader(nil, tile_shader, "tile_act");
+	local col = gconfig_get("pcol_act_border");
+	shader_uniform(a, "col_border", "fff", PERSIST, unpack(col));
+	col = gconfig_get("pcol_act_bg");
+	shader_uniform(a, "col_bg", "fff", PERSIST, unpack(col));
+	shader_uniform(a, "border", "f", PERSIST, 1);
+
+	a = build_shader(nil, tile_shader, "tile_inact");
+	shader_uniform(a, "col_bg", "fff", PERSIST, unpack(gconfig_get("pcol_bg")));
+	col = gconfig_get("pcol_border");
+	shader_uniform(a, "col_border", "fff", PERSIST, unpack(col));
+	shader_uniform(a, "border", "f", PERSIST, 1);
+end
+build_shaders();
 
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
@@ -133,9 +170,27 @@ local function level_resize(level, x, y, w, h, node)
 end
 
 local function workspace_activate(space)
+	local dive_down = function(level, fun)
+		for i=1,#level.children do
+			show_image(level.children[i].anchor);
+			fun(level.children[i], fun);
+		end
+	end
+
+	space.wm.selected = space.children[1];
+	dive_down(space, dive_down);
 end
 
 local function workspace_inactivate(space)
+	local dive_down = function(level, fun)
+		for i=1,#level.children do
+			hide_image(level.children[i].anchor);
+-- need to do something about clock ticks?
+			fun(level.children[i], fun);
+		end
+	end
+
+	dive_down(space, dive_down);
 end
 
 local function workspace_resize(space)
@@ -150,11 +205,24 @@ local function workspace_resize(space)
 	end
 end
 
+local function workspace_destroy(space)
+	while (#space.children > 0) do
+		space.children[1]:destroy();
+	end
+	if (space.label_id ~= nil) then
+		delete_image(space.label_id);
+	end
+	for k,v in pairs(space) do
+		space[k] = nil;
+	end
+end
+
 local function create_workspace(wm)
 	local res = {
 		activate = workspace_activate,
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
+		destroy = workspace_destroy,
 		mode = "tile",
 		insert = "horizontal",
 		children = {},
@@ -164,33 +232,11 @@ local function create_workspace(wm)
 
 	res.wm = wm;
 	res:activate();
-	wm:update_statusbar();
 	return res;
 end
 
--- drop workspace association, map to new space and
--- abandon children to grandparents
 local function wnd_reassign(wnd, ind)
-	if (wnd.space_ind == ind) then
-		return;
-	end
-
-	if (wnd.wm.spaces[ind] == nil) then
-		wnd.wm.spaces[ind] = create_workspace(wnd.wm);
-	end
-
-	for i,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, v);
-		v.parent = wnd.parent;
-	end
-
-	wnd.children = {};
-	table.remove_match(wnd.parent.children, wnd);
-	wnd.wm.spaces[wnd.space_ind]:resize();
 	wnd.space_ind = ind;
-	table.insert(wnd.wm.spaces[ind].children, wnd);
-	wnd.parent = wnd.wm.spaces[ind];
-	wnd.wms.spaces[ind]:resize();
 end
 
 local function wnd_merge(wnd)
@@ -263,7 +309,7 @@ local function wnd_deselect(wnd)
 		return;
 	end
 	wnd.wm.selected = nil;
-	image_shader(wnd.border, border_inact);
+	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 end
 
@@ -276,7 +322,7 @@ local function wnd_select(wnd, source)
 		wnd.wm.selected:deselect();
 	end
 
-	image_shader(wnd.border, border_act);
+	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
 	wnd.wm.selected = wnd;
 end
@@ -338,6 +384,47 @@ local function wnd_prev(mw, level)
 	end
 end
 
+local function wnd_assign_ws(wnd, ind)
+	if (wnd.space_ind == ind) then
+		return;
+	end
+
+-- drop selection refrences
+	if (wnd.wm.selected == wnd) then
+		wnd:prev();
+		wnd.wm.selected = wnd.wm.selected ~= wnd and wnd.wm.selected or nil;
+	end
+
+	if (wnd.wm.spaces[ind] == nil) then
+		wnd.wm.spaces[ind] = create_workspace(wnd.wm);
+	end
+
+-- reparent
+	table.remove_match(wnd.parent.children, wnd);
+	for i,v in ipairs(wnd.children) do
+		table.insert(wnd.parent.children, v);
+		v.parent = wnd.parent;
+	end
+
+-- update current workspace
+	wnd.children = {};
+	wnd.wm.spaces[wnd.space_ind]:resize();
+	wnd.space_ind = ind;
+	wnd.weight = 1.0;
+	wnd.vweight = 1.0;
+
+	table.insert(wnd.wm.spaces[ind].children, wnd);
+	wnd.parent = wnd.wm.spaces[ind];
+	wnd.wm.spaces[ind]:resize();
+
+	if (wnd.wm.space_ind ~= ind) then
+		wnd.wm.spaces[ind]:inactivate();
+	end
+
+	wnd.wm.spaces[wnd.wm.space_ind]:activate();
+	wnd.wm:update_statusbar();
+end
+
 --
 -- re-adjust each window weight, they are not allowed to go down to negative
 -- range and the last cell will always pad to fit
@@ -378,6 +465,7 @@ local function wnd_create(wm, source, opts)
 
 		auto_resize = opts.auto_resize ~= nil and opts.auto_resize or false,
 
+		assign_ws = wnd_assign_ws,
 		destroy = wnd_destroy,
 		message = wnd_message,
 		resize = wnd_resize,
@@ -397,7 +485,8 @@ local function wnd_create(wm, source, opts)
 	res.wm = wm;
 
 	if (wm.spaces[wm.space_ind] == nil) then
-		wm.spaces[wm.space_ind] = create_workspace(wm, wm.space_ind);
+		wm.spaces[wm.space_ind] = create_workspace(wm);
+		wm:update_statusbar();
 	end
 
 	local space = wm.spaces[wm.space_ind];
@@ -408,7 +497,7 @@ local function wnd_create(wm, source, opts)
 	link_image(source, res.anchor);
 	link_image(res.border, res.anchor);
 
-	image_shader(res.border, border_inact);
+	image_shader(res.border, "border_inact");
 	link_image(source, res.anchor);
 	order_image(res.border, 1);
 
@@ -416,7 +505,7 @@ local function wnd_create(wm, source, opts)
 
 -- insertion modes may need some more work when we consider subclass,
 -- particularly for popups etc.
-	if (not wm.selected) then
+	if (not wm.selected or wm.selected.space_ind ~= wm.space_ind) then
 		table.insert(space.children, res);
 		res.parent = space;
 
@@ -448,11 +537,80 @@ local function tick_windows()
 	end
 end
 
-local function tiler_statusbar_update(wm)
+local function tiler_statusbar_update(wm, msg)
 	local statush = gconfig_get("sbar_sz");
 	resize_image(wm.statusbar, wm.width, statush);
 	move_image(wm.statusbar, 0, wm.height - statush);
 	show_image(wm.statusbar);
+
+	local ofs = 0;
+	for i=1,10 do
+		if (wm.spaces[i] ~= nil) then
+			local space = wm.spaces[i];
+
+-- no pre-rendered label? render and associate with tile
+			if (space.label_id == nil) then
+				local text = render_text(string.format("%s%s %d%s",
+					gconfig_get("font_str"), gconfig_get("text_color"), i,
+					space.label ~= nil and ":" .. space.label or ""));
+				local props = image_surface_properties(text);
+				move_image(text, math.ceil(0.5*(statush - props.width)), 3);
+				local tilew = (props.width+4) > statush and (props.width+4) or statush;
+				local tile = fill_surface(tilew, statush, 255, 255, 255);
+				link_image(text, tile);
+				show_image({text, tile});
+				image_inherit_order(tile, true);
+				image_inherit_order(text, true);
+				link_image(tile, wm.statusbar);
+				space.label_id = tile;
+			end
+
+			image_shader(space.label_id,
+				i == wm.space_ind and "tile_act" or "tile_inact");
+
+-- tiles can have variable width
+			local props = image_surface_properties(space.label_id);
+			move_image(space.label_id, ofs, 0);
+			ofs = ofs + props.width + 1;
+		end
+	end
+
+-- add msg in statusbar "slot", protect against overflow into ws list
+	if (msg ~= nil) then
+		if (valid_vid(wm.statusbar_msg)) then
+			delete_image(wm.statusbar_msg);
+		end
+		wm.statusbar_msg = msg;
+		show_image(msg);
+		link_image(msg, wm.statusbar);
+		image_inherit_order(msg, true);
+		local props = image_surface_properties(msg);
+		local xpos = wm.width - props.width;
+
+-- align to 20px just to lessen the effect of non-monospace font
+		if (xpos % 20 ~= 0) then
+			xpos = xpos - (xpos % 20);
+		end
+		xpos = xpos < ofs and ofs or xpos;
+		move_image(msg, xpos, 3);
+	end
+end
+
+local function tiler_switchws(wm, ind)
+	local cur = wm.space_ind;
+
+	workspace_inactivate(wm.spaces[cur]);
+	if (#wm.spaces[cur].children == 0) then
+		wm.spaces[cur]:destroy();
+		wm.spaces[cur] = nil;
+	end
+	if (wm.spaces[ind] == nil) then
+		wm.spaces[ind] = create_workspace(wm);
+	end
+
+	workspace_activate(wm.spaces[ind]);
+	wm.space_ind = ind;
+	wm:update_statusbar();
 end
 
 function tiler_create(width, height, opts)
@@ -475,6 +633,7 @@ function tiler_create(width, height, opts)
 		active_border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_border"))),
 
+		switch_ws = tiler_switchws,
 		add_window = wnd_create,
 		find_window = tiler_find,
 		error_message = tiler_message,
@@ -495,7 +654,34 @@ function tiler_create(width, height, opts)
 	show_image({res.anchor, res.client_area, res.statusbar});
 
 	res.spaces[1] = create_workspace(res);
+	res:update_statusbar();
 
+	return res;
+end
+
+function tiler_find(source)
+	for i=1,#windows do
+		if (windows[i].source == source) then
+			return windows[i];
+		end
+	end
+	return nil;
+end
+
+-- extend some of the built- ins with common used functions
+
+function string.split(instr, delim)
+	local res = {};
+	local strt = 1;
+	local delim_pos, delim_stp = string.find(instr, delim, strt);
+
+	while delim_pos do
+		table.insert(res, string.sub(instr, strt, delim_pos-1));
+		strt = delim_stp + 1;
+		delim_pos, delim_stp = string.find(instr, delim, strt);
+	end
+
+	table.insert(res, string.sub(instr, strt));
 	return res;
 end
 
@@ -511,15 +697,6 @@ function table.remove_match(tbl, match)
 		end
 	end
 
-	return nil;
-end
-
-function tiler_find(source)
-	for i=1,#windows do
-		if (windows[i].source == source) then
-			return windows[i];
-		end
-	end
 	return nil;
 end
 
