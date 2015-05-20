@@ -167,7 +167,7 @@ end
 
 function durden_clock_pulse()
 	displays.main:tick();
-	if (CLOCK % 4 == 0) then
+	if (CLOCK % 4 == 0 and control_channel ~= nil) then
 		poll_control_channel();
 	end
 end
