@@ -2,9 +2,11 @@ About
 =====
 
 Durden is a simple tiling window manager for Arcan, thus it requires a working
-arcan installation, optionally set-up with compatible launch targets etc. It is
-designed to serve as a testing and development ground much like
-[AWB](http://github.com/letoram/awb) and [Gridle](http://github.com/letoram/gridle).
+arcan installation, optionally set-up with compatible launch targets etc. It
+currently serves like a testing and development ground, much like
+[AWB](http://github.com/letoram/awb) and
+[Gridle](http://github.com/letoram/gridle) but will eventually move over to
+be a supported 'real' window manager.
 
 Long-term plans (Q2-Q3 2015) is to make it similar in style and behavior to the
 great i3 window manager, but also use and showcase some of the more hardcore and
@@ -23,7 +25,7 @@ Default meta keys are MENU (1) and RSHIFT(2), look into keybindings.lua for the
 currently mapped functions. Make sure that arcan is built with support for builtin
 frameservers for terminal, decode, encode, etc.
 
-Durde looks for a named pipe (FIFO) in APPLTEMP (usually the same as the appl dir
+Durden looks for a named pipe (FIFO) in APPLTEMP (usually the same as the appl dir
 specified as last argument to arcan) with the name durden\_cmd. This pipe can be
 used so send external commands (request rescanning displays and other costly
 operations) and to update the statusbar. For instance, using i3status:

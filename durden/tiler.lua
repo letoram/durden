@@ -67,15 +67,20 @@ local function build_shaders()
 
 	a = build_shader(nil, tile_shader, "tile_act");
 	local col = gconfig_get("pcol_act_border");
-	shader_uniform(a, "col_border", "fff", PERSIST, unpack(col));
+	shader_uniform(a, "col_border", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pcol_act_bg");
-	shader_uniform(a, "col_bg", "fff", PERSIST, unpack(col));
+	shader_uniform(a, "col_bg", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	shader_uniform(a, "border", "f", PERSIST, 1);
 
 	a = build_shader(nil, tile_shader, "tile_inact");
-	shader_uniform(a, "col_bg", "fff", PERSIST, unpack(gconfig_get("pcol_bg")));
+	local col = gconfig_get("pcol_bg");
+	shader_uniform(a, "col_bg", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pcol_border");
-	shader_uniform(a, "col_border", "fff", PERSIST, unpack(col));
+	shader_uniform(a, "col_border", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	shader_uniform(a, "border", "f", PERSIST, 1);
 end
 build_shaders();
@@ -101,6 +106,12 @@ local function wnd_destroy(wnd)
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
 	table.remove_match(wnd.parent.children, wnd);
+
+	for i=1,10 do
+		if (wm.spaces[i] and wm.spaces[i].selected == wnd) then
+			wm.spaces[i].selected = nil;
+		end
+	end
 
 	if (wm.selected == wnd) then
 		wm.selected = nil;
@@ -177,7 +188,7 @@ local function workspace_activate(space)
 		end
 	end
 
-	space.wm.selected = space.children[1];
+	space.wm.selected = space.selected and space.selected or space.children[1];
 	dive_down(space, dive_down);
 end
 
@@ -309,6 +320,7 @@ local function wnd_deselect(wnd)
 		return;
 	end
 	wnd.wm.selected = nil;
+	wnd.wm.spaces[wnd.wm.space_ind].selected = nil;
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 end
@@ -325,6 +337,7 @@ local function wnd_select(wnd, source)
 	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
 	wnd.wm.selected = wnd;
+	wnd.wm.spaces[wnd.wm.space_ind].selected = wnd;
 end
 
 local function wnd_next(mw, level)
@@ -412,6 +425,7 @@ local function wnd_assign_ws(wnd, ind)
 	wnd.space_ind = ind;
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
+	wnd.wm.spaces[ind].selected = wnd;
 
 	table.insert(wnd.wm.spaces[ind].children, wnd);
 	wnd.parent = wnd.wm.spaces[ind];
@@ -454,7 +468,8 @@ local function wnd_create(wm, source, opts)
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
 		border = fill_surface(1, 1, 255, 255, 255),
-
+		titlebar = fill_surface(1,
+			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
 		children = {},
 		pad_left = 1,
 		pad_right = 0,
@@ -610,6 +625,7 @@ local function tiler_switchws(wm, ind)
 
 	workspace_activate(wm.spaces[ind]);
 	wm.space_ind = ind;
+	wm.selected = wm.spaces[ind].selected;
 	wm:update_statusbar();
 end
 

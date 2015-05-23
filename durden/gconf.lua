@@ -11,13 +11,17 @@ local defaults = {
 -- sbar
 	sbar_sz = 16,
 	sbar_bg = {0x00, 0x00, 0x00},
+-- titlebar
+  tbar_sz = 16,
+	tbar_bg = {0x28, 0x55, 0x77},
+
 -- popup
-	pcol_bg = {0.2, 0.2, 0.2},
-	pcol_border = {0.6, 0.6, 0.6},
-	pcol_act_bg = {0.3, 0.3, 0.8},
-	pcol_act_border = {0.6, 0.6, 1.0},
+	pcol_bg = {0x3c, 0x3c, 0x3c},
+	pcol_border = {0x88, 0x88, 0x88},
+	pcol_act_bg = {0x44, 0x44, 0xaa},
+	pcol_act_border = {0x88, 0x88, 0xff},
 -- tile
-	tcol_border = {0x00, 0xff, 0x00},
+	tcol_border = {0x4c, 0x78, 0x99},
 	tcol_inactive_border = {0x10, 0x10, 0x10},
 };
 
