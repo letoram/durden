@@ -42,11 +42,6 @@ function durden()
 end
 
 --
--- grab a format string from a socket, sanitize, poll periodically
--- add to statusbar
---
-
---
 -- create both an external single-shot connection and a reference color
 -- the connection is needed for frameserver- specific operations to work
 --
