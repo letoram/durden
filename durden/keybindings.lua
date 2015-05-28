@@ -15,7 +15,12 @@ local meta_2 = "RSHIFT";
 local tbl = {};
 tbl["m1_RETURN"] = "spawn_terminal";
 tbl["m1_ESCAPE"] = "exit";
-tbl["m1_F1"] = "spawn_test";
+
+if (DEBUGLEVEL > 0) then
+tbl["m1_F1"] = "spawn_test_bar";
+tbl["m1_m2_F1"] = "spawn_test_nobar";
+end
+
 tbl["m1_RIGHT"] = "step_right";
 tbl["m1_UP"] = "step_up";
 tbl["m1_LEFT"] = "step_left";

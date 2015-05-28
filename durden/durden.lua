@@ -45,11 +45,16 @@ end
 -- create both an external single-shot connection and a reference color
 -- the connection is needed for frameserver- specific operations to work
 --
-function spawn_test()
+function spawn_test(bar)
 	local img = fill_surface(math.random(200, 600), math.random(200, 600),
 		math.random(64, 255), math.random(64, 255), math.random(64, 255));
 	show_image(img);
+
 	local wnd = displays.main:add_window(img, {auto_resize = true});
+
+	if (bar) then
+		wnd:set_title("test window");
+	end
 end
 
 local function tile_changed(wnd)
@@ -58,12 +63,12 @@ end
 
 function spawn_terminal()
 	local vid = launch_avfeed(
-		"extclock:env=ARCAN_CONNPATH=" .. connection_path, "terminal");
+		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
 
 	if (valid_vid(vid)) then
 		local wnd = displays.main:add_window(vid);
+		wnd:set_title("terminal");
 		wnd.resize_hook = tile_changed;
-		wnd.tick = function() stepframe_target(vid, 1); end
 		tile_changed(wnd);
 		show_image(vid);
 		target_updatehandler(vid, def_handler);

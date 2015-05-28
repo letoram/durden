@@ -6,7 +6,9 @@
 GLOBAL_FUNCTIONS = {};
 GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
 GLOBAL_FUNCTIONS["exit"] = query_exit;
-GLOBAL_FUNCTIONS["spawn_test"] = spawn_test;
+GLOBAL_FUNCTIONS["spawn_test_nobar"] = function() spawn_test(1); end
+GLOBAL_FUNCTIONS["spawn_test_bar"] = function() spawn_test(); end
+
 GLOBAL_FUNCTIONS["mode_vertical"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
