@@ -328,6 +328,7 @@ local function wnd_deselect(wnd)
 	wnd.wm.spaces[wnd.wm.space_ind].selected = nil;
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
+	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
 end
 
 local function wnd_select(wnd, source)
@@ -341,6 +342,7 @@ local function wnd_select(wnd, source)
 
 	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
+	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
 	wnd.wm.selected = wnd;
 	wnd.wm.spaces[wnd.wm.space_ind].selected = wnd;
 end
@@ -486,7 +488,6 @@ local function wnd_title(wnd, message)
 		local vch = wnd.pad_top - 1;
 		wnd.pad_top = wnd.pad_top - gconfig_get("tbar_sz");
 		if (vch > 0) then
---			wnd:resize(0, 0, wnd.width, wnd.height);
 			wnd.wm.spaces[wnd.space_ind]:resize();
 		end
 		return;
@@ -496,7 +497,6 @@ local function wnd_title(wnd, message)
 		show_image(wnd.titlebar);
 		wnd.pad_top = wnd.pad_top + gconfig_get("tbar_sz");
 		wnd.wm.spaces[wnd.space_ind]:resize();
---		wnd:resize(0, 0, wnd.width, wnd.height);
 	end
 
 	link_image(message, wnd.titlebar);
