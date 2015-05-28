@@ -286,7 +286,12 @@ local function wnd_resize(wnd, x, y, neww, newh)
 	resize_image(wnd.anchor, neww, newh);
 	resize_image(wnd.border, neww, newh);
 
+	resize_image(wnd.titlebar, neww,
+		image_surface_properties(wnd.titlebar).height);
+
 	local props = image_storage_properties(wnd.source);
+	wnd.width = neww;
+	wnd.height = newh;
 
 -- to save space for border width, statusbar and other properties
 	move_image(wnd.source, wnd.pad_left, wnd.pad_top);
@@ -461,6 +466,48 @@ local function wnd_grow(wnd, w, h)
 	wnd.wm.spaces[wnd.space_ind]:resize();
 end
 
+local function wnd_title(wnd, message)
+	local props = image_surface_properties(wnd.titlebar);
+	if (valid_vid(wnd.title_temp)) then
+		delete_image(wnd.title_temp);
+		wnd.title_temp = nil;
+	end
+
+	if (type(message) == "string") then
+		message = render_text(string.format("%s %s",
+			gconfig_get("tbar_textstr"), string.gsub(message, "\\", "\\\\")));
+	end
+
+	if (not valid_vid(message)) then
+		if (props.opacity <= 0.001) then
+			return;
+		end
+		hide_image(wnd.titlebar);
+		local vch = wnd.pad_top - 1;
+		wnd.pad_top = wnd.pad_top - gconfig_get("tbar_sz");
+		if (vch > 0) then
+--			wnd:resize(0, 0, wnd.width, wnd.height);
+			wnd.wm.spaces[wnd.space_ind]:resize();
+		end
+		return;
+	end
+
+	if (props.opacity <= 0.001) then
+		show_image(wnd.titlebar);
+		wnd.pad_top = wnd.pad_top + gconfig_get("tbar_sz");
+		wnd.wm.spaces[wnd.space_ind]:resize();
+--		wnd:resize(0, 0, wnd.width, wnd.height);
+	end
+
+	link_image(message, wnd.titlebar);
+	wnd.title_temp = message;
+	image_clip_on(message, CLIP_SHALLOW);
+	resize_image(wnd.titlebar, wnd.width - 2, gconfig_get("tbar_sz"));
+	image_inherit_order(message, 1);
+	move_image(message, 1, 1);
+	show_image(message);
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -475,6 +522,8 @@ local function wnd_create(wm, source, opts)
 		pad_right = 0,
 		pad_top = 1,
 		pad_bottom = 0,
+		width = 0,
+		height = 0,
 		weight = 1.0,
 		vweight = 1.0,
 
@@ -483,6 +532,7 @@ local function wnd_create(wm, source, opts)
 		assign_ws = wnd_assign_ws,
 		destroy = wnd_destroy,
 		message = wnd_message,
+		set_title = wnd_title,
 		resize = wnd_resize,
 		select = wnd_select,
 		deselect = wnd_deselect,
@@ -498,6 +548,11 @@ local function wnd_create(wm, source, opts)
 
 	res.source = source;
 	res.wm = wm;
+
+-- initially, titlebar stays hidden
+	link_image(res.titlebar, res.anchor);
+	image_inherit_order(res.titlebar, true);
+	move_image(res.titlebar, 1, 1);
 
 	if (wm.spaces[wm.space_ind] == nil) then
 		wm.spaces[wm.space_ind] = create_workspace(wm);
