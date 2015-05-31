@@ -133,6 +133,34 @@ local function wnd_message(wnd, message)
 	print(message);
 end
 
+local function wnd_deselect(wnd)
+	if (wnd.wm.selected ~= wnd) then
+		return;
+	end
+	wnd.wm.selected = nil;
+	wnd.wm.spaces[wnd.wm.space_ind].selected = nil;
+	image_shader(wnd.border, "border_inact");
+	image_sharestorage(wnd.wm.border_color, wnd.border);
+	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
+end
+
+local function wnd_select(wnd, source)
+	if (wnd.wm.selected == wnd) then
+		return;
+	end
+
+	if (wnd.wm.selected) then
+		wnd.wm.selected:deselect();
+	end
+
+	image_shader(wnd.border, "border_act");
+	image_sharestorage(wnd.wm.active_border_color, wnd.border);
+	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
+	wnd.wm.selected = wnd;
+	wnd.wm.spaces[wnd.wm.space_ind].selected = wnd;
+end
+
+
 --
 -- This is _the_ operation when it comes to window management here, it resizes
 -- the actual size of a tile (which may not necessarily match the size of the
@@ -188,7 +216,7 @@ local function workspace_activate(space)
 		end
 	end
 
-	space.wm.selected = space.selected and space.selected or space.children[1];
+	local tgt = space.selected and space.selected or space.children[1];
 	dive_down(space, dive_down);
 end
 
@@ -207,7 +235,7 @@ end
 local function workspace_resize(space)
 	if (space.mode == "tile") then
 		level_resize(space, 0, 0, space.wm.width,
-			space.wm.height-gconfig_get("sbar_sz"));
+			space.wm.height-gconfig_get("sbar_sz")-1);
 
 	elseif (space.mode == "tab") then
 
@@ -318,33 +346,6 @@ local function wnd_resize(wnd, x, y, neww, newh)
 	if (wnd.auto_resize) then
 		resize_image(wnd.source, wnd.effective_w, wnd.effective_h);
 	end
-end
-
-local function wnd_deselect(wnd)
-	if (wnd.wm.selected ~= wnd) then
-		return;
-	end
-	wnd.wm.selected = nil;
-	wnd.wm.spaces[wnd.wm.space_ind].selected = nil;
-	image_shader(wnd.border, "border_inact");
-	image_sharestorage(wnd.wm.border_color, wnd.border);
-	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
-end
-
-local function wnd_select(wnd, source)
-	if (wnd.wm.selected == wnd) then
-		return;
-	end
-
-	if (wnd.wm.selected) then
-		wnd.wm.selected:deselect();
-	end
-
-	image_shader(wnd.border, "border_act");
-	image_sharestorage(wnd.wm.active_border_color, wnd.border);
-	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
-	wnd.wm.selected = wnd;
-	wnd.wm.spaces[wnd.wm.space_ind].selected = wnd;
 end
 
 local function wnd_next(mw, level)
@@ -680,7 +681,12 @@ local function tiler_switchws(wm, ind)
 
 	workspace_activate(wm.spaces[ind]);
 	wm.space_ind = ind;
-	wm.selected = wm.spaces[ind].selected;
+	if (wm.spaces[ind].selected) then
+		wnd_select(wm.spaces[ind].selected);
+	else
+		wm.selected = nil;
+	end
+
 	wm:update_statusbar();
 end
 
