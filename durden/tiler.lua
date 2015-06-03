@@ -695,7 +695,11 @@ local function tiler_statusbar_update(wm, msg)
 					gconfig_get("font_str"), gconfig_get("text_color"), i,
 					space.label ~= nil and ":" .. space.label or ""));
 				local props = image_surface_properties(text);
-				move_image(text, math.ceil(0.5*(statush - props.width)), 3);
+				if (not space.label) then
+					move_image(text, math.ceil(0.5*(statush - props.width)), 3);
+				else
+					move_image(text, 2, 3);
+				end
 				local tilew = (props.width+4) > statush and (props.width+4) or statush;
 				local tile = fill_surface(tilew, statush, 255, 255, 255);
 				link_image(text, tile);
