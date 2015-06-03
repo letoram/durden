@@ -14,8 +14,6 @@
 --
 assert(SHADER_LANGUAGE == "GLSL120" or SHADER_LANGUAGE == "GLSL100");
 
-local windows = {};
-
 local border_shader = [[
 	uniform sampler2D map_diffuse;
 	uniform float border;
@@ -123,7 +121,7 @@ local function wnd_destroy(wnd)
 	end
 
 -- drop global tracking
-	table.remove_match(windows, wnd);
+	table.remove_match(wm.windows, wnd);
 
 -- rebuild layout
 	wm.spaces[space]:resize();
@@ -208,10 +206,14 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
-local function workspace_activate(space)
+local function workspace_activate(space, force)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
-			show_image(level.children[i].anchor);
+			if (force or level.children[i].store_opacity == nil) then
+				show_image(level.children[i].anchor);
+			else
+				blend_image(level.children[i].anchor, level.children[i].store_opacity);
+			end
 			fun(level.children[i], fun);
 		end
 	end
@@ -223,8 +225,9 @@ end
 local function workspace_inactivate(space)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
+			level.children[i].store_opacity = image_surface_properties(
+				level.children[i].anchor).opacity;
 			hide_image(level.children[i].anchor);
--- need to do something about clock ticks?
 			fun(level.children[i], fun);
 		end
 	end
@@ -232,27 +235,60 @@ local function workspace_inactivate(space)
 	dive_down(space, dive_down);
 end
 
-local function workspace_resize(space)
-	if (space.mode == "tile") then
+local space_handlers = {
+	tile = function(space)
 		level_resize(space, 0, 0, space.wm.width,
-			space.wm.height-gconfig_get("sbar_sz")-1);
-
-	elseif (space.mode == "tab") then
-
-	else
-		print("fullscreen");
+			space.wm.height - gconfig_get("sbar_sz") - 1);
+	end,
+	tab = function(space)
+	end,
+	float = function(space)
 	end
-end
+};
 
 local function workspace_destroy(space)
 	while (#space.children > 0) do
 		space.children[1]:destroy();
 	end
+
+	if (valid_vid(space.rendertarget)) then
+		delete_image(space.rendertarget);
+	end
+
 	if (space.label_id ~= nil) then
 		delete_image(space.label_id);
 	end
+
 	for k,v in pairs(space) do
 		space[k] = nil;
+	end
+end
+
+-- track object alpha separately in order to
+-- hide / show based on what is needed
+local function workspace_set(space, mode)
+	if (mode == space.mode or (mode ~= "fullscreen" and mode ~= "tile"
+		and mode ~= "tab")) then
+		return;
+	end
+	space.mode = mode;
+	space:resize();
+end
+
+-- could possibly support less intense versions with downscale
+-- or lower rates, is rather context- dependent
+local function workspace_rendertarget(space)
+	if (not valid_vid(space.rendertarget)) then
+		space.rendertarget = alloc_surface(space.wm.width, space.wm.height);
+		define_rendertarget(space.rendertarget, {});
+	end
+
+	return space.rendertarget;
+end
+
+local function workspace_resize(space)
+	if (space_handlers[space.mode]) then
+		space_handlers[space.mode](space);
 	end
 end
 
@@ -262,6 +298,11 @@ local function create_workspace(wm)
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
+		get_rendertarget = workspace_rendertarget,
+		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
+		tile = function(ws) workspace_set(ws, "tile"); end,
+		tab = function(ws) workspace_set(ws, "tab"); end,
+		float = function(ws) workspace_set(ws, "float"); end,
 		mode = "tile",
 		insert = "horizontal",
 		children = {},
@@ -275,6 +316,26 @@ local function create_workspace(wm)
 end
 
 local function wnd_reassign(wnd, ind)
+	local src = wnd.wm.spaces[wnd.space_ind].rendertarget;
+	local dst = wnd.wm.spaces[ind].rendertarget;
+
+	local vsrt = valid_vid(src);
+	local vdrt = valid_vid(dst);
+
+	if (vsrt or vdrt) then
+		local vset = {
+		};
+
+		for k,v in ipairs(vset) do
+			if (vsrt) then
+				rendertarget_detach(src, v);
+			end
+			if (vdrt) then
+				rendertarget_attach(dst, v);
+			end
+		end
+	end
+
 	wnd.space_ind = ind;
 end
 
@@ -595,17 +656,26 @@ local function wnd_create(wm, source, opts)
 
 	res.space_ind = wm.space_ind;
 	space:resize();
-	table.insert(windows, res);
+	table.insert(wm.windows, res);
 	res:select();
 	return res;
 end
 
-local function tick_windows()
-	for k,v in ipairs(windows) do
+local function tick_windows(wm)
+	for k,v in ipairs(wm.windows) do
 		if (v.tick) then
 			v:tick();
 		end
 	end
+end
+
+local function tiler_find(wm, source)
+	for i=1,#wm.windows do
+		if (wm.windows[i].source == source) then
+			return wm.windows[i];
+		end
+	end
+	return nil;
 end
 
 local function tiler_statusbar_update(wm, msg)
@@ -720,6 +790,7 @@ function tiler_create(width, height, opts)
 
 -- management members
 		spaces = {},
+		windows = {},
 		space_ind = 1
 	};
 	res.width = width;
@@ -734,15 +805,6 @@ function tiler_create(width, height, opts)
 	res:update_statusbar();
 
 	return res;
-end
-
-function tiler_find(source)
-	for i=1,#windows do
-		if (windows[i].source == source) then
-			return windows[i];
-		end
-	end
-	return nil;
 end
 
 -- extend some of the built- ins with common used functions
