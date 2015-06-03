@@ -82,7 +82,7 @@ function query_exit()
 end
 
 function def_handler(source, stat)
-	local wnd = tiler_find(source);
+	local wnd = displays.main:find(source);
 	assert(wnd ~= nil);
 
 	if (stat.kind == "resized") then
