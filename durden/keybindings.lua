@@ -33,7 +33,7 @@ tbl["m1_m2_RIGHT"] = "grow_h";
 tbl["m1_m2_UP"] = "shrink_v";
 tbl["m1_m2_DOWN"] = "grow_v";
 tbl["m1_f"] = "fullscreen";
-tbl["m1_t"] = "mode_tab_tile";
+tbl["m1_e"] = "tabtile";
 tbl["m1_TAB"] = "context_popup";
 tbl["m1_m"] = "mergecollapse";
 tbl["m1_1"] = "switch_ws1";
@@ -57,6 +57,10 @@ tbl["m1_m2_8"] = "assign_ws8";
 tbl["m1_m2_9"] = "assign_ws9";
 tbl["m1_m2_10"] = "assign_ws10";
 tbl["m1_l"] = "lock_input";
+
+if (DEBUGLEVEL > 0) then
+tbl["m1_m2_p"] = "dump_state";
+end
 
 --
 -- we assume that all relevant input related functions go

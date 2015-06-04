@@ -27,6 +27,8 @@ local defaults = {
 -- tile
 	tcol_border = {0x4c, 0x78, 0x99},
 	tcol_inactive_border = {0x10, 0x10, 0x10},
+	tcol_alert = {0xff, 0x8c, 0x00},
+	tcol_alert_border = {0xff, 0xff, 0xff},
 };
 
 function gconfig_set(key, val)
