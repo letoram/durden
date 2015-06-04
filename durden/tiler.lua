@@ -277,7 +277,15 @@ end
 
 -- could possibly support less intense versions with downscale
 -- or lower rates, is rather context- dependent
-local function workspace_rendertarget(space)
+local function workspace_rendertarget(space, destroy)
+	if (destroy) then
+		if (valid_vid(space.rendertarget)) then
+-- FIXME: detach windows
+		end
+		space.rendertarget = nil;
+		return;
+	end
+
 	if (not valid_vid(space.rendertarget)) then
 		space.rendertarget = alloc_surface(space.wm.width, space.wm.height);
 		define_rendertarget(space.rendertarget, {});
@@ -298,6 +306,7 @@ local function create_workspace(wm)
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
+		alert = workspace_alert,
 		get_rendertarget = workspace_rendertarget,
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
@@ -324,6 +333,7 @@ local function wnd_reassign(wnd, ind)
 
 	if (vsrt or vdrt) then
 		local vset = {
+-- FIXME: populate vset with relevant windows members
 		};
 
 		for k,v in ipairs(vset) do
@@ -331,7 +341,7 @@ local function wnd_reassign(wnd, ind)
 				rendertarget_detach(src, v);
 			end
 			if (vdrt) then
-				rendertarget_attach(dst, v);
+				rendertarget_attach(dst, v, RENDERTARGET_NODETACH);
 			end
 		end
 	end
