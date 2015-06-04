@@ -8,6 +8,13 @@ GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
 GLOBAL_FUNCTIONS["exit"] = query_exit;
 GLOBAL_FUNCTIONS["spawn_test_nobar"] = function() spawn_test(1); end
 GLOBAL_FUNCTIONS["spawn_test_bar"] = function() spawn_test(); end
+GLOBAL_FUNCTIONS["dump_state"] = function()
+	system_snapshot("state.dump");
+end
+GLOBAL_FUNCTIONS["random_alert"] = function()
+	local ind = math.random(1, #displays.main.windows);
+	displays.main.windows[ind]:alert();
+end
 
 GLOBAL_FUNCTIONS["mode_vertical"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
@@ -40,10 +47,24 @@ GLOBAL_FUNCTIONS["shrink_h"] = function()
 		displays.main.selected:grow(-0.05, 0);
 	end
 end
-GLOBAL_FUNCTIONS["mode_tab_tile"] = function()
+GLOBAL_FUNCTIONS["tabtile"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
-		wspace.mode = wspace.mode == "tile" and "tab" or "tile";
+		if (wspace.mode == "tab" or wspace.mode == "fullscreen") then
+			wspace:tile();
+		else
+			wspace:tab();
+		end
+	end
+end
+GLOBAL_FUNCTIONS["fullscreen"] = function()
+	local sw = displays.main.selected;
+	if (sw) then
+		if (sw.locked) then
+			sw.wm.spaces[sw.space_ind]:tile();
+		else
+			sw.wm.spaces[sw.space_ind]:fullscreen();
+		end
 	end
 end
 GLOBAL_FUNCTIONS["grow_v"] = function()

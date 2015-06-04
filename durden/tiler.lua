@@ -72,8 +72,16 @@ local function build_shaders()
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	shader_uniform(a, "border", "f", PERSIST, 1);
 
+	a = build_shader(nil, tile_shader, "tile_alert");
+	col = gconfig_get("tcol_alert_border");
+	shader_uniform(a, "col_border", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
+	col = gconfig_get("tcol_alert");
+	shader_uniform(a, "col_bg", "fff", PERSIST,
+		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
+
 	a = build_shader(nil, tile_shader, "tile_inact");
-	local col = gconfig_get("pcol_bg");
+	col = gconfig_get("pcol_bg");
 	shader_uniform(a, "col_bg", "fff", PERSIST,
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pcol_border");
@@ -206,6 +214,7 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
+-- buggen är anchor state blir 0
 local function workspace_activate(space, force)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
@@ -222,11 +231,13 @@ local function workspace_activate(space, force)
 	dive_down(space, dive_down);
 end
 
-local function workspace_inactivate(space)
+local function workspace_inactivate(space, store)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
-			level.children[i].store_opacity = image_surface_properties(
-				level.children[i].anchor).opacity;
+			if (store) then
+				level.children[i].store_opacity = image_surface_properties(
+					level.children[i].anchor).opacity;
+			end
 			hide_image(level.children[i].anchor);
 			fun(level.children[i], fun);
 		end
@@ -235,18 +246,52 @@ local function workspace_inactivate(space)
 	dive_down(space, dive_down);
 end
 
+local function drop_tab(space)
+-- iterate windows, relink to their normal titlebar, resize titlebar
+-- to fit window again
+end
+
+local function drop_fullscreen(space)
+-- iterate windows, relink to their normal titlebar
+	space.locked = false;
+end
+
+local function drop_float(space)
+-- iterate windows, add / activate special mouse
+-- handler and resize button
+end
+
+local function set_tab(space)
+	space.mode_hook = drop_tab;
+end
+
+local function set_fullscreen(space)
+	workspace_inactivate(space, true);
+	space.locked = true;
+	space.mode_hook = drop_fullscreen;
+end
+
+local function set_float(space)
+	space.mode_hook = drop_float;
+end
+
+local function set_tile(space)
+	level_resize(space, 0, 0, space.wm.width,
+		space.wm.height - gconfig_get("sbar_sz") - 1);
+end
+
 local space_handlers = {
-	tile = function(space)
-		level_resize(space, 0, 0, space.wm.width,
-			space.wm.height - gconfig_get("sbar_sz") - 1);
-	end,
-	tab = function(space)
-	end,
-	float = function(space)
-	end
+	tile = set_tile,
+	float = set_float,
+	fullscreen = set_fullscreen,
+	tab = set_tab
 };
 
 local function workspace_destroy(space)
+	if (space.mode_hook) then
+		space:mode_hook();
+	end
+
 	while (#space.children > 0) do
 		space.children[1]:destroy();
 	end
@@ -264,13 +309,17 @@ local function workspace_destroy(space)
 	end
 end
 
--- track object alpha separately in order to
--- hide / show based on what is needed
 local function workspace_set(space, mode)
 	if (mode == space.mode or (mode ~= "fullscreen" and mode ~= "tile"
 		and mode ~= "tab")) then
 		return;
 	end
+
+-- cleanup to revert to the normal stable state (tiled)
+	if (space.mode_hook) then
+		space:mode_hook();
+	end
+
 	space.mode = mode;
 	space:resize();
 end
@@ -306,7 +355,6 @@ local function create_workspace(wm)
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
-		alert = workspace_alert,
 		get_rendertarget = workspace_rendertarget,
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
@@ -477,11 +525,11 @@ local function wnd_prev(mw, level)
 end
 
 local function wnd_assign_ws(wnd, ind)
-	if (wnd.space_ind == ind) then
+	if (wnd.space_ind == ind or wnd.wm.spaces[wnd.space_ind].locked) then
 		return;
 	end
 
--- drop selection refrences
+-- drop selection references
 	if (wnd.wm.selected == wnd) then
 		wnd:prev();
 		wnd.wm.selected = wnd.wm.selected ~= wnd and wnd.wm.selected or nil;
@@ -523,6 +571,10 @@ end
 -- range and the last cell will always pad to fit
 --
 local function wnd_grow(wnd, w, h)
+	if (wnd.locked) then
+		return;
+	end
+
 	if (h ~= 0) then
 		wnd.vweight = wnd.vweight + h;
 		wnd.parent.vweight = wnd.parent.vweight - h;
@@ -580,6 +632,21 @@ local function wnd_title(wnd, message)
 	show_image(message);
 end
 
+local function wnd_alert(wnd)
+	local wm = wnd.wm;
+
+	if (not wm.selected or wm.selected == wnd) then
+		return;
+	end
+
+	if (wnd.space_ind ~= wm.space_ind) then
+		image_shader(wm.spaces[wnd.space_ind].label_id, "tile_alert");
+	end
+
+	image_sharestorage(wm.alert_color, wnd.titlebar);
+	image_sharestorage(wm.alert_color, wnd.border);
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -601,6 +668,7 @@ local function wnd_create(wm, source, opts)
 
 		auto_resize = opts.auto_resize ~= nil and opts.auto_resize or false,
 
+		alert = wnd_alert,
 		assign_ws = wnd_assign_ws,
 		destroy = wnd_destroy,
 		message = wnd_message,
@@ -754,7 +822,7 @@ end
 local function tiler_switchws(wm, ind)
 	local cur = wm.space_ind;
 
-	workspace_inactivate(wm.spaces[cur]);
+	workspace_inactivate(wm.spaces[cur], true);
 	if (#wm.spaces[cur].children == 0) then
 		wm.spaces[cur]:destroy();
 		wm.spaces[cur] = nil;
@@ -791,6 +859,10 @@ function tiler_create(width, height, opts)
 -- pre-alloc these as they will be re-used a lot
 		border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_inactive_border"))),
+
+		alert_color = fill_surface(1, 1,
+			unpack(gconfig_get("tcol_alert"))),
+
 		active_border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_border"))),
 

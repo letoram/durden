@@ -21,7 +21,6 @@ function durden()
 	system_load("mouse.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
-	system_load("composition_surface.lua")();
 	system_load("fglobal.lua")();
 	system_load("tiler.lua")();
 
