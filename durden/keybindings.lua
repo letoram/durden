@@ -9,7 +9,7 @@
 -- the output resolves to an entry in GLOBAL_FUNCTIONS
 --
 
-local meta_1 = "MENU";
+local meta_1 = "LMETA";
 local meta_2 = "RSHIFT";
 
 local tbl = {};
@@ -35,8 +35,7 @@ tbl["m1_m2_DOWN"] = "grow_v";
 tbl["m1_f"] = "fullscreen";
 tbl["m1_t"] = "mode_tab_tile";
 tbl["m1_TAB"] = "context_popup";
-tbl["m1_m"] = "merge";
-tbl["m1_m2_m"] = "collapse";
+tbl["m1_m"] = "mergecollapse";
 tbl["m1_1"] = "switch_ws1";
 tbl["m1_2"] = "switch_ws2";
 tbl["m1_3"] = "switch_ws3";

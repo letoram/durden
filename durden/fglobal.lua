@@ -21,14 +21,13 @@ GLOBAL_FUNCTIONS["mode_horizontal"] = function()
 		wspace.insert = "horizontal";
 	end
 end
-GLOBAL_FUNCTIONS["merge"] = function()
+GLOBAL_FUNCTIONS["mergecollapse"] = function()
 	if (displays.main.selected) then
-		displays.main.selected:merge();
-	end
-end
-GLOBAL_FUNCTIONS["collapse"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:collapse();
+		if (#displays.main.selected.children > 0) then
+			displays.main.selected:collapse();
+		else
+			displays.main.selected:merge();
+		end
 	end
 end
 GLOBAL_FUNCTIONS["grow_h"] = function()
