@@ -9,12 +9,12 @@
 -- the output resolves to an entry in GLOBAL_FUNCTIONS
 --
 
-local meta_1 = "LMETA";
+local meta_1 = "MENU";
 local meta_2 = "RSHIFT";
 
 local tbl = {};
 tbl["m1_RETURN"] = "spawn_terminal";
-tbl["m1_ESCAPE"] = "exit";
+tbl["m1_m2_DELETE"] = "exit";
 
 if (DEBUGLEVEL > 0) then
 tbl["m1_F1"] = "spawn_test_bar";

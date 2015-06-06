@@ -60,10 +60,10 @@ end
 GLOBAL_FUNCTIONS["fullscreen"] = function()
 	local sw = displays.main.selected;
 	if (sw) then
-		if (sw.locked) then
-			sw.wm.spaces[sw.space_ind]:tile();
+		if (sw.fullscreen) then
+			sw.space:tile();
 		else
-			sw.wm.spaces[sw.space_ind]:fullscreen();
+			sw.space:fullscreen();
 		end
 	end
 end
