@@ -13,7 +13,7 @@
 -- currently) expose a function to set border width and color.
 --
 assert(SHADER_LANGUAGE == "GLSL120" or SHADER_LANGUAGE == "GLSL100");
-
+local ent_count = 1;
 local border_shader = [[
 	uniform sampler2D map_diffuse;
 	uniform float border;
@@ -93,6 +93,9 @@ build_shaders();
 
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
+	if (wnd.fullscreen) then
+		wnd.space:tile();
+	end
 
 -- mark a new node as selected
 	if (#wnd.children > 0) then
@@ -123,7 +126,7 @@ local function wnd_destroy(wnd)
 		wm.selected = nil;
 	end
 
-	local space = wnd.space_ind;
+	local space = wnd.space;
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
 	end
@@ -132,7 +135,7 @@ local function wnd_destroy(wnd)
 	table.remove_match(wm.windows, wnd);
 
 -- rebuild layout
-	wm.spaces[space]:resize();
+	space:resize();
 end
 
 local function wnd_message(wnd, message)
@@ -143,8 +146,6 @@ local function wnd_deselect(wnd)
 	if (wnd.wm.selected ~= wnd) then
 		return;
 	end
-	wnd.wm.selected = nil;
-	wnd.wm.spaces[wnd.wm.space_ind].selected = nil;
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
@@ -163,9 +164,8 @@ local function wnd_select(wnd, source)
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
 	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
 	wnd.wm.selected = wnd;
-	wnd.wm.spaces[wnd.wm.space_ind].selected = wnd;
+	wnd.space.selected = wnd;
 end
-
 
 --
 -- This is _the_ operation when it comes to window management here, it resizes
@@ -175,7 +175,6 @@ end
 -- The overall structure in split mode is simply a tree, split resources fairly
 -- between individuals (with an assignable weight) and recurse down to children
 --
-
 local function level_resize(level, x, y, w, h, node)
 	local fair = math.ceil(w / #level.children);
 	fair = (fair % 2) == 0 and fair or fair + 1;
@@ -201,7 +200,8 @@ local function level_resize(level, x, y, w, h, node)
 			level_resize(node, x, y + node.h, node.w, h - node.h);
 		end
 
-		node:resize(node.x, node.y, node.w, node.h);
+		node:resize(node.w, node.h);
+		move_image(node.anchor, node.x, node.y);
 
 		x = x + node.w;
 		w = w - node.w;
@@ -214,15 +214,10 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
--- buggen är anchor state blir 0
-local function workspace_activate(space, force)
+local function workspace_activate(space)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
-			if (force or level.children[i].store_opacity == nil) then
-				show_image(level.children[i].anchor);
-			else
-				blend_image(level.children[i].anchor, level.children[i].store_opacity);
-			end
+			show_image(level.children[i].anchor);
 			fun(level.children[i], fun);
 		end
 	end
@@ -234,10 +229,6 @@ end
 local function workspace_inactivate(space, store)
 	local dive_down = function(level, fun)
 		for i=1,#level.children do
-			if (store) then
-				level.children[i].store_opacity = image_surface_properties(
-					level.children[i].anchor).opacity;
-			end
 			hide_image(level.children[i].anchor);
 			fun(level.children[i], fun);
 		end
@@ -251,31 +242,72 @@ local function drop_tab(space)
 -- to fit window again
 end
 
-local function drop_fullscreen(space)
--- iterate windows, relink to their normal titlebar
-	space.locked = false;
+local function switch_fullscreen(space, to)
+	if (space.selected == nil) then
+		return;
+	end
+
+	workspace_inactivate(space);
+	if (to) then
+		image_mask_clear(space.selected.source, MASK_OPACITY);
+		hide_image(space.wm.statusbar);
+	else
+		image_mask_set(space.selected.source, MASK_OPACITY);
+		hide_image(space.selected.anchor);
+	end
 end
 
-local function drop_float(space)
+local function drop_fullscreen(space, swap)
+	workspace_activate(space);
+
+	if (not space.selected) then
+		return;
+	end
+
+	local dw = space.selected;
+	space.locked = false;
+	dw.fullscreen = nil;
+	resize_image(dw.wm.client_area, dw.wm.width, dw.wm.client_height);
+	image_mask_set(dw.source, MASK_OPACITY);
+	space.switch_hook = nil;
+end
+
+local function drop_float(space, swap)
 -- iterate windows, add / activate special mouse
 -- handler and resize button
 end
 
 local function set_tab(space)
+	show_image(wm.statusbar);
 	space.mode_hook = drop_tab;
 end
 
 local function set_fullscreen(space)
-	workspace_inactivate(space, true);
+	if (not space.selected) then
+		return;
+	end
+	local dw = space.selected;
+
+-- hide all images + statusbar
+	hide_image(dw.wm.statusbar);
+	workspace_inactivate(space);
+	dw.fullscreen = true;
 	space.locked = true;
 	space.mode_hook = drop_fullscreen;
+	space.switch_hook = switch_fullscreen;
+	image_mask_clear(dw.source, MASK_OPACITY);
+	resize_image(dw.wm.client_area, dw.wm.width, dw.wm.height);
+	dw:resize(dw.wm.width, dw.wm.height);
+	move_image(dw.anchor, 0, 0);
 end
 
 local function set_float(space)
+	show_image(wm.statusbar);
 	space.mode_hook = drop_float;
 end
 
 local function set_tile(space)
+	show_image(space.wm.statusbar);
 	level_resize(space, 0, 0, space.wm.width,
 		space.wm.height - gconfig_get("sbar_sz") - 1);
 end
@@ -290,6 +322,7 @@ local space_handlers = {
 local function workspace_destroy(space)
 	if (space.mode_hook) then
 		space:mode_hook();
+		space.mode_hook = nil;
 	end
 
 	while (#space.children > 0) do
@@ -318,6 +351,7 @@ local function workspace_set(space, mode)
 -- cleanup to revert to the normal stable state (tiled)
 	if (space.mode_hook) then
 		space:mode_hook();
+		space.mode_hook = nil;
 	end
 
 	space.mode = mode;
@@ -361,40 +395,16 @@ local function create_workspace(wm)
 		tab = function(ws) workspace_set(ws, "tab"); end,
 		float = function(ws) workspace_set(ws, "float"); end,
 		mode = "tile",
+		name = "workspace_" .. tostring(ent_count);
 		insert = "horizontal",
 		children = {},
 		weight = 1.0,
 		vweight = 1.0
 	};
-
+	ent_count = ent_count + 1;
 	res.wm = wm;
 	res:activate();
 	return res;
-end
-
-local function wnd_reassign(wnd, ind)
-	local src = wnd.wm.spaces[wnd.space_ind].rendertarget;
-	local dst = wnd.wm.spaces[ind].rendertarget;
-
-	local vsrt = valid_vid(src);
-	local vdrt = valid_vid(dst);
-
-	if (vsrt or vdrt) then
-		local vset = {
--- FIXME: populate vset with relevant windows members
-		};
-
-		for k,v in ipairs(vset) do
-			if (vsrt) then
-				rendertarget_detach(src, v);
-			end
-			if (vdrt) then
-				rendertarget_attach(dst, v, RENDERTARGET_NODETACH);
-			end
-		end
-	end
-
-	wnd.space_ind = ind;
 end
 
 local function wnd_merge(wnd)
@@ -416,7 +426,7 @@ local function wnd_merge(wnd)
 		end
 	end
 
-	wnd.wm.spaces[wnd.space_ind]:resize();
+	wnd.space:resize();
 end
 
 local function wnd_collapse(wnd)
@@ -425,25 +435,29 @@ local function wnd_collapse(wnd)
 		v.parent = wnd.parent;
 	end
 	wnd.children = {};
-	wnd.wm.spaces[wnd.space_ind]:resize();
+	wnd.space:resize();
 end
 
-local function wnd_resize(wnd, x, y, neww, newh)
-	move_image(wnd.anchor, x, y);
+local function wnd_resize(wnd, neww, newh)
 	resize_image(wnd.anchor, neww, newh);
 	resize_image(wnd.border, neww, newh);
 
 	resize_image(wnd.titlebar, neww,
 		image_surface_properties(wnd.titlebar).height);
 
-	local props = image_storage_properties(wnd.source);
 	wnd.width = neww;
 	wnd.height = newh;
 
+	local props = image_storage_properties(wnd.source);
+
 -- to save space for border width, statusbar and other properties
-	move_image(wnd.source, wnd.pad_left, wnd.pad_top);
-	local neww = neww - wnd.pad_left - wnd.pad_right;
-	local newh = newh - wnd.pad_top - wnd.pad_bottom;
+	if (not wnd.fullscreen) then
+		move_image(wnd.source, wnd.pad_left, wnd.pad_top);
+		neww = neww - wnd.pad_left - wnd.pad_right;
+		newh = newh - wnd.pad_top - wnd.pad_bottom;
+	else
+		move_image(wnd.source, 0, 0);
+	end
 
 	if (neww <= 0 or newh <= 0) then
 		return;
@@ -452,22 +466,36 @@ local function wnd_resize(wnd, x, y, neww, newh)
 	wnd.effective_w = neww;
 	wnd.effective_h = newh;
 
-	neww = neww > props.width and props.width or neww;
-	newh = newh > props.height and props.height or newh;
-
 	if (wnd.resize_hook) then
 		wnd:resize_hook(neww, newh);
 	end
 
---
--- need more modes here: stretch, upscale, crop
---
-	if (wnd.auto_resize) then
+	if (wnd.scalemode == "normal") then
+		if (props.width > 0 and props.height > 0) then
+			wnd.effective_w = props.width < neww and props.width or neww;
+			wnd.effective_h = props.height < newh and props.height or newh;
+		end
+		resize_image(wnd.source, wnd.effective_w, wnd.effective_h)
+
+	elseif (wnd.scalemode == "stretch") then
 		resize_image(wnd.source, wnd.effective_w, wnd.effective_h);
+
+	elseif (wnd.scalemode == "aspect") then
+
+	end
+-- good spot to add post-processing filters and upscalers
+
+	if (wnd.centered) then
+		move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
+			math.floor(0.5*(neww - wnd.effective_h)));
 	end
 end
 
 local function wnd_next(mw, level)
+	if (mw.fullscreen) then
+		return;
+	end
+
 	if (level) then
 		if (#mw.children > 0) then
 			mw.children[1]:select();
@@ -497,6 +525,10 @@ local function wnd_next(mw, level)
 end
 
 local function wnd_prev(mw, level)
+	if (mw.fullscreen) then
+		return;
+	end
+
 	if (level) then
 		if (mw.parent.select) then
 			mw.parent:select();
@@ -524,20 +556,27 @@ local function wnd_prev(mw, level)
 	end
 end
 
-local function wnd_assign_ws(wnd, ind)
-	if (wnd.space_ind == ind or wnd.wm.spaces[wnd.space_ind].locked) then
+local function wnd_reassign(wnd, ind)
+	local newspace = wnd.wm.spaces[ind];
+
+-- don't switch unless necessary
+	if (wnd.space == newspace or wnd.fullscreen) then
 		return;
 	end
 
--- drop selection references
+-- drop selection references unless we can find a new one
 	if (wnd.wm.selected == wnd) then
 		wnd:prev();
 		wnd.wm.selected = wnd.wm.selected ~= wnd and wnd.wm.selected or nil;
 	end
 
-	if (wnd.wm.spaces[ind] == nil) then
+-- create if it doesn't exist
+	if (newspace == nil) then
 		wnd.wm.spaces[ind] = create_workspace(wnd.wm);
+		newspace = wnd.wm.spaces[ind];
 	end
+
+	local seltgt = wnd.wm.selected;
 
 -- reparent
 	table.remove_match(wnd.parent.children, wnd);
@@ -546,23 +585,25 @@ local function wnd_assign_ws(wnd, ind)
 		v.parent = wnd.parent;
 	end
 
--- update current workspace
+-- update workspace assignment
 	wnd.children = {};
-	wnd.wm.spaces[wnd.space_ind]:resize();
-	wnd.space_ind = ind;
+	local oldspace = wnd.space;
+	wnd.space = newspace;
+	wnd.parent = newspace;
+	table.insert(newspace.children, wnd);
+
+-- weights aren't useful for new space, reset
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
-	wnd.wm.spaces[ind].selected = wnd;
+	hide_image(wnd.anchor);
+	wnd:deselect();
 
-	table.insert(wnd.wm.spaces[ind].children, wnd);
-	wnd.parent = wnd.wm.spaces[ind];
-	wnd.wm.spaces[ind]:resize();
-
-	if (wnd.wm.space_ind ~= ind) then
-		wnd.wm.spaces[ind]:inactivate();
+-- subtle resize in order to propagate resize events while still hidden
+	if (not(newspace.selected and newspace.selected.fullscreen)) then
+		newspace.selected = wnd;
+		newspace:resize();
 	end
-
-	wnd.wm.spaces[wnd.wm.space_ind]:activate();
+	oldspace:resize();
 	wnd.wm:update_statusbar();
 end
 
@@ -589,7 +630,7 @@ local function wnd_grow(wnd, w, h)
 		end
 	end
 
-	wnd.wm.spaces[wnd.space_ind]:resize();
+	wnd.space:resize();
 end
 
 local function wnd_title(wnd, message)
@@ -612,7 +653,7 @@ local function wnd_title(wnd, message)
 		local vch = wnd.pad_top - 1;
 		wnd.pad_top = wnd.pad_top - gconfig_get("tbar_sz");
 		if (vch > 0) then
-			wnd.wm.spaces[wnd.space_ind]:resize();
+			wnd.space:resize();
 		end
 		return;
 	end
@@ -620,7 +661,7 @@ local function wnd_title(wnd, message)
 	if (props.opacity <= 0.001) then
 		show_image(wnd.titlebar);
 		wnd.pad_top = wnd.pad_top + gconfig_get("tbar_sz");
-		wnd.wm.spaces[wnd.space_ind]:resize();
+		wnd.space:resize();
 	end
 
 	link_image(message, wnd.titlebar);
@@ -639,8 +680,8 @@ local function wnd_alert(wnd)
 		return;
 	end
 
-	if (wnd.space_ind ~= wm.space_ind) then
-		image_shader(wm.spaces[wnd.space_ind].label_id, "tile_alert");
+	if (wnd.space ~= wm.spaces[wm.space_ind]) then
+		image_shader(wnd.space.label_id, "tile_alert");
 	end
 
 	image_sharestorage(wm.alert_color, wnd.titlebar);
@@ -658,18 +699,18 @@ local function wnd_create(wm, source, opts)
 			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
 		children = {},
 		pad_left = 1,
-		pad_right = 0,
+		pad_right = 1,
 		pad_top = 1,
-		pad_bottom = 0,
-		width = 0,
-		height = 0,
+		pad_bottom = 1,
+		width = 1,
+		height = 1,
+		effective_w = 0,
+		effective_h = 0,
 		weight = 1.0,
 		vweight = 1.0,
-
-		auto_resize = opts.auto_resize ~= nil and opts.auto_resize or false,
-
+		scalemode = opts.scalemode and opts.scalemode or "normal",
 		alert = wnd_alert,
-		assign_ws = wnd_assign_ws,
+		assign_ws = wnd_reassign,
 		destroy = wnd_destroy,
 		message = wnd_message,
 		set_title = wnd_title,
@@ -681,8 +722,9 @@ local function wnd_create(wm, source, opts)
 		collapse = wnd_collapse,
 		prev = wnd_prev,
 		grow = wnd_grow,
+		name = "wnd_" .. tostring(ent_count);
 	};
-
+	ent_count = ent_count + 1;
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");
 
@@ -711,11 +753,9 @@ local function wnd_create(wm, source, opts)
 	link_image(source, res.anchor);
 	order_image(res.border, 1);
 
-	show_image({res.border, source, res.anchor});
+	show_image({res.border, source});
 
--- insertion modes may need some more work when we consider subclass,
--- particularly for popups etc.
-	if (not wm.selected or wm.selected.space_ind ~= wm.space_ind) then
+	if (not wm.selected or wm.selected.space ~= space) then
 		table.insert(space.children, res);
 		res.parent = space;
 
@@ -732,10 +772,16 @@ local function wnd_create(wm, source, opts)
 		res.parent = wm.selected;
 	end
 
-	res.space_ind = wm.space_ind;
-	space:resize();
+	res.space = space;
 	table.insert(wm.windows, res);
-	res:select();
+	if (not(wm.selected and wm.selected.fullscreen)) then
+		show_image(res.anchor);
+		space:resize();
+		res:select();
+	else
+		image_shader(res.border, "border_inact");
+		image_sharestorage(res.wm.border_color, res.border);
+	end
 	return res;
 end
 
@@ -820,26 +866,40 @@ local function tiler_statusbar_update(wm, msg)
 end
 
 local function tiler_switchws(wm, ind)
-	local cur = wm.space_ind;
+	local cur = wm.spaces[wm.space_ind];
+	local cw = wm.selected;
 
-	workspace_inactivate(wm.spaces[cur], true);
-	if (#wm.spaces[cur].children == 0) then
-		wm.spaces[cur]:destroy();
-		wm.spaces[cur] = nil;
+	if (cur.switch_hook) then
+		cur:switch_hook(false);
+	else
+		workspace_inactivate(cur, true);
 	end
+
+	if (#cur.children == 0) then
+		cur:destroy();
+		wm.spaces[wm.space_ind] = nil;
+	else
+		cur.selected = cw;
+	end
+
 	if (wm.spaces[ind] == nil) then
 		wm.spaces[ind] = create_workspace(wm);
 	end
 
-	workspace_activate(wm.spaces[ind]);
 	wm.space_ind = ind;
+	wm:update_statusbar();
+
+	if (wm.spaces[ind].switch_hook) then
+		wm.spaces[ind]:switch_hook(true);
+	else
+		workspace_activate(wm.spaces[ind]);
+	end
+
 	if (wm.spaces[ind].selected) then
 		wnd_select(wm.spaces[ind].selected);
 	else
 		wm.selected = nil;
 	end
-
-	wm:update_statusbar();
 end
 
 function tiler_create(width, height, opts)
@@ -851,7 +911,8 @@ function tiler_create(width, height, opts)
 
 	local res = {
 -- null surfaces for clipping / moving / drawing
-		client_area = null_surface(width, clh);
+		client_area = null_surface(width, clh),
+		client_height = clh,
 		anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
 			unpack(gconfig_get("sbar_bg"))),

@@ -49,7 +49,7 @@ function spawn_test(bar)
 		math.random(64, 255), math.random(64, 255), math.random(64, 255));
 	show_image(img);
 
-	local wnd = displays.main:add_window(img, {auto_resize = true});
+	local wnd = displays.main:add_window(img, {scalemode = "stretch"});
 
 	if (bar) then
 		wnd:set_title("test window");
@@ -81,13 +81,11 @@ function query_exit()
 end
 
 function def_handler(source, stat)
-	local wnd = displays.main:find(source);
+	local wnd = displays.main:find_window(source);
 	assert(wnd ~= nil);
 
 	if (stat.kind == "resized") then
-		local w = stat.width > wnd.effective_w and wnd.effective_w or stat.width;
-		local h = stat.height > wnd.effective_h and wnd.effective_h or stat.height;
-		resize_image(source, w, h);
+		wnd.space:resize();
 
 	elseif (stat.kind == "terminated") then
 		if (wnd.autoclose) then
