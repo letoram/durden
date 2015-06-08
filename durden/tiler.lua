@@ -91,6 +91,22 @@ local function build_shaders()
 end
 build_shaders();
 
+local function linearize(wnd)
+	local res = {};
+	local dive = function(wnd, df)
+		if (wnd == nil or wnd.children == nil) then
+			return;
+		end
+
+		for i,v in ipairs(wnd.children) do
+			table.insert(res, v);
+			df(v, df);
+		end
+	end
+	dive(wnd, dive);
+	return res;
+end
+
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
 	if (wnd.fullscreen) then
@@ -126,6 +142,12 @@ local function wnd_destroy(wnd)
 		wm.selected = nil;
 	end
 
+-- in tabbed mode, titlebar is not linked to the anchor and
+-- won't cascade down, so to not leak a vid, drop it here
+	if (valid_vid(wnd.titlebar)) then
+		delete_image(wnd.titlebar);
+	end
+
 	local space = wnd.space;
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
@@ -143,26 +165,28 @@ local function wnd_message(wnd, message)
 end
 
 local function wnd_deselect(wnd)
-	if (wnd.wm.selected ~= wnd) then
-		return;
+	if (wnd.wm.spaces[wnd.wm.space_ind].mode == "tab") then
+		hide_image(wnd.anchor);
 	end
+
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
 end
 
 local function wnd_select(wnd, source)
-	if (wnd.wm.selected == wnd) then
-		return;
-	end
-
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
+	end
+
+	if (wnd.wm.spaces[wnd.wm.space_ind].mode == "tab") then
+		show_image(wnd.anchor);
 	end
 
 	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
 	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
+
 	wnd.wm.selected = wnd;
 	wnd.space.selected = wnd;
 end
@@ -237,11 +261,6 @@ local function workspace_inactivate(space, store)
 	dive_down(space, dive_down);
 end
 
-local function drop_tab(space)
--- iterate windows, relink to their normal titlebar, resize titlebar
--- to fit window again
-end
-
 local function switch_fullscreen(space, to)
 	if (space.selected == nil) then
 		return;
@@ -272,14 +291,79 @@ local function drop_fullscreen(space, swap)
 	space.switch_hook = nil;
 end
 
+local function drop_tab(space)
+	local res = linearize(space);
+
+-- new mode will resize so don't worry about that, just relink
+	for k,v in ipairs(res) do
+		if (v.titlebar) then
+			link_image(v.titlebar, v.anchor);
+			move_image(v.titlebar, 1, 1);
+		end
+	end
+
+	space.mode_hook = nil;
+	space.switch_hook = nil;
+	workspace_activate(space);
+end
+
+local function switch_tab(space, to)
+	local lst = linearize(space);
+	for k,v in ipairs(lst) do
+		if (v.titlebar) then
+			if (to) then
+				show_image(v.titlebar);
+			else
+				hide_image(v.titlebar);
+			end
+		end
+	end
+	if (space.selected) then
+		if (to) then
+			show_image(space.selected.anchor);
+		else
+			hide_image(space.selected.anchor);
+		end
+	end
+end
+
 local function drop_float(space, swap)
 -- iterate windows, add / activate special mouse
 -- handler and resize button
 end
 
+-- just unlink statusbar, resize all at the same time (also hides some
+-- of the latency in clients producing new output buffers with the correct
+-- dimensions etc). then line the statusbars at the top.
 local function set_tab(space)
-	show_image(wm.statusbar);
 	space.mode_hook = drop_tab;
+	space.switch_hook = switch_tab;
+
+	local lst = linearize(space);
+	if (#lst == 0) then
+		return;
+	end
+
+	local fairw = math.floor(space.wm.width / #lst);
+	local tbar_sz = gconfig_get("tbar_sz");
+	local ofs = 0;
+
+	for k,v in ipairs(lst) do
+		v:resize(space.wm.width, space.wm.client_height);
+		move_image(v.anchor, 0, 0);
+		hide_image(v.anchor);
+		if (v.titlebar) then
+			link_image(v.titlebar, space.wm.anchor);
+			move_image(v.titlebar, ofs, 0);
+			resize_image(v.titlebar, fairw, tbar_sz);
+			ofs = ofs + fairw;
+		end
+	end
+
+	workspace_inactivate(space);
+	if (space.selected) then
+		space.selected:select();
+	end
 end
 
 local function set_fullscreen(space)
@@ -496,6 +580,11 @@ local function wnd_next(mw, level)
 		return;
 	end
 
+-- we use three states; true, false or nil.
+	if (mw.wm.spaces[mw.wm.space_ind].mode == "tab" and level == nil) then
+		level = true;
+	end
+
 	if (level) then
 		if (#mw.children > 0) then
 			mw.children[1]:select();
@@ -529,7 +618,7 @@ local function wnd_prev(mw, level)
 		return;
 	end
 
-	if (level) then
+	if (level or mw.wm.spaces[mw.wm.space_ind].mode == "tab") then
 		if (mw.parent.select) then
 			mw.parent:select();
 			return;

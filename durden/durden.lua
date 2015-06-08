@@ -44,6 +44,7 @@ end
 -- create both an external single-shot connection and a reference color
 -- the connection is needed for frameserver- specific operations to work
 --
+test_gc = 0;
 function spawn_test(bar)
 	local img = fill_surface(math.random(200, 600), math.random(200, 600),
 		math.random(64, 255), math.random(64, 255), math.random(64, 255));
@@ -52,7 +53,8 @@ function spawn_test(bar)
 	local wnd = displays.main:add_window(img, {scalemode = "stretch"});
 
 	if (bar) then
-		wnd:set_title("test window");
+		wnd:set_title("test window_" .. tostring(test_gc));
+		test_gc = test_gc + 1;
 	end
 end
 
