@@ -8,6 +8,15 @@ local defaults = {
 	msg_timeout = 100,
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
+	ok_sym = "RETURN",
+	cancel_sym = "ESCAPE",
+
+-- bar
+	lbar_position = "top", -- top, center, bottom
+	lbar_sz = 16,
+	lbar_bg = {0x66, 0x66, 0x66},
+	lbar_textstr = "\\fdefault.ttf,12\\#ffffff ",
+	lbar_textsz = 12,
 
 -- sbar
 	sbar_sz = 16,

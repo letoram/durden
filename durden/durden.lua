@@ -19,6 +19,7 @@ function durden()
 -- will get BINDINGS, ERRNO, SYMTABLE as global lookup tables
 	system_load("gconf.lua")();
 	system_load("mouse.lua")();
+	system_load("suppl.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("fglobal.lua")();
@@ -80,6 +81,58 @@ end
 
 function query_exit()
 	return shutdown();
+end
+
+--
+-- called whenever launch-bar gets a key input, done is set when
+-- the current line should be activated and otherwise return a list
+-- of possible future characters.
+--
+local function launch_complete(ctx, instr, done)
+	local sp = string.find(instr, ":");
+	local res = {};
+
+	if (done) then
+		ctx.config = ctx.config ~= nil and ctx.config or "default";
+		warning("validate config and target");
+		local vid, aid = launch_target(ctx.target, ctx.config,
+			LAUNCH_INTERNAL, def_handler);
+		local wnd = displays.main:add_window(vid);
+		wnd:set_title(ctx.target .. ":" .. ctx.config);
+		wnd.resize_hook = trile_changed;
+		tile_changed(wnd);
+		show_image(vid);
+		return;
+	end
+
+	if (sp) then
+		ctx.target = string.sub(instr, 1, sp-1);
+		if (string.length(ctx.target) == 0) then
+			return res;
+		end
+
+-- got cached list of configurations
+		res = target_configurations(ctx.target);
+		warning("cache target configurations");
+	else
+		local tgts = list_targets();
+		for k,v in ipairs(tgts) do
+			if (string.sub(v, 1, string.len(instr)) == instr) then
+				table.insert(res, v);
+			end
+		end
+	end
+
+	return res;
+end
+
+function query_launch()
+	local cbctx = {
+		targets = list_targets()
+	};
+
+	displays.main:lbar(launch_complete, cbctx,
+		gconfig_get("ok_sym"), gconfig_get("cancel_sym"));
 end
 
 function def_handler(source, stat)
@@ -154,7 +207,8 @@ function durden_input(iotbl)
 
 	elseif (iotbl.translated) then
 		local sym = SYMTABLE[ iotbl.keysym ];
-		if (not dispatch_lookup(iotbl, sym)) then
+
+		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
 			local sel = displays.main.selected;
 			if (sel and valid_vid(sel.source, TYPE_FRAMESERVER)) then
 -- possible injection site for higher level inputs

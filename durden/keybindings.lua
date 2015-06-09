@@ -57,6 +57,7 @@ tbl["m1_m2_8"] = "assign_ws8";
 tbl["m1_m2_9"] = "assign_ws9";
 tbl["m1_m2_10"] = "assign_ws10";
 tbl["m1_l"] = "lock_input";
+tbl["m1_d"] = "launch_bar";
 
 if (DEBUGLEVEL > 0) then
 tbl["m1_m2_p"] = "dump_state";
@@ -69,13 +70,18 @@ end
 local meta_1_state = false;
 local meta_2_state = false;
 
-function dispatch_lookup(iotbl, keysym)
+function dispatch_lookup(iotbl, keysym, hook_handler)
 	if (keysym == meta_1) then
 		meta_1_state = iotbl.active;
 		return true;
 
 	elseif (keysym == meta_2) then
 		meta_2_state = iotbl.active;
+		return true;
+	end
+
+	if (hook_handler) then
+		hook_handler(displays.main, keysym, iotbl);
 		return true;
 	end
 

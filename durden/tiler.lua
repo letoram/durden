@@ -954,6 +954,52 @@ local function tiler_statusbar_update(wm, msg)
 	end
 end
 
+local function lbar_input(wm, sym, iotbl)
+	local ictx = wm.input_ctx;
+
+	if (sym == ictx.cancel or sym == ictx.accept) then
+		delete_image(ictx.anchor);
+		wm.input_ctx = nil;
+		wm.input_lock = nil;
+		if (sym == ictx.accept) then
+			ictx:get_cb(ictx.inp, true);
+		end
+		return;
+	end
+
+	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp)
+-- generate completion list and draw first selection to the right
+	end);
+end
+
+local function tiler_lbar(wm, completion, comp_ctx, ok_sym, cncl_sym)
+	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
+		unpack(gconfig_get("lbar_bg")));
+	show_image(bar);
+	link_image(bar, wm.anchor);
+	image_inherit_order(bar, true);
+	order_image(bar, 10);
+
+	local pos = gconfig_get("lbar_position");
+	if (pos == "bottom") then
+		move_image(bar, 0, wm.height - gconfig_get("lbar_sz"));
+	elseif (pos == "middle") then
+		move_image(bar, 0, math.floor(0.5*(wm.height-gconfig_get("lbar_sz"))));
+	else
+	end
+
+	wm.input_lock = lbar_input;
+	wm.input_ctx = {
+		anchor = bar,
+		accept = ok_sym,
+		cancel = cncl_sym,
+		textstr = gconfig_get("lbar_textstr"),
+		get_cb = completion,
+		cb_ctx = comp_ctx,
+		ch_sz = lbar_textsz
+	};
+end
+
 local function tiler_switchws(wm, ind)
 	local cur = wm.spaces[wm.space_ind];
 	local cw = wm.selected;
@@ -1022,6 +1068,7 @@ function tiler_create(width, height, opts)
 		error_message = tiler_message,
 		update_statusbar = tiler_statusbar_update,
 
+		lbar = tiler_lbar,
 		tick = tick_windows,
 
 -- management members
@@ -1041,51 +1088,4 @@ function tiler_create(width, height, opts)
 	res:update_statusbar();
 
 	return res;
-end
-
--- extend some of the built- ins with common used functions
-
-function string.split(instr, delim)
-	local res = {};
-	local strt = 1;
-	local delim_pos, delim_stp = string.find(instr, delim, strt);
-
-	while delim_pos do
-		table.insert(res, string.sub(instr, strt, delim_pos-1));
-		strt = delim_stp + 1;
-		delim_pos, delim_stp = string.find(instr, delim, strt);
-	end
-
-	table.insert(res, string.sub(instr, strt));
-	return res;
-end
-
-function table.remove_match(tbl, match)
-	if (tbl == nil) then
-		return;
-	end
-
-	for k,v in ipairs(tbl) do
-		if (v == match) then
-			table.remove(tbl, k);
-			return v;
-		end
-	end
-
-	return nil;
-end
-
-function table.remove_vmatch(tbl, match)
-	if (tbl == nil) then
-		return;
-	end
-
-	for k,v in pairs(tbl) do
-		if (v == match) then
-			tbl[k] = nil;
-			return v;
-		end
-	end
-
-	return nil;
 end
