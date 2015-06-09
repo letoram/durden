@@ -6,6 +6,7 @@
 GLOBAL_FUNCTIONS = {};
 GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
 GLOBAL_FUNCTIONS["exit"] = query_exit;
+GLOBAL_FUNCTIONS["launch_bar"] = query_launch;
 GLOBAL_FUNCTIONS["spawn_test_nobar"] = function() spawn_test(1); end
 GLOBAL_FUNCTIONS["spawn_test_bar"] = function() spawn_test(); end
 GLOBAL_FUNCTIONS["dump_state"] = function()
