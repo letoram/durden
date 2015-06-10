@@ -954,6 +954,30 @@ local function tiler_statusbar_update(wm, msg)
 	end
 end
 
+-- Since we have kerning and other fun properties to consider, the caret pos is
+-- calculated by internally rendering a sliced substring to the proper
+-- character offset and then counting pixels. A lot of what makes this set of
+-- routines (including the one in inp) is the
+local function clip_msg(msg, low, ulim)
+	local uc = string.utf8ralign(msg, ulim)
+	return string.gsub(string.sub(msg, low, uc), "\\", "\\\\");
+end
+
+local function inp_str(ictx, ul)
+	return gconfig_get("lbar_textstr") .. clip_msg(
+		ictx.inp.msg, ictx.inp.chofs, ictx.inp.chofs + (ul and ul or ictx.inp.ulim) );
+end
+
+local function update_caret(ictx)
+	local pos = ictx.inp.caretpos - ictx.inp.chofs;
+	if (pos == 0) then
+		move_image(ictx.caret, 0, ictx.caret_y);
+	else
+		local w, h = text_dimensions(inp_str(ictx, pos-1));
+		move_image(ictx.caret, w, ictx.caret_y);
+	end
+end
+
 local function lbar_input(wm, sym, iotbl)
 	local ictx = wm.input_ctx;
 
@@ -962,13 +986,26 @@ local function lbar_input(wm, sym, iotbl)
 		wm.input_ctx = nil;
 		wm.input_lock = nil;
 		if (sym == ictx.accept) then
-			ictx:get_cb(ictx.inp, true);
+			ictx:get_cb(ictx.inp.msg, true);
 		end
 		return;
 	end
 
-	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp)
--- generate completion list and draw first selection to the right
+-- note, inp ulim can be used to force a sliding view window, not
+-- useful here but still implemented
+	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, caret)
+		if (caret == nil) then
+			if (valid_vid(ictx.text)) then
+				delete_image(ictx.text);
+			end
+
+			ictx.text = render_text(inp_str(ictx));
+			show_image(ictx.text);
+			link_image(ictx.text, ictx.anchor);
+			image_inherit_order(ictx.text, true);
+		end
+
+		update_caret(ictx);
 	end);
 end
 
@@ -980,10 +1017,17 @@ local function tiler_lbar(wm, completion, comp_ctx, ok_sym, cncl_sym)
 	image_inherit_order(bar, true);
 	order_image(bar, 10);
 
+	local car = color_surface(gconfig_get("lbar_caret_w"),
+		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
+	show_image(car);
+	image_inherit_order(car, true);
+	link_image(car, bar);
+	local carety = gconfig_get("lbar_sz") - gconfig_get("lbar_caret_h");
+
 	local pos = gconfig_get("lbar_position");
 	if (pos == "bottom") then
 		move_image(bar, 0, wm.height - gconfig_get("lbar_sz"));
-	elseif (pos == "middle") then
+	elseif (pos == "center") then
 		move_image(bar, 0, math.floor(0.5*(wm.height-gconfig_get("lbar_sz"))));
 	else
 	end
@@ -996,7 +1040,9 @@ local function tiler_lbar(wm, completion, comp_ctx, ok_sym, cncl_sym)
 		textstr = gconfig_get("lbar_textstr"),
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		ch_sz = lbar_textsz
+		ch_sz = lbar_textsz,
+		caret = car,
+		caret_y = carety
 	};
 end
 

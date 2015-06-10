@@ -12,10 +12,13 @@ local defaults = {
 	cancel_sym = "ESCAPE",
 
 -- bar
-	lbar_position = "top", -- top, center, bottom
+	lbar_position = "center", -- top, center, bottom
 	lbar_sz = 16,
-	lbar_bg = {0x66, 0x66, 0x66},
-	lbar_textstr = "\\fdefault.ttf,12\\#ffffff ",
+	lbar_bg = {0x33, 0x33, 0x33},
+	lbar_textstr = "\\fdefault.ttf,12\\#cccccc ",
+	lbar_caret_w = 2,
+	lbar_caret_h = 16,
+	lbar_caret_col = {0x00, 0xff, 0x00},
 	lbar_textsz = 12,
 
 -- sbar
