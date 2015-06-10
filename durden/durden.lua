@@ -93,15 +93,17 @@ local function launch_complete(ctx, instr, done)
 	local res = {};
 
 	if (done) then
-		ctx.config = ctx.config ~= nil and ctx.config or "default";
-		warning("validate config and target");
-		local vid, aid = launch_target(ctx.target, ctx.config,
-			LAUNCH_INTERNAL, def_handler);
-		local wnd = displays.main:add_window(vid);
-		wnd:set_title(ctx.target .. ":" .. ctx.config);
-		wnd.resize_hook = trile_changed;
-		tile_changed(wnd);
-		show_image(vid);
+		if (ctx.target) then
+			ctx.config = ctx.config ~= nil and ctx.config or "default";
+			warning("validate config and target");
+			local vid, aid = launch_target(ctx.target, ctx.config,
+				LAUNCH_INTERNAL, def_handler);
+			local wnd = displays.main:add_window(vid);
+			wnd:set_title(ctx.target .. ":" .. ctx.config);
+			wnd.resize_hook = trile_changed;
+			tile_changed(wnd);
+			show_image(vid);
+		end
 		return;
 	end
 

@@ -169,32 +169,41 @@ end
 -- between calls iotbl matches the format from _input(iotbl) and sym should be
 -- the symbol table lookup. The redraw(ctx, caret_only) will be called when
 -- the caller should update whatever UI component this is used in
-function text_input(ctx, iotbl, sym, redraw)
+function text_input(ctx, iotbl, sym, redraw, opts)
 	ctx = ctx == nil and {
 		caretpos = 1,
+		limit = -1,
 		chofs = 1,
-		ulim = 255,
+		ulim = VRESW,
 		msg = ""
 	} or ctx;
 
-	if (iotbl.active == false) then
-		return;
+	local caretofs = function()
+		if (ctx.caretpos - ctx.chofs + 1 > ctx.ulim) then
+				ctx.chofs = string.utf8lalign(ctx.msg, ctx.caretpos - ctx.ulim);
+		end
 	end
 
-	if (iotbl.sym == "HOME") then
+	if (iotbl.active == false) then
+		return ctx;
+	end
+
+	if (sym == "HOME") then
 		ctx.caretpos = 1;
 		ctx.chofs    = 1;
+		caretofs();
 		redraw(ctx);
 
-	elseif (iotbl.lutsym == "END") then
+	elseif (sym == "END") then
 		ctx.caretpos = string.len( ctx.msg ) + 1;
 		ctx.chofs = ctx.caretpos - ctx.ulim;
 		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
 		ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
 
+		caretofs();
 		redraw(ctx);
 
-	elseif (iotbl.lutsym == "LEFT") then
+	elseif (sym == "LEFT") then
 		ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
 
 		if (ctx.caretpos < ctx.chofs) then
@@ -202,22 +211,27 @@ function text_input(ctx, iotbl, sym, redraw)
 			ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
 			ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
 		end
+
+		caretofs();
 		redraw(ctx);
 
-	elseif (iotbl.lutsym == "RIGHT") then
+	elseif (sym == "RIGHT") then
 		ctx.caretpos = string.utf8forward(ctx.msg, ctx.caretpos);
 		if (ctx.chofs + ctx.ulim <= ctx.caretpos) then
 			ctx.chofs = ctx.chofs + 1;
+			caretofs();
 			redraw(ctx);
 		else
+			caretofs();
 			redraw(ctx, caret);
 		end
 
-	elseif (iotbl.lutsym == "DELETE") then
+	elseif (sym == "DELETE") then
 		ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
+		caretofs();
 		redraw(ctx);
 
-	elseif (iotbl.lutsym == "BACKSPACE") then
+	elseif (sym == "BACKSPACE") then
 		if (ctx.caretpos > 1) then
 			ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
 			if (ctx.caretpos <= ctx.chofs) then
@@ -226,18 +240,20 @@ function text_input(ctx, iotbl, sym, redraw)
 			end
 
 			ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
+			caretofs();
 			redraw(ctx);
 		end
 
 	else
 		local keych = iotbl.utf8;
 		if (keych == nil or keych == '') then
-			return;
+			return ctx;
 		end
 
 		ctx.msg, nch = string.insert(ctx.msg,
 			keych, ctx.caretpos, ctx.nchars);
 		ctx.caretpos = ctx.caretpos + nch;
+		caretofs();
 		redraw(ctx);
 	end
 
