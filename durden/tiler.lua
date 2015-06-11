@@ -467,6 +467,13 @@ local function workspace_resize(space)
 	end
 end
 
+local function workspace_label(space, lbl)
+	delete_image(space.label_id);
+	space.label_id = nil;
+	space.label = lbl;
+	space.wm:update_statusbar();
+end
+
 local function create_workspace(wm)
 	local res = {
 		activate = workspace_activate,
@@ -477,6 +484,7 @@ local function create_workspace(wm)
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
 		tab = function(ws) workspace_set(ws, "tab"); end,
+		set_label = workspace_label,
 		float = function(ws) workspace_set(ws, "float"); end,
 		mode = "tile",
 		name = "workspace_" .. tostring(ent_count);
@@ -891,7 +899,7 @@ local function tiler_find(wm, source)
 	return nil;
 end
 
-local function tiler_statusbar_update(wm, msg)
+local function tiler_statusbar_update(wm, msg, state)
 	local statush = gconfig_get("sbar_sz");
 	resize_image(wm.statusbar, wm.width, statush);
 	move_image(wm.statusbar, 0, wm.height - statush);
@@ -1009,7 +1017,7 @@ local function lbar_input(wm, sym, iotbl)
 	end);
 end
 
-local function tiler_lbar(wm, completion, comp_ctx, ok_sym, cncl_sym)
+local function tiler_lbar(wm, completion, comp_ctx)
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
 	show_image(bar);
@@ -1035,8 +1043,8 @@ local function tiler_lbar(wm, completion, comp_ctx, ok_sym, cncl_sym)
 	wm.input_lock = lbar_input;
 	wm.input_ctx = {
 		anchor = bar,
-		accept = ok_sym,
-		cancel = cncl_sym,
+		accept = gconfig_get("ok_sym"),
+		cancel = gconfig_get("cancel_sym"),
 		textstr = gconfig_get("lbar_textstr"),
 		get_cb = completion,
 		cb_ctx = comp_ctx,
