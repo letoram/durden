@@ -133,8 +133,7 @@ function query_launch()
 		targets = list_targets()
 	};
 
-	displays.main:lbar(launch_complete, cbctx,
-		gconfig_get("ok_sym"), gconfig_get("cancel_sym"));
+	displays.main:lbar(launch_complete, cbctx);
 end
 
 function def_handler(source, stat)

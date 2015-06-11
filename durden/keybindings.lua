@@ -46,6 +46,7 @@ tbl["m1_7"] = "switch_ws7";
 tbl["m1_8"] = "switch_ws8";
 tbl["m1_9"] = "switch_ws9";
 tbl["m1_10"] = "switch_ws10";
+tbl["m1_m2_r"] = "rename_space";
 tbl["m1_m2_1"] = "assign_ws1";
 tbl["m1_m2_2"] = "assign_ws2";
 tbl["m1_m2_3"] = "assign_ws3";

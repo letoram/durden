@@ -44,7 +44,7 @@ local defaults = {
 };
 
 function gconfig_set(key, val)
-	if (type(val) ~= type(defaults[key])) then
+if (type(val) ~= type(defaults[key])) then
 		warning("gconfig_set(), type mismatch for key: " .. key);
 		return;
 	end

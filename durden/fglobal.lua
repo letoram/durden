@@ -17,6 +17,16 @@ GLOBAL_FUNCTIONS["random_alert"] = function()
 	displays.main.windows[ind]:alert();
 end
 
+GLOBAL_FUNCTIONS["rename_space"] = function()
+	local ictx = displays.main:lbar(function(ctx, instr, done)
+		if (done) then
+			ctx.cb_ctx.space:set_label(instr);
+			ctx.cb_ctx.space.wm:update_statusbar();
+		end
+		ctx.ulim = 16;
+	end, {space = displays.main.spaces[displays.main.space_ind]});
+end
+
 GLOBAL_FUNCTIONS["mode_vertical"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
