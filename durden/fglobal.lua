@@ -24,6 +24,7 @@ GLOBAL_FUNCTIONS["rename_space"] = function()
 			ctx.cb_ctx.space.wm:update_statusbar();
 		end
 		ctx.ulim = 16;
+		return {label = "rename workspace", set = {}};
 	end, {space = displays.main.spaces[displays.main.space_ind]});
 end
 
