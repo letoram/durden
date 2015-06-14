@@ -83,49 +83,68 @@ function query_exit()
 	return shutdown();
 end
 
+local function lbar_launch(tgt, cfg)
+	local vid, aid = launch_target(tgt, cfg, LAUNCH_INTERNAL, def_handler);
+	local wnd = displays.main:add_window(vid);
+	wnd:set_title(tgt .. ":" .. cfg);
+	wnd.resize_hook = tile_changed;
+	tile_changed(wnd);
+	show_image(vid);
+end
+
+local function lbar_subsel(instr, tbl, last)
+	if (instr == nil or string.len(instr) == 0) then
+		return {set = tbl};
+	end
+
+	local res = {};
+	for i,v in ipairs(tbl) do
+		if (string.sub(v,1,string.len(instr)) == instr) then
+			table.insert(res, v);
+		end
+	end
+
+-- want to return last result table so cursor isn't reset
+	if (last and #res == #last) then
+		return {set = last};
+	end
+	return {set = res};
+end
+
+local function lbar_configsel(ctx, instr, done, lastv)
+	if (done) then
+		return lbar_launch(ctx.target, instr);
+	end
+
+	return lbar_subsel(instr ~= nil and instr or "", ctx.configs, lastv);
+end
+
 --
 -- called whenever launch-bar gets a key input, done is set when
 -- the current line should be activated and otherwise return a list
 -- of possible future characters.
 --
-local function launch_complete(ctx, instr, done)
-	local sp = string.find(instr, ":");
-	local res = {};
-
+local function lbar_targetsel(ctx, instr, done, lastv)
 	if (done) then
-		if (ctx.target) then
-			ctx.config = ctx.config ~= nil and ctx.config or "default";
-			warning("validate config and target");
-			local vid, aid = launch_target(ctx.target, ctx.config,
-				LAUNCH_INTERNAL, def_handler);
-			local wnd = displays.main:add_window(vid);
-			wnd:set_title(ctx.target .. ":" .. ctx.config);
-			wnd.resize_hook = trile_changed;
-			tile_changed(wnd);
-			show_image(vid);
+		local cfgs = target_configurations(instr);
+		if (cfgs == nil or #cfgs == 0) then
+			return;
 		end
+
+		if (#cfgs > 1) then
+			local cbctx = {
+				target = instr,
+				configs = cfgs
+			};
+			displays.main:lbar(lbar_configsel, cbctx, {force_completion = true});
+			return;
+		end
+
+		lbar_launch(instr, "default");
 		return;
 	end
 
-	if (sp) then
-		ctx.target = string.sub(instr, 1, sp-1);
-		if (string.length(ctx.target) == 0) then
-			return res;
-		end
-
--- got cached list of configurations
-		res = target_configurations(ctx.target);
-		warning("cache target configurations");
-	else
-		local tgts = list_targets();
-		for k,v in ipairs(tgts) do
-			if (string.sub(v, 1, string.len(instr)) == instr) then
-				table.insert(res, v);
-			end
-		end
-	end
-
-	return res;
+	return lbar_subsel(instr ~= nil and instr or "", ctx.targets, lastv);
 end
 
 function query_launch()
@@ -133,7 +152,7 @@ function query_launch()
 		targets = list_targets()
 	};
 
-	displays.main:lbar(launch_complete, cbctx);
+	displays.main:lbar(lbar_targetsel, cbctx, {force_completion = true});
 end
 
 function def_handler(source, stat)
