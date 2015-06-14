@@ -20,6 +20,7 @@ function durden()
 	system_load("gconf.lua")();
 	system_load("mouse.lua")();
 	system_load("suppl.lua")();
+	system_load("lbar.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("fglobal.lua")();
