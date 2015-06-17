@@ -17,6 +17,28 @@ GLOBAL_FUNCTIONS["random_alert"] = function()
 	displays.main.windows[ind]:alert();
 end
 
+GLOBAL_FUNCTIONS["cycle_scalemode"] = function()
+	local sel = displays.main.selected;
+	local modes = displays.main.scalemodes;
+
+	if (sel and modes) then
+		local ind = 1;
+
+		for i,v in ipairs(modes) do
+			if (v == sel.scalemode) then
+				ind = i;
+				break;
+			end
+		end
+
+-- recall that not all displays need to support the same scalemodes, this is
+-- due to the cost/filtering capability of some special displays
+		ind = (ind + 1 > #modes) and 1 or (ind + 1);
+		sel.scalemode = modes[ind];
+		sel:resize(sel.width, sel.height);
+	end
+end
+
 GLOBAL_FUNCTIONS["rename_space"] = function()
 	local ictx = displays.main:lbar(function(ctx, instr, done)
 		if (done) then

@@ -61,7 +61,7 @@ function spawn_test(bar)
 end
 
 local function tile_changed(wnd)
-	target_displayhint(wnd.source, wnd.effective_w, wnd.effective_h);
+	target_displayhint(wnd.external, wnd.effective_w, wnd.effective_h);
 end
 
 function spawn_terminal()
@@ -70,6 +70,7 @@ function spawn_terminal()
 
 	if (valid_vid(vid)) then
 		local wnd = displays.main:add_window(vid);
+		wnd.external = vid;
 		wnd:set_title("terminal");
 		wnd.resize_hook = tile_changed;
 		tile_changed(wnd);
@@ -89,6 +90,7 @@ local function lbar_launch(tgt, cfg)
 	local wnd = displays.main:add_window(vid);
 	wnd:set_title(tgt .. ":" .. cfg);
 	wnd.resize_hook = tile_changed;
+	wnd.external = vid;
 	tile_changed(wnd);
 	show_image(vid);
 end
@@ -164,9 +166,7 @@ function def_handler(source, stat)
 		wnd.space:resize();
 
 	elseif (stat.kind == "terminated") then
-		if (wnd.autoclose) then
-			wnd:destroy();
-		end
+		wnd:destroy();
 	end
 end
 
@@ -177,6 +177,7 @@ function new_connection(source, status)
 	elseif (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
 		local wnd = displays.main:add_window(source);
+		wnd.external = source;
 		wnd.resize_hook = tile_changed;
 		target_updatehandler(source, def_handler);
 		tile_changed(wnd);
@@ -233,7 +234,7 @@ function durden_input(iotbl)
 			local sel = displays.main.selected;
 			if (sel and valid_vid(sel.source, TYPE_FRAMESERVER)) then
 -- possible injection site for higher level inputs
-				target_input(sel.source, iotbl);
+				target_input(sel.external, iotbl);
 			end
 		end
 	end

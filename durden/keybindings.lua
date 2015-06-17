@@ -6,7 +6,7 @@
 -- m2_ for meta2
 -- m1_m2_ for meta1+meta2
 --
--- the output resolves to an entry in GLOBAL_FUNCTIONS
+-- the output resolves to an entry in GLOBAL_FUNCTIONS or possibly
 --
 
 local meta_1 = "MENU";
@@ -59,6 +59,7 @@ tbl["m1_m2_9"] = "assign_ws9";
 tbl["m1_m2_10"] = "assign_ws10";
 tbl["m1_l"] = "lock_input";
 tbl["m1_d"] = "launch_bar";
+tbl["m1_i"] = "cycle_scalemode";
 
 if (DEBUGLEVEL > 0) then
 tbl["m1_m2_p"] = "dump_state";
