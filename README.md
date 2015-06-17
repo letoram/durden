@@ -39,10 +39,12 @@ Repository
 _files that might be of interest)_
 
     durden\
-        durden.lua       - main script
-        gconf.lua        - configuration management
+        gconf.lua        - configuration management (default visuals and sizes)
+        keybindings.lua  - active keybindings
+        fglobal.lua      - global WM functions
+        durden.lua       - main script, input routing and process management
         tiler.lua        - main tiling layout, workspace management etc.
-        keybindings.lua  - default keybindings
+        lbar.lua         - support script for textedit control
 
     res\
         (mostly cherry-picked from the arcan codebase)

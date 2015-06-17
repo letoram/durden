@@ -530,6 +530,34 @@ local function wnd_collapse(wnd)
 	wnd.space:resize();
 end
 
+local function apply_scalemode(wnd, mode, src, props, maxw, maxh)
+	local outw = 1;
+	local outh = 1;
+
+	if (wnd.scalemode == "normal") then
+-- explore: modify texture coordinates and provide scrollbars
+		if (props.width > 0 and props.height > 0) then
+			outw = props.width < maxw and props.width or maxw;
+			outh = props.height < maxh and props.height or maxh;
+		end
+
+	elseif (wnd.scalemode == "stretch") then
+		outw = maxw;
+		outh = maxh;
+
+	elseif (wnd.scalemode == "aspect") then
+		local ar = props.width / props.height;
+		local wr = props.width / maxw;
+		local hr = props.height/ maxh;
+
+		outw = hr > wr and math.ceil(maxh * ar - 0.5) or maxw;
+		outh = hr < wr and math.ceil(maxw / ar - 0.5) or maxh;
+	end
+
+	resize_image(src, outw, outh);
+	return outw, outh;
+end
+
 local function wnd_resize(wnd, neww, newh)
 	resize_image(wnd.anchor, neww, newh);
 	resize_image(wnd.border, neww, newh);
@@ -562,19 +590,9 @@ local function wnd_resize(wnd, neww, newh)
 		wnd:resize_hook(neww, newh);
 	end
 
-	if (wnd.scalemode == "normal") then
-		if (props.width > 0 and props.height > 0) then
-			wnd.effective_w = props.width < neww and props.width or neww;
-			wnd.effective_h = props.height < newh and props.height or newh;
-		end
-		resize_image(wnd.source, wnd.effective_w, wnd.effective_h)
+	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
+		wnd.scalemode, wnd.source, props, neww, newh);
 
-	elseif (wnd.scalemode == "stretch") then
-		resize_image(wnd.source, wnd.effective_w, wnd.effective_h);
-
-	elseif (wnd.scalemode == "aspect") then
-
-	end
 -- good spot to add post-processing filters and upscalers
 
 	if (wnd.centered) then
@@ -1018,17 +1036,11 @@ function tiler_create(width, height, opts)
 		border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_inactive_border"))),
 
-		alert_color = fill_surface(1, 1,
+		alert_color =	 fill_surface(1, 1,
 			unpack(gconfig_get("tcol_alert"))),
 
 		active_border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_border"))),
-
-		switch_ws = tiler_switchws,
-		add_window = wnd_create,
-		find_window = tiler_find,
-		error_message = tiler_message,
-		update_statusbar = tiler_statusbar_update,
 
 		lbar = tiler_lbar,
 		tick = tick_windows,
@@ -1036,7 +1048,17 @@ function tiler_create(width, height, opts)
 -- management members
 		spaces = {},
 		windows = {},
-		space_ind = 1
+		space_ind = 1,
+
+-- kept per/tiler in order to allow custom modes as well
+		scalemodes = {"normal", "stretch", "aspect"},
+
+-- public functions
+		switch_ws = tiler_switchws,
+		add_window = wnd_create,
+		find_window = tiler_find,
+		error_message = tiler_message,
+		update_statusbar = tiler_statusbar_update,
 	};
 	res.width = width;
 	res.height = height;
