@@ -19,6 +19,8 @@ tbl["m1_m2_DELETE"] = "exit";
 if (DEBUGLEVEL > 0) then
 tbl["m1_F1"] = "spawn_test_bar";
 tbl["m1_m2_F1"] = "spawn_test_nobar";
+tbl["m1_m2_F10"] = "spawn_test_crash";
+tbl["m1_m2_F11"] = "spawn_test_collapse";
 end
 
 tbl["m1_RIGHT"] = "step_right";
