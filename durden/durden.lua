@@ -64,9 +64,19 @@ local function tile_changed(wnd)
 	target_displayhint(wnd.external, wnd.effective_w, wnd.effective_h);
 end
 
+function durden_adopt(vid, kind)
+	local wnd = displays.main:add_window(vid);
+	wnd:set_title(string.format("adopted:%s", lbl));
+	wnd.resize_hook = tile_changed;
+	wnd.external = vid;
+	tile_changed(wnd);
+	show_image(vid);
+end
+
 function spawn_terminal()
 	local vid = launch_avfeed(
 		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
+	image_tracetag(vid, "terminal");
 
 	if (valid_vid(vid)) then
 		local wnd = displays.main:add_window(vid);
@@ -86,9 +96,11 @@ function query_exit()
 end
 
 local function lbar_launch(tgt, cfg)
+	local lbl = string.format("%s:%s", tgt, cfg);
 	local vid, aid = launch_target(tgt, cfg, LAUNCH_INTERNAL, def_handler);
+	image_tracetag(vid, label);
 	local wnd = displays.main:add_window(vid);
-	wnd:set_title(tgt .. ":" .. cfg);
+	wnd:set_title(lbl);
 	wnd.resize_hook = tile_changed;
 	wnd.external = vid;
 	tile_changed(wnd);
@@ -173,6 +185,7 @@ end
 function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
 		local vid = target_alloc(connection_path, new_connection);
+		image_tracetag(vid, "nonauth_connection");
 
 	elseif (status.kind == "resized") then
 		resize_image(source, status.width, status.height);

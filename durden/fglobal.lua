@@ -39,6 +39,14 @@ GLOBAL_FUNCTIONS["cycle_scalemode"] = function()
 	end
 end
 
+GLOBAL_FUNCTIONS["spawn_test_collapse"] = function()
+	system_collapse(APPLID);
+end
+
+GLOBAL_FUNCTIONS["spawn_test_crash"] = function()
+	this_function_does_not_exist();
+end
+
 GLOBAL_FUNCTIONS["rename_space"] = function()
 	local ictx = displays.main:lbar(function(ctx, instr, done)
 		if (done) then
