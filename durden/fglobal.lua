@@ -1,7 +1,6 @@
 --
 -- Mostly boiler-plate mapping a string- based LUT to functions that
--- act on the currently active display and against keybindings. Later on,
--- this could be exposed via a scripting layer as well.
+-- act on the currently active display and against keybindings.
 --
 GLOBAL_FUNCTIONS = {};
 GLOBAL_FUNCTIONS["spawn_terminal"] = spawn_terminal;
@@ -50,8 +49,8 @@ end
 GLOBAL_FUNCTIONS["rename_space"] = function()
 	local ictx = displays.main:lbar(function(ctx, instr, done)
 		if (done) then
-			ctx.cb_ctx.space:set_label(instr);
-			ctx.cb_ctx.space.wm:update_statusbar();
+			ctx.space:set_label(instr);
+			ctx.space.wm:update_statusbar();
 		end
 		ctx.ulim = 16;
 		return {label = "rename workspace", set = {}};
@@ -96,6 +95,16 @@ GLOBAL_FUNCTIONS["tabtile"] = function()
 			wspace:tile();
 		else
 			wspace:tab();
+		end
+	end
+end
+GLOBAL_FUNCTIONS["vtabtile"] = function()
+	local wspace = displays.main.spaces[displays.main.space_ind];
+	if (wspace) then
+		if (wspace.mode == "vtab" or wspace.mode == "fullscreen") then
+			wspace:tile();
+		else
+			wspace:vtab();
 		end
 	end
 end

@@ -165,7 +165,8 @@ local function wnd_message(wnd, message)
 end
 
 local function wnd_deselect(wnd)
-	if (wnd.wm.spaces[wnd.wm.space_ind].mode == "tab") then
+	local mwm = wnd.wm.spaces[wnd.wm.space_ind].mode;
+	if (mwm == "tab" or mwm == "vtab") then
 		hide_image(wnd.anchor);
 	end
 
@@ -179,7 +180,8 @@ local function wnd_select(wnd, source)
 		wnd.wm.selected:deselect();
 	end
 
-	if (wnd.wm.spaces[wnd.wm.space_ind].mode == "tab") then
+	local mwm = wnd.wm.spaces[wnd.wm.space_ind].mode;
+	if (mwm == "tab" or mwm == "vtab") then
 		show_image(wnd.anchor);
 	end
 
@@ -286,7 +288,6 @@ local function drop_fullscreen(space, swap)
 	local dw = space.selected;
 	space.locked = false;
 	dw.fullscreen = nil;
-	resize_image(dw.wm.client_area, dw.wm.width, dw.wm.client_height);
 	image_mask_set(dw.source, MASK_OPACITY);
 	space.switch_hook = nil;
 end
@@ -304,6 +305,7 @@ local function drop_tab(space)
 
 	space.mode_hook = nil;
 	space.switch_hook = nil;
+	space.reassign_hook = nil;
 	workspace_activate(space);
 end
 
@@ -332,33 +334,78 @@ local function drop_float(space, swap)
 -- handler and resize button
 end
 
+local function reassign_tab(space, wnd)
+	if (wnd.titlebar) then
+		link_image(wnd.titlebar, wnd.anchor);
+		move_image(wnd.titlebar, 1, 1);
+	end
+end
+
 -- just unlink statusbar, resize all at the same time (also hides some
 -- of the latency in clients producing new output buffers with the correct
 -- dimensions etc). then line the statusbars at the top.
 local function set_tab(space)
-	space.mode_hook = drop_tab;
-	space.switch_hook = switch_tab;
-
 	local lst = linearize(space);
 	if (#lst == 0) then
 		return;
 	end
 
+	space.mode_hook = drop_tab;
+	space.switch_hook = switch_tab;
+	space.reassign_hook = reassign_tab;
+
 	local fairw = math.floor(space.wm.width / #lst);
 	local tbar_sz = gconfig_get("tbar_sz");
-	local ofs = 0;
+	local ofs = 1;
 
 	for k,v in ipairs(lst) do
-		v:resize(space.wm.width, space.wm.client_height);
+		v:resize(space.wm.width, space.wm.client_height - 3);
 		move_image(v.anchor, 0, 0);
 		hide_image(v.anchor);
 		if (v.titlebar) then
 			link_image(v.titlebar, space.wm.anchor);
-			move_image(v.titlebar, ofs, 0);
+			move_image(v.titlebar, ofs, 1);
 			resize_image(v.titlebar, fairw, tbar_sz);
 			ofs = ofs + fairw;
 		end
 	end
+
+	workspace_inactivate(space);
+	if (space.selected) then
+		space.selected:select();
+	end
+end
+
+-- tab and vtab are similar in most aspects except for the axis used
+-- and the re-ordering of the selected statusbar
+local function set_vtab(space)
+	local lst = linearize(space);
+	if (#lst == 0) then
+		return;
+	end
+
+	local tbar_sz = gconfig_get("tbar_sz");
+	local ypos = (#lst - 1) * tbar_sz;
+	local cl_area = space.wm.client_height - ypos - 3;
+	if (cl_area < 1) then
+		return;
+	end
+
+	local ofs = 0;
+	for k,v in ipairs(lst) do
+		v:resize(space.wm.width, cl_area);
+		move_image(v.anchor, 0, ypos);
+		if (v.titlebar) then
+			link_image(v.titlebar, space.wm.anchor);
+			resize_image(v.titlebar, space.wm.width, tbar_sz);
+			move_image(v.titlebar, 0, ofs);
+			ofs = ofs + tbar_sz;
+		end
+	end
+
+	space.mode_hook = drop_tab;
+	space.switch_hook = switch_tab;
+	space.reassign_hook = reassign_tab;
 
 	workspace_inactivate(space);
 	if (space.selected) then
@@ -380,7 +427,6 @@ local function set_fullscreen(space)
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
 	image_mask_clear(dw.source, MASK_OPACITY);
-	resize_image(dw.wm.client_area, dw.wm.width, dw.wm.height);
 	dw:resize(dw.wm.width, dw.wm.height);
 	move_image(dw.anchor, 0, 0);
 end
@@ -400,7 +446,8 @@ local space_handlers = {
 	tile = set_tile,
 	float = set_float,
 	fullscreen = set_fullscreen,
-	tab = set_tab
+	tab = set_tab,
+	vtab = set_vtab
 };
 
 local function workspace_destroy(space)
@@ -428,7 +475,7 @@ end
 
 local function workspace_set(space, mode)
 	if (mode == space.mode or (mode ~= "fullscreen" and mode ~= "tile"
-		and mode ~= "tab")) then
+		and mode ~= "tab") and mode ~= "vtab") then
 		return;
 	end
 
@@ -484,8 +531,9 @@ local function create_workspace(wm)
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
 		tab = function(ws) workspace_set(ws, "tab"); end,
-		set_label = workspace_label,
+		vtab = function(ws) workspace_set(ws, "vtab"); end,
 		float = function(ws) workspace_set(ws, "float"); end,
+		set_label = workspace_label,
 		mode = "tile",
 		name = "workspace_" .. tostring(ent_count);
 		insert = "horizontal",
@@ -607,7 +655,8 @@ local function wnd_next(mw, level)
 	end
 
 -- we use three states; true, false or nil.
-	if (mw.wm.spaces[mw.wm.space_ind].mode == "tab" and level == nil) then
+	local mwm = mw.wm.spaces[mw.wm.space_ind].mode;
+	if ((mwm == "tab" or mwm == "vtab") and level == nil) then
 		level = true;
 	end
 
@@ -644,7 +693,8 @@ local function wnd_prev(mw, level)
 		return;
 	end
 
-	if (level or mw.wm.spaces[mw.wm.space_ind].mode == "tab") then
+	local mwm = mw.wm.spaces[mw.wm.space_ind].mode;
+	if (level or mwm == "tab" or mwm == "vtab") then
 		if (mw.parent.select) then
 			mw.parent:select();
 			return;
@@ -706,6 +756,11 @@ local function wnd_reassign(wnd, ind)
 	wnd.space = newspace;
 	wnd.parent = newspace;
 	table.insert(newspace.children, wnd);
+
+-- restore vid structure etc. to the default state
+	if (oldspace.reassign_hook and newspace.mode ~= oldspace.mode) then
+		oldspace:reassign_hook(wnd);
+	end
 
 -- weights aren't useful for new space, reset
 	wnd.weight = 1.0;
@@ -1026,7 +1081,6 @@ function tiler_create(width, height, opts)
 
 	local res = {
 -- null surfaces for clipping / moving / drawing
-		client_area = null_surface(width, clh),
 		client_height = clh,
 		anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
@@ -1064,9 +1118,8 @@ function tiler_create(width, height, opts)
 	res.height = height;
 
 	move_image(res.statusbar, 0, clh);
-	link_image(res.client_area, res.anchor);
 	link_image(res.statusbar, res.anchor);
-	show_image({res.anchor, res.client_area, res.statusbar});
+	show_image({res.anchor, res.statusbar});
 
 	res.spaces[1] = create_workspace(res);
 	res:update_statusbar();
