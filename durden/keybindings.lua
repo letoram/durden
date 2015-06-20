@@ -36,6 +36,7 @@ tbl["m1_m2_UP"] = "shrink_v";
 tbl["m1_m2_DOWN"] = "grow_v";
 tbl["m1_f"] = "fullscreen";
 tbl["m1_e"] = "tabtile";
+tbl["m1_r"] = "vtabtile";
 tbl["m1_TAB"] = "context_popup";
 tbl["m1_m"] = "mergecollapse";
 tbl["m1_1"] = "switch_ws1";

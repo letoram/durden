@@ -176,7 +176,7 @@ function def_handler(source, stat)
 
 	if (stat.kind == "resized") then
 		wnd.space:resize();
-
+		image_set_txcos_default(wnd.source, stat.origo_ll == true);
 	elseif (stat.kind == "terminated") then
 		wnd:destroy();
 	end
