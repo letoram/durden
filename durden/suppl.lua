@@ -266,3 +266,7 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 
 	return ctx;
 end
+
+function launch_menu(wm, menu)
+
+end

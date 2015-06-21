@@ -21,7 +21,7 @@ like:
 
     arcan -p path/to/durden\_root/res path/to/durden\_root/durden
 
-Default meta keys are MENU (1) and RSHIFT(2), look into keybindings.lua for the
+Default meta keys are MENU(1) and RSHIFT(2), look into keybindings.lua for the
 currently mapped functions. Make sure that arcan is built with support for builtin
 frameservers for terminal, decode, encode, etc.
 
@@ -45,9 +45,37 @@ _files that might be of interest)_
         durden.lua       - main script, input routing and process management
         tiler.lua        - main tiling layout, workspace management etc.
         lbar.lua         - support script for textedit control
+        suppl.lua        - text and menu convinience functions
+
+    durden/atypes/* - menus and settings for specific client subtypes
+    durden/builtin/ - global menus and settings, target base menus and settings
 
     res\
         (mostly cherry-picked from the arcan codebase)
         shared resources, fonts, support scripts for UI features and window
         management (for workspaces that are configured to have "normal" window
         management for compatiblity reasons with multi-window programs).
+
+Flow
+====
+
+After initial setup, the default code-paths are as follows:
+
+1. _input event:keyboard_ lookup matching key -> lookup against dispatch
+   defined in keybindings.
+
+2. _keybindings dispatch:found_ -> lookup matching function in
+   GLOBAL\_FUNCTIONS (fglobal).
+
+3. _keybindings dispatch:not found_ -> grab currently selected window,
+   match against window specific dispatch and run (if found).
+
+4. _window dispatch_: not found -> match against window specific translation,
+   attach semantic label (if defined) and forward to target.
+
+5. _input event:mouse_ forward to mouse.lua support script, registered
+   handlers point into durden for active display.
+
+Other than that, there is the def\_handler (durden.lua) that handles initial
+event handling for external connections, that - based on type - can be promoted
+to a specialized implementation (as per durden/atypes/*).

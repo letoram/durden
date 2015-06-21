@@ -6,6 +6,7 @@
 --
 local defaults = {
 	msg_timeout = 100,
+	transition_time = 10,
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
 
