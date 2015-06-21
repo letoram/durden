@@ -9,10 +9,18 @@ local defaults = {
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
 
+-- "generic" UI interaction bindings that work in specialized contexts
+-- (input bar, popups, ...)
 	ok_sym = "RETURN",
 	cancel_sym = "ESCAPE",
 	step_next = "UP",
 	step_previous = "DOWN",
+	caret_home = "HOME",
+	caret_end = "END",
+	caret_left = "LEFT",
+	caret_right = "RIGHT",
+	caret_delete = "DELETE",
+	caret_erase = "BACKSPACE",
 
 -- input bar
 	lbar_position = "center", -- top, center, bottom

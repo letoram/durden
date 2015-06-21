@@ -6,7 +6,10 @@
 -- m2_ for meta2
 -- m1_m2_ for meta1+meta2
 --
--- the output resolves to an entry in GLOBAL_FUNCTIONS or possibly
+-- the output resolves to an entry in GLOBAL_FUNCTIONS or
+-- in a custom per/target config
+--
+-- special function keys connected to UI components are set in gconf
 --
 
 local meta_1 = "MENU";
