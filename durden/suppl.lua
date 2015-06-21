@@ -175,7 +175,14 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		limit = -1,
 		chofs = 1,
 		ulim = VRESW,
-		msg = ""
+		msg = "",
+		caret_left = gconfig_get("caret_left"),
+		caret_right = gconfig_get("caret_right"),
+		caret_down = gconfig_get("caret_down"),
+		caret_home = gconfig_get("caret_home"),
+		caret_end = gconfig_get("caret_end"),
+		caret_delete = gconfig_get("caret_delete"),
+		caret_erase = gconfig_get("caret_erase")
 	} or ctx;
 
 	local caretofs = function()
@@ -188,13 +195,13 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		return ctx;
 	end
 
-	if (sym == "HOME") then
+	if (sym == ctx.caret_home) then
 		ctx.caretpos = 1;
 		ctx.chofs    = 1;
 		caretofs();
 		redraw(ctx);
 
-	elseif (sym == "END") then
+	elseif (sym == ctx.caret_end) then
 		ctx.caretpos = string.len( ctx.msg ) + 1;
 		ctx.chofs = ctx.caretpos - ctx.ulim;
 		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
@@ -203,7 +210,7 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		caretofs();
 		redraw(ctx);
 
-	elseif (sym == "LEFT") then
+	elseif (sym == ctx.caret_left) then
 		ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
 
 		if (ctx.caretpos < ctx.chofs) then
@@ -215,7 +222,7 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		caretofs();
 		redraw(ctx);
 
-	elseif (sym == "RIGHT") then
+	elseif (sym == ctx.caret_right) then
 		ctx.caretpos = string.utf8forward(ctx.msg, ctx.caretpos);
 		if (ctx.chofs + ctx.ulim <= ctx.caretpos) then
 			ctx.chofs = ctx.chofs + 1;
@@ -226,12 +233,12 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 			redraw(ctx, caret);
 		end
 
-	elseif (sym == "DELETE") then
+	elseif (sym == ctx.caret_delete) then
 		ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
 		caretofs();
 		redraw(ctx);
 
-	elseif (sym == "BACKSPACE") then
+	elseif (sym == ctx.caret_erase) then
 		if (ctx.caretpos > 1) then
 			ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
 			if (ctx.caretpos <= ctx.chofs) then
@@ -259,5 +266,3 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 
 	return ctx;
 end
-
-

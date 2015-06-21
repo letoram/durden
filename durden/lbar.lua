@@ -28,7 +28,7 @@ local function update_completion_set(wm, ctx, set)
 		ctx.citems = nil;
 	end
 
--- track if set changes
+-- track if set changes as we will need to reset
 	if (set ~= ctx.set) then
 		ctx.cofs = 1;
 		ctx.csel = 1;
@@ -41,8 +41,15 @@ local function update_completion_set(wm, ctx, set)
 		ctx.cofs = ctx.cofs <= 0 and 1 or ctx.cofs;
 	end
 
+-- limitation with this solution is that we can't wrap around negative
+-- without forward stepping through due to variability in text length
 	ctx.csel = ctx.csel <= 0 and 1 or ctx.csel;
-	ctx.csel = ctx.csel > #set and #set or ctx.csel;
+
+-- wrap around if needed
+	if (ctx.csel > #set) then
+		ctx.csel = 1;
+		ctx.cofs = 1;
+	end
 
 	local regw = image_surface_properties(ctx.anchor).width;
 	local step = math.ceil(0.5 + regw / 3);
@@ -72,8 +79,8 @@ local function update_completion_set(wm, ctx, set)
 		if (ofs + w > ctxw - 10) then
 			txt = "...";
 			if (i == ctx.csel) then
+				ctx.clastc = i - ctx.cofs;
 				ctx.cofs = ctx.csel;
-				ctx.clastc = i;
 				return update_completion_set(wm, ctx, set);
 			end
 			exit = true;
@@ -125,8 +132,11 @@ end
 
 local function lbar_input(wm, sym, iotbl)
 	local ictx = wm.input_ctx;
+	if (not iotbl.active) then
+		return;
+	end
 
-	if (iotbl.active and (sym == ictx.cancel or sym == ictx.accept)) then
+	if (sym == ictx.cancel or sym == ictx.accept) then
 		delete_image(ictx.anchor);
 		wm.input_ctx = nil;
 		wm.input_lock = nil;
@@ -137,15 +147,26 @@ local function lbar_input(wm, sym, iotbl)
 		return;
 	end
 
-	if (iotbl.active and (sym == ictx.step_n or sym == ictx.step_p)) then
+	if ((sym == ictx.step_n or sym == ictx.step_p)) then
 		ictx.csel = (sym == ictx.step_n) and (ictx.csel+1) or (ictx.csel-1);
 		update_completion_set(wm, ictx, ictx.set);
 		return;
 	end
 
+-- special handling, if the user hasn't typed anything, map caret manipulation
+-- to completion navigation as well)
+	if (ictx.inp) then
+		if (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and (
+			sym == ictx.inp.caret_left or sym == ictx.inp.caret_right)) then
+			ictx.csel = (sym==ictx.inp.caret_right) and (ictx.csel+1) or (ictx.csel-1);
+			update_completion_set(wm, ictx, ictx.set);
+			return;
+		end
+	end
+
 -- note, inp ulim can be used to force a sliding view window, not
 -- useful here but still implemented.
-	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, caret)
+	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
 		if (caret == nil) then
 			if (valid_vid(ictx.text)) then
 				delete_image(ictx.text);
