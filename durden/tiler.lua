@@ -160,7 +160,7 @@ local function wnd_destroy(wnd)
 	space:resize();
 end
 
-local function wnd_message(wnd, message)
+local function wnd_message(wnd, message, timeout)
 	print(message);
 end
 
@@ -645,7 +645,7 @@ local function wnd_resize(wnd, neww, newh)
 
 	if (wnd.centered) then
 		move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
-			math.floor(0.5*(neww - wnd.effective_h)));
+			math.floor(0.5*(newh - wnd.effective_h)));
 	end
 end
 
@@ -882,7 +882,7 @@ local function wnd_create(wm, source, opts)
 		alert = wnd_alert,
 		assign_ws = wnd_reassign,
 		destroy = wnd_destroy,
-		message = wnd_message,
+		set_message = wnd_message,
 		set_title = wnd_title,
 		resize = wnd_resize,
 		select = wnd_select,

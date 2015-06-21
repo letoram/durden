@@ -27,6 +27,7 @@ local defaults = {
 	lbar_sz = 16,
 	lbar_bg = {0x33, 0x33, 0x33},
 	lbar_textstr = "\\fdefault.ttf,12\\#cccccc ",
+	lbar_labelstr = "\\fdefault.ttf,12\\#00ff00 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
 	lbar_label_col = {0xff, 0xff, 0x00},
