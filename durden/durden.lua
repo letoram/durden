@@ -23,11 +23,17 @@ function durden()
 	system_load("lbar.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
-	system_load("fglobal.lua")();
+	GLOBAL_FUNCTIONS = system_load("fglobal.lua")();
 	system_load("tiler.lua")();
+	SHARED_TABLE = system_load("builtin/shared.lua")();
+	GLOBAL_COMMANDS = system_load("builtin/global.lua")();
+
+	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
+	if (res ~= nil) then
+
+	end
 
 	displays.main = tiler_create(VRESW, VRESH, {});
-	ERRNO = system_load("errc.lua")();
 	SYMTABLE = system_load("symtable.lua")();
 	mouse_setup_native(load_image("cursor.png"), 1, 1);
 
@@ -175,6 +181,10 @@ function query_launch()
 	};
 
 	displays.main:lbar(lbar_targetsel, cbctx, {force_completion = true});
+end
+
+function query_open()
+-- meta menu for selecting remoting, decode (local or url)
 end
 
 function def_handler(source, stat)
