@@ -61,12 +61,19 @@ function spawn_test(bar)
 end
 
 local function tile_changed(wnd)
-	target_displayhint(wnd.external, wnd.effective_w, wnd.effective_h);
+	if (wnd.effective_w > 1 and wnd.effective_h > 1) then
+		target_displayhint(wnd.external, wnd.effective_w, wnd.effective_h);
+	end
 end
 
-function durden_adopt(vid, kind)
+function durden_adopt(vid, kind, title)
 	local wnd = displays.main:add_window(vid);
-	wnd:set_title(string.format("adopted:%s", lbl));
+	if (title) then
+		wnd:set_title(title);
+	else
+		wnd:set_title(string.format("adopted:%s", lbl));
+	end
+
 	wnd.resize_hook = tile_changed;
 	wnd.external = vid;
 	tile_changed(wnd);
@@ -177,6 +184,8 @@ function def_handler(source, stat)
 	if (stat.kind == "resized") then
 		wnd.space:resize();
 		image_set_txcos_default(wnd.source, stat.origo_ll == true);
+	elseif (stat.kind == "message") then
+		wnd:set_message(stat.v, gconfig_get("msg_timeout"));
 	elseif (stat.kind == "terminated") then
 		wnd:destroy();
 	end

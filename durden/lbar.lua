@@ -123,11 +123,31 @@ end
 local function update_caret(ictx)
 	local pos = ictx.inp.caretpos - ictx.inp.chofs;
 	if (pos == 0) then
-		move_image(ictx.caret, 0, ictx.caret_y);
+		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
 	else
 		local w, h = text_dimensions(inp_str(ictx, pos-1));
-		move_image(ictx.caret, w, ictx.caret_y);
+		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
 	end
+end
+
+local function lbar_ih(wm, ictx, inp, sym, caret)
+	if (caret == nil) then
+		if (valid_vid(ictx.text)) then
+			delete_image(ictx.text);
+		end
+
+		ictx.text = render_text(inp_str(ictx));
+		show_image(ictx.text);
+		link_image(ictx.text, ictx.anchor);
+		image_inherit_order(ictx.text, true);
+		move_image(ictx.text, ictx.textofs, math.floor(0.5*(
+			gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
+		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
+		if (res ~= nil and res.set) then
+			update_completion_set(wm, ictx, res.set);
+		end
+	end
+	update_caret(ictx);
 end
 
 local function lbar_input(wm, sym, iotbl)
@@ -167,29 +187,40 @@ local function lbar_input(wm, sym, iotbl)
 -- note, inp ulim can be used to force a sliding view window, not
 -- useful here but still implemented.
 	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
-		if (caret == nil) then
-			if (valid_vid(ictx.text)) then
-				delete_image(ictx.text);
-			end
-
-			ictx.text = render_text(inp_str(ictx));
-			show_image(ictx.text);
-			link_image(ictx.text, ictx.anchor);
-			image_inherit_order(ictx.text, true);
-			move_image(ictx.text, 0, math.floor(0.5*(
-				gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
-			local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
-			if (res ~= nil and res.set) then
-				update_completion_set(wm, ictx, res.set);
-			end
-		end
-		update_caret(ictx);
+		lbar_ih(wm, ictx, inp, sym, caret);
 	end);
 
 	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
 	if (res ~= nil and res.set) then
 		update_completion_set(wm, ictx, res.set);
 	end
+end
+
+local function lbar_label(lbar, lbl)
+	if (valid_vid(lbar.labelid)) then
+		delete_image(lbar.labelid);
+		if (lbl == nil) then
+			lbar.textofs = 0;
+
+			return;
+		end
+	end
+
+	lbar.labelid = render_text(gconfig_get("lbar_labelstr")..lbl);
+	if (not valid_vid(lbar.labelid)) then
+		return;
+	end
+
+	show_image(lbar.labelid);
+	link_image(lbar.labelid, lbar.anchor);
+	image_inherit_order(lbar.labelid, true);
+	order_image(lbar.labelid, 1);
+
+-- relinking / delinking on changes every time
+	local props = image_surface_properties(lbar.labelid);
+	move_image(lbar.labelid, 1, 1);
+	lbar.textofs = props.width + gconfig_get("lbar_sz") + 1;
+	update_caret(lbar);
 end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)
@@ -224,15 +255,18 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		step_n = gconfig_get("step_next"),
 		step_p = gconfig_get("step_previous"),
 		textstr = gconfig_get("lbar_textstr"),
+		set_label = lbar_label,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
 		ch_sz = lbar_textsz,
 		cofs = 1,
 		csel = 1,
+		textofs = 0,
 		caret = car,
 		caret_y = carety,
 		force_completion = opts.force_completion and true or false
 	};
 	lbar_input(wm, "", {active = true, kind = "digital", translated = true,
 		devid = 0, subid = 0});
+	return wm.input_ctx;
 end
