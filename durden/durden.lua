@@ -14,6 +14,13 @@ local connection_path = "durden";
 -- workspaces).
 displays = {};
 
+--
+-- Every connection can get a set of additional commands and configurations
+-- based on what type it has. Supported ones are registered into this table.
+-- init, bindings, settings, commands
+--
+archtypes = {};
+
 function durden()
 -- usual configuration management, gestures, mini UI components etc.
 -- will get BINDINGS, ERRNO, SYMTABLE as global lookup tables
@@ -23,14 +30,22 @@ function durden()
 	system_load("lbar.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
-	GLOBAL_FUNCTIONS = system_load("fglobal.lua")();
 	system_load("tiler.lua")();
-	SHARED_TABLE = system_load("builtin/shared.lua")();
-	GLOBAL_COMMANDS = system_load("builtin/global.lua")();
+	local shtbl = system_load("builtin/shared.lua")();
+	TARGET_ACTIONS = shtbl.actions;
+	TARGET_SETTINGS = shtbl.settings;
+	GLOBAL_FUNCTIONS = system_load("fglobal.lua")();
+	GLOBAL_ACTIONS = system_load("builtin/global.lua")().actions;
 
 	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
 	if (res ~= nil) then
-
+		for k,v in ipairs(res) do
+			local tbl = system_load("atypes/" .. v, false);
+			tbl = tbl and tbl() or nil;
+			if (tbl and tbl.atype) then
+				archtypes[tbl.atype] = tbl;
+			end
+		end
 	end
 
 	displays.main = tiler_create(VRESW, VRESH, {});

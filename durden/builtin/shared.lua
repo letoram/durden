@@ -19,24 +19,24 @@ local shared_actions = {
 		label = "Reset",
 -- kind : action, number, list
 		kind = "action",
-		handler = function(wnd, source)
-			reset_target(source);
+		handler = function(ctx)
+			reset_target(ctx.source);
 		end
 	},
 	{
 		name = "pause",
 		label = "Pause",
 		kind = "action",
-		handler = function(wnd, source)
-			suspend_target(source);
+		handler = function(ctx)
+			suspend_target(ctx.source);
 		end
 	},
 	{
 		name = "resume",
 		label = "Resume",
 		kind = "action",
-		handler = function(wnd, source)
-			resume_target(source);
+		handler = function(ctx)
+			resume_target(ctx.source);
 		end
 	},
 };
@@ -47,9 +47,9 @@ local shared_settings = {
 		label = "Gain",
 		kind = "number",
 		validator = shared_valid01_float,
-		handler = function(wnd, source, value)
-			if (wnd.source_audio) then
-				audio_gain(source, value, gconfig_get("transition_time"));
+		handler = function(ctx, value)
+			if (ctx.wnd.source_audio) then
+				audio_gain(ctx.wnd.source_audio, value, gconfig_get("transition_time"));
 			end
 		end,
 	},
@@ -63,8 +63,8 @@ local shared_settings = {
 			Bilinear = FILTER_BILINEAR,
 			Trilinear = FILTER_TRILINEAR
 		},
-		handler = function(wnd, source, value)
-			image_texfilter(source, value);
+		handler = function(ctx, value)
+			image_texfilter(ctx.source, value);
 		end
 	},
 };

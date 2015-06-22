@@ -26,6 +26,10 @@ tbl["m1_m2_F10"] = "spawn_test_crash";
 tbl["m1_m2_F11"] = "spawn_test_collapse";
 end
 
+tbl["m1_g"] = "global_actions";
+tbl["m1_m2_g"] = "workspace_actions";
+tbl["m1_t"] = "target_actions";
+tbl["m1_m2_t"] = "target_settings";
 tbl["m1_RIGHT"] = "step_right";
 tbl["m1_UP"] = "step_up";
 tbl["m1_LEFT"] = "step_left";

@@ -38,27 +38,27 @@ gf["cycle_scalemode"] = function()
 	end
 end
 
-gf["open_menu"] = function()
-	query_open();
-end
-
-gf["global_menu"] = function()
-	launch_menu(GLOBAL_ACTIONS);
+gf["global_actions"] = function()
+	launch_menu(displays.main, {list = GLOBAL_ACTIONS}, true, "Action:");
 end
 
 gf["target_actions"] = function()
 	local sel = displays.main.selected;
 	if (sel) then
-		launch_menu(
-			merge_menu(TARGET_ACTIONS, sel.atype_actions)
+		launch_menu(displays.main, {list =
+			merge_menu(TARGET_ACTIONS, sel.atype_actions)}, true,
+			sel.atype and sel.atype or "target"
 		);
 	end
 end
 
 gf["target_settings"] = function()
+	local sel = displays.main.selected;
+
 	if (sel) then
-		launch_menu(
-			merge_menu(TARGET_SETTINGS, sel.atype_settings)
+		launch_menu(displays.main, {wnd = sel, list =
+			merge_menu(TARGET_SETTINGS, sel.atype_settings)}, true,
+			(sel.atype and sel.atype or "target") .. " settings:"
 		);
 	end
 end
@@ -72,6 +72,7 @@ gf["rename_space"] = function()
 		ctx.ulim = 16;
 		return {label = "rename workspace", set = {}};
 	end, {space = displays.main.spaces[displays.main.space_ind]});
+	ictx:set_label("rename space:");
 end
 
 gf["mode_vertical"] = function()
