@@ -267,6 +267,81 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 	return ctx;
 end
 
-function launch_menu(wm, menu)
+-- add m2 to m1, overwrite on collision
+function merge_menu(m1, m2)
+	local kt = {};
+	local res = {};
+	if (m2 == nil) then
+		return m1;
+	end
 
+	if (m1 == nil) then
+		return m2;
+	end
+
+	for k,v in ipairs(m1) do
+		kt[v.name] = k;
+		table.insert(res, v);
+	end
+
+	for k,v in ipairs(m2) do
+		if (kt[v.name]) then
+			res[kt[v.name]] = v;
+		else
+			table.insert(res, v);
+		end
+	end
+	return res;
+end
+
+local function lbar_fun(ctx, instr, done, lastv)
+	if (done) then
+		local tgt = nil;
+		for k,v in ipairs(ctx.list) do
+			if (v.label == instr) then
+				tgt = v;
+			end
+		end
+		if (tgt == nil) then
+			return;
+		end
+
+		if (tgt.validator) then
+			if (not tgt.validator(ctx, instr)) then
+				return false;
+			end
+		end
+
+		if (tgt.kind == "action") then
+			return tgt.handler(ctx, instr);
+		end
+
+		return;
+	end
+
+	local res = {};
+	for i,v in ipairs(ctx.list) do
+		if (instr == nil or string.len(instr) == 0 or
+			string.sub(v.label, 1, string.len(instr)) == instr) then
+			table.insert(res, v.label);
+		end
+	end
+
+	return {set = res};
+end
+
+--
+-- ctx is expected to contain:
+--  list [# of {name, label, kind, validator, handler}]
+--  + any data the handler might need
+--
+function launch_menu(wm, ctx, fcomp, label)
+	if (ctx == nil or ctx.list == nil or #ctx.list == 0) then
+		return;
+	end
+
+	local bar = wm:lbar(lbar_fun, ctx, {
+		force_completion = fcomp,
+		label = label
+	});
 end

@@ -268,5 +268,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	};
 	lbar_input(wm, "", {active = true, kind = "digital", translated = true,
 		devid = 0, subid = 0});
+
+	if (opts.label) then
+		wm.input_ctx:set_label(opts.label);
+	end
+
 	return wm.input_ctx;
 end
