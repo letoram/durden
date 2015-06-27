@@ -31,11 +31,10 @@ function durden()
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("tiler.lua")();
-	local shtbl = system_load("builtin/shared.lua")();
-	TARGET_ACTIONS = shtbl.actions;
-	TARGET_SETTINGS = shtbl.settings;
-	GLOBAL_FUNCTIONS = system_load("fglobal.lua")();
-	GLOBAL_ACTIONS = system_load("builtin/global.lua")().actions;
+
+	system_load("fglobal.lua")();
+	system_load("builtin/global.lua")();
+	system_load("builtin/shared.lua")();
 
 	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
 	if (res ~= nil) then
@@ -55,12 +54,18 @@ function durden()
 -- dropping this call means that only controlled invocation is possible
 -- (i.e. no non-authoritative connections)
 	new_connection();
+
+-- dropping this call means that the only input / output available is
+-- through keybindings/mice/joysticks
 	control_channel = open_nonblock("durden_cmd");
 	if (control_channel == nil) then
 		warning("no control channel found, use: (mkfifo c durden/durden_cmd)");
 	else
 		warning("control channel active (durden_cmd)");
 	end
+
+	register_global("spawn_terminal", spawn_terminal);
+	register_global("launch_bar", query_launch);
 end
 
 --
@@ -119,10 +124,6 @@ function spawn_terminal()
 	end
 end
 
-function query_exit()
-	return shutdown();
-end
-
 local function lbar_launch(tgt, cfg)
 	local lbl = string.format("%s:%s", tgt, cfg);
 	local vid, aid = launch_target(tgt, cfg, LAUNCH_INTERNAL, def_handler);
@@ -137,7 +138,7 @@ end
 
 local function lbar_subsel(instr, tbl, last)
 	if (instr == nil or string.len(instr) == 0) then
-		return {set = tbl};
+		return {set = tbl, valid = true};
 	end
 
 	local res = {};
@@ -151,7 +152,8 @@ local function lbar_subsel(instr, tbl, last)
 	if (last and #res == #last) then
 		return {set = last};
 	end
-	return {set = res};
+
+	return {set = res, valid = true};
 end
 
 local function lbar_configsel(ctx, instr, done, lastv)
@@ -195,7 +197,7 @@ function query_launch()
 		targets = list_targets()
 	};
 
-	displays.main:lbar(lbar_targetsel, cbctx, {force_completion = true});
+	displays.main:lbar(lbar_targetsel, cbctx, {force_completion = true}, "Launch:");
 end
 
 function query_open()
@@ -244,10 +246,7 @@ function poll_control_channel()
 	local cmd = string.split(line, ":");
 	cmd = cmd == nil and {} or cmd;
 
-	if (cmd[1] == "rescan-display") then
-		video_displaymodes();
-
-	elseif (cmd[1] == "status") then
+	if (cmd[1] == "status") then
  -- unkown command, just draw (allows us to just pipe i3status)
 		local msg = string.gsub(string.sub(line, 6), "\\", "\\\\");
 		local vid = render_text(
@@ -255,6 +254,8 @@ function poll_control_channel()
 		if (valid_vid(vid)) then
 			displays.main:update_statusbar(vid);
 		end
+	else
+		dispatch_symbol(cmd[1]);
 	end
 end
 
@@ -277,6 +278,7 @@ function durden_input(iotbl)
 	elseif (iotbl.translated) then
 		local sym = SYMTABLE[ iotbl.keysym ];
 
+-- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
 			local sel = displays.main.selected;
 			if (sel and valid_vid(sel.source, TYPE_FRAMESERVER)) then

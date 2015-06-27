@@ -323,11 +323,13 @@ local function lbar_fun(ctx, instr, done, lastv)
 	for i,v in ipairs(ctx.list) do
 		if (instr == nil or string.len(instr) == 0 or
 			string.sub(v.label, 1, string.len(instr)) == instr) then
-			table.insert(res, v.label);
+			if (not v.eval or v.eval(ctx, instr)) then
+				table.insert(res, v.label);
+			end
 		end
 	end
 
-	return {set = res};
+	return {set = res, valid = false};
 end
 
 --

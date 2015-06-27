@@ -1,65 +1,75 @@
 --
--- Mostly boiler-plate mapping a string- based LUT to functions that
--- act on the currently active display and against keybindings.
+-- Contains global / shared commmand and settings management.
 --
+-- builtin/global and builtin/shared initially call a lot of register_global,
+-- register_shared for the functions needed for their respective menus.
+-- keybindings.lua generate strings that resolve to entries in either and the
+-- associated function will be called (for shared, with reference to the
+-- currently selected window).
+--
+-- the functions set here are a sort of bare-minimal, so that navigation,
+-- testing and debugging can be shared with appls that derive from this
+-- codebase, but don't necessarily want to support the more advanced ones.
+--
+
 local gf = {};
-gf["spawn_terminal"] = spawn_terminal;
-gf["exit"] = query_exit;
-gf["launch_bar"] = query_launch;
-gf["spawn_test_nobar"] = function() spawn_test(1); end
-gf["spawn_test_bar"] = function() spawn_test(); end
-gf["dump_state"] = function()
-	system_snapshot("state.dump");
-end
-gf["random_alert"] = function()
-	local ind = math.random(1, #displays.main.windows);
-	displays.main.windows[ind]:alert();
-end
+local sf = {};
 
-gf["cycle_scalemode"] = function()
-	local sel = displays.main.selected;
-	local modes = displays.main.scalemodes;
-
-	if (sel and modes) then
-		local ind = 1;
-
-		for i,v in ipairs(modes) do
-			if (v == sel.scalemode) then
-				ind = i;
-				break;
-			end
+function register_global(funname, funptr)
+	if (gf[funname] ~= nil) then
+		warning("attempt to override pre-existing function:" .. funname);
+		if (DEBUGLEVEL > 0) then
+			print(debug.traceback());
 		end
-
--- recall that not all displays need to support the same scalemodes, this is
--- due to the cost/filtering capability of some special displays
-		ind = (ind + 1 > #modes) and 1 or (ind + 1);
-		sel.scalemode = modes[ind];
-		sel:resize(sel.width, sel.height);
+	else
+		gf[funname] = funptr;
 	end
 end
 
-gf["global_actions"] = function()
-	launch_menu(displays.main, {list = GLOBAL_ACTIONS}, true, "Action:");
-end
-
-gf["target_actions"] = function()
-	local sel = displays.main.selected;
-	if (sel) then
-		launch_menu(displays.main, {list =
-			merge_menu(TARGET_ACTIONS, sel.atype_actions)}, true,
-			sel.atype and sel.atype or "target"
-		);
+function register_shared(funname, funptr)
+	if (sf[funname] ~= nil) then
+		warning("attempt to override pre-existing shared function:" .. funname);
+		if (DEBUGLEVEL > 0) then
+			print(debug.traceback());
+		end
+	else
+		sf[funname] = funptr;
 	end
 end
 
-gf["target_settings"] = function()
-	local sel = displays.main.selected;
+function register_shared_atype(wnd, actions, settings, keymap)
+	wnd.dispatch = merge_menu(sf, actions);
+	wnd.settings = merge_menu(sf, settings);
+end
 
-	if (sel) then
-		launch_menu(displays.main, {wnd = sel, list =
-			merge_menu(TARGET_SETTINGS, sel.atype_settings)}, true,
-			(sel.atype and sel.atype or "target") .. " settings:"
-		);
+-- used by builtin/global to map some functions here to menus
+function grab_global_function(funname)
+	return gf[funname];
+end
+
+-- priority: wnd-specific -> shared -> global
+function dispatch_symbol(sym)
+	local ms = displays.main.selected;
+	if (sf[sym]) then
+		if (ms) then
+			sf[sym](ms);
+		end
+	elseif (gf[sym]) then
+		gf[sym]();
+	else
+		warning("keybinding issue, " .. sym .. " does not match any known function");
+	end
+end
+
+if (DEBUGLEVEL > 0) then
+	gf["spawn_test_nobar"] = function() spawn_test(1); end
+	gf["spawn_test_bar"] = function() spawn_test(); end
+	gf["dump_state"] = function()
+		system_snapshot("state.dump");
+	end
+	gf["random_alert"] = function()
+		local ind = math.random(1, #displays.main.windows);
+		displays.main.windows[ind]:alert();
 	end
 end
 
@@ -87,25 +97,6 @@ gf["mode_horizontal"] = function()
 		wspace.insert = "horizontal";
 	end
 end
-gf["mergecollapse"] = function()
-	if (displays.main.selected) then
-		if (#displays.main.selected.children > 0) then
-			displays.main.selected:collapse();
-		else
-			displays.main.selected:merge();
-		end
-	end
-end
-gf["grow_h"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0.05, 0);
-	end
-end
-gf["shrink_h"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(-0.05, 0);
-	end
-end
 gf["tabtile"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
@@ -126,62 +117,26 @@ gf["vtabtile"] = function()
 		end
 	end
 end
-gf["fullscreen"] = function()
-	local sw = displays.main.selected;
-	if (sw) then
-		if (sw.fullscreen) then
-			sw.space:tile();
-		else
-			sw.space:fullscreen();
-		end
-	end
+
+-- functions that require a selected window
+
+sf["fullscreen"] = function(wnd)
+	(wnd.fullscreen and wnd.space.tile or wnd.space.fullscreen)(wnd.space);
 end
-gf["grow_v"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0, 0.05);
-	end
+sf["mergecollapse"] = function(wnd)
+	(#wnd.children > 0 and wnd.collapse or wnd.merge)(wnd);
 end
-gf["shrink_v"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:grow(0, -0.05);
-	end
-end
-gf["step_up"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:prev(1);
-	end
-end
-gf["step_down"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:next(1);
-	end
-end
-gf["step_left"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:prev();
-	end
-end
-gf["step_right"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:next();
-	end
-end
-gf["destroy"] = function()
-	if (displays.main.selected) then
-		displays.main.selected:destroy();
-	end
-end
+sf["grow_v"] = function(wnd) wnd:grow(0, 0.05); end
+sf["shrink_v"] = function(wnd) wnd:grow(0, -0.05); end
+sf["grow_h"] = function(wnd) wnd:grow(0.05, 0); end
+sf["shrink_h"] = function(wnd) wnd:grow(-0.05, 0); end
+sf["step_up"] = function(wnd) wnd:prev(1); end
+sf["step_down"] = function(wnd) wnd:next(1); end
+sf["step_left"] = function(wnd)	wnd:prev(); end
+sf["step_right"] = function(wnd) wnd:next(); end
+sf["destroy"] = function(wnd) wnd:destroy(); end
 
 for i=1,10 do
-	gf["switch_ws" .. tostring(i)] = function()
-		displays.main:switch_ws(i);
-	end
-
-	gf["assign_ws" .. tostring(i)] = function()
-		if (displays.main.selected) then
-			displays.main.selected:assign_ws(i);
-		end
-	end
+	gf["switch_ws" .. tostring(i)] = function() displays.main:switch_ws(i); end
+	sf["assign_ws" .. tostring(i)] = function(wnd) wnd:assign_ws(i); end
 end
-
-return gf;

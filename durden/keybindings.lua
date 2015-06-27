@@ -76,8 +76,8 @@ tbl["m1_m2_p"] = "dump_state";
 end
 
 --
--- we assume that all relevant input related functions go
--- through this one as it is used to map track meta_ key state
+-- We assume that all relevant input related functions go
+-- through this one as it is used to map track meta_ key state.
 --
 local meta_1_state = false;
 local meta_2_state = false;
@@ -100,11 +100,12 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 	local lutsym = "" .. (meta_1_state == true and "m1_" or "") ..
 		(meta_2_state == true and "m2_" or "") .. keysym;
 
-	if (tbl[lutsym] and GLOBAL_FUNCTIONS[tbl[lutsym]]) then
+	if (tbl[lutsym]) then
 		if (iotbl.active) then
-			GLOBAL_FUNCTIONS[tbl[lutsym]]();
+			dispatch_symbol(tbl[lutsym]);
 		end
 		return true;
 	end
+
 	return false;
 end
