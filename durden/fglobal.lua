@@ -119,6 +119,7 @@ gf["vtabtile"] = function()
 end
 
 -- functions that require a selected window
+-- missing swap-right/swap-left, working floating, mouse actions
 
 sf["fullscreen"] = function(wnd)
 	(wnd.fullscreen and wnd.space.tile or wnd.space.fullscreen)(wnd.space);
