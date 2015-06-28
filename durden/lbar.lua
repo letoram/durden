@@ -17,10 +17,13 @@ local function inp_str(ictx, ul)
 		ictx.inp.msg, ictx.inp.chofs, ictx.inp.chofs + (ul and ul or ictx.inp.ulim) );
 end
 
--- Build chain of single selectable strings, move and resize the marker
--- to each of them, chain their positions to an anchor so they are easy
--- to delete, and track an offset for drawing. We rebuild / redraw each
--- cursor modification to ignore scrolling and tracking details.
+-- Build chain of single selectable strings, move and resize the marker to each
+-- of them, chain their positions to an anchor so they are easy to delete, and
+-- track an offset for drawing. We rebuild / redraw each cursor modification to
+-- ignore scrolling and tracking details.
+--
+-- Set can contain the set of strings or a table of [colstr, selcolstr, text]
+--
 local function update_completion_set(wm, ctx, set)
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
@@ -67,10 +70,14 @@ local function update_completion_set(wm, ctx, set)
 
 	for i=ctx.cofs,#set do
 		local txt;
-		if (i == ctx.csel) then
-			txt = gconfig_get("lbar_seltextstr")..set[i];
+		if (type(set[i]) == "table") then
+			txt = set[i][i == ctx.csel and 2 or 1] .. set[i][3];
 		else
-			txt = gconfig_get("lbar_textstr")..set[i];
+			if (i == ctx.csel) then
+				txt = gconfig_get("lbar_seltextstr") .. set[i];
+			else
+				txt = gconfig_get("lbar_textstr") .. set[i];
+			end
 		end
 
 		local w, h = text_dimensions(txt);
@@ -162,7 +169,9 @@ local function lbar_input(wm, sym, iotbl)
 		wm.input_lock = nil;
 		if (sym == ictx.accept) then
 			ictx.get_cb(ictx.cb_ctx, ictx.force_completion and
-				ictx.set[ictx.csel] or ictx.inp.msg, true, ictx.set);
+				(type(ictx.set[ictx.csel]) == "table" and ictx.set[ictx.csel][3] or
+				ictx.set[ictx.csel]) or ictx.inp.msg, true, ictx.set
+			);
 		end
 		return;
 	end
