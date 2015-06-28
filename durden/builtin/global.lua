@@ -2,6 +2,19 @@
 -- globally available menus, settings and functions
 --
 
+--
+-- Missing: A lot of the regular options (display, input binding, device
+-- filtering configuration, workspace actions, collapse / switch appl)
+-- Audio Mute / Unmute, Settings, Open command (remoting, vnc,
+-- uri, browse ) + history tracking
+--
+
+--
+-- workspace actions:
+--  list orphans, pop to orphan, monitor, set background, save layout,
+--  rename, layout (tiled, floating, etc.), silence (block alert)
+--
+
 local function global_valid01_uri(str)
 	return true;
 end
@@ -144,9 +157,7 @@ local toplevel = {
 		label = "System",
 		kind = "action",
 		submenu = true,
-		handler = function(ctx, value)
-			warning("spawn system menu");
-		end
+		handler = show_systemmenu
 	},
 };
 

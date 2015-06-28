@@ -12,7 +12,7 @@
 -- special function keys connected to UI components are set in gconf
 --
 
-local meta_1 = "MENU";
+local meta_1 = "RMETA";
 local meta_2 = "RSHIFT";
 
 local tbl = {};

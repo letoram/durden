@@ -313,7 +313,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 		end
 
 		if (tgt.kind == "action") then
-			return tgt.handler(ctx, instr);
+			return tgt.handler(ctx.handler, instr);
 		end
 
 		return;
@@ -323,10 +323,12 @@ local function lbar_fun(ctx, instr, done, lastv)
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
 
+-- match empty or case-insensitive
 	for i,v in ipairs(ctx.list) do
 		if (instr == nil or string.len(instr) == 0 or
-			string.sub(v.label, 1, string.len(instr)) == instr) then
-			if (not v.eval or v.eval(ctx, instr)) then
+			string.lower(string.sub(v.label, 1, string.len(instr))) ==
+			string.lower(instr)) then
+			if (v.eval == nil or v.eval(ctx, instr)) then
 				if (v.submenu) then
 					table.insert(res, {mlbl, msellbl, v.label});
 				else

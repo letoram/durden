@@ -11,15 +11,21 @@ local function shared_valid01_float(inv)
 end
 
 local function shared_reset(wnd)
-	reset_target(wnd.source);
+	if (wnd.source) then
+		reset_target(wnd.source);
+	end
 end
 
 local function shared_resume(wnd)
-	resume_target(wnd.source);
+	if (wnd.source) then
+		resume_target(wnd.source);
+	end
 end
 
 local function shared_suspend(wnd)
-	suspend_target(wnd.source);
+	if (wnd.source) then
+		suspend_target(wnd.source);
+	end
 end
 
 local shared_settings = {
@@ -54,37 +60,58 @@ local shared_settings = {
 
 -- Will be presented in order, not sorted. Make sure they come in order
 -- useful:safe -> uncommon:dangerous to avoid the change of some quick
--- mispress doing something damaging.
+-- mispress doing something damaging
 local shared_actions = {
 	{
 		name = "suspend",
 		label = "Suspend",
-		eval = function() return true; end,
-		shared_resume,
+		kind = "action",
+		eval = function(ctx) return true; end,
+		handler = shared_suspend
 	},
 	{
 		name = "suspend",
-		label = "Suspend",
-		eval = function() return true; end,
-		shared_suspend,
+		label = "Resume",
+		kind = "action",
+		eval = function(ctx) return true; end,
+		handler = shared_resume
 	},
 	{
 		name = "reset",
 		label = "Reset",
-		shared_reset,
+		kind = "action",
+		handler = shared_reset
 	},
 };
 
+--
+-- Missing:
+-- Input (local binding / rebinding or call once)
+--  [atype game: frame management,
+--   special filtering,
+--   preaudio,
+--   block opposing,
+--  ]
+-- State Management (if state-size is known)
+-- Advanced (spawn debug)
+-- Clone
+--
+
+-- the handler maneuver is to make sure that the callback that is triggered
+-- matches the format in gfunc/shared so that we can reuse both for scripting
+-- and for menu navigation.
 local function show_shmenu(wnd)
-	if (wnd.dispatch) then
-		launch_menu(wnd.wm, sf, false, "Action:");
-	else
-		launch_menu(wnd.wm, sf, false, "Action:");
-	end
+	local ctx = {
+		list = wnd.dispatch and merge_menu(shared_actions, wnd.dispatch) or
+			shared_actions,
+		handler = wnd
+	};
+
+	launch_menu(wnd.wm, ctx, true, "Action:");
 end
 
 local function show_setmenu(wnd)
-	launch_menu(wnd.wm, shared_settings, false, "Settings:");
+	launch_menu(wnd.wm, shared_settings, true, "Settings:");
 end
 
 register_shared("pause", pausetgt);
