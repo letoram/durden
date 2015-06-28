@@ -289,6 +289,25 @@ function durden_input(iotbl)
 	end
 end
 
+function durden_display_state(action, id)
+	if (action == "added") then
+		if (displays[id] == nil) then
+			displays[id] = {};
+-- find out if there is a known profile for this display, activate
+-- corresponding desired resolution, set mapping, create tiler
+		end
+	elseif (action == "removed") then
+		if (displays[id] == nil) then
+			warning("lost unknown display: " .. tostring(id));
+			return;
+		end
+
+-- sweep workspaces and migrate back to previous display (and toggle
+-- rendertarget output on/off), destroy tiler, save settings,
+-- if workspace slot is occupied, add to "orphan-" list.
+	end
+end
+
 function durden_clock_pulse()
 	displays.main:tick();
 	if (CLOCK % 4 == 0 and control_channel ~= nil) then

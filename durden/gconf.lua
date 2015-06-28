@@ -30,6 +30,7 @@ local defaults = {
 	lbar_textstr = "\\fdefault.ttf,12\\#cccccc ",
 	lbar_labelstr = "\\fdefault.ttf,12\\#00ff00 ",
 	lbar_menulblstr = "\\fdefault.ttf,12\\#ffff00 ",
+	lbar_menulblselstr = "\\fdefault.ttf,12\\#ffff00 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
 	lbar_label_col = {0xff, 0xff, 0x00},

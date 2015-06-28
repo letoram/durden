@@ -10,6 +10,25 @@ local function display_rescan()
 	video_displaymodes();
 end
 
+local function query_synch()
+	local lst = video_synchronization();
+	if (lst) then
+		local res = {};
+-- dynamically populated so we don't expose this globally at the moment
+		for k,v in ipairs(lst) do
+			res[k] = {
+				name = "set_synch_" .. tostring(k),
+				label = v,
+				kind = "action",
+				handler = function(ctx)
+					video_synchronization(v);
+				end
+			};
+		end
+		launch_menu(displays.main, {list = res}, true, "Synchronization:");
+	end
+end
+
 local display_menu = {
 	{
 		name = "list_displays",
@@ -36,6 +55,7 @@ local display_menu = {
 		kind = "action",
 		submenu = true,
 		handler = function(ctx)
+			query_synch();
 		end
 	},
 };
