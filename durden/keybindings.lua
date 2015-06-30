@@ -9,7 +9,9 @@
 -- the output resolves to an entry in GLOBAL_FUNCTIONS or
 -- in a custom per/target config
 --
--- special function keys connected to UI components are set in gconf
+-- special function keys connected to UI components are set in gconf.
+-- These are >static defaults< meaning that they can be overridden at runtime
+-- and saved in the appl- specific database. If so, they take precedence.
 --
 
 local meta_1 = "RMETA";
@@ -75,6 +77,9 @@ if (DEBUGLEVEL > 0) then
 tbl["m1_m2_p"] = "dump_state";
 end
 
+-- the following line can be removed if meta state protection is not needed
+system_load("meta_guard.lua")();
+
 --
 -- We assume that all relevant input related functions go
 -- through this one as it is used to map track meta_ key state.
@@ -82,23 +87,43 @@ end
 local meta_1_state = false;
 local meta_2_state = false;
 
+function dispatch_meta(meta1, meta2)
+	if (meta1) then
+		meta_1 = meta1;
+	end
+
+	if (meta2) then
+		meta_2 = meta2;
+	end
+end
+
 function dispatch_lookup(iotbl, keysym, hook_handler)
+	local metadrop = false;
+
 	if (keysym == meta_1) then
 		meta_1_state = iotbl.active;
-		return true;
+		metadrop = true;
 
 	elseif (keysym == meta_2) then
 		meta_2_state = iotbl.active;
-		return true;
-	end
-
-	if (hook_handler) then
-		hook_handler(displays.main, keysym, iotbl);
-		return true;
+		metadrop = true;
 	end
 
 	local lutsym = "" .. (meta_1_state == true and "m1_" or "") ..
 		(meta_2_state == true and "m2_" or "") .. keysym;
+
+	if (hook_handler) then
+		hook_handler(displays.main, keysym, iotbl, lutsym);
+		return true;
+	end
+
+	if (metadrop) then
+		return true;
+	end
+
+	if (not meta_guard(meta_1_state, meta_2_state)) then
+		return true;
+	end
 
 	if (tbl[lutsym]) then
 		if (iotbl.active) then
