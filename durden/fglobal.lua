@@ -73,6 +73,28 @@ if (DEBUGLEVEL > 0) then
 	end
 end
 
+-- a little messy, but covers binding single- keys for meta 1 and meta 2
+gf["rebind_meta"] = function()
+	tiler_bbar(displays.main,
+			string.format("Press and hold (Meta 1), %s to Abort",
+				gconfig_get("cancel_sym")), true, 80, nil, gconfig_get("cancel_sym"),
+		function(sym, done)
+			if (done) then
+				tiler_bbar(displays.main,
+					string.format("Press and hold (Meta 2), %s to Abort",
+					gconfig_get("cancel_sym")), true, 80, nil, gconfig_get("cancel_sym"),
+					function(sym2, done)
+						if (done) then
+							displays.main:message(
+								string.format("Meta 1,2 set to %s, %s", sym, sym2));
+							dispatch_meta(sym, sym2);
+						end
+				end);
+			end
+		end
+	);
+end
+
 gf["rename_space"] = function()
 	local ictx = displays.main:lbar(function(ctx, instr, done)
 		if (done) then

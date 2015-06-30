@@ -23,11 +23,12 @@ archtypes = {};
 
 function durden()
 -- usual configuration management, gestures, mini UI components etc.
--- will get BINDINGS, ERRNO, SYMTABLE as global lookup tables
+-- will get BINDINGS, SYMTABLE as global lookup tables
 	system_load("gconf.lua")();
 	system_load("mouse.lua")();
 	system_load("suppl.lua")();
 	system_load("lbar.lua")();
+	system_load("bbar.lua")();
 	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("tiler.lua")();
@@ -120,7 +121,7 @@ function spawn_terminal()
 		show_image(vid);
 		target_updatehandler(vid, def_handler);
 	else
-		displays.main:error_message( ERRNO["BROKEN_TERMINAL"] );
+		displays.main:message( "Builtin- terminal support broken" );
 	end
 end
 

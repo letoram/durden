@@ -93,7 +93,7 @@ local shared_actions = {
 --   block opposing,
 --  ]
 -- State Management (if state-size is known)
--- Advanced (spawn debug)
+-- Advanced (spawn debug, autojoin workspace)
 -- Clone
 --
 

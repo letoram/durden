@@ -12,6 +12,7 @@ local defaults = {
 
 -- "generic" UI interaction bindings that work in specialized contexts
 -- (input bar, popups, ...)
+	kbd_repeat = 100,
 	ok_sym = "RETURN",
 	cancel_sym = "ESCAPE",
 	step_next = "UP",

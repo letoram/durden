@@ -1072,6 +1072,9 @@ local function tiler_switchws(wm, ind)
 	end
 end
 
+local function tiler_message(tiler)
+end
+
 function tiler_create(width, height, opts)
 	opts.font_sz = (opts.font_sz ~= nil) and opts.font_sz or 12;
 	opts.font = (opts.font ~= nil) and opts.font or "default.ttf";
@@ -1111,7 +1114,7 @@ function tiler_create(width, height, opts)
 		switch_ws = tiler_switchws,
 		add_window = wnd_create,
 		find_window = tiler_find,
-		error_message = tiler_message,
+		message = tiler_message,
 		update_statusbar = tiler_statusbar_update,
 	};
 	res.width = width;
