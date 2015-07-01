@@ -203,10 +203,10 @@ local function linear_find_vid(table, vid, state)
 	end
 end
 
-local function cached_pick(xpos, ypos, depth, nitems)
+local function cached_pick(xpos, ypos, depth, reverse)
 	if (mouse_lastpick == nil or CLOCK > mouse_lastpick.tick or
 		xpos ~= mouse_lastpick.x or ypos ~= mouse_lastpick.y) then
-		local res = pick_items(xpos, ypos, depth, nitems);
+		local res = pick_items(xpos, ypos, depth, reverse);
 
 		mouse_lastpick = {
 			tick = CLOCK,
