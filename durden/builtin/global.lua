@@ -90,6 +90,47 @@ local function query_exit()
 	}}, true, "Shutdown?");
 end
 
+local function query_reset()
+	launch_menu(displays.main, {list = {
+		{
+			name = "reset_no",
+			label = "No",
+			kind = "action",
+			handler = function() end
+		},
+		{
+			name = "reset_yes",
+			label = "Yes",
+			kind = "action",
+			handler = function() system_collapse(APPLID); end
+		},
+	}}, true, "Reset?");
+end
+
+local function query_dump()
+	local bar = tiler_lbar(displays.main, function(ctx, msg, done, set)
+		if (done) then
+			zap_resource("debug/" .. msg);
+			system_snapshot("debug/" .. msg);
+		end
+		return {};
+	end);
+	bar:set_label("filename (debug/):");
+end
+
+local debug_menu = {
+	{
+		name = "query_dump",
+		label = "Dump State",
+		kind = "action",
+		handler = query_dump
+	}
+};
+
+local function show_debugmenu()
+	launch_menu(displays.main, {list = debug_menu}, true, "Debug:");
+end
+
 local system_menu = {
 	{
 		name = "shutdown",
@@ -97,6 +138,19 @@ local system_menu = {
 		kind = "action",
 		handler = query_exit
 	},
+	{
+		name = "reset",
+		label = "Reset",
+		kind = "action",
+		handler = query_reset
+	},
+	{
+		name = "debug",
+		label = "Debug",
+		kind = "action",
+		submenu = true,
+		handler = show_debugmenu
+	}
 };
 
 local function show_displaymenu()
@@ -165,6 +219,17 @@ local function global_actions()
 	launch_menu(displays.main, {list = toplevel}, true, "Action:");
 end
 
-register_global("display_rescan", display_rescan);
 register_global("global_actions", global_actions);
-register_global("exit", query_exit);
+
+-- audio
+register_global("audio_mute_all", audio_mute);
+
+--display
+register_global("display_rescan", display_rescan);
+register_global("query_synch", display_synch);
+
+--system
+register_global("query_exit", query_exit);
+register_global("exit", shutdown);
+register_global("query_reset", query_reset);
+register_global("reset", function() system_collapse(APPLID); end);

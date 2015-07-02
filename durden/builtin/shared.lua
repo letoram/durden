@@ -11,20 +11,20 @@ local function shared_valid01_float(inv)
 end
 
 local function shared_reset(wnd)
-	if (wnd.source) then
-		reset_target(wnd.source);
+	if (wnd.external) then
+		reset_target(wnd.external);
 	end
 end
 
 local function shared_resume(wnd)
-	if (wnd.source) then
-		resume_target(wnd.source);
+	if (wnd.external) then
+		resume_target(wnd.external);
 	end
 end
 
 local function shared_suspend(wnd)
-	if (wnd.source) then
-		suspend_target(wnd.source);
+	if (wnd.external) then
+		suspend_target(wnd.external);
 	end
 end
 
@@ -51,7 +51,7 @@ local shared_settings = {
 			Trilinear = FILTER_TRILINEAR
 		},
 		handler = function(ctx, value)
-			image_texfilter(ctx.source, value);
+			image_texfilter(ctx.external, value);
 		end
 	},
 -- scaler

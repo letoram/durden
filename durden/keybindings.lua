@@ -14,19 +14,15 @@
 -- and saved in the appl- specific database. If so, they take precedence.
 --
 
-local meta_1 = "RMETA";
+local meta_1 = "MENU";
 local meta_2 = "RSHIFT";
 
 local tbl = {};
 tbl["m1_RETURN"] = "spawn_terminal";
 tbl["m1_m2_DELETE"] = "exit";
 
-if (DEBUGLEVEL > 0) then
-tbl["m1_F1"] = "spawn_test_bar";
-tbl["m1_m2_F1"] = "spawn_test_nobar";
-tbl["m1_m2_F10"] = "spawn_test_crash";
-tbl["m1_m2_F11"] = "spawn_test_collapse";
-end
+tbl["m1_F1"] = "debug_testwnd_bar";
+tbl["m1_m2_F1"] = "debug_testwnd_nobar";
 
 tbl["m1_g"] = "global_actions";
 tbl["m1_m2_g"] = "workspace_actions";
@@ -43,9 +39,10 @@ tbl["m1_m2_LEFT"] = "shrink_h";
 tbl["m1_m2_RIGHT"] = "grow_h";
 tbl["m1_m2_UP"] = "shrink_v";
 tbl["m1_m2_DOWN"] = "grow_v";
-tbl["m1_f"] = "fullscreen";
+tbl["m1_m2_f"] = "fullscreen";
 tbl["m1_e"] = "tabtile";
 tbl["m1_r"] = "vtabtile";
+tbl["m1_f"] = "float";
 tbl["m1_TAB"] = "context_popup";
 tbl["m1_m"] = "mergecollapse";
 tbl["m1_1"] = "switch_ws1";
