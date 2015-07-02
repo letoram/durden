@@ -211,7 +211,7 @@ function def_handler(source, stat)
 
 	if (stat.kind == "resized") then
 		wnd.space:resize();
-		image_set_txcos_default(wnd.source, stat.origo_ll == true);
+		image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
 	elseif (stat.kind == "message") then
 		wnd:set_message(stat.v, gconfig_get("msg_timeout"));
 	elseif (stat.kind == "terminated") then
@@ -282,7 +282,7 @@ function durden_input(iotbl)
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
 			local sel = displays.main.selected;
-			if (sel and valid_vid(sel.source, TYPE_FRAMESERVER)) then
+			if (sel and valid_vid(sel.external, TYPE_FRAMESERVER)) then
 -- possible injection site for higher level inputs
 				target_input(sel.external, iotbl);
 			end

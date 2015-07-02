@@ -60,6 +60,7 @@ local mouse_handlers = {
 	out   = {},
   drag  = {},
 	press = {},
+	button = {},
 	release = {},
 	drop  = {},
 	hover = {},
@@ -479,7 +480,7 @@ end
 -- button update at once for backwards compatibility.
 --
 function mouse_button_input(ind, active)
-	if (ind < 1 or ind > 3) then
+	if (ind < 1 or ind > #mstate.btns) then
 		return;
 	end
 
@@ -495,6 +496,15 @@ function mouse_button_input(ind, active)
 				and image_tracetag(v) or "unknown"));
 		end
 		print("\n");
+	end
+
+	if (#mstate.handlers.button > 0) then
+		for key, val in pairs(hists) do
+			local res = linear_find_vid(mstate.handlers.button, val, "button");
+			if (res) then
+				res:button(val, ind, active, mstate.x, mstate.y);
+			end
+		end
 	end
 
 	if (ind == 1 and active ~= mstate.btns[1]) then

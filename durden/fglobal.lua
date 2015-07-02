@@ -61,13 +61,24 @@ function dispatch_symbol(sym)
 	end
 end
 
-if (DEBUGLEVEL > 0) then
-	gf["spawn_test_nobar"] = function() spawn_test(1); end
-	gf["spawn_test_bar"] = function() spawn_test(); end
-	gf["dump_state"] = function()
-		system_snapshot("state.dump");
+gf["debug_testwnd_nobar"] = function()
+	if (DEBUGLEVEL > 0) then
+		spawn_test(1);
 	end
-	gf["random_alert"] = function()
+end
+
+gf["debug_testwnd_bar"] = function()
+	if (DEBUGLEVEL > 0) then
+		spawn_test();
+	end
+end
+
+gf["debug_dump_state"] = function()
+	system_snapshot("state.dump");
+end
+
+gf["debug_random_alert"] = function()
+	if (DEBUGLEVEL > 0) then
 		local ind = math.random(1, #displays.main.windows);
 		displays.main.windows[ind]:alert();
 	end
@@ -129,6 +140,14 @@ gf["tabtile"] = function()
 		end
 	end
 end
+
+gf["float"] = function()
+	local wspace = displays.main.spaces[displays.main.space_ind];
+	if (wspace) then
+		wspace:float();
+	end
+end
+
 gf["vtabtile"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then

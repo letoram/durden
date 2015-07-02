@@ -113,6 +113,10 @@ local function wnd_destroy(wnd)
 		wnd.space:tile();
 	end
 
+	if (wnd.mouse_handler) then
+		mouse_droplistener(wnd.mouse_handler);
+	end
+
 -- mark a new node as selected
 	if (#wnd.children > 0) then
 		wnd.children[1]:select();
@@ -270,10 +274,10 @@ local function switch_fullscreen(space, to)
 
 	workspace_inactivate(space);
 	if (to) then
-		image_mask_clear(space.selected.source, MASK_OPACITY);
+		image_mask_clear(space.selected.canvas, MASK_OPACITY);
 		hide_image(space.wm.statusbar);
 	else
-		image_mask_set(space.selected.source, MASK_OPACITY);
+		image_mask_set(space.selected.canvas, MASK_OPACITY);
 		hide_image(space.selected.anchor);
 	end
 end
@@ -288,7 +292,7 @@ local function drop_fullscreen(space, swap)
 	local dw = space.selected;
 	space.locked = false;
 	dw.fullscreen = nil;
-	image_mask_set(dw.source, MASK_OPACITY);
+	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
 end
 
@@ -297,10 +301,8 @@ local function drop_tab(space)
 
 -- new mode will resize so don't worry about that, just relink
 	for k,v in ipairs(res) do
-		if (v.titlebar) then
-			link_image(v.titlebar, v.anchor);
-			move_image(v.titlebar, 1, 1);
-		end
+		link_image(v.titlebar, v.anchor);
+		move_image(v.titlebar, 1, 1);
 	end
 
 	space.mode_hook = nil;
@@ -312,12 +314,10 @@ end
 local function switch_tab(space, to)
 	local lst = linearize(space);
 	for k,v in ipairs(lst) do
-		if (v.titlebar) then
-			if (to) then
-				show_image(v.titlebar);
-			else
-				hide_image(v.titlebar);
-			end
+		if (to) then
+			show_image(v.titlebar);
+		else
+			hide_image(v.titlebar);
 		end
 	end
 	if (space.selected) then
@@ -335,10 +335,8 @@ local function drop_float(space, swap)
 end
 
 local function reassign_tab(space, wnd)
-	if (wnd.titlebar) then
-		link_image(wnd.titlebar, wnd.anchor);
-		move_image(wnd.titlebar, 1, 1);
-	end
+	link_image(wnd.titlebar, wnd.anchor);
+	move_image(wnd.titlebar, 1, 1);
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -362,12 +360,10 @@ local function set_tab(space)
 		v:resize(space.wm.width, space.wm.client_height - 3);
 		move_image(v.anchor, 0, 0);
 		hide_image(v.anchor);
-		if (v.titlebar) then
-			link_image(v.titlebar, space.wm.anchor);
-			move_image(v.titlebar, ofs, 1);
-			resize_image(v.titlebar, fairw, tbar_sz);
-			ofs = ofs + fairw;
-		end
+		link_image(v.titlebar, space.wm.anchor);
+		move_image(v.titlebar, ofs, 1);
+		resize_image(v.titlebar, fairw, tbar_sz);
+		ofs = ofs + fairw;
 	end
 
 	workspace_inactivate(space);
@@ -395,12 +391,10 @@ local function set_vtab(space)
 	for k,v in ipairs(lst) do
 		v:resize(space.wm.width, cl_area);
 		move_image(v.anchor, 0, ypos);
-		if (v.titlebar) then
-			link_image(v.titlebar, space.wm.anchor);
-			resize_image(v.titlebar, space.wm.width, tbar_sz);
-			move_image(v.titlebar, 0, ofs);
-			ofs = ofs + tbar_sz;
-		end
+		link_image(v.titlebar, space.wm.anchor);
+		resize_image(v.titlebar, space.wm.width, tbar_sz);
+		move_image(v.titlebar, 0, ofs);
+		ofs = ofs + tbar_sz;
 	end
 
 	space.mode_hook = drop_tab;
@@ -426,14 +420,19 @@ local function set_fullscreen(space)
 	space.locked = true;
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
-	image_mask_clear(dw.source, MASK_OPACITY);
+	image_mask_clear(dw.canvas, MASK_OPACITY);
 	dw:resize(dw.wm.width, dw.wm.height);
 	move_image(dw.anchor, 0, 0);
 end
 
 local function set_float(space)
-	show_image(wm.statusbar);
-	space.mode_hook = drop_float;
+-- by default we don't change dimensions on the switch
+	if (space.mode_hook == drop_float) then
+		space.mode_hook = drop_float;
+	else
+		level_resize(space, 0, 0, space.wm.width,
+			space.wm.height - gconfig_get("sbar_sz") - 1);
+	end
 end
 
 local function set_tile(space)
@@ -475,7 +474,7 @@ end
 
 local function workspace_set(space, mode)
 	if (mode == space.mode or (mode ~= "fullscreen" and mode ~= "tile"
-		and mode ~= "tab") and mode ~= "vtab") then
+		and mode ~= "tab") and mode ~= "vtab" and mode ~= "float") then
 		return;
 	end
 
@@ -616,15 +615,15 @@ local function wnd_resize(wnd, neww, newh)
 	wnd.width = neww;
 	wnd.height = newh;
 
-	local props = image_storage_properties(wnd.source);
+	local props = image_storage_properties(wnd.canvas);
 
 -- to save space for border width, statusbar and other properties
 	if (not wnd.fullscreen) then
-		move_image(wnd.source, wnd.pad_left, wnd.pad_top);
+		move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 		neww = neww - wnd.pad_left - wnd.pad_right;
 		newh = newh - wnd.pad_top - wnd.pad_bottom;
 	else
-		move_image(wnd.source, 0, 0);
+		move_image(wnd.canvas, 0, 0);
 	end
 
 	if (neww <= 0 or newh <= 0) then
@@ -639,7 +638,7 @@ local function wnd_resize(wnd, neww, newh)
 	end
 
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
-		wnd.scalemode, wnd.source, props, neww, newh);
+		wnd.scalemode, wnd.canvas, props, neww, newh);
 
 -- good spot to add post-processing filters and upscalers
 
@@ -837,10 +836,148 @@ local function wnd_title(wnd, message)
 	link_image(message, wnd.titlebar);
 	wnd.title_temp = message;
 	image_clip_on(message, CLIP_SHALLOW);
+	image_mask_set(message, MASK_UNPICKABLE);
 	resize_image(wnd.titlebar, wnd.width - 2, gconfig_get("tbar_sz"));
 	image_inherit_order(message, 1);
 	move_image(message, 1, 1);
 	show_image(message);
+end
+
+local function wnd_mouseown(ctx, vid, event)
+	local wnd = ctx.wnd;
+	return vid == wnd.canvas or vid == wnd.titlebar;
+end
+
+local function convert_mouse_xy(wnd, x, y)
+-- note, this should really take viewport into account (if provided), when
+-- doing so, move this to be part of fsrv-resize and manual resize as this is
+-- rather wasteful.
+	local res = {};
+	local sprop = image_storage_properties(wnd.external);
+	local aprop = image_surface_resolve_properties(wnd.canvas);
+	local lx = x - aprop.x;
+	local ly = y - aprop.y;
+	res[1] = 0;
+	res[2] = 0;
+	res[3] = math.ceil(lx * (aprop.width / sprop.width) - 0.5);
+	res[4] = math.ceil(ly * (aprop.height / sprop.height) - 0.5);
+
+	if (wnd.last_ms) then
+		res[1] = wnd.last_ms[1] - res[3];
+		res[2] = wnd.last_ms[2] - res[4];
+	else
+		wnd.last_ms = {};
+	end
+
+	wnd.last_ms[1] = res[3];
+	wnd.last_ms[2] = res[4];
+	return res;
+end
+
+local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
+	if (vid == ctx.wnd.canvas and
+		valid_vid(ctx.wnd.external, TYPE_FRAMESERVER)) then
+		local iotbl = {
+			kind = "digital",
+			source = "mouse",
+			active = pressed,
+			devid = 0,
+			subid = ind
+		};
+		if (ctx.wnd.input_tag) then
+			iotbl = ctx.wnd.input_tag(iotbl);
+		end
+		target_input(ctx.wnd.external, iotbl);
+	end
+end
+
+local function wnd_mouseclick(ctx, vid)
+-- order anchor to front
+end
+
+local function wnd_mouserelease(ctx, vid)
+	if (vid == ctx.wnd.canvas) then
+-- send digital release to target input
+	end
+end
+
+-- need to take into account that the surface may be scaled
+local function wnd_mousemotion(ctx, vid, x, y)
+	local wnd = ctx.wnd;
+
+	if (vid == wnd.canvas and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		local mv = convert_mouse_xy(wnd, x, y);
+		local iotbl = {
+			kind = "analog",
+			source = "mouse",
+			devid = 0,
+			subid = 0,
+			samples = {mv[1], mv[2]}
+		};
+-- rate-limit mouse event propagation to a pair/tick unless toggled
+		if (not wnd.rate_unlimited and wnd.last_ms.clock == CLOCK) then
+			return;
+		end
+		wnd.last_ms.clock = CLOCK;
+		if (wnd.input_tag) then
+			iotbl = wnd.input_tag(iotbl);
+		end
+		target_input(wnd.external, iotbl);
+		iotbl.subid = 1;
+		iotbl.samples[1] = mv[3];
+		iotbl.samples[2] = mv[4];
+		if (wnd.input_tag) then
+			iotbl = wnd.input_tag(iotbl);
+		end
+		target_input(wnd.external, iotbl);
+	end
+end
+
+local function wnd_mousedrag(ctx, vid, dx, dy)
+	local wnd = ctx.wnd;
+-- drag on titlebar == move, drag on border == resize
+	if (vid == wnd.titlebar and wnd.space.mode == "float") then
+		nudge_image(wnd.anchor, dx, dy);
+	end
+end
+
+local function wnd_mousedrop(ctx, vid)
+-- reset cursor state
+end
+
+local function wnd_mouseover(ctx, vid)
+-- focus follows mouse
+	if (ctx.wnd.wm.selected ~= ctx.wnd) then
+		ctx.wnd:select();
+	end
+
+	if (vid == ctx.wnd.canvas) then
+-- if we have a custom cursor defined, switch to that one
+	end
+end
+
+local function wnd_mouseout(ctx, vid)
+	if (vid == ctx.wnd.canvas) then
+-- switch to default cursor
+	end
+end
+
+seqn = 1;
+local function add_mousehandler(wnd)
+	local mh = {
+		own = wnd_mouseown,
+		button = wnd_mousebutton,
+		release = wnd_mouserelease,
+		motion = wnd_mousemotion,
+		drag = wnd_mousedrag,
+		over = wnd_mouseover,
+		out = wnd_mouseout,
+		name = "wnd_mouseh" .. tostring(seqn);
+	};
+	seqn = seqn + 1;
+	wnd.mouse_handler = mh;
+	mh.wnd = wnd;
+	mouse_addlistener(mh, {"release","button","motion","drag","over","out"});
 end
 
 local function wnd_alert(wnd)
@@ -867,6 +1004,7 @@ local function wnd_create(wm, source, opts)
 		border = fill_surface(1, 1, 255, 255, 255),
 		titlebar = fill_surface(1,
 			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
+		canvas = source,
 		children = {},
 		pad_left = 1,
 		pad_right = 1,
@@ -894,18 +1032,17 @@ local function wnd_create(wm, source, opts)
 		grow = wnd_grow,
 		name = "wnd_" .. tostring(ent_count);
 	};
+
 	ent_count = ent_count + 1;
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");
-
-	res.source = source;
+	image_tracetag(res.canvas, "wnd_canvas");
 	res.wm = wm;
 
 -- initially, titlebar stays hidden
 	link_image(res.titlebar, res.anchor);
 	image_inherit_order(res.titlebar, true);
 	move_image(res.titlebar, 1, 1);
-
 	if (wm.spaces[wm.space_ind] == nil) then
 		wm.spaces[wm.space_ind] = create_workspace(wm);
 		wm:update_statusbar();
@@ -914,16 +1051,17 @@ local function wnd_create(wm, source, opts)
 	local space = wm.spaces[wm.space_ind];
 	image_inherit_order(res.anchor, true);
 	image_inherit_order(res.border, true);
-	image_inherit_order(source, true);
+	image_inherit_order(res.canvas, true);
 
-	link_image(source, res.anchor);
+	link_image(res.canvas, res.anchor);
 	link_image(res.border, res.anchor);
 
-	image_shader(res.border, "border_inact");
-	link_image(source, res.anchor);
-	order_image(res.border, 1);
+	order_image(res.titlebar, 1);
+	order_image(res.canvas, 1);
 
-	show_image({res.border, source});
+	image_shader(res.border, "border_inact");
+	link_image(res.canvas, res.anchor);
+	show_image({res.border, res.canvas});
 
 	if (not wm.selected or wm.selected.space ~= space) then
 		table.insert(space.children, res);
@@ -952,6 +1090,11 @@ local function wnd_create(wm, source, opts)
 		image_shader(res.border, "border_inact");
 		image_sharestorage(res.wm.border_color, res.border);
 	end
+
+	if (not opts.block_mouse) then
+		add_mousehandler(res);
+	end
+
 	return res;
 end
 
@@ -965,7 +1108,7 @@ end
 
 local function tiler_find(wm, source)
 	for i=1,#wm.windows do
-		if (wm.windows[i].source == source) then
+		if (wm.windows[i].canvas == source) then
 			return wm.windows[i];
 		end
 	end
