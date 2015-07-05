@@ -9,6 +9,9 @@ local defaults = {
 	transition_time = 10,
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
+	borderw = 2,
+
+	mouse_focus = true,
 
 -- "generic" UI interaction bindings that work in specialized contexts
 -- (input bar, popups, ...)

@@ -240,7 +240,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	show_image(bar);
 	link_image(bar, wm.anchor);
 	image_inherit_order(bar, true);
-	order_image(bar, 10);
+	order_image(bar, wm:overlay_order());
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
