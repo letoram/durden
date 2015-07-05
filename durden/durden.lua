@@ -29,7 +29,6 @@ function durden()
 	system_load("suppl.lua")();
 	system_load("lbar.lua")();
 	system_load("bbar.lua")();
-	system_load("popup_menu.lua")();
 	system_load("keybindings.lua")();
 	system_load("tiler.lua")();
 
@@ -50,7 +49,7 @@ function durden()
 
 	displays.main = tiler_create(VRESW, VRESH, {});
 	SYMTABLE = system_load("symtable.lua")();
-	mouse_setup_native(load_image("cursor.png"), 1, 1);
+	mouse_setup_native(load_image("cursor/default.png"), 0, 0);
 
 -- dropping this call means that only controlled invocation is possible
 -- (i.e. no non-authoritative connections)
@@ -65,6 +64,15 @@ function durden()
 		warning("control channel active (durden_cmd)");
 	end
 
+	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
+	mouse_add_cursor("grabhint", load_image("cursor/grabhint.png"), 0, 0); --, 7, 10);
+	mouse_add_cursor("rz_diag_l", load_image("cursor/rz_diag_l.png"), 0, 0); --, 6, 5);
+	mouse_add_cursor("rz_diag_r", load_image("cursor/rz_diag_r.png"), 0, 0); -- , 6, 6);
+	mouse_add_cursor("rz_down", load_image("cursor/rz_down.png"), 0, 0); -- 5, 13);
+	mouse_add_cursor("rz_left", load_image("cursor/rz_left.png"), 0, 0); -- 0, 5);
+	mouse_add_cursor("rz_right", load_image("cursor/rz_right.png"), 0, 0); -- 13, 5);
+	mouse_add_cursor("rz_up", load_image("cursor/rz_up.png"), 0, 0); -- 5, 0);
+
 	register_global("spawn_terminal", spawn_terminal);
 	register_global("launch_bar", query_launch);
 end
@@ -76,7 +84,8 @@ end
 test_gc = 0;
 function spawn_test(bar)
 	local img = fill_surface(math.random(200, 600), math.random(200, 600),
-		math.random(64, 255), math.random(64, 255), math.random(64, 255));
+		math.random(64, 255), math.random(64, 255), math.random(64, 255),
+		VRESW * 0.1, VRESH * 0.1);
 	show_image(img);
 
 	local wnd = displays.main:add_window(img, {scalemode = "stretch"});

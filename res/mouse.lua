@@ -85,7 +85,7 @@ local mstate = {
 	accel_x      = 1,
 	accel_y      = 1,
 	dblclickstep = 12, -- maximum number of ticks between clicks for dblclick
-	drag_delta   = 8,  -- wiggle-room for drag
+	drag_delta   = 4,  -- wiggle-room for drag
 	hover_ticks  = 30, -- time of inactive cursor before hover is triggered
 	hover_thresh = 12, -- pixels movement before hover is released
 	click_timeout= 14; -- maximum number of ticks before we won't emit click
@@ -101,8 +101,8 @@ local mstate = {
 	min_y = 0,
 	max_x = VRESW,
 	max_y = VRESH,
-	hotspot_dx = 0,
-	hotspot_dy = 0
+	hotspot_x = 0,
+	hotspot_y = 0
 };
 
 local cursors = {
@@ -253,7 +253,7 @@ function mouse_destroy()
 	mstate.accel_x = 1;
 	mstate.accel_y = 1;
 	mstate.dblclickstep = 6;
-	mstate.drag_delta = 8;
+	mstate.drag_delta = 4;
 	mstate.hover_ticks = 30;
 	mstate.hover_thresh = 12;
 	mstate.counter = 0;
@@ -469,9 +469,9 @@ local function lmbhandler(hists, press)
 			end
 		end
 
-		mstate.counter   = 0;
-		mstate.predrag   = nil;
-		mstate.drag      = nil;
+		mstate.counter = 0;
+		mstate.predrag = nil;
+		mstate.drag = nil;
 	end
 end
 
@@ -573,17 +573,8 @@ function mouse_input(x, y, state, noinp)
 		return;
 	end
 
-	for i=1,#hists do
-		if (linear_find(mstate.cur_over, hists[i]) == nil) then
-			table.insert(mstate.cur_over, hists[i]);
-			local res = linear_find_vid(mstate.handlers.over, hists[i], "over");
-			if (res) then
-				res:over(hists[i], mstate.x, mstate.y);
-			end
-		end
-	end
-
--- drop ones no longer selected
+-- drop ones no longer selected, do out before over as many handlers will
+-- do something that is overwritten by the following over event
 	for i=#mstate.cur_over,1,-1 do
 		if (not linear_ifind(hists, mstate.cur_over[i])) then
 			local res = linear_find_vid(mstate.handlers.out,mstate.cur_over[i],"out");
@@ -600,13 +591,26 @@ function mouse_input(x, y, state, noinp)
 		end
 	end
 
-	if (mstate.predrag) then
-			mstate.predrag.count = mstate.predrag.count -
-				(math.abs(x) + math.abs(y));
+	for i=1,#hists do
+		if (linear_find(mstate.cur_over, hists[i]) == nil) then
+			table.insert(mstate.cur_over, hists[i]);
+			local res = linear_find_vid(mstate.handlers.over, hists[i], "over");
+			if (res) then
+				res:over(hists[i], mstate.x, mstate.y);
+			end
+		end
+	end
 
-		if (mstate.predrag.count <= 0) then
+	if (mstate.predrag) then
+		x, y = mouse_xy();
+		local dx = math.abs(mstate.press_x - x);
+		local dy = math.abs(mstate.press_y - y);
+		local dist = math.sqrt(dx * dx + dy * dy);
+
+		if (dist >= mstate.predrag.count) then
 			mstate.drag = mstate.predrag;
 			mstate.predrag = nil;
+			mouse_drag(x - mstate.press_x, y - mstate.press_y);
 		end
 	end
 
@@ -733,6 +737,14 @@ function mouse_switch_cursor(label)
 		resize_image(mstate.cursor, ct.width, ct.height);
 	end
 
+	local hsdx = mstate.hotspot_x - ct.hotspot_x;
+	local hsdy = mstate.hotspot_y - ct.hotspot_y;
+
+-- offset current position (as that might've triggered the event that
+-- incited the caller to switch cursor by the change in label
+
+	mstate.x = mstate.x + hsdx;
+	mstate.y = mstate.y + hsdy;
 	mstate.hotspot_x = ct.hotspot_x;
 	mstate.hotspot_y = ct.hotspot_y;
 end
