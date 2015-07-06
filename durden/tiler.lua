@@ -192,7 +192,7 @@ local function wnd_deselect(wnd)
 
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
-	image_sharestorage(wnd.wm.border_color, wnd.titlebar);
+	image_sharestorage(wnd.wm.tbar_color, wnd.titlebar);
 end
 
 local function wnd_select(wnd, source)
@@ -207,7 +207,7 @@ local function wnd_select(wnd, source)
 
 	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
-	image_sharestorage(wnd.wm.active_border_color, wnd.titlebar);
+	image_sharestorage(wnd.wm.active_tbar_color, wnd.titlebar);
 
 	wnd.space.previous = wnd.space.selected;
 	wnd.wm.selected = wnd;
@@ -319,7 +319,8 @@ local function drop_tab(space)
 	for k,v in ipairs(res) do
 		link_image(v.titlebar, v.anchor);
 		order_image(v.titlebar, 2);
-		move_image(v.titlebar, 1, 1);
+		show_image(v.border);
+		move_image(v.titlebar, v.border_w, v.border_w);
 	end
 
 	space.mode_hook = nil;
@@ -350,7 +351,7 @@ local function drop_float(space, swap)
 	if (space.background) then
 		hide_image(space.background);
 	end
-
+	space.in_float = false;
 	reorder_space(space);
 end
 
@@ -360,7 +361,7 @@ end
 local function reassign_tab(space, wnd)
 	link_image(wnd.titlebar, wnd.anchor);
 	order_image(wnd.titlebar, 2);
-	move_image(wnd.titlebar, 1, 1);
+	move_image(wnd.titlebar, wnd.border_w, wnd.border_w);
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -376,17 +377,18 @@ local function set_tab(space)
 	space.switch_hook = switch_tab;
 	space.reassign_hook = reassign_tab;
 
-	local fairw = math.floor(space.wm.width / #lst);
-	local tbar_sz = gconfig_get("tbar_sz");
-	local ofs = 1;
+	local fairw = math.ceil(space.wm.width / #lst);
+	local tbar_sz = gconfig_get("tbar_sz") + gconfig_get("borderw");
+	local ofs = 0;
 
 	for k,v in ipairs(lst) do
 		v:resize(space.wm.width, space.wm.client_height - 3);
 		move_image(v.anchor, 0, 0);
 		hide_image(v.anchor);
+		hide_image(v.border);
 		link_image(v.titlebar, space.wm.anchor);
 		order_image(v.titlebar, 2);
-		move_image(v.titlebar, ofs, 1);
+		move_image(v.titlebar, ofs, 0);
 		resize_image(v.titlebar, fairw, tbar_sz);
 		ofs = ofs + fairw;
 	end
@@ -406,8 +408,8 @@ local function set_vtab(space)
 	end
 
 	local tbar_sz = gconfig_get("tbar_sz");
-	local ypos = (#lst - 1) * tbar_sz;
-	local cl_area = space.wm.client_height - ypos - 3;
+	local ypos = #lst * tbar_sz;
+	local cl_area = space.wm.client_height - ypos;
 	if (cl_area < 1) then
 		return;
 	end
@@ -416,10 +418,12 @@ local function set_vtab(space)
 	for k,v in ipairs(lst) do
 		v:resize(space.wm.width, cl_area);
 		move_image(v.anchor, 0, ypos);
+		move_image(v.canvas, 0, 0);
+		hide_image(v.border);
 		link_image(v.titlebar, space.wm.anchor);
 		order_image(v.titlebar, 2);
 		resize_image(v.titlebar, space.wm.width, tbar_sz);
-		move_image(v.titlebar, 0, ofs);
+		move_image(v.titlebar, 0, (k-1) * tbar_sz);
 		ofs = ofs + tbar_sz;
 	end
 
@@ -507,8 +511,7 @@ local function workspace_destroy(space)
 end
 
 local function workspace_set(space, mode)
-	if (mode == space.mode or (mode ~= "fullscreen" and mode ~= "tile"
-		and mode ~= "tab") and mode ~= "vtab" and mode ~= "float") then
+	if (space_handlers[mode] == nil or mode == space.mode) then
 		return;
 	end
 
@@ -647,6 +650,11 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	return outw, outh;
 end
 
+local function wnd_effective_resize(wnd, neww, newh, force)
+	wnd:resize(neww + wnd.pad_left + wnd.pad_right,
+		newh + wnd.pad_top + wnd.pad_bottom);
+end
+
 local function wnd_resize(wnd, neww, newh, force)
 	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
@@ -654,7 +662,7 @@ local function wnd_resize(wnd, neww, newh, force)
 	resize_image(wnd.anchor, neww, newh);
 	resize_image(wnd.border, neww, newh);
 
-	resize_image(wnd.titlebar, neww,
+	resize_image(wnd.titlebar, neww - wnd.border_w * 2,
 		image_surface_properties(wnd.titlebar).height);
 
 	wnd.width = neww;
@@ -683,7 +691,7 @@ local function wnd_resize(wnd, neww, newh, force)
 	end
 
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
-		wnd.scalemode, wnd.canvas, props, neww, newh);
+		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
 
 -- good spot to add post-processing filters and upscalers
 
@@ -839,6 +847,7 @@ local function wnd_grow(wnd, w, h)
 	end
 
 	if (wnd.space.mode == "float") then
+		wnd:resize(wnd.width + (VRESW * w), wnd.height + (VRESH * h));
 		return;
 	end
 
@@ -898,7 +907,8 @@ local function wnd_title(wnd, message)
 	wnd.title_temp = message;
 	image_clip_on(message, CLIP_SHALLOW);
 	image_mask_set(message, MASK_UNPICKABLE);
-	resize_image(wnd.titlebar, wnd.width - 2, gconfig_get("tbar_sz"));
+	resize_image(wnd.titlebar,
+		wnd.width - wnd.border_w * 2, gconfig_get("tbar_sz"));
 	image_inherit_order(message, 1);
 	move_image(message, 1, 1);
 	show_image(message);
@@ -1045,9 +1055,12 @@ local function wnd_mousedrag(ctx, vid, dx, dy)
 	if (vid == wnd.titlebar) then
 		nudge_image(wnd.anchor, dx, dy);
 		order_image(wnd.anchor, #wnd.wm.windows * WND_RESERVED + WND_RESERVED);
+		mouse_switch_cursor("drag", 0);
+
 	elseif (vid == wnd.border) then
 		dx = dx * ctx.mask[1];
 		dy = dy * ctx.mask[2];
+		mouse_switch_cursor(ctx.cursor);
 		dx = (wnd.width + dx < wnd.wm.min_width) and 0 or dx;
 		dy = (wnd.height + dy < wnd.wm.min_height) and 0 or dy;
 		wnd:resize(wnd.width + dx, wnd.height + dy);
@@ -1056,9 +1069,9 @@ local function wnd_mousedrag(ctx, vid, dx, dy)
 end
 
 local dir_lut = {
-	ul = {"rz_diag_l", {-1, -1, -1, -1}},
+	ul = {"rz_diag_r", {-1, -1, -1, -1}},
 	 u = {"rz_up", {0, -1, 0, -1}},
-	ur = {"rz_diag_r", {1, -1, 0, -1}},
+	ur = {"rz_diag_l", {1, -1, 0, -1}},
 	 r = {"rz_right", {1, 0, 0, 0}},
 	dr = {"rz_diag_r", {1, 1, 0, 0}},
 	 d = {"rz_down", {0, 1, 0, 0}},
@@ -1146,6 +1159,7 @@ local function wnd_create(wm, source, opts)
 		pad_bottom = bw,
 		width = wm.min_width,
 		height = wm.min_height,
+		border_w = gconfig_get("borderw");
 		effective_w = 0,
 		effective_h = 0,
 		weight = 1.0,
@@ -1157,6 +1171,7 @@ local function wnd_create(wm, source, opts)
 		set_message = wnd_message,
 		set_title = wnd_title,
 		resize = wnd_resize,
+		resize_effective = wnd_effective_resize,
 		select = wnd_select,
 		deselect = wnd_deselect,
 		next = wnd_next,
@@ -1176,7 +1191,7 @@ local function wnd_create(wm, source, opts)
 -- initially, titlebar stays hidden
 	link_image(res.titlebar, res.anchor);
 	image_inherit_order(res.titlebar, true);
-	move_image(res.titlebar, 1, 1);
+	move_image(res.titlebar, bw, bw);
 	if (wm.spaces[wm.space_ind] == nil) then
 		wm.spaces[wm.space_ind] = create_workspace(wm);
 		wm:update_statusbar();
@@ -1230,6 +1245,13 @@ local function wnd_create(wm, source, opts)
 		add_mousehandler(res);
 	end
 
+	if (res.space.mode == "float") then
+		move_image(res.anchor, mouse_xy());
+		res:resize(wm.min_width, wm.min_height);
+	end
+
+	order_image(res.wm.order_anchor,
+		#wm.windows * WND_RESERVED + 2 * WND_RESERVED);
 	return res;
 end
 
@@ -1313,8 +1335,10 @@ local function tiler_statusbar_update(wm, msg, state)
 	end
 end
 
+-- we need an overlay anchor that is only used for ordering, this to handle
+-- that windows may appear while the overlay is active
 local function wm_order(wm)
-	return #wm.windows * WND_RESERVED + WND_RESERVED;
+	return wm.order_anchor;
 end
 
 local function tiler_switchws(wm, ind)
@@ -1368,6 +1392,7 @@ function tiler_create(width, height, opts)
 -- null surfaces for clipping / moving / drawing
 		client_height = clh,
 		anchor = null_surface(1, 1),
+		order_anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
 			unpack(gconfig_get("sbar_bg"))),
 
@@ -1375,8 +1400,14 @@ function tiler_create(width, height, opts)
 		border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_inactive_border"))),
 
-		alert_color =	 fill_surface(1, 1,
+		alert_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_alert"))),
+
+		active_tbar_color = fill_surface(1, 1,
+			unpack(gconfig_get("tbar_active"))),
+
+		tbar_color = fill_surface(1, 1,
+			unpack(gconfig_get("tbar_inactive"))),
 
 		active_border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_border"))),
@@ -1393,7 +1424,6 @@ function tiler_create(width, height, opts)
 		scalemodes = {"normal", "stretch", "aspect"},
 
 -- public functions
-		overlay_order = wm_order,
 		switch_ws = tiler_switchws,
 		add_window = wnd_create,
 		find_window = tiler_find,
@@ -1407,7 +1437,7 @@ function tiler_create(width, height, opts)
 
 	move_image(res.statusbar, 0, clh);
 	link_image(res.statusbar, res.anchor);
-	show_image({res.anchor, res.statusbar});
+	show_image({res.anchor, res.statusbar, res.order_anchor});
 
 	res.spaces[1] = create_workspace(res);
 	res:update_statusbar();

@@ -220,6 +220,9 @@ function def_handler(source, stat)
 
 	if (stat.kind == "resized") then
 		wnd.space:resize();
+		if (wnd.space.mode == "float") then
+			wnd:resize_effective(stat.width, stat.height);
+		end
 		image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
 	elseif (stat.kind == "message") then
 		wnd:set_message(stat.v, gconfig_get("msg_timeout"));

@@ -116,11 +116,10 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	ctx.data_y = gconfig_get("lbar_sz");
 
 	show_image(bar);
-	link_image(bar, wm.anchor);
+	link_image(bar, wm.order_anchor);
 	link_image(progress, bar);
 	image_inherit_order(bar, true);
 	image_inherit_order(progress, true);
-	order_image(bar, wm:overlay_order());
 	order_image(progress, 1);
 
 	local pos = gconfig_get("lbar_position");
