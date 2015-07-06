@@ -238,9 +238,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
 	show_image(bar);
-	link_image(bar, wm.anchor);
+	link_image(bar, wm.order_anchor);
 	image_inherit_order(bar, true);
-	order_image(bar, wm:overlay_order());
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
