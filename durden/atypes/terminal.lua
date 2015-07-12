@@ -1,5 +1,6 @@
 --
--- terminal- specific behavior and settings profile
+-- Terminal archetype, settings and menus specific for terminal-
+-- frameserver session (e.g. keymapping, state control)
 --
 local symmap = {
 	LEFT = "LEFT",
@@ -10,16 +11,9 @@ local symmap = {
 	PAGEDOWN = "SCROLL_DOWN"
 };
 
-local commands = {
-};
-
-local settings = {
-};
-
 return {
-	init = term_init,
-	bindings = symmap,
-	settings = term_settings,
-	run = term_commands,
+	actions = {},
+	settings = {},
+	labels = symmap,
 	atype = "terminal"
 };

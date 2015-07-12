@@ -129,6 +129,7 @@ function spawn_terminal()
 		tile_changed(wnd);
 		show_image(vid);
 		target_updatehandler(vid, def_handler);
+		def_handler(vid, {kind = "registered", segkind = "terminal"});
 	else
 		displays.main:message( "Builtin- terminal support broken" );
 	end
@@ -218,6 +219,14 @@ function def_handler(source, stat)
 	local wnd = displays.main:find_window(source);
 	assert(wnd ~= nil);
 
+-- registered subtype handler may say that this event should not
+-- propagate to the default implementation (below)
+	if (wnd.dispatch[stat.kind]) then
+		if (wnd.dispatch[stat.kind](source, stat)) then
+			return;
+		end
+	end
+
 	if (stat.kind == "resized") then
 		wnd.space:resize();
 		if (wnd.space.mode == "float") then
@@ -226,8 +235,21 @@ function def_handler(source, stat)
 		image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
 	elseif (stat.kind == "message") then
 		wnd:set_message(stat.v, gconfig_get("msg_timeout"));
+
 	elseif (stat.kind == "terminated") then
 		wnd:destroy();
+
+	elseif (stat.kind == "ident") then
+
+-- this can come multiple times if the title of the window is changed,
+-- (whih happens a lot with some types)
+	elseif (stat.kind == "registered") then
+		local atbl = archtypes[stat.segkind];
+		if (atbl == nil or wnd.atype == stat.segkind) then
+			return;
+		end
+		wnd.atype = stat.segkind;
+		register_shared_atype(wnd, atbl.actions, atbl.settings, atbl.labels);
 	end
 end
 
