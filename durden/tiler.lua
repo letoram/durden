@@ -1153,6 +1153,7 @@ local function wnd_create(wm, source, opts)
 			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
 		canvas = source,
 		children = {},
+		dispatch = {},
 		pad_left = bw,
 		pad_right = bw,
 		pad_top = bw,
