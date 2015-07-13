@@ -1,18 +1,6 @@
 --
--- globally available menus, settings and functions
---
-
---
--- Missing: A lot of the regular options (display, input binding, device
--- filtering configuration, workspace actions, collapse / switch appl)
--- Audio Mute / Unmute, Settings, Open command (remoting, vnc,
--- uri, browse ) + history tracking
---
-
---
--- workspace actions:
---  list orphans, pop to orphan, monitor, set background, save layout,
---  rename, layout (tiled, floating, etc.), silence (block alert)
+-- Globally available menus, settings and functions. All code here is just
+-- boiler-plate mapping to engine- or support script functions.
 --
 
 local function global_valid01_uri(str)
@@ -161,6 +149,179 @@ local function show_systemmenu()
 	launch_menu(displays.main, {list = system_menu}, true, "System:");
 end
 
+local input_menu = {
+	{
+		name = "input_rebind_basic",
+		label = "Rebind Basic",
+		handler = function()
+			warning("redo query scheme");
+		end
+	},
+	{
+		name = "input_binding_window",
+		label = "Bindings Window",
+		handler = function()
+			warning("spawn binding- window");
+		end
+	},
+	{
+		name = "input_save_layout",
+		label = "Save Current",
+		handler = function()
+			warning("query current- save");
+		end
+	},
+	{
+		name = "input_keyboard",
+		label = "Keyboard",
+		submenu = true,
+		handler = function()
+			warning("keyboard menu");
+-- really just repeat- rate we're interested in(?!)
+		end
+	},
+	{
+		name = "input_devices",
+		label = "Devices",
+		submenu = true,
+		handler = function()
+			warning("input devices menu");
+-- match [ inputanalog_query(num, ax, scan), empty gives table ]
+-- each device [toggle on / off], filtering requires calibration window
+		end,
+	},
+	{
+		name = "mouse",
+		label = "Mouse",
+		submenu = true,
+		handler = function()
+			warning("mouse menu");
+-- focus follow mouse
+-- acceleration rate
+-- reverse buttons
+-- flip y axis
+-- flip x axis
+-- drag traction
+-- dblclick interval
+		end
+	},
+	{
+		name = "load_layout",
+		label = "Load Layout",
+		submenu = true,
+		handler = function()
+			warning("list / browse layout");
+		end
+	},
+};
+
+local function show_inputmenu()
+	launch_menu(displays.main, {list = input_menu}, true, "Input:");
+end
+-- workspace actions:
+-- 	swap, background, layout (save, load), display affinity,
+-- 	reassign (if multiple displays), layout, share
+
+local function switch_ws_menu()
+	local spaces = {};
+	for i=1,10 do
+		spaces[i] = {
+			name = "switch_ws" .. tostring(i),
+			kind = "action",
+			label = tostring(i),
+			handler = grab_global_function("switch_ws" .. tostring(i)),
+		};
+	end
+
+	launch_menu(displays.main, {list = spaces}, true, "Switch Space:");
+end
+
+local workspace_layout_menu = {
+	{
+		name = "layout_float",
+		kind = "action",
+		label = "Float",
+		handler = function()
+			local space = displays.main.spaces[displays.main.space_ind];
+			space = space and space:float() or nil;
+		end
+	},
+	{
+		name = "layout_tile",
+		kind = "action",
+		label = "Tile",
+		handler = function()
+			local space = displays.main.spaces[displays.main.space_ind];
+			space = space and space:tile() or nil;
+		end
+	},
+	{
+		name = "layout_tab",
+		kind = "action",
+		label = "Tabbed",
+		handler = function()
+			local space = displays.main.spaces[displays.main.space_ind];
+			space = space and space:tab() or nil;
+		end
+	},
+	{
+		name = "layout_vtab",
+		kind = "action",
+		label = "Tabbed Vertical",
+		handler = function()
+			local space = displays.main.spaces[displays.main.space_ind];
+			space = space and space:vtab() or nil;
+		end
+	}
+};
+
+local function show_workspace_layout_menu()
+	launch_menu(displays.main, {list = workspace_layout_menu}, true, "Layout:");
+end
+
+local function set_ws_background()
+--	browse_file({"png"}, SHARED_RESOURCE, function(fn)
+--		local space = displays.main.spaces[displays.main.space_ind];
+--		if (space) then
+--			local vid = load_image_asynch(fn, function() end);
+--		end
+--	end);
+end
+
+local workspace_menu = {
+	{
+		name = "workspace_layout",
+		label = "Layout",
+		kind = "action",
+		submenu = true,
+		handler = show_workspace_layout_menu
+	},
+	{
+		name = "workspace_background",
+		label = "Background",
+		kind = "action",
+		submenu = true,
+		handler = set_ws_background,
+	},
+	{
+		name = "workspace_rename",
+		label = "Rename",
+		kind = "action",
+		handler = grab_global_function("rename_space")
+	},
+	{
+		name = "workspace_switch",
+		label = "Switch",
+		kind = "action",
+		submenu = true,
+		handler = switch_ws_menu
+	},
+};
+
+local function show_workspacemenu()
+	launch_menu(displays.main, {list = workspace_menu}, true, "Workspace:");
+end
+
 -- Stub for now
 local toplevel = {
 	{
@@ -169,7 +330,6 @@ local toplevel = {
 		kind = "string",
 		validator = global_valid01_uri,
 		handler = function(ctx, value)
-			warning("launch missing");
 		end
 	},
 	{
@@ -177,9 +337,7 @@ local toplevel = {
 		label = "Workspace",
 		kind = "action",
 		submenu = true,
-		handler = function(ctx, value)
-			warning("spawn workspace menu");
-		end
+		handler = show_workspacemenu
 	},
 	{
 		name = "display",
@@ -202,9 +360,7 @@ local toplevel = {
 		label = "Input",
 		kind = "action",
 		submenu = true,
-		handler = function(ctx, value)
-			warning("spawn input menu");
-		end
+		handler = show_inputmenu
 	},
 	{
 		name = "system",

@@ -41,6 +41,13 @@ local shared_settings = {
 		end,
 	},
 	{
+		name = "auto_suspend",
+		label = "Auto Suspend",
+		kind = "boolean",
+		handler = function(ctx, value)
+		end
+	},
+	{
 		name = "filtering",
 		label = "Filtering",
 		kind = "list",
