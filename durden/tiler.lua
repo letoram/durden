@@ -789,10 +789,17 @@ local function wnd_reassign(wnd, ind)
 		wnd.space.previous = nil;
 	end
 
--- drop selection references unless we can find a new one
+-- drop selection references unless we can find a new one,
+-- or move to child if there is one
 	if (wnd.wm.selected == wnd) then
 		wnd:prev();
-		wnd.wm.selected = wnd.wm.selected ~= wnd and wnd.wm.selected or nil;
+		if (wnd.wm.selected == wnd) then
+			if (wnd.children[1] ~= nil) then
+				wnd.children[1]:select();
+			else
+				wnd.wm.selected = nil;
+			end
+		end
 	end
 
 -- create if it doesn't exist
