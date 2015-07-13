@@ -1159,6 +1159,7 @@ local function wnd_create(wm, source, opts)
 		titlebar = fill_surface(1,
 			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
 		canvas = source,
+		gain = 1.0,
 		children = {},
 		dispatch = {},
 		pad_left = bw,
@@ -1399,6 +1400,7 @@ function tiler_create(width, height, opts)
 	local res = {
 -- null surfaces for clipping / moving / drawing
 		client_height = clh,
+		global_gain = 1.0,
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
