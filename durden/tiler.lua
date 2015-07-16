@@ -173,6 +173,8 @@ local function wnd_destroy(wnd)
 		wnd[k] = nil;
 	end
 
+	space:bgon();
+
 -- drop global tracking
 	table.remove_match(wm.windows, wnd);
 
@@ -271,6 +273,8 @@ local function workspace_activate(space)
 
 	local tgt = space.selected and space.selected or space.children[1];
 	dive_down(space, dive_down);
+
+	space:bgon();
 end
 
 local function workspace_inactivate(space, store)
@@ -282,6 +286,7 @@ local function workspace_inactivate(space, store)
 	end
 
 	dive_down(space, dive_down);
+	space:bgoff();
 end
 
 local function switch_fullscreen(space, to)
@@ -348,11 +353,9 @@ local function switch_tab(space, to)
 end
 
 local function drop_float(space, swap)
-	if (space.background) then
-		hide_image(space.background);
-	end
 	space.in_float = false;
 	reorder_space(space);
+	space:bgon();
 end
 
 local function reassign_float(space, wnd)
@@ -460,9 +463,7 @@ local function set_float(space)
 		space.in_float = true;
 		space.reassign_hook = reassign_float;
 		space.mode_hook = drop_float;
-		if (space.background) then
-			show_image(space.background);
-		end
+		space:bgon();
 		local tbl = linearize(space);
 		for i,v in ipairs(tbl) do
 			local props = image_storage_properties(v.canvas);
@@ -507,6 +508,10 @@ local function workspace_destroy(space)
 
 	for k,v in pairs(space) do
 		space[k] = nil;
+	end
+
+	if (space.background) then
+		delete_image(space.background);
 	end
 end
 
@@ -565,6 +570,19 @@ local function workspace_label(space, lbl)
 	space.wm:update_statusbar();
 end
 
+local function workspace_bgon(space)
+	if (space.background) then
+		blend_image(space.background,
+			(space.mode == "float" or #space.children == 0) and 1.0 or 0.0);
+	end
+end
+
+local function workspace_bgoff(space)
+	if (space.background) then
+		hide_image(space.background);
+	end
+end
+
 local function create_workspace(wm)
 	local res = {
 		activate = workspace_activate,
@@ -578,6 +596,9 @@ local function create_workspace(wm)
 		vtab = function(ws) workspace_set(ws, "vtab"); end,
 		float = function(ws) workspace_set(ws, "float"); end,
 		set_label = workspace_label,
+		bgon = workspace_bgon,
+		bgoff = workspace_bgoff,
+
 		mode = "tile",
 		name = "workspace_" .. tostring(ent_count);
 		insert = "horizontal",
@@ -1259,6 +1280,7 @@ local function wnd_create(wm, source, opts)
 		res:resize(wm.min_width, wm.min_height);
 	end
 
+	space:bgon();
 	order_image(res.wm.order_anchor,
 		#wm.windows * WND_RESERVED + 2 * WND_RESERVED);
 	return res;
