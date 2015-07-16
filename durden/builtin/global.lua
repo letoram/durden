@@ -219,8 +219,8 @@ local function show_inputmenu()
 	launch_menu(displays.main, {list = input_menu}, true, "Input:");
 end
 -- workspace actions:
--- 	swap, background, layout (save, load), display affinity,
--- 	reassign (if multiple displays), layout, share
+-- 	swap, background, layout (save [shallow, deep], load), display affinity,
+-- 	reassign (if multiple displays), layout, shared
 
 local function switch_ws_menu()
 	local spaces = {};
@@ -280,12 +280,25 @@ local function show_workspace_layout_menu()
 end
 
 local function set_ws_background()
---	browse_file({"png"}, SHARED_RESOURCE, function(fn)
---		local space = displays.main.spaces[displays.main.space_ind];
---		if (space) then
---			local vid = load_image_asynch(fn, function() end);
---		end
---	end);
+	local imgfiles = {};
+	browse_file({}, {"png", "jpg", "bmp"}, SHARED_RESOURCE, function(fn)
+		local space = displays.main.spaces[displays.main.space_ind];
+		if (space) then
+			local vid = load_image_asynch(fn, function(src, stat)
+				if (stat.kind == "loaded") then
+					if (valid_vid(space.background)) then
+						delete_image(space.background);
+					end
+					space.background = src;
+					resize_image(src, space.wm.width, space.wm.client_height);
+					link_image(src, space.wm.anchor);
+					space:bgon();
+				else
+					delete_image(src);
+				end
+			end);
+		end
+	end);
 end
 
 local workspace_menu = {

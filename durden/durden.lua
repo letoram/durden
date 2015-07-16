@@ -31,6 +31,7 @@ function durden()
 	system_load("bbar.lua")();
 	system_load("keybindings.lua")();
 	system_load("tiler.lua")();
+	system_load("browser.lua")();
 
 	system_load("fglobal.lua")();
 	system_load("builtin/global.lua")();
