@@ -279,26 +279,33 @@ local function show_workspace_layout_menu()
 	launch_menu(displays.main, {list = workspace_layout_menu}, true, "Layout:");
 end
 
-local function set_ws_background()
-	local imgfiles = {};
-	browse_file({}, {"png", "jpg", "bmp"}, SHARED_RESOURCE, function(fn)
-		local space = displays.main.spaces[displays.main.space_ind];
-		if (space) then
-			local vid = load_image_asynch(fn, function(src, stat)
-				if (stat.kind == "loaded") then
-					if (valid_vid(space.background)) then
-						delete_image(space.background);
-					end
-					space.background = src;
-					resize_image(src, space.wm.width, space.wm.client_height);
-					link_image(src, space.wm.anchor);
-					space:bgon();
-				else
-					delete_image(src);
-				end
-			end);
+local function load_bg(fn)
+	local space = displays.main.spaces[displays.main.space_ind];
+	if (not space) then
+		return;
+	end
+
+	load_image_asynch(fn, function(src, stat)
+		if (stat.kind == "loaded") then
+			if (valid_vid(space.background)) then
+				delete_image(space.background);
+			end
+			space.background = src;
+			resize_image(src, space.wm.width, space.wm.client_height);
+			link_image(src, space.wm.anchor);
+			space:bgon();
+			else
+			delete_image(src);
 		end
 	end);
+end
+
+local function set_ws_background()
+	local imgfiles = {
+	png = load_bg,
+	jpg = load_bg,
+	bmp = load_bg};
+	browse_file({}, imgfiles, SHARED_RESOURCE, nil);
 end
 
 local workspace_menu = {
@@ -335,15 +342,50 @@ local function show_workspacemenu()
 	launch_menu(displays.main, {list = workspace_menu}, true, "Workspace:");
 end
 
--- Stub for now
+local function imgwnd(fn)
+	load_image_asynch(fn, function(src, stat)
+		if (stat.kind == "loaded") then
+			local wnd = displays.main:add_window(src, {scalemode = "stretch"});
+			string.gsub(fn, "\\", "\\\\");
+			wnd:set_title("image:" .. fn);
+		elseif (valid_vid(src)) then
+			delete_image(src);
+		end
+	end);
+end
+
+local function decwnd(fn, mode)
+
+end
+
+local function browse_internal()
+	local ffmts = {
+	jpg = imgwnd,
+	png = imgwnd,
+	bmp = imgwnd};
+-- Don't have a good way to query decode for extensions at the moment,
+-- would be really useful in cases like this (might just add an info arg and
+-- then export through message, coreopt or similar).
+	for i,v in ipairs({"mp3", "flac", "wmv", "mkv", "avi", "asf", "flv",
+		"mpeg", "mov", "mp4", "ogg"}) do
+		ffmts[v] = decwnd;
+	end
+
+	browse_file({}, ffmts, SHARED_RESOURCE, nil);
+end
+
 local toplevel = {
 	{
 		name = "open",
 		label = "Open",
-		kind = "string",
-		validator = global_valid01_uri,
-		handler = function(ctx, value)
-		end
+		kind = "action",
+		handler = query_uriopen
+	},
+	{
+		name = "browse",
+		label = "Browse",
+		kind = "action",
+		handler = browse_internal
 	},
 	{
 		name = "workspace",

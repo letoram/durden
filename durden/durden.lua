@@ -139,6 +139,9 @@ end
 local function lbar_launch(tgt, cfg)
 	local lbl = string.format("%s:%s", tgt, cfg);
 	local vid, aid = launch_target(tgt, cfg, LAUNCH_INTERNAL, def_handler);
+	if (not valid_vid(vid)) then
+		return;
+	end
 	image_tracetag(vid, label);
 	local wnd = displays.main:add_window(vid);
 	wnd:set_title(lbl);
@@ -210,10 +213,6 @@ function query_launch()
 	};
 
 	displays.main:lbar(lbar_targetsel, cbctx, {force_completion = true}, "Launch:");
-end
-
-function query_open()
--- meta menu for selecting remoting, decode (local or url)
 end
 
 function def_handler(source, stat)
