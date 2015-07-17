@@ -15,13 +15,7 @@ local function match_ext(v, tbl)
 		return false;
 	end
 
-	for i,v in ipairs(tbl) do
-		if (string.lower(ext) == v) then
-			return true;
-		end
-	end
-
-	return false;
+	return tbl[ext];
 end
 
 local function browse_cb(ctx, instr, done, lastv)
@@ -42,7 +36,12 @@ local function browse_cb(ctx, instr, done, lastv)
 			table.insert(ctx.path, instr);
 			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 		else
-			ctx.trigger(pn);
+			local fn = match_ext(pn, ctx.fltext);
+			if (type(fn) == "function") then
+				fn(pn);
+			elseif (ctx.trigger) then
+				ctx.trigger(pn);
+			end
 		end
 		return;
 	end
