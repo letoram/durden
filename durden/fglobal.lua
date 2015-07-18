@@ -181,4 +181,5 @@ sf["destroy"] = function(wnd) wnd:destroy(); end
 for i=1,10 do
 	gf["switch_ws" .. tostring(i)] = function() displays.main:switch_ws(i); end
 	sf["assign_ws" .. tostring(i)] = function(wnd) wnd:assign_ws(i); end
+	gf["swap_ws" .. tostring(i)] = function() displays.main:swap_ws(i); end
 end

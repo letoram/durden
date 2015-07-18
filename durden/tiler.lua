@@ -1409,7 +1409,41 @@ local function tiler_switchws(wm, ind)
 	end
 end
 
+local function tiler_swapws(wm, ind2)
+	local ind1 = wm.space_ind;
+
+	if (ind2 == ind1) then
+		return;
+	end
+  tiler_switchws(wm, ind2);
+-- now space_ind is ind2 and ind2 is visible and hooks have been run
+	local space = wm.spaces[ind2];
+	wm.spaces[ind2] = wm.spaces[ind1];
+ 	wm.spaces[ind1] = space;
+	wm.space_ind = ind1;
+ -- now the swap is done with, need to update bar again
+	if (valid_vid(wm.spaces[ind1].label_id)) then
+		delete_image(wm.spaces[ind1].label_id);
+		wm.spaces[ind1].label_id = nil;
+	end
+
+	if (valid_vid(wm.spaces[ind2].label_id)) then
+		delete_image(wm.spaces[ind2].label_id);
+		wm.spaces[ind2].label_id = nil;
+	end
+
+	wm:update_statusbar();
+end
+
 local function tiler_message(tiler)
+end
+
+local function wm_countspaces(wm)
+	local r = 0;
+	for i=1,10 do
+		r = r + (wm.spaces[i] ~= nil and 1 or 0);
+	end
+	return r;
 end
 
 function tiler_create(width, height, opts)
@@ -1457,6 +1491,8 @@ function tiler_create(width, height, opts)
 
 -- public functions
 		switch_ws = tiler_switchws,
+		swap_ws = tiler_swapws,
+		active_spaces = wm_countspaces,
 		add_window = wnd_create,
 		find_window = tiler_find,
 		message = tiler_message,

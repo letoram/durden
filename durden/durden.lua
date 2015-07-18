@@ -265,7 +265,6 @@ function new_connection(source, status)
 		wnd.resize_hook = tile_changed;
 		target_updatehandler(source, def_handler);
 		tile_changed(wnd);
--- sweet spot for adding type- specific handlers
 	end
 end
 
