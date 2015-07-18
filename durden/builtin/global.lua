@@ -308,6 +308,24 @@ local function set_ws_background()
 	browse_file({}, imgfiles, SHARED_RESOURCE, nil);
 end
 
+local function swap_ws_menu()
+	local res = {};
+	local wspace = displays.main.spaces[displays.main.space_ind];
+	for i=1,10 do
+		if (displays.main.space_ind ~= i and displays.main.spaces[i] ~= nil) then
+			table.insert(res, {
+				name = "workspace_swap",
+				label = tostring(i),
+				kind = "action",
+				handler = function()
+					grab_global_function("swap_ws" .. tostring(i))();
+				end
+			});
+		end
+	end
+	launch_menu(displays.main, {list = res}, true, "Workspace:");
+end
+
 local workspace_menu = {
 	{
 		name = "workspace_layout",
@@ -322,6 +340,14 @@ local workspace_menu = {
 		kind = "action",
 		submenu = true,
 		handler = set_ws_background,
+	},
+	{
+		name = "workspace_swap",
+		label = "Swap",
+		kind = "action",
+		eval = function() return displays.main:active_spaces() > 1; end,
+		submenu = true,
+		handler = swap_ws_menu
 	},
 	{
 		name = "workspace_rename",
@@ -354,8 +380,22 @@ local function imgwnd(fn)
 	end);
 end
 
-local function decwnd(fn, mode)
+local function dechnd(source, status)
+	print("status.kind:", status.kind);
+end
 
+local function decwnd(fn)
+	launch_decode(fn, function(source, status)
+		if (status.kind == "terminated") then
+			delete_image(source);
+		elseif (status.kind == "connected") then
+			local wnd = displays.main:add_window(source);
+			wnd.external = source;
+			wnd.resize_hook = tile_changed;
+			target_updatehandler(source, dechnd);
+			tile_changed(wnd);
+		end
+	end);
 end
 
 local function browse_internal()
