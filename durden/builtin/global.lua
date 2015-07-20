@@ -219,7 +219,7 @@ local function show_inputmenu()
 	launch_menu(displays.main, {list = input_menu}, true, "Input:");
 end
 -- workspace actions:
--- 	swap, background, layout (save [shallow, deep], load), display affinity,
+-- 	layout (save [shallow, deep], load), display affinity,
 -- 	reassign (if multiple displays), layout, shared
 
 local function switch_ws_menu()
@@ -291,6 +291,7 @@ local function load_bg(fn)
 				delete_image(space.background);
 			end
 			space.background = src;
+			space.background_name = fn;
 			resize_image(src, space.wm.width, space.wm.client_height);
 			link_image(src, space.wm.anchor);
 			space:bgon();
@@ -298,6 +299,32 @@ local function load_bg(fn)
 			delete_image(src);
 		end
 	end);
+end
+
+local save_ws = {
+	{
+		name = "workspace_save_shallow",
+		label = "Shallow",
+		kind = "action",
+		handler = grab_global_function("save_space_shallow")
+	},
+	{
+		name = "workspace_save_deep",
+		label = "Complete",
+		kind = "action",
+		handler = grab_global_function("save_space_deep")
+	},
+	{
+		name = "workspace_save_drop",
+		label = "Drop",
+		kind = "action",
+		eval = function()	return true; end,
+		handler = grab_global_function("save_space_drop")
+	}
+};
+
+local function save_ws_menu()
+	launch_menu(displays.main, {list = save_ws}, true, "Save Workspace:");
 end
 
 local function set_ws_background()
@@ -328,11 +355,25 @@ end
 
 local workspace_menu = {
 	{
+		name = "workspace_swap",
+		label = "Swap",
+		kind = "action",
+		eval = function() return displays.main:active_spaces() > 1; end,
+		submenu = true,
+		handler = swap_ws_menu
+	},
+	{
 		name = "workspace_layout",
 		label = "Layout",
 		kind = "action",
 		submenu = true,
 		handler = show_workspace_layout_menu
+	},
+	{
+		name = "workspace_rename",
+		label = "Rename",
+		kind = "action",
+		handler = grab_global_function("rename_space")
 	},
 	{
 		name = "workspace_background",
@@ -342,18 +383,11 @@ local workspace_menu = {
 		handler = set_ws_background,
 	},
 	{
-		name = "workspace_swap",
-		label = "Swap",
+		name = "workspace_save",
+		label = "Save",
 		kind = "action",
-		eval = function() return displays.main:active_spaces() > 1; end,
 		submenu = true,
-		handler = swap_ws_menu
-	},
-	{
-		name = "workspace_rename",
-		label = "Rename",
-		kind = "action",
-		handler = grab_global_function("rename_space")
+		handler = save_ws_menu
 	},
 	{
 		name = "workspace_switch",

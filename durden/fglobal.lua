@@ -118,6 +118,40 @@ gf["rename_space"] = function()
 	ictx:set_label("rename space:");
 end
 
+gf["save_space_shallow"] = function()
+	local wspace = displays.main.spaces[displays.main.space_ind];
+	if (not wspace) then
+		return;
+	end
+
+-- will have issue if someone labels workspace as a numeric index, we allow
+-- it but it is rather dumb (calling 1:2 and having a 2 doesn't help clarity)
+	local ktbl = {};
+	local prefix = "wspace_" .. tostring(displays.main.space_ind);
+	if (wspace.label ~= nil) then
+		ktbl["wspace_" .. tostring(displays.main.space_ind) .. "_ref"] =
+			wspace.label;
+		prefix = "wspace_" .. label;
+	end
+
+	if (wspace.background_name) then
+		ktbl[prefix .. "_background"] = wspace.background_name;
+	end
+
+	ktbl[prefix .. "_mode"] = wspace.mode;
+	store_key(ktbl);
+	wspace.wm:message("shallow workspace information stored");
+end
+
+gf["save_space_deep"] = function()
+	gf["save_space_shallow"]();
+	warning("save layout (wnd, type, ...), + affinity and scale ratios");
+end
+
+gf["save_space_drop"] = function()
+	warning("reset layout, should confirm");
+end
+
 gf["mode_vertical"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
@@ -140,7 +174,6 @@ gf["tabtile"] = function()
 		end
 	end
 end
-
 gf["float"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (wspace) then
