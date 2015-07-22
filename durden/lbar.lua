@@ -54,7 +54,7 @@ local function update_completion_set(wm, ctx, set)
 		ctx.cofs = 1;
 	end
 
-	local regw = image_surface_properties(ctx.anchor).width;
+	local regw = image_surface_properties(ctx.text_anchor).width;
 	local step = math.ceil(0.5 + regw / 3);
 	local ctxw = 2 * step;
 	local textw = valid_vid(ctx.text) and (
@@ -96,7 +96,7 @@ local function update_completion_set(wm, ctx, set)
 		txt = render_text(txt);
 
 		local cw = image_surface_properties(txt).width;
-		link_image(ctx.canchor, ctx.anchor);
+		link_image(ctx.canchor, ctx.text_anchor);
 		link_image(txt, ctx.canchor);
 		link_image(ctx.ccursor, ctx.canchor);
 		image_inherit_order(ctx.canchor, true);
@@ -145,7 +145,7 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 
 		ictx.text = render_text(inp_str(ictx));
 		show_image(ictx.text);
-		link_image(ictx.text, ictx.anchor);
+		link_image(ictx.text, ictx.text_anchor);
 		image_inherit_order(ictx.text, true);
 		move_image(ictx.text, ictx.textofs, math.floor(0.5*(
 			gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
@@ -221,7 +221,7 @@ local function lbar_label(lbar, lbl)
 	end
 
 	show_image(lbar.labelid);
-	link_image(lbar.labelid, lbar.anchor);
+	link_image(lbar.labelid, lbar.text_anchor);
 	image_inherit_order(lbar.labelid, true);
 	order_image(lbar.labelid, 1);
 
@@ -235,11 +235,16 @@ end
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 
+	local bg = color_surface(wm.width, wm.height, 0, 0, 0);
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
 	show_image(bar);
-	link_image(bar, wm.order_anchor);
+	link_image(bg, wm.order_anchor);
+	link_image(bar, bg);
 	image_inherit_order(bar, true);
+	image_inherit_order(bg, true);
+	image_mask_clear(bar, MASK_OPACITY);
+	blend_image(bg, gconfig_get("lbar_dim"));
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
@@ -257,7 +262,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	end
 	wm.input_lock = lbar_input;
 	wm.input_ctx = {
-		anchor = bar,
+		anchor = bg,
+		text_anchor = bar,
 		accept = gconfig_get("ok_sym"),
 		cancel = gconfig_get("cancel_sym"),
 		step_n = gconfig_get("step_next"),
