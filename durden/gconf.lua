@@ -29,6 +29,7 @@ local defaults = {
 
 -- input bar
 	lbar_position = "center", -- top, center, bottom
+	lbar_dim = 0.8,
 	lbar_sz = 16,
 	lbar_bg = {0x33, 0x33, 0x33},
 	lbar_textstr = "\\fdefault.ttf,12\\#cccccc ",
