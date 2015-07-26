@@ -232,6 +232,35 @@ local function lbar_label(lbar, lbl)
 	update_caret(lbar);
 end
 
+-- construct a default lbar callback that triggers cb on an exact
+-- content match of the tbl- table
+function tiler_lbarforce(tbl, cb)
+	return function(ctx, instr, done, last)
+		if (done) then
+			cb(instr);
+			return;
+		end
+
+		if (instr == nil or string.len(instr) == 0) then
+			return {set = tbl, valid = true};
+		end
+
+		local res = {};
+		for i,v in ipairs(tbl) do
+			if (string.sub(v,1,string.len(instr)) == instr) then
+				table.insert(res, v);
+			end
+		end
+
+-- want to return last result table so cursor isn't reset
+		if (last and #res == #last) then
+			return {set = last};
+		end
+
+		return {set = res, valid = true};
+	end
+end
+
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 

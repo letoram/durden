@@ -61,15 +61,19 @@ function dispatch_symbol(sym)
 	end
 end
 
-gf["debug_testwnd_nobar"] = function()
-	if (DEBUGLEVEL > 0) then
-		spawn_test(1);
-	end
-end
-
+local test_gc = 0;
 gf["debug_testwnd_bar"] = function()
 	if (DEBUGLEVEL > 0) then
-		spawn_test();
+		local img = fill_surface(math.random(200, 600), math.random(200, 600),
+			math.random(64, 255), math.random(64, 255), math.random(64, 255),
+			VRESW * 0.1, VRESH * 0.1);
+		show_image(img);
+
+		local wnd = displays.main:add_window(img, {scalemode = "stretch"});
+		if (bar) then
+			wnd:set_title("test window_" .. tostring(test_gc));
+			test_gc = test_gc + 1;
+		end
 	end
 end
 
@@ -86,14 +90,15 @@ end
 
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
 gf["rebind_meta"] = function()
+	local bwt = gconfig_get("bind_waittime");
 	tiler_bbar(displays.main,
 			string.format("Press and hold (Meta 1), %s to Abort",
-				gconfig_get("cancel_sym")), true, 80, nil, gconfig_get("cancel_sym"),
+				gconfig_get("cancel_sym")), true, bwt, nil, gconfig_get("cancel_sym"),
 		function(sym, done)
 			if (done) then
 				tiler_bbar(displays.main,
 					string.format("Press and hold (Meta 2), %s to Abort",
-					gconfig_get("cancel_sym")), true, 80, nil, gconfig_get("cancel_sym"),
+					gconfig_get("cancel_sym")), true, bwt, nil, gconfig_get("cancel_sym"),
 					function(sym2, done)
 						if (done) then
 							displays.main:message(
@@ -106,16 +111,40 @@ gf["rebind_meta"] = function()
 	);
 end
 
+gf["query_launch"] = function()
+	local	targets = list_targets();
+	if (targets == nil or #targets == 0) then
+		displays.main:message("Database does not contain any targets");
+	else
+		displays.main:lbar(tiler_lbarforce(targets, function(str)
+			local cfg = target_configurations(str);
+			print("configurations for " .. str);
+			if (cfgs == nil or #cfgs == 0) then
+				return;
+			end
+			if (#cfgs > 1) then
+				displays.main:lbar(tiler_lbarforce(cfgs, function(cfstr)
+					local vid = launch_target(str, cfstr);
+					if (valid_vid(vid)) then
+						durden_launch(vid, string.format("%s:%s", str, cfstr));
+					end
+				end), {force_completion = true}, str .. ", Config:");
+			else
+				launch_target(str, cfg[1]);
+			end
+		end), {force_completion = true}, "Target:");
+	end
+end
+
 gf["rename_space"] = function()
-	local ictx = displays.main:lbar(function(ctx, instr, done)
+	displays.main:lbar(function(ctx, instr, done)
 		if (done) then
 			ctx.space:set_label(instr);
 			ctx.space.wm:update_statusbar();
 		end
 		ctx.ulim = 16;
-		return {label = "rename workspace", set = {}};
-	end, {space = displays.main.spaces[displays.main.space_ind]});
-	ictx:set_label("rename space:");
+		return {set = {}};
+	end, {space = displays.main.spaces[displays.main.space_ind]}, "Rename Space:");
 end
 
 gf["save_space_shallow"] = function()
