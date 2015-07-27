@@ -6,11 +6,15 @@
 --
 local defaults = {
 	msg_timeout = 100,
-	transition_time = 10,
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
 	borderw = 2,
 
+-- some people can't handle the flash transition between workspaces,
+-- setting this to a higher value adds animation fade in/out
+	transition = 0,
+
+-- focus follows mouse
 	mouse_focus = true,
 
 -- "generic" UI interaction bindings that work in specialized contexts
@@ -27,7 +31,7 @@ local defaults = {
 	caret_delete = "DELETE",
 	caret_erase = "BACKSPACE",
 
--- input bar
+-- input bar graphics
 	lbar_position = "center", -- top, center, bottom
 	lbar_dim = 0.8,
 	lbar_sz = 16,
@@ -44,6 +48,9 @@ local defaults = {
 	lbar_seltextbg = {0x44, 0x66, 0x88},
 	lbar_itemspace = 10,
 	lbar_textsz = 12,
+
+-- binding bar
+	bind_waittime = 60,
 
 -- sbar
 	sbar_sz = 16,

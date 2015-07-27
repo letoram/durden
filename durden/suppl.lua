@@ -312,7 +312,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 			end
 		end
 
-		if (tgt.kind == "action") then
+		if (tgt.kind == "action" and tgt.handler) then
 			return tgt.handler(ctx.handler, instr);
 		end
 

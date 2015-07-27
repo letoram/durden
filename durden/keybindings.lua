@@ -67,7 +67,7 @@ tbl["m1_m2_8"] = "assign_ws8";
 tbl["m1_m2_9"] = "assign_ws9";
 tbl["m1_m2_10"] = "assign_ws10";
 tbl["m1_l"] = "lock_input";
-tbl["m1_d"] = "launch_bar";
+tbl["m1_d"] = "query_launch";
 tbl["m1_i"] = "cycle_scalemode";
 
 if (DEBUGLEVEL > 0) then
@@ -96,6 +96,9 @@ end
 
 function dispatch_lookup(iotbl, keysym, hook_handler)
 	local metadrop = false;
+	if (keysym == nil) then
+		return;
+	end
 
 	if (keysym == meta_1) then
 		meta_1_state = iotbl.active;
