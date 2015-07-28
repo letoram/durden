@@ -27,7 +27,6 @@ function durden()
 	system_load("gconf.lua")();
 	system_load("mouse.lua")();
 	system_load("suppl.lua")();
-	system_load("lbar.lua")();
 	system_load("bbar.lua")();
 	system_load("keybindings.lua")();
 	system_load("tiler.lua")();

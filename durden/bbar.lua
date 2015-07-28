@@ -21,8 +21,8 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 	end
 
 	if (ctx.ok and sym == ctx.ok and ctx.psym) then
-		ctx.cb(ctx.psym, true);
 		drop_bbar(wm);
+		ctx.cb(ctx.psym, true);
 	end
 
 	if (iotbl.active) then

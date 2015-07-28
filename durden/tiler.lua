@@ -9,6 +9,7 @@
 
 -- number of Z values reserved for each window
 local WND_RESERVED = 10;
+system_load("lbar.lua")();
 
 --
 -- there is a planned 'effects layer' that reuses the shader API functions

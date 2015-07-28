@@ -152,10 +152,9 @@ end
 local input_menu = {
 	{
 		name = "input_rebind_basic",
+		kind = "action",
 		label = "Rebind Basic",
-		handler = function()
-			warning("redo query scheme");
-		end
+		handler = grab_global_function("rebind_basic")
 	},
 	{
 		name = "input_binding_window",

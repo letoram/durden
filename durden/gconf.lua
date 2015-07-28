@@ -50,7 +50,7 @@ local defaults = {
 	lbar_textsz = 12,
 
 -- binding bar
-	bind_waittime = 60,
+	bind_waittime = 30,
 
 -- sbar
 	sbar_sz = 16,
