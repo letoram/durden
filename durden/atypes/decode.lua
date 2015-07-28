@@ -5,5 +5,4 @@
 return {
 	atype = "media",
 	actions = {},
-	settings = {}
 };

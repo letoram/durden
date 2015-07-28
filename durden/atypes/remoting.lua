@@ -5,5 +5,4 @@
 return {
 	atype = "remoting",
 	actions = {},
-	settings = {}
 };

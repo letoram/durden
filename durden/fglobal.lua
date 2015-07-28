@@ -91,10 +91,10 @@ end
 -- sweep the entire bindings table
 gf["rebind_basic"] = function()
 	local tbl = {
-		{"Accept", "ok_sym", gconfig_get("ok_sym")},
-		{"Cancel", "cancel_sym", gconfig_get("cancel_sym")},
-		{"Next", "step_next", gconfig_get("step_next")},
-		{"Previous", "step_previous", gconfig_get("step_previous")}
+		{"Accept", "accept"},
+		{"Cancel", "cancel"},
+		{"Next", "next"},
+		{"Previous", "previous"}
 	};
 
 	local runsym = function(self)
@@ -104,7 +104,8 @@ gf["rebind_basic"] = function()
 		end
 		tiler_bbar(displays.main,
 			string.format("Bind %s, press current: %s or hold new to rebind.",
-				ent[1], ent[3]), true, gconfig_get("bind_waittime"), ent[3], nil,
+				ent[1], SYSTEM_KEYS[ent[2]]), true, gconfig_get("bind_waittime"),
+				SYSTEM_KEYS[ent[2]], nil,
 				function(sym, done)
 					if (done) then
 						gconfig_set(ent[2], sym);
@@ -122,12 +123,12 @@ gf["rebind_meta"] = function()
 	local bwt = gconfig_get("bind_waittime");
 	tiler_bbar(displays.main,
 			string.format("Press and hold (Meta 1), %s to Abort",
-				gconfig_get("cancel_sym")), true, bwt, nil, gconfig_get("cancel_sym"),
+				SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
 				tiler_bbar(displays.main,
 					string.format("Press and hold (Meta 2), %s to Abort",
-					gconfig_get("cancel_sym")), true, bwt, nil, gconfig_get("cancel_sym"),
+					SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 					function(sym2, done)
 						if (done) then
 							displays.main:message(

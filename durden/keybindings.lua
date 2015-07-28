@@ -9,13 +9,26 @@
 -- the output resolves to an entry in GLOBAL_FUNCTIONS or
 -- in a custom per/target config
 --
--- special function keys connected to UI components are set in gconf.
 -- These are >static defaults< meaning that they can be overridden at runtime
--- and saved in the appl- specific database. If so, they take precedence.
+-- and saved in the appl- specific database.
 --
 
-local meta_1 = "MENU";
-local meta_2 = "RSHIFT";
+-- system keys are special in that they are checked for collisions when
+-- binding, hence should be kept to an absolute minimum.
+SYSTEM_KEYS = {
+	["meta_1"] = "MENU",
+	["meta_2"] = "RSHIFT",
+	["accept"] = "RETURN",
+	["cancel"] = "ESCAPE",
+	["next"]   = "UP",
+	["previous"] = "DOWN",
+	["caret_home"] = "HOME",
+	["caret_end"]  = "END",
+	["caret_left"] = "LEFT",
+	["caret_right"] = "RIGHT",
+	["caret_delete"] = "DELETE",
+	["caret_erase"] = "BACKSPACE"
+};
 
 local tbl = {};
 tbl["m1_RETURN"] = "spawn_terminal";
@@ -86,11 +99,11 @@ local meta_2_state = false;
 
 function dispatch_meta(meta1, meta2)
 	if (meta1) then
-		meta_1 = meta1;
+		SYSTEM_KEYS["meta_1"] = meta1;
 	end
 
 	if (meta2) then
-		meta_2 = meta2;
+		SYSTEM_KEYS["meta_2"] = meta2;
 	end
 end
 
@@ -100,11 +113,11 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 		return;
 	end
 
-	if (keysym == meta_1) then
+	if (keysym == SYSTEM_KEYS["meta_1"]) then
 		meta_1_state = iotbl.active;
 		metadrop = true;
 
-	elseif (keysym == meta_2) then
+	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
 		meta_2_state = iotbl.active;
 		metadrop = true;
 	end

@@ -17,19 +17,9 @@ local defaults = {
 -- focus follows mouse
 	mouse_focus = true,
 
--- "generic" UI interaction bindings that work in specialized contexts
--- (input bar, popups, ...)
+-- default keyboard repeat rate for all windows, some archetypes have
+-- default overrides and individual windows can have strong overrides
 	kbd_repeat = 100,
-	ok_sym = "RETURN",
-	cancel_sym = "ESCAPE",
-	step_next = "UP",
-	step_previous = "DOWN",
-	caret_home = "HOME",
-	caret_end = "END",
-	caret_left = "LEFT",
-	caret_right = "RIGHT",
-	caret_delete = "DELETE",
-	caret_erase = "BACKSPACE",
 
 -- input bar graphics
 	lbar_position = "center", -- top, center, bottom
@@ -95,7 +85,9 @@ local function gconfig_setup()
 		if (v) then
 			if (type(vl) == "number") then
 				defaults[k] = tonumber(v);
--- no packing format for tables, ignore for now
+-- no packing format for tables, ignore for now, since its a trusted
+-- context, we can use concat / split without much issue, although store_key
+-- should really support deep table serialization
 			elseif (type(vl) == "table") then
 				defaults[k] = defaults[k];
 			else
@@ -105,6 +97,8 @@ local function gconfig_setup()
 	end
 end
 
+-- shouldn't store all of default overrides in database, just from a
+-- filtered subset
 function gconfig_shutdown()
 	local ktbl = {};
 
