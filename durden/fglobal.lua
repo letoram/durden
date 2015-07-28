@@ -88,6 +88,35 @@ gf["debug_random_alert"] = function()
 	end
 end
 
+-- sweep the entire bindings table
+gf["rebind_basic"] = function()
+	local tbl = {
+		{"Accept", "ok_sym", gconfig_get("ok_sym")},
+		{"Cancel", "cancel_sym", gconfig_get("cancel_sym")},
+		{"Next", "step_next", gconfig_get("step_next")},
+		{"Previous", "step_previous", gconfig_get("step_previous")}
+	};
+
+	local runsym = function(self)
+		local ent = table.remove(tbl, 1);
+		if (ent == nil) then
+			return;
+		end
+		tiler_bbar(displays.main,
+			string.format("Bind %s, press current: %s or hold new to rebind.",
+				ent[1], ent[3]), true, gconfig_get("bind_waittime"), ent[3], nil,
+				function(sym, done)
+					if (done) then
+						gconfig_set(ent[2], sym);
+						self(self);
+					end
+				end
+		);
+	end
+
+	runsym(runsym);
+end
+
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
 gf["rebind_meta"] = function()
 	local bwt = gconfig_get("bind_waittime");
@@ -117,34 +146,36 @@ gf["query_launch"] = function()
 		displays.main:message("Database does not contain any targets");
 	else
 		displays.main:lbar(tiler_lbarforce(targets, function(str)
-			local cfg = target_configurations(str);
-			print("configurations for " .. str);
+			local cfgs = target_configurations(str);
 			if (cfgs == nil or #cfgs == 0) then
 				return;
 			end
 			if (#cfgs > 1) then
 				displays.main:lbar(tiler_lbarforce(cfgs, function(cfstr)
-					local vid = launch_target(str, cfstr);
+					local vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
 					if (valid_vid(vid)) then
 						durden_launch(vid, string.format("%s:%s", str, cfstr));
 					end
-				end), {force_completion = true}, str .. ", Config:");
+				end), {}, {label = str .. ", Config:", force_completion = true});
 			else
-				launch_target(str, cfg[1]);
+				launch_target(str, cfg[1], LAUNCH_INTERNAL, def_handler);
 			end
-		end), {force_completion = true}, "Target:");
+		end), {}, {label = "Target:", force_completion = true});
 	end
 end
 
 gf["rename_space"] = function()
 	displays.main:lbar(function(ctx, instr, done)
-		if (done) then
-			ctx.space:set_label(instr);
-			ctx.space.wm:update_statusbar();
-		end
-		ctx.ulim = 16;
-		return {set = {}};
-	end, {space = displays.main.spaces[displays.main.space_ind]}, "Rename Space:");
+			if (done) then
+				ctx.space:set_label(instr);
+				ctx.space.wm:update_statusbar();
+			end
+			ctx.ulim = 16;
+			return {set = {}};
+		end,
+		{space = displays.main.spaces[displays.main.space_ind]},
+		{label = "Rename Space:"}
+	);
 end
 
 gf["save_space_shallow"] = function()
