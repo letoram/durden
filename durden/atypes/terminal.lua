@@ -13,7 +13,6 @@ local symmap = {
 
 return {
 	actions = {},
-	settings = {},
 	labels = symmap,
 	atype = "terminal"
 };

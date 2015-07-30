@@ -273,7 +273,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	image_inherit_order(bar, true);
 	image_inherit_order(bg, true);
 	image_mask_clear(bar, MASK_OPACITY);
-	blend_image(bg, gconfig_get("lbar_dim"));
+	blend_image(bg, gconfig_get("lbar_dim"), gconfig_get("transition"));
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
@@ -293,10 +293,11 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	wm.input_ctx = {
 		anchor = bg,
 		text_anchor = bar,
-		accept = gconfig_get("ok_sym"),
-		cancel = gconfig_get("cancel_sym"),
-		step_n = gconfig_get("step_next"),
-		step_p = gconfig_get("step_previous"),
+-- we cache these per context as we don't want them changing mid- use
+		accept = SYSTEM_KEYS["accept"],
+		cancel = SYSTEM_KEYS["cancel"],
+		step_n = SYSTEM_KEYS["next"],
+		step_p = SYSTEM_KEYS["previous"],
 		textstr = gconfig_get("lbar_textstr"),
 		set_label = lbar_label,
 		get_cb = completion,

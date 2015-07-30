@@ -1,17 +1,11 @@
 --
--- Meta_guard tries to prevent being locked into durden by changes in the
--- input environment, as most actions actually depend on the meta key being
--- pressed, this works as a decent heuristic. Possibly combined with a
--- timer, though that is more context sensitive.
+-- Meta_guard tries to prevent being locked into durden by changes in the input
+-- environment, as most actions actually depend on the meta key being pressed,
+-- this works as a decent heuristic. Possibly combined with a timer, though
+-- that is more context sensitive. Other possible heuristics would be the number
+-- of "dead" keypresses, though that would not
 --
 
--- We should also have a keybinding helper that shows navigation +
--- menu (global, left, right and select are needed)
-
---
--- Special case, track keypresses before a successful combo that involves meta
--- keys as an indication if meta is broken. In that case, query for a new one.
---
 local mgc = 0;
 local threshold = 40;
 local mg;

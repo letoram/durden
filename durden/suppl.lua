@@ -176,13 +176,13 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		chofs = 1,
 		ulim = VRESW,
 		msg = "",
-		caret_left = gconfig_get("caret_left"),
-		caret_right = gconfig_get("caret_right"),
-		caret_down = gconfig_get("caret_down"),
-		caret_home = gconfig_get("caret_home"),
-		caret_end = gconfig_get("caret_end"),
-		caret_delete = gconfig_get("caret_delete"),
-		caret_erase = gconfig_get("caret_erase")
+		caret_left   = SYSTEM_KEYS["caret_left"],
+		caret_right  = SYSTEM_KEYS["caret_right"],
+		caret_down   = SYSTEM_KEYS["caret_down"],
+		caret_home   = SYSTEM_KEYS["caret_home"],
+		caret_end    = SYSTEM_KEYS["caret_end"],
+		caret_delete = SYSTEM_KEYS["caret_delete"],
+		caret_erase  = SYSTEM_KEYS["caret_erase"]
 	} or ctx;
 
 	local caretofs = function()
