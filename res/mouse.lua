@@ -204,10 +204,13 @@ local function linear_find_vid(table, vid, state)
 	end
 end
 
+-- re-use cached results if the cursor hasn't moved and the logical clock
+-- hasn't changed since last query, this cuts down on I/O storms from high-
+-- res devices
 local function cached_pick(xpos, ypos, depth, reverse)
 	if (mouse_lastpick == nil or CLOCK > mouse_lastpick.tick or
 		xpos ~= mouse_lastpick.x or ypos ~= mouse_lastpick.y) then
-		local res = pick_items(xpos, ypos, depth, reverse);
+		local res = pick_items(xpos, ypos, depth, reverse, mstate.rt);
 
 		mouse_lastpick = {
 			tick = CLOCK,
@@ -486,7 +489,7 @@ function mouse_button_input(ind, active)
 
 	local hists = mouse_pickfun(
 		mstate.x + mstate.hotspot_x,
-		mstate.y + mstate.hotspot_y, mstate.pickdepth, 1);
+		mstate.y + mstate.hotspot_y, mstate.pickdepth, 1, mstate.rt);
 
 	if (DEBUGLEVEL > 2) then
 		local res = {};
@@ -821,6 +824,14 @@ function mouse_dblclickrate(newr)
 	else
 		mstate.dblclickstep = newr;
 	end
+end
+
+function mouse_querytarget(rt)
+	if (rt == nil) then
+		rt = WORLDID;
+	end
+
+	mstate.rt = rt;
 end
 
 function mouse_acceleration(newvx, newvy)
