@@ -36,6 +36,12 @@ function durden()
 	system_load("builtin/global.lua")();
 	system_load("builtin/shared.lua")();
 
+	if (not input_capabilities().translated) then
+		warning("arcan reported no available translation capable devices "
+			.. "(keyboard), cannot continue without one.\n");
+		return shutdown("", EXIT_FAILURE);
+	end
+
 	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
 	if (res ~= nil) then
 		for k,v in ipairs(res) do
@@ -204,7 +210,6 @@ function durden_input(iotbl)
 
 	elseif (iotbl.translated) then
 		local sym = SYMTABLE[ iotbl.keysym ];
-
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
 			local sel = displays.main.selected;
@@ -221,7 +226,8 @@ function durden_display_state(action, id)
 		if (displays[id] == nil) then
 			displays[id] = {};
 -- find out if there is a known profile for this display, activate
--- corresponding desired resolution, set mapping, create tiler
+-- corresponding desired resolution, set mapping, create tiler, color
+-- correction profile, RGB tuning etc.
 		end
 	elseif (action == "removed") then
 		if (displays[id] == nil) then
@@ -230,8 +236,8 @@ function durden_display_state(action, id)
 		end
 
 -- sweep workspaces and migrate back to previous display (and toggle
--- rendertarget output on/off), destroy tiler, save settings,
--- if workspace slot is occupied, add to "orphan-" list.
+-- rendertarget output on/off), destroy tiler, save settings, if workspace slot
+-- is occupied, add to "orphan-" list.
 	end
 end
 
