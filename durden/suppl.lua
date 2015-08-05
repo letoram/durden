@@ -294,6 +294,8 @@ function merge_menu(m1, m2)
 	return res;
 end
 
+local menu_hook = nil;
+local path = nil;
 local function lbar_fun(ctx, instr, done, lastv)
 	if (done) then
 		local tgt = nil;
@@ -312,10 +314,21 @@ local function lbar_fun(ctx, instr, done, lastv)
 			end
 		end
 
-		if (tgt.kind == "action" and tgt.handler) then
-			return tgt.handler(ctx.handler, instr);
+-- a little odd combination, used to manually build a path to a specific menu
+-- item for shortcuts. handler_hook needs to be set and either meta+submenu or
+-- just non-submenu for the hook to be called instead of the default handler
+		if (tgt.kind == "action") then
+			path = path and (path .. "/" .. tgt.name) or tgt.name;
+			if (menu_hook and
+				(tgt.submenu and ctx.meta_1 or not tgt.submenu)) then
+					menu_hook(path);
+					menu_hook = nil;
+					path = "";
+					return;
+			elseif (tgt.handler) then
+				return tgt.handler(ctx.handler, instr, ctx);
+			end
 		end
-
 		return;
 	end
 
@@ -346,13 +359,64 @@ end
 --  list [# of {name, label, kind, validator, handler}]
 --  + any data the handler might need
 --
-function launch_menu(wm, ctx, fcomp, label)
+function launch_menu(wm, ctx, fcomp, label, opts)
 	if (ctx == nil or ctx.list == nil or #ctx.list == 0) then
 		return;
 	end
 
-	local bar = wm:lbar(lbar_fun, ctx, {
-		force_completion = fcomp,
-		label = label
-	});
+	opts = opts and opts or {};
+	opts.force_completion = fcomp;
+	opts.label = label;
+
+	local bar = wm:lbar(lbar_fun, ctx, opts);
+end
+
+-- set a temporary hook that will override menu navigation
+-- and instead send the path to the specified function one time
+function launch_menu_hook(fun)
+	menu_hook = fun;
+	path = nil;
+end
+
+--
+-- navigate a tree of submenus to reach a specific function without performing
+-- the visual / input triggers needed, used to provide the same interface for
+-- keybinding as for setup. gfunc should be a menu spawning function.
+--
+function run_menu_path(wm, gfunc, pathdescr)
+	local elems = string.split(pathdescr, "/");
+	local cl = ctx;
+	local old_launch = launch_menu;
+	launch_menu = function(wm, ctx, fcomp, label)
+		cl = ctx;
+	end
+
+	gfunc();
+
+	for i,v in ipairs(elems) do
+		local found = false;
+
+		for m,n in ipairs(cl.list) do
+			if (n.name == v) then
+				found = n;
+				break;
+			end
+		end
+		if (not found) then
+			warning(string.format(
+				"run_menu_path(%s) failed at index %d", pathdescr, i));
+			launch_menu = old_launch;
+			return;
+		else
+			if (found.submenu) then
+				found.handler(); -- will call launch_menu that will update cl
+			else
+				launch_menu = old_launch;
+				found.handler(cl.handler, "", cl); -- is reserved for when we support vals
+				return;
+			end
+		end
+	end
+
+	launch_menu = old_launch;
 end

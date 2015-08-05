@@ -45,7 +45,6 @@ local display_menu = {
 		name = "display_rescan",
 		label = "Rescan",
 		kind = "action",
-		submenu = false,
 		handler = function(ctx)
 			video_displaymodes();
 		end
@@ -124,12 +123,14 @@ local system_menu = {
 		name = "shutdown",
 		label = "Shutdown",
 		kind = "action",
+		submenu = true,
 		handler = query_exit
 	},
 	{
 		name = "reset",
 		label = "Reset",
 		kind = "action",
+		submenu = true,
 		handler = query_reset
 	},
 	{
@@ -155,6 +156,12 @@ local input_menu = {
 		kind = "action",
 		label = "Rebind Basic",
 		handler = grab_global_function("rebind_basic")
+	},
+	{
+		name = "input_rebind_custom",
+		kind = "action",
+		label = "Bind Custom",
+		handler = grab_global_function("bind_custom")
 	},
 	{
 		name = "input_binding_window",
@@ -196,10 +203,12 @@ local input_menu = {
 		handler = function()
 			warning("mouse menu");
 -- focus follow mouse
+-- mouse follows focus
+-- autohide
 -- acceleration rate
 -- reverse buttons
--- flip y axis
--- flip x axis
+-- invert y axis
+-- invert x axis
 -- drag traction
 -- dblclick interval
 		end
@@ -499,8 +508,9 @@ local toplevel = {
 	},
 };
 
-local function global_actions()
-	launch_menu(displays.main, {list = toplevel}, true, "Action:");
+local function global_actions(trigger_function)
+	launch_menu(displays.main, {list = toplevel,
+		trigger = trigger_function}, true, "Action:");
 end
 
 register_global("global_actions", global_actions);

@@ -81,6 +81,9 @@ function durden()
 
 	register_global("spawn_terminal", spawn_terminal);
 	register_global("launch_bar", query_launch);
+
+-- load saved keybindings
+	dispatch_load();
 end
 
 local function tile_changed(wnd)

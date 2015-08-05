@@ -30,7 +30,8 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 			local res = ctx.cb(lutsym, false);
 			if (type(res) == "string") then
 				ctx.psym = nil;
-				ctx:label(res);
+				ctx:label(string.format("%s%s\\t%s%s", gconfig_get("lbar_errstr"),
+					res, gconfig_get("lbar_labelstr"), ctx.message));
 			else
 				ctx.psym = sym;
 				ctx:data(ctx.psym);
@@ -46,6 +47,17 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 end
 
 local function bbar_input_combo(wm, sym, iotbl, lutsym)
+	if (SYSTEM_KEYS["meta_1"] == sym) then
+		wm.input_ctx.meta_1 = iotbl.active;
+		return "";
+	elseif (SYSTEM_KEYS["meta_2"] == sym) then
+		wm.input_ctx.meta_2 = iotbl.active;
+		return "";
+	else
+		return bbar_input_key(wm, string.format("%s%s%s",
+			wm.input_ctx.meta_1 and "m1_" or "",
+			wm.input_ctx.meta_2 and "m2_" or "", sym),iotbl, lutsym);
+	end
 end
 
 local function set_label(ctx, msg)
@@ -113,6 +125,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	ctx.bar_w = wm.width;
 	ctx.progress = progress;
 	ctx.set_progress = set_progress;
+	ctx.message = msg;
 	ctx.data_y = gconfig_get("lbar_sz");
 
 	show_image(bar);
