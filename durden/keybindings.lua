@@ -100,10 +100,30 @@ local meta_2_state = false;
 function dispatch_meta(meta1, meta2)
 	if (meta1) then
 		SYSTEM_KEYS["meta_1"] = meta1;
+		store_key("sysk_meta_1", meta1);
 	end
 
 	if (meta2) then
 		SYSTEM_KEYS["meta_2"] = meta2;
+		store_key("sysk_meta_2", meta2);
+	end
+end
+
+function dispatch_system(key, val)
+	if (SYSTEM_KEYS[key] ~= nil) then
+		SYSTEM_KEYS[key] = val;
+		store_key("sysk_" .. key, val);
+	else
+		warning("tried to assign " .. key .. " / " .. val .. " as system key");
+	end
+end
+
+function dispatch_load()
+	for k,v in pairs(SYSTEM_KEYS) do
+		local km = get_key("sysk_" .. k);
+		if (km ~= nil) then
+			SYSTEM_KEYS[k] = tostring(km);
+		end
 	end
 end
 

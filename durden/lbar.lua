@@ -159,6 +159,11 @@ end
 
 local function lbar_input(wm, sym, iotbl)
 	local ictx = wm.input_ctx;
+	if (SYSTEM_KEYS["meta_1"] == sym) then
+		ictx.meta_1 = iotbl.active;
+		return {set = ictx.set, valid = false};
+	end
+
 	if (not iotbl.active) then
 		return;
 	end

@@ -97,6 +97,8 @@ gf["rebind_basic"] = function()
 		{"Previous", "previous"}
 	};
 
+	local used = {};
+
 	local runsym = function(self)
 		local ent = table.remove(tbl, 1);
 		if (ent == nil) then
@@ -108,14 +110,38 @@ gf["rebind_basic"] = function()
 				SYSTEM_KEYS[ent[2]], nil,
 				function(sym, done)
 					if (done) then
-						gconfig_set(ent[2], sym);
+						dispatch_system(ent[2], sym);
+						table.insert(used, {sym, ent[2]});
 						self(self);
+					else
+						for k,v in ipairs(used) do
+							if (v[1] == sym) then
+								return "Already bound to " .. v[2];
+							end
+						end
 					end
 				end
 		);
 	end
 
 	runsym(runsym);
+end
+
+gf["bind_custom"] = function()
+	local bwt = gconfig_get("bind_waittime");
+
+	tiler_bbar(displays.main,
+		string.format("Press and hold the desired combination, %s to Abort",
+			SYSTEM_KEYS["cancel"]), false, bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				launch_menu_hook(function(path)
+-- missing, bind path to the new keybinding
+				end);
+				gf["global_actions"]();
+			end
+		end
+	);
 end
 
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
@@ -133,7 +159,11 @@ gf["rebind_meta"] = function()
 						if (done) then
 							displays.main:message(
 								string.format("Meta 1,2 set to %s, %s", sym, sym2));
-							dispatch_meta(sym, sym2);
+							dispatch_system("meta_1", sym);
+							dispatch_system("meta_2", sym2);
+						end
+						if (sym2 == sym) then
+							return "Already bound to Meta 1";
 						end
 				end);
 			end

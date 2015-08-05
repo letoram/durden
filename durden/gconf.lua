@@ -30,6 +30,7 @@ local defaults = {
 	lbar_labelstr = "\\fdefault.ttf,12\\#00ff00 ",
 	lbar_menulblstr = "\\fdefault.ttf,12\\#ffff00 ",
 	lbar_menulblselstr = "\\fdefault.ttf,12\\#ffff00 ",
+	lbar_errstr = "\\fdefault.ttf,12\\#ff4444 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
 	lbar_label_col = {0xff, 0xff, 0x00},
@@ -68,7 +69,8 @@ local defaults = {
 
 function gconfig_set(key, val)
 if (type(val) ~= type(defaults[key])) then
-		warning("gconfig_set(), type mismatch for key: " .. key);
+		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",
+			type(val), type(defaults[key]), key));
 		return;
 	end
 
