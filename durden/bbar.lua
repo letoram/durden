@@ -9,6 +9,9 @@ local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm.input_lock = nil;
 	delete_image(wm.input_ctx.bar);
+	if (wm.input_ctx.on_cancel) then
+		wm.input_ctx:on_cancel();
+	end
 	wm.input_ctx = nil;
 	kbd_repeat(gconfig_get("kbd_repeat"));
 end
@@ -46,17 +49,17 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 	end
 end
 
-local function bbar_input_combo(wm, sym, iotbl, lutsym)
-	if (SYSTEM_KEYS["meta_1"] == sym) then
-		wm.input_ctx.meta_1 = iotbl.active;
-		return "";
-	elseif (SYSTEM_KEYS["meta_2"] == sym) then
-		wm.input_ctx.meta_2 = iotbl.active;
-		return "";
+-- enforce meta + other key for bindings
+local function bbar_input_combo(wm, sym, iotbl, lutsym, mstate)
+	if (mstate) then
+		return;
+	end
+
+	if (string.match(lutsym, "m%d_") ~= nil or sym == wm.input_ctx.cancel) then
+		return bbar_input_key(wm, lutsym, iotbl, lutsym);
 	else
-		return bbar_input_key(wm, string.format("%s%s%s",
-			wm.input_ctx.meta_1 and "m1_" or "",
-			wm.input_ctx.meta_2 and "m2_" or "", sym),iotbl, lutsym);
+		wm.input_ctx:set_progress(0);
+		wm.input_ctx.clock = nil;
 	end
 end
 
