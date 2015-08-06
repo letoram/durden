@@ -30,6 +30,9 @@ SYSTEM_KEYS = {
 	["caret_erase"] = "BACKSPACE"
 };
 
+-- bindings here match either the shared global_functions table, or a path for
+-- those that should be treated as normal menu navigation (and may map more
+-- dynamic options, i.e. setting values etc.)
 local tbl = {};
 tbl["m1_RETURN"] = "spawn_terminal";
 tbl["m1_m2_DELETE"] = "exit";
@@ -90,10 +93,8 @@ end
 -- the following line can be removed if meta state protection is not needed
 system_load("meta_guard.lua")();
 
---
 -- We assume that all relevant input related functions go
 -- through this one as it is used to map track meta_ key state.
---
 local meta_1_state = false;
 local meta_2_state = false;
 
@@ -125,6 +126,24 @@ function dispatch_load()
 			SYSTEM_KEYS[k] = tostring(km);
 		end
 	end
+
+	for i,v in ipairs(match_keys("custk_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		local key = string.sub(v, 7, pos - 1);
+		local val = string.sub(v, stop + 1);
+		tbl[key] = "!" .. val;
+	end
+end
+
+function dispatch_custom(key, val)
+	local old = tbl[key];
+	tbl[key] = "!" .. val;
+	store_key("custk_" .. key, val);
+	return old;
+end
+
+function dispatch_meta()
+	return meta_1_state, meta_2_state;
 end
 
 function dispatch_lookup(iotbl, keysym, hook_handler)
@@ -133,28 +152,25 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 		return;
 	end
 
+	local metam = false;
 	if (keysym == SYSTEM_KEYS["meta_1"]) then
 		meta_1_state = iotbl.active;
-		metadrop = true;
+		metam = true;
 
 	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
 		meta_2_state = iotbl.active;
-		metadrop = true;
+		metam = true;
 	end
 
 	local lutsym = "" .. (meta_1_state == true and "m1_" or "") ..
 		(meta_2_state == true and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
-		hook_handler(displays.main, keysym, iotbl, lutsym);
+		hook_handler(displays.main, keysym, iotbl, lutsym, metam);
 		return true;
 	end
 
-	if (metadrop) then
-		return true;
-	end
-
-	if (not meta_guard(meta_1_state, meta_2_state)) then
+	if (metam or not meta_guard(meta_1_state, meta_2_state)) then
 		return true;
 	end
 

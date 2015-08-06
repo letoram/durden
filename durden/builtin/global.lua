@@ -509,7 +509,7 @@ local toplevel = {
 };
 
 local function global_actions(trigger_function)
-	launch_menu(displays.main, {list = toplevel,
+	return launch_menu(displays.main, {list = toplevel,
 		trigger = trigger_function}, true, "Action:");
 end
 

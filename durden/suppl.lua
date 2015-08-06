@@ -319,8 +319,10 @@ local function lbar_fun(ctx, instr, done, lastv)
 -- just non-submenu for the hook to be called instead of the default handler
 		if (tgt.kind == "action") then
 			path = path and (path .. "/" .. tgt.name) or tgt.name;
+			local m1, m2 = dispatch_meta();
+
 			if (menu_hook and
-				(tgt.submenu and ctx.meta_1 or not tgt.submenu)) then
+				(tgt.submenu and m1 or not tgt.submenu)) then
 					menu_hook(path);
 					menu_hook = nil;
 					path = "";
@@ -369,6 +371,7 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	opts.label = label;
 
 	local bar = wm:lbar(lbar_fun, ctx, opts);
+	return bar;
 end
 
 -- set a temporary hook that will override menu navigation
@@ -383,7 +386,7 @@ end
 -- the visual / input triggers needed, used to provide the same interface for
 -- keybinding as for setup. gfunc should be a menu spawning function.
 --
-function run_menu_path(wm, gfunc, pathdescr)
+function launch_menu_path(wm, gfunc, pathdescr)
 	local elems = string.split(pathdescr, "/");
 	local cl = ctx;
 	local old_launch = launch_menu;
@@ -409,6 +412,7 @@ function run_menu_path(wm, gfunc, pathdescr)
 			return;
 		else
 			if (found.submenu) then
+				launch_menu = i == #elems and old_launch or launch_menu;
 				found.handler(); -- will call launch_menu that will update cl
 			else
 				launch_menu = old_launch;

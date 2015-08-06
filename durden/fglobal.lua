@@ -11,6 +11,11 @@
 -- testing and debugging can be shared with appls that derive from this
 -- codebase, but don't necessarily want to support the more advanced ones.
 --
+-- symbol_dispatch order:
+--  1. menu command (! or #) -> run_menu_path
+--  2. part of sf? lookup selected window and run
+--  3. part of gf? lookup and run
+--
 
 local gf = {};
 local sf = {};
@@ -47,9 +52,18 @@ function grab_global_function(funname)
 	return gf[funname];
 end
 
--- priority: wnd-specific -> shared -> global
 function dispatch_symbol(sym)
 	local ms = displays.main.selected;
+	local ch = string.sub(sym, 1, 1);
+
+	if (ch == "!") then
+		launch_menu_path(displays.main, gf["global_actions"],
+			string.sub(sym, 2));
+		return;
+	elseif (ch == "#") then
+-- run menu command on window- specific menu
+	end
+
 	if (sf[sym]) then
 		if (ms) then
 			sf[sym](ms);
@@ -136,9 +150,17 @@ gf["bind_custom"] = function()
 		function(sym, done)
 			if (done) then
 				launch_menu_hook(function(path)
--- missing, bind path to the new keybinding
+					local res = dispatch_custom(sym, path);
+					if (res ~= nil) then
+						displays.main:message(res .. " unbound");
+					end
 				end);
-				gf["global_actions"]();
+				displays.main:message("select function to bind to " .. sym, -1);
+				local ctx = gf["global_actions"]();
+				ctx.on_cancel = function()
+					launch_menu_hook(nil);
+					displays.main:message(nil);
+				end;
 			end
 		end
 	);
