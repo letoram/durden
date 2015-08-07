@@ -141,8 +141,11 @@ gf["rebind_basic"] = function()
 	runsym(runsym);
 end
 
+gf["drop_custom"] = dispatch_reset;
+
 gf["bind_custom"] = function()
 	local bwt = gconfig_get("bind_waittime");
+	IN_CUSTOM_BIND = true; -- needed for some special options
 
 	tiler_bbar(displays.main,
 		string.format("Press and hold the desired combination, %s to Abort",
@@ -150,6 +153,7 @@ gf["bind_custom"] = function()
 		function(sym, done)
 			if (done) then
 				launch_menu_hook(function(path)
+					IN_CUSTOM_BIND = false;
 					local res = dispatch_custom(sym, path);
 					if (res ~= nil) then
 						displays.main:message(res .. " unbound");
@@ -159,6 +163,7 @@ gf["bind_custom"] = function()
 				local ctx = gf["global_actions"]();
 				ctx.on_cancel = function()
 					launch_menu_hook(nil);
+					IN_CUSTOM_BIND = false;
 					displays.main:message(nil);
 				end;
 			end
@@ -183,6 +188,7 @@ gf["rebind_meta"] = function()
 								string.format("Meta 1,2 set to %s, %s", sym, sym2));
 							dispatch_system("meta_1", sym);
 							dispatch_system("meta_2", sym2);
+							meta_guard_reset();
 						end
 						if (sym2 == sym) then
 							return "Already bound to Meta 1";

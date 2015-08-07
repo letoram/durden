@@ -470,6 +470,24 @@ local toplevel = {
 		handler = browse_internal
 	},
 	{
+		name = "global_menu",
+		label = "Global Menu",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			grab_global_function("global_actions")();
+		end,
+	},
+	{
+		name = "target_menu",
+		label = "Window Menu",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			grab_global_function("target_actions")
+		end
+	},
+	{
 		name = "workspace",
 		label = "Workspace",
 		kind = "action",
@@ -508,9 +526,17 @@ local toplevel = {
 	},
 };
 
-local function global_actions(trigger_function)
-	return launch_menu(displays.main, {list = toplevel,
-		trigger = trigger_function}, true, "Action:");
+global_actions = function(trigger_function)
+	if (IN_CUSTOM_BIND) then
+		return launch_menu(displays.main, {
+			list = toplevel,
+			trigger = trigger_function,
+			show_invisible = true
+		}, true, "Bind:");
+	else
+		return launch_menu(displays.main, {list = toplevel,
+			trigger = trigger_function}, true, "Action:");
+	end
 end
 
 register_global("global_actions", global_actions);
