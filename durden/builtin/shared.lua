@@ -108,6 +108,11 @@ local shared_actions = {
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
 local function show_shmenu(wnd)
+	wnd = wnd == nil and displays.main or wnd;
+	if (wnd == nil) then
+		return;
+	end
+
 	local ctx = {
 		list = wnd.dispatch and merge_menu(shared_actions, wnd.dispatch) or
 			shared_actions,
@@ -117,14 +122,9 @@ local function show_shmenu(wnd)
 	launch_menu(wnd.wm, ctx, true, "Action:");
 end
 
-local function show_setmenu(wnd)
-	launch_menu(wnd.wm, shared_settings, true, "Settings:");
-end
-
 register_shared("pause", pausetgt);
 register_shared("reset", resettgt);
 register_shared("target_actions", show_shmenu);
-register_shared("target_settings", show_setmenu);
 
 --gf["cycle_scalemode"] = function()
 --	local sel = displays.main.selected;

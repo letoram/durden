@@ -343,7 +343,8 @@ local function lbar_fun(ctx, instr, done, lastv)
 		if (instr == nil or string.len(instr) == 0 or
 			string.lower(string.sub(v.label, 1, string.len(instr))) ==
 			string.lower(instr)) then
-			if (v.eval == nil or v.eval(ctx, instr)) then
+			if ((v.eval == nil or v.eval(ctx, instr)) and
+				(ctx.show_invisible or not v.invisible)) then
 				if (v.submenu) then
 					table.insert(res, {mlbl, msellbl, v.label});
 				else
@@ -411,7 +412,9 @@ function launch_menu_path(wm, gfunc, pathdescr)
 			launch_menu = old_launch;
 			return;
 		else
-			if (found.submenu) then
+			if (found.handler == nil) then
+				warning("missing handler for: " .. found.name);
+			elseif (found.submenu) then
 				launch_menu = i == #elems and old_launch or launch_menu;
 				found.handler(); -- will call launch_menu that will update cl
 			else

@@ -34,62 +34,80 @@ SYSTEM_KEYS = {
 -- those that should be treated as normal menu navigation (and may map more
 -- dynamic options, i.e. setting values etc.)
 local tbl = {};
-tbl["m1_RETURN"] = "spawn_terminal";
-tbl["m1_m2_DELETE"] = "exit";
 
-tbl["m1_F1"] = "debug_testwnd_bar";
-tbl["m1_m2_F1"] = "debug_testwnd_nobar";
+function dispatch_reset(save)
+	tbl = {};
+	tbl["m1_RETURN"] = "spawn_terminal";
+	tbl["m1_m2_DELETE"] = "exit";
 
-tbl["m1_g"] = "global_actions";
-tbl["m1_m2_g"] = "workspace_actions";
-tbl["m1_t"] = "target_actions";
-tbl["m1_m2_t"] = "target_settings";
-tbl["m1_RIGHT"] = "step_right";
-tbl["m1_UP"] = "step_up";
-tbl["m1_LEFT"] = "step_left";
-tbl["m1_DOWN"] = "step_down";
-tbl["m1_m2_d"] = "destroy";
-tbl["m1_v"] = "mode_vertical";
-tbl["m1_h"] = "mode_horizontal";
-tbl["m1_m2_LEFT"] = "shrink_h";
-tbl["m1_m2_RIGHT"] = "grow_h";
-tbl["m1_m2_UP"] = "shrink_v";
-tbl["m1_m2_DOWN"] = "grow_v";
-tbl["m1_f"] = "fullscreen";
-tbl["m1_e"] = "tabtile";
-tbl["m1_r"] = "vtabtile";
-tbl["m1_m2_f"] = "float";
-tbl["m1_TAB"] = "context_popup";
-tbl["m1_m"] = "mergecollapse";
-tbl["m1_1"] = "switch_ws1";
-tbl["m1_2"] = "switch_ws2";
-tbl["m1_3"] = "switch_ws3";
-tbl["m1_4"] = "switch_ws4";
-tbl["m1_5"] = "switch_ws5";
-tbl["m1_6"] = "switch_ws6";
-tbl["m1_7"] = "switch_ws7";
-tbl["m1_8"] = "switch_ws8";
-tbl["m1_9"] = "switch_ws9";
-tbl["m1_10"] = "switch_ws10";
-tbl["m1_m2_r"] = "rename_space";
-tbl["m1_m2_1"] = "assign_ws1";
-tbl["m1_m2_2"] = "assign_ws2";
-tbl["m1_m2_3"] = "assign_ws3";
-tbl["m1_m2_4"] = "assign_ws4";
-tbl["m1_m2_5"] = "assign_ws5";
-tbl["m1_m2_6"] = "assign_ws6";
-tbl["m1_m2_7"] = "assign_ws7";
-tbl["m1_m2_8"] = "assign_ws8";
-tbl["m1_m2_9"] = "assign_ws9";
-tbl["m1_m2_10"] = "assign_ws10";
-tbl["m1_l"] = "lock_input";
-tbl["m1_d"] = "query_launch";
-tbl["m1_i"] = "cycle_scalemode";
+	tbl["m1_F1"] = "debug_testwnd_bar";
+	tbl["m1_m2_F1"] = "debug_testwnd_nobar";
 
-if (DEBUGLEVEL > 0) then
-tbl["m1_m2_p"] = "dump_state";
+	tbl["m1_g"] = "global_actions";
+	tbl["m1_m2_g"] = "workspace_actions";
+	tbl["m1_t"] = "target_actions";
+	tbl["m1_m2_t"] = "target_settings";
+	tbl["m1_RIGHT"] = "step_right";
+	tbl["m1_UP"] = "step_up";
+	tbl["m1_LEFT"] = "step_left";
+	tbl["m1_DOWN"] = "step_down";
+	tbl["m1_m2_d"] = "destroy";
+	tbl["m1_v"] = "mode_vertical";
+	tbl["m1_h"] = "mode_horizontal";
+	tbl["m1_m2_LEFT"] = "shrink_h";
+	tbl["m1_m2_RIGHT"] = "grow_h";
+	tbl["m1_m2_UP"] = "shrink_v";
+	tbl["m1_m2_DOWN"] = "grow_v";
+	tbl["m1_f"] = "fullscreen";
+	tbl["m1_e"] = "tabtile";
+	tbl["m1_r"] = "vtabtile";
+	tbl["m1_m2_f"] = "float";
+	tbl["m1_TAB"] = "context_popup";
+	tbl["m1_m"] = "mergecollapse";
+	tbl["m1_1"] = "switch_ws1";
+	tbl["m1_2"] = "switch_ws2";
+	tbl["m1_3"] = "switch_ws3";
+	tbl["m1_4"] = "switch_ws4";
+	tbl["m1_5"] = "switch_ws5";
+	tbl["m1_6"] = "switch_ws6";
+	tbl["m1_7"] = "switch_ws7";
+	tbl["m1_8"] = "switch_ws8";
+	tbl["m1_9"] = "switch_ws9";
+	tbl["m1_10"] = "switch_ws10";
+	tbl["m1_m2_r"] = "rename_space";
+	tbl["m1_m2_1"] = "assign_ws1";
+	tbl["m1_m2_2"] = "assign_ws2";
+	tbl["m1_m2_3"] = "assign_ws3";
+	tbl["m1_m2_4"] = "assign_ws4";
+	tbl["m1_m2_5"] = "assign_ws5";
+	tbl["m1_m2_6"] = "assign_ws6";
+	tbl["m1_m2_7"] = "assign_ws7";
+	tbl["m1_m2_8"] = "assign_ws8";
+	tbl["m1_m2_9"] = "assign_ws9";
+	tbl["m1_m2_10"] = "assign_ws10";
+	tbl["m1_l"] = "lock_input";
+	tbl["m1_d"] = "query_launch";
+	tbl["m1_i"] = "cycle_scalemode";
+
+	if (DEBUGLEVEL > 0) then
+		tbl["m1_m2_p"] = "dump_state";
+	end
+
+-- clear all existing and define new ones
+	if (save) then
+		local rst = {};
+		for i,v in ipairs(match_keys("custk_%")) do
+			local pos, stop = string.find(v, "=", 1);
+			local key = string.sub(v, 7, pos - 1);
+			rst[key] = "";
+		end
+
+		store_key(rst);
+		store_key(tbl);
+	end
 end
 
+dispatch_reset();
 -- the following line can be removed if meta state protection is not needed
 system_load("meta_guard.lua")();
 
