@@ -17,6 +17,8 @@ local function inp_str(ictx, ul)
 		ictx.inp.msg, ictx.inp.chofs, ictx.inp.chofs + (ul and ul or ictx.inp.ulim) );
 end
 
+local pending = nil;
+
 -- Build chain of single selectable strings, move and resize the marker to each
 -- of them, chain their positions to an anchor so they are easy to delete, and
 -- track an offset for drawing. We rebuild / redraw each cursor modification to
@@ -157,6 +159,8 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 	update_caret(ictx);
 end
 
+-- used on spawn to get rid of crossfade effect
+PENDING_FADE = nil;
 local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	local ictx = wm.input_ctx;
 
@@ -169,7 +173,18 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	end
 
 	if (sym == ictx.cancel or sym == ictx.accept) then
-		delete_image(ictx.anchor);
+		local time = gconfig_get("transition");
+		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPINOUT);
+		blend_image(ictx.anchor, 0.0, time, INTERP_EXPINOUT);
+		if (time > 0) then
+			PENDING_FADE = ictx.anchor;
+			expire_image(ictx.anchor, time + 2);
+			tag_image_transform(ictx.anchor, MASK_OPACITY, function()
+				PENDING_FADE = nil;
+			end);
+		else
+			delete_image(ictx.anchor);
+		end
 		iostatem_restore(ictx.iostate);
 		wm.input_ctx = nil;
 		wm.input_lock = nil;
@@ -270,16 +285,26 @@ end
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 
+	local time = gconfig_get("transition");
+	if (valid_vid(PENDING_FADE)) then
+		delete_image(PENDING_FADE);
+		time = 0;
+	end
+	PENDING_FADE = nil;
+
 	local bg = color_surface(wm.width, wm.height, 0, 0, 0);
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
-	show_image(bar);
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
 	image_inherit_order(bar, true);
 	image_inherit_order(bg, true);
 	image_mask_clear(bar, MASK_OPACITY);
-	blend_image(bg, gconfig_get("lbar_dim"), gconfig_get("transition"));
+
+-- when navigating menus the bar is created and destroyed rapidly, a
+-- global timer on des
+	blend_image(bar, 1.0, time, INTERP_EXPOUT);
+	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));

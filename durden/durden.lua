@@ -88,8 +88,6 @@ function durden()
 -- load saved keybindings
 	dispatch_load();
 	iostatem_init();
-
-	iostatem_repeat(60, 500);
 end
 
 local function tile_changed(wnd)
