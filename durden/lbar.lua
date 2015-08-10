@@ -170,6 +170,7 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 	if (sym == ictx.cancel or sym == ictx.accept) then
 		delete_image(ictx.anchor);
+		iostatem_restore(ictx.iostate);
 		wm.input_ctx = nil;
 		wm.input_lock = nil;
 		if (sym == ictx.accept) then
@@ -313,10 +314,11 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
+		iostate = iostatem_save(),
 		force_completion = opts.force_completion and true or false
 	};
-	lbar_input(wm, "", {active = true, kind = "digital", translated = true,
-		devid = 0, subid = 0});
+	lbar_input(wm, "", {active = true,
+		kind = "digital", translated = true, devid = 0, subid = 0});
 
 	if (opts.label) then
 		wm.input_ctx:set_label(opts.label);
