@@ -12,14 +12,15 @@ local defaults = {
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
-	transition = 0,
+	transition = 10,
 
 -- focus follows mouse
 	mouse_focus = true,
 
 -- default keyboard repeat rate for all windows, some archetypes have
 -- default overrides and individual windows can have strong overrides
-	kbd_repeat = 100,
+	kbd_period = 60,
+	kbd_delay = 300,
 
 -- input bar graphics
 	lbar_position = "center", -- top, center, bottom

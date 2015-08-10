@@ -5,10 +5,22 @@
 -- it only supports digital inputs, analog need some better illustration that
 -- combines other mechanics (filtering, ...).
 
+PENDING_FADE = nil;
 local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm.input_lock = nil;
-	delete_image(wm.input_ctx.bar);
+	local time = gconfig_get("transition");
+	local bar = wm.input_ctx.bar;
+	blend_image(bar, 0.0, time, INTERP_EXPINOUT);
+	if (time > 0) then
+		PENDING_FADE = bar;
+		expire_image(bar, time + 1);
+		tag_image_transform(bar, MASK_OPACITY, function()
+			PENDING_FADE = nil;
+		end);
+	else
+		delete_image(bar);
+	end
 	if (wm.input_ctx.on_cancel) then
 		wm.input_ctx:on_cancel();
 	end
@@ -133,7 +145,14 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 		data_y = gconfig_get("lbar_sz")
 	};
 
-	show_image(bar);
+	local time = gconfig_get("transition");
+	if (valid_vid(PENDING_FADE)) then
+		delete_image(PENDING_FADE);
+		time = 0;
+	end
+	PENDING_FADE = nil;
+
+	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 	link_image(bar, wm.order_anchor);
 	link_image(progress, bar);
 	image_inherit_order(bar, true);
