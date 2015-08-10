@@ -22,26 +22,28 @@ displays = {};
 archtypes = {};
 
 function durden()
--- usual configuration management, gestures, mini UI components etc.
--- will get BINDINGS, SYMTABLE as global lookup tables
-	system_load("gconf.lua")();
-	system_load("mouse.lua")();
-	system_load("suppl.lua")();
-	system_load("bbar.lua")();
-	system_load("keybindings.lua")();
-	system_load("tiler.lua")();
-	system_load("browser.lua")();
+	system_load("gconf.lua")(); -- configuration management
+	system_load("mouse.lua")(); -- mouse gestures
+	system_load("suppl.lua")(); -- convenience functions
+	system_load("bbar.lua")(); -- input binding
+	system_load("keybindings.lua")(); -- static key configuration
+	system_load("tiler.lua")(); -- window management
+	system_load("browser.lua")(); -- quick file-browser
+	system_load("iostatem.lua")(); -- input repeat delay/period
 
-	system_load("fglobal.lua")();
-	system_load("builtin/global.lua")();
-	system_load("builtin/shared.lua")();
+-- functions exposed to user through menus, binding and scripting
+	system_load("fglobal.lua")(); -- tiler- related global
+	system_load("builtin/global.lua")(); -- desktop related global
+	system_load("builtin/shared.lua")(); -- shared window related global
 
+-- can't work without a detected keyboard
 	if (not input_capabilities().translated) then
 		warning("arcan reported no available translation capable devices "
 			.. "(keyboard), cannot continue without one.\n");
 		return shutdown("", EXIT_FAILURE);
 	end
 
+-- load custom special subwindow handlers
 	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
 	if (res ~= nil) then
 		for k,v in ipairs(res) do
@@ -57,8 +59,8 @@ function durden()
 	SYMTABLE = system_load("symtable.lua")();
 	mouse_setup_native(load_image("cursor/default.png"), 0, 0);
 
--- dropping this call means that only controlled invocation is possible
--- (i.e. no non-authoritative connections)
+-- this opens up the 'durden' external listening point, removing it means
+-- only user-input controlled execution
 	new_connection();
 
 -- dropping this call means that the only input / output available is
@@ -70,6 +72,7 @@ function durden()
 		warning("control channel active (durden_cmd)");
 	end
 
+-- preload cursor states
 	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
 	mouse_add_cursor("grabhint", load_image("cursor/grabhint.png"), 0, 0); --, 7, 10);
 	mouse_add_cursor("rz_diag_l", load_image("cursor/rz_diag_l.png"), 0, 0); --, 6, 5);
@@ -84,6 +87,9 @@ function durden()
 
 -- load saved keybindings
 	dispatch_load();
+	iostatem_init();
+
+	iostatem_repeat(60, 500);
 end
 
 local function tile_changed(wnd)
@@ -102,6 +108,7 @@ function durden_launch(vid, ptitle)
 	target_updatehandler(vid, def_handler);
 end
 
+-- recovery from crash is handled just like newly launched windows
 function durden_adopt(vid, kind, title)
 	durden_launch(vid, title);
 end
@@ -197,7 +204,16 @@ end
 
 local mid_c = 0;
 local mid_v = {0, 0};
-function durden_input(iotbl)
+function durden_input(iotbl, fromim)
+	if (not fromim) then
+		local it = iostatem_input(iotbl);
+		if (it) then
+			for k,v in ipairs(it) do
+			durden_input(v, true);
+			end
+		end
+	end
+
 	if (iotbl.source == "mouse") then
 		if (iotbl.kind == "digital") then
 			mouse_button_input(iotbl.subid, iotbl.active);
@@ -245,6 +261,13 @@ function durden_display_state(action, id)
 end
 
 function durden_clock_pulse()
+	local tt = iostatem_tick();
+	if (tt) then
+		for k,v in ipairs(tt) do
+			durden_input(v, true);
+		end
+	end
+
 	displays.main:tick();
 	if (CLOCK % 4 == 0 and control_channel ~= nil) then
 		poll_control_channel();

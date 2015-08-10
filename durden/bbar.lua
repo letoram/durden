@@ -12,8 +12,8 @@ local function drop_bbar(wm)
 	if (wm.input_ctx.on_cancel) then
 		wm.input_ctx:on_cancel();
 	end
+	iostatem_restore(wm.input_ctx.iostate);
 	wm.input_ctx = nil;
-	kbd_repeat(gconfig_get("kbd_repeat"));
 end
 
 local function bbar_input_key(wm, sym, iotbl, lutsym)
@@ -116,20 +116,22 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	local bar = color_surface(wm.width, lbsz, unpack(gconfig_get("lbar_bg")));
 	local progress = color_surface(1, lbsz, unpack(gconfig_get("lbar_caret_col")));
 
-	local ctx = {};
-	ctx.clock_fwd = _G[APPLID .. "_clock_pulse"];
-	ctx.cb = cb;
-	ctx.cancel = cancel;
-	ctx.ok = ok;
-	ctx.clock_start = time;
-	ctx.bar = bar;
-	ctx.label = set_label;
-	ctx.data = set_data;
-	ctx.bar_w = wm.width;
-	ctx.progress = progress;
-	ctx.set_progress = set_progress;
-	ctx.message = msg;
-	ctx.data_y = gconfig_get("lbar_sz");
+	local ctx = {
+		clock_fwd = _G[APPLID .. "_clock_pulse"],
+		cb = cb,
+		cancel = cancel,
+		ok = ok,
+		clock_start = time,
+		bar = bar,
+		label = set_label,
+		data = set_data,
+		bar_w = wm.width,
+		progress = progress,
+		set_progress = set_progress,
+		message = msg,
+		iostate = iostatem_save(),
+		data_y = gconfig_get("lbar_sz")
+	};
 
 	show_image(bar);
 	link_image(bar, wm.order_anchor);
@@ -162,9 +164,9 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 		ctx.clock_fwd(a, b);
 	end
 
+	iostatem_repeat(0, 0);
 	wm.input_lock = key and bbar_input_key or bbar_input_combo;
 	wm.input_ctx = ctx;
-	kbd_repeat(0);
 	ctx:label(msg);
 	return ctx;
 end
