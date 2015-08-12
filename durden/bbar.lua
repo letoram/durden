@@ -152,12 +152,13 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	end
 	PENDING_FADE = nil;
 
-	blend_image(bar, 1.0, time, INTERP_EXPOUT);
+	image_tracetag(bar, "bar");
 	link_image(bar, wm.order_anchor);
 	link_image(progress, bar);
 	image_inherit_order(bar, true);
 	image_inherit_order(progress, true);
 	order_image(progress, 1);
+	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
 	local pos = gconfig_get("lbar_position");
 
