@@ -14,6 +14,11 @@ local defaults = {
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
 
+-- (none, move-h, move-v, fade)
+	ws_transition_in = "move-h",
+	ws_transition_out = "move-v",
+	ws_autodestroy = false,
+
 -- focus follows mouse
 	mouse_focus = true,
 
