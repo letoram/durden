@@ -40,8 +40,8 @@ function dispatch_reset(save)
 	tbl["m1_RETURN"] = "spawn_terminal";
 	tbl["m1_m2_DELETE"] = "exit";
 
-	tbl["m1_F1"] = "debug_testwnd_bar";
-	tbl["m1_m2_F1"] = "debug_testwnd_nobar";
+	tbl["m1_p"] = "debug_testwnd_bar";
+	tbl["m1_o"] = "debug_testwnd_nobar";
 
 	tbl["m1_g"] = "global_actions";
 	tbl["m1_m2_g"] = "workspace_actions";

@@ -266,6 +266,10 @@ function durden_clock_pulse()
 		end
 	end
 
+--	if (CLOCK % 100) then (quick and dirty leak check)
+--		print(current_context_usage());
+--	end
+
 	displays.main:tick();
 	if (CLOCK % 4 == 0 and control_channel ~= nil) then
 		poll_control_channel();

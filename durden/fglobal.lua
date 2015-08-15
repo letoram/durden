@@ -76,7 +76,7 @@ function dispatch_symbol(sym)
 end
 
 local test_gc = 0;
-gf["debug_testwnd_bar"] = function()
+local testwnd_spawn = function(bar)
 	if (DEBUGLEVEL > 0) then
 		local img = fill_surface(math.random(200, 600), math.random(200, 600),
 			math.random(64, 255), math.random(64, 255), math.random(64, 255),
@@ -90,6 +90,32 @@ gf["debug_testwnd_bar"] = function()
 		end
 	end
 end
+
+gf["switch_ws_byname"] = function()
+	local names = {};
+	for k,v in pairs(displays.main.spaces) do
+		if (v.label) then
+			table.insert(names, v.label);
+		end
+	end
+	if (#names == 0) then
+		displays.main:message("no labeled workspaces available");
+	end
+
+	local bar = displays.main:lbar(tiler_lbarforce(names, function(cfstr)
+		for k, v in pairs(displays.main.spaces) do
+			if (v.label == cfstr) then
+				displays.main:switch_ws(k);
+				return;
+			end
+		end
+	end), {}, {label = "Find Workspace:", force_completion = true});
+	bar:set_label("workspace:");
+end
+
+gf["swap_up"] = function() displays.main:swap_up(); end
+gf["debug_testwnd_bar"] = function() testwnd_spawn(true); end
+gf["debug_testwnd_nobar"] = function() testwnd_spawn(); end
 
 gf["debug_dump_state"] = function()
 	system_snapshot("state.dump");
