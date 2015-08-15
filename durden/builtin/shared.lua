@@ -91,6 +91,38 @@ local shared_actions = {
 	},
 };
 
+
+local function query_tracetag()
+	local bar = tiler_lbar(displays.main, function(ctx,msg,done,set)
+		if (done and displays.main.selected) then
+			image_tracetag(displays.main.selected.canvas, msg);
+		end
+		return {};
+	end);
+	bar:set_label("tracetag (wnd.canvas):");
+end
+
+local debug_menu = {
+	{
+		name = "query_tracetag",
+		label = "Tracetag",
+		kind = "action",
+		handler = query_tracetag
+	}
+};
+
+if (DEBUGLEVEL > 0) then
+	table.insert(shared_actions, {
+		name = "debug",
+		label = "Debug",
+		kind = "action",
+		submenu = true,
+		handler = function()
+			launch_menu(displays.main, {list = debug_menu}, true, "Debug:");
+		end
+	});
+end
+
 --
 -- Missing:
 -- Input (local binding / rebinding or call once)
