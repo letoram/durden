@@ -35,7 +35,7 @@ local border_shader = [[
 			texco.t <= 1.0 - margin_t && texco.t >= margin_t )
 			discard;
 
-		gl_FragColor = vec4(texture2D(map_diffuse, texco).rgb, 1.0);
+		gl_FragColor = vec4(texture2D(map_diffuse, texco).rgb, obj_opacity);
 	}
 ]];
 
@@ -264,29 +264,51 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
-local function workspace_activate(space)
-	local dive_down = function(level, fun)
-		for i=1,#level.children do
-			show_image(level.children[i].anchor);
-			fun(level.children[i], fun);
+local function workspace_activate(space, noanim)
+	local time = gconfig_get("transition");
+	local method = gconfig_get("ws_transition_in");
+
+	if (not noanim and time > 0 and method ~= "none") then
+		if (method == "move-h") then
+			move_image(space.anchor, -space.wm.width, 0);
+			move_image(space.anchor, 0, 0, time);
+			show_image(space.anchor);
+		elseif (method == "move-v") then
+			move_image(space.anchor, 0, -space.wm.height);
+			move_image(space.anchor, 0, 0, time);
+			show_image(space.anchor);
+		elseif (method == "fade") then
+			blend_image(space.anchor, 0.0, 0.5 * time);
+			blend_image(space.anchor, 1.0, 0.5 * time);
+		else
+			warning("broken method set for ws_transition_in");
 		end
+	else
+		show_image(space.anchor);
 	end
 
 	local tgt = space.selected and space.selected or space.children[1];
-	dive_down(space, dive_down);
-
 	space:bgon();
 end
 
-local function workspace_inactivate(space, store)
-	local dive_down = function(level, fun)
-		for i=1,#level.children do
-			hide_image(level.children[i].anchor);
-			fun(level.children[i], fun);
+local function workspace_inactivate(space, noanim)
+	local time = gconfig_get("transition");
+	local method = gconfig_get("ws_transition_out");
+
+	if (not noanim and time > 0 and method ~= "none") then
+		if (method == "move-h") then
+			move_image(space.anchor, space.wm.width, 0, time);
+		elseif (method == "move-v") then
+			move_image(space.anchor, 0, space.wm.height, time);
+		elseif (method == "fade") then
+			blend_image(space.anchor, 0.0, 0.5 * time);
+		else
+			warning("broken method set for ws_transition_out");
 		end
+	else
+		hide_image(space.anchor);
 	end
 
-	dive_down(space, dive_down);
 	space:bgoff();
 end
 
@@ -295,18 +317,17 @@ local function switch_fullscreen(space, to)
 		return;
 	end
 
-	workspace_inactivate(space);
+	workspace_inactivate(space, true);
 	if (to) then
-		image_mask_clear(space.selected.canvas, MASK_OPACITY);
+--		image_mask_clear(space.selected.canvas, MASK_OPACITY);
 		hide_image(space.wm.statusbar);
 	else
-		image_mask_set(space.selected.canvas, MASK_OPACITY);
-		hide_image(space.selected.anchor);
+--		image_mask_set(space.selected.canvas, MASK_OPACITY);
 	end
 end
 
 local function drop_fullscreen(space, swap)
-	workspace_activate(space);
+	workspace_activate(space, true);
 	if (not space.selected) then
 		return;
 	end
@@ -326,13 +347,13 @@ local function drop_tab(space)
 		link_image(v.titlebar, v.anchor);
 		order_image(v.titlebar, 2);
 		show_image(v.border);
+		show_image(v.anchor)
 		move_image(v.titlebar, v.border_w, v.border_w);
 	end
 
 	space.mode_hook = nil;
 	space.switch_hook = nil;
 	space.reassign_hook = nil;
-	workspace_activate(space);
 end
 
 local function switch_tab(space, to)
@@ -344,6 +365,7 @@ local function switch_tab(space, to)
 			hide_image(v.titlebar);
 		end
 	end
+
 	if (space.selected) then
 		if (to) then
 			show_image(space.selected.anchor);
@@ -351,10 +373,25 @@ local function switch_tab(space, to)
 			hide_image(space.selected.anchor);
 		end
 	end
+
+	if (to) then
+		workspace_activate(space)
+	else
+		workspace_inactivate(space)
+	end
 end
 
 local function drop_float(space, swap)
 	space.in_float = false;
+
+	local lst = linearize(space);
+	for i,v in ipairs(lst) do
+		v.last_float = {
+			width = v.width,
+			height = v.height
+		};
+	end
+
 	reorder_space(space);
 	space:bgon();
 end
@@ -366,6 +403,7 @@ local function reassign_tab(space, wnd)
 	link_image(wnd.titlebar, wnd.anchor);
 	order_image(wnd.titlebar, 2);
 	move_image(wnd.titlebar, wnd.border_w, wnd.border_w);
+	show_image(wnd.anchor);
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -382,22 +420,22 @@ local function set_tab(space)
 	space.reassign_hook = reassign_tab;
 
 	local fairw = math.ceil(space.wm.width / #lst);
-	local tbar_sz = gconfig_get("tbar_sz") + gconfig_get("borderw");
+	local tbar_sz = gconfig_get("tbar_sz");
+	local bw = gconfig_get("borderw");
 	local ofs = 0;
 
 	for k,v in ipairs(lst) do
-		v:resize(space.wm.width, space.wm.client_height - 3);
+		v:resize_effective(space.wm.width, space.wm.client_height - tbar_sz);
 		move_image(v.anchor, 0, 0);
 		hide_image(v.anchor);
 		hide_image(v.border);
-		link_image(v.titlebar, space.wm.anchor);
+		link_image(v.titlebar, space.anchor);
 		order_image(v.titlebar, 2);
-		move_image(v.titlebar, ofs, 0);
+		move_image(v.titlebar, ofs, bw);
 		resize_image(v.titlebar, fairw, tbar_sz);
 		ofs = ofs + fairw;
 	end
 
-	workspace_inactivate(space);
 	if (space.selected) then
 		space.selected:select();
 	end
@@ -411,31 +449,31 @@ local function set_vtab(space)
 		return;
 	end
 
+	space.mode_hook = drop_tab;
+	space.switch_hook = switch_tab;
+	space.reassign_hook = reassign_tab;
+
 	local tbar_sz = gconfig_get("tbar_sz");
 	local ypos = #lst * tbar_sz;
-	local cl_area = space.wm.client_height - ypos;
+	local cl_area = space.wm.client_height - ypos - 2 * gconfig_get("borderw");
 	if (cl_area < 1) then
 		return;
 	end
 
 	local ofs = 0;
 	for k,v in ipairs(lst) do
-		v:resize(space.wm.width, cl_area);
+		v:resize_effective(space.wm.width, cl_area);
 		move_image(v.anchor, 0, ypos);
 		move_image(v.canvas, 0, 0);
+		hide_image(v.anchor);
 		hide_image(v.border);
-		link_image(v.titlebar, space.wm.anchor);
+		link_image(v.titlebar, space.anchor);
 		order_image(v.titlebar, 2);
 		resize_image(v.titlebar, space.wm.width, tbar_sz);
 		move_image(v.titlebar, 0, (k-1) * tbar_sz);
 		ofs = ofs + tbar_sz;
 	end
 
-	space.mode_hook = drop_tab;
-	space.switch_hook = switch_tab;
-	space.reassign_hook = reassign_tab;
-
-	workspace_inactivate(space);
 	if (space.selected) then
 		space.selected:select();
 	end
@@ -449,7 +487,7 @@ local function set_fullscreen(space)
 
 -- hide all images + statusbar
 	hide_image(dw.wm.statusbar);
-	workspace_inactivate(space);
+	workspace_inactivate(space, true);
 	dw.fullscreen = true;
 	space.locked = true;
 	space.mode_hook = drop_fullscreen;
@@ -468,8 +506,17 @@ local function set_float(space)
 		local tbl = linearize(space);
 		for i,v in ipairs(tbl) do
 			local props = image_storage_properties(v.canvas);
-			local neww = props.width + v.pad_left + v.pad_right;
-			local newh = props.height + v.pad_top + v.pad_bottom;
+			local neww;
+			local newh;
+
+			if (v.last_float) then
+				neww = v.last_float.width;
+				newh = v.last_float.height;
+			else
+				neww = props.width + v.pad_left + v.pad_right;
+				newh = props.height + v.pad_top + v.pad_bottom;
+			end
+
 			v:resize(neww, newh, true);
 		end
 	end
@@ -507,12 +554,13 @@ local function workspace_destroy(space)
 		delete_image(space.label_id);
 	end
 
-	for k,v in pairs(space) do
-		space[k] = nil;
-	end
-
 	if (space.background) then
 		delete_image(space.background);
+	end
+
+	delete_image(space.anchor);
+	for k,v in pairs(space) do
+		space[k] = nil;
 	end
 end
 
@@ -584,22 +632,33 @@ local function workspace_bgoff(space)
 	end
 end
 
-local function create_workspace(wm)
+local function create_workspace(wm, anim)
 	local res = {
 		activate = workspace_activate,
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
+
+-- rendertargets impose a considerable cost, don't use it unless necessary
+-- e.g. when doing multidisplay, streaming or sharing
 		get_rendertarget = workspace_rendertarget,
+
+-- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
 		tab = function(ws) workspace_set(ws, "tab"); end,
 		vtab = function(ws) workspace_set(ws, "vtab"); end,
 		float = function(ws) workspace_set(ws, "float"); end,
+
 		set_label = workspace_label,
+
+-- only floating layout and empty sets have use for background, otherwise
+-- it's a waste of good fillrate
 		bgon = workspace_bgon,
 		bgoff = workspace_bgoff,
 
+-- can be used for clipping / transitions
+		anchor = null_surface(wm.width, wm.height),
 		mode = "tile",
 		name = "workspace_" .. tostring(ent_count);
 		insert = "horizontal",
@@ -607,9 +666,12 @@ local function create_workspace(wm)
 		weight = 1.0,
 		vweight = 1.0
 	};
+	image_tracetag(res.anchor, "workspace_anchor");
+	show_image(res.anchor);
+	link_image(res.anchor, wm.anchor);
 	ent_count = ent_count + 1;
 	res.wm = wm;
-	res:activate();
+	res:activate(anim);
 	return res;
 end
 
@@ -844,6 +906,7 @@ local function wnd_reassign(wnd, ind)
 	local oldspace = wnd.space;
 	wnd.space = newspace;
 	wnd.parent = newspace;
+	link_image(wnd.anchor, newspace.anchor);
 	table.insert(newspace.children, wnd);
 
 -- restore vid structure etc. to the default state
@@ -854,14 +917,15 @@ local function wnd_reassign(wnd, ind)
 -- weights aren't useful for new space, reset
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
-	hide_image(wnd.anchor);
 	wnd:deselect();
 
 -- subtle resize in order to propagate resize events while still hidden
 	if (not(newspace.selected and newspace.selected.fullscreen)) then
 		newspace.selected = wnd;
 		newspace:resize();
+		newspace:inactivate(true);
 	end
+
 	oldspace:resize();
 	wnd.wm:update_statusbar();
 end
@@ -1240,7 +1304,6 @@ local function wnd_create(wm, source, opts)
 	order_image(res.canvas, 2);
 
 	image_shader(res.border, "border_inact");
-	link_image(res.canvas, res.anchor);
 	show_image({res.border, res.canvas});
 
 	if (not wm.selected or wm.selected.space ~= space) then
@@ -1261,6 +1324,7 @@ local function wnd_create(wm, source, opts)
 	end
 
 	res.space = space;
+	link_image(res.anchor, space.anchor);
 	table.insert(wm.windows, res);
 	order_image(res.anchor, #wm.windows * WND_RESERVED);
 	if (not(wm.selected and wm.selected.fullscreen)) then
@@ -1377,13 +1441,17 @@ local function tiler_switchws(wm, ind)
 	local cur = wm.spaces[wm.space_ind];
 	local cw = wm.selected;
 
+	if (ind == wm.space_ind) then
+		return;
+	end
+
 	if (cur.switch_hook) then
 		cur:switch_hook(false);
 	else
-		workspace_inactivate(cur, true);
+		workspace_inactivate(cur);
 	end
 
-	if (#cur.children == 0) then
+	if (#cur.children == 0 and gconfig_get("ws_autodestroy")) then
 		cur:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
@@ -1434,6 +1502,14 @@ local function tiler_swapws(wm, ind2)
 	end
 
 	wm:update_statusbar();
+end
+
+local function tiler_swapdn(wm)
+	if (wm.selected == nil or wm.selected.parent == nil) then
+		return;
+	end
+
+	local tw = wm.selected;
 end
 
 local function tiler_message(tiler)
@@ -1493,6 +1569,7 @@ function tiler_create(width, height, opts)
 -- public functions
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
+		swap_up = tiler_swapup,
 		active_spaces = wm_countspaces,
 		add_window = wnd_create,
 		find_window = tiler_find,
@@ -1503,12 +1580,14 @@ function tiler_create(width, height, opts)
 	res.height = height;
 	res.min_width = 32;
 	res.min_height = 32;
+	image_tracetag(res.anchor, "tiler_anchor");
+	image_tracetag(res.order_anchor, "tiler_order_anchor");
 
 	move_image(res.statusbar, 0, clh);
 	link_image(res.statusbar, res.anchor);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 
-	res.spaces[1] = create_workspace(res);
+	res.spaces[1] = create_workspace(res, true);
 	res:update_statusbar();
 
 	return res;

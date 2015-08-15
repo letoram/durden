@@ -30,6 +30,8 @@ local function query_synch()
 	end
 end
 
+-- DPMS toggle (force-on, force-off, toggle) / all or individual
+-- ICC Profile (one, all)
 local display_menu = {
 	{
 		name = "list_displays",
@@ -132,15 +134,18 @@ local system_menu = {
 		kind = "action",
 		submenu = true,
 		handler = query_reset
-	},
-	{
+	}
+};
+
+if (DEBUGLEVEL > 0) then
+	table.insert(system_menu,{
 		name = "debug",
 		label = "Debug",
 		kind = "action",
 		submenu = true,
 		handler = show_debugmenu
-	}
-};
+	});
+end
 
 local function show_displaymenu()
 	launch_menu(displays.main, {list = display_menu}, true, "Displays:");
@@ -164,11 +169,10 @@ local input_menu = {
 		handler = grab_global_function("bind_custom")
 	},
 	{
-		name = "input_binding_window",
-		label = "Bindings Window",
-		handler = function()
-			warning("spawn binding- window");
-		end
+		name = "input_rebind_meta",
+		kind = "action",
+		label = "Bind Meta",
+		handler = grab_global_function("rebind_meta")
 	},
 	{
 		name = "input_save_layout",
@@ -301,7 +305,7 @@ local function load_bg(fn)
 			space.background = src;
 			space.background_name = fn;
 			resize_image(src, space.wm.width, space.wm.client_height);
-			link_image(src, space.wm.anchor);
+			link_image(src, space.anchor);
 			space:bgon();
 			else
 			delete_image(src);
@@ -404,6 +408,12 @@ local workspace_menu = {
 		submenu = true,
 		handler = switch_ws_menu
 	},
+	{
+		name = "workspace_name",
+		label = "Find",
+		kind = "action",
+		handler = function() grab_global_function("switch_ws_byname")(); end
+	}
 };
 
 local function show_workspacemenu()

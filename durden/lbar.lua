@@ -174,11 +174,11 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 	if (sym == ictx.cancel or sym == ictx.accept) then
 		local time = gconfig_get("transition");
-		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPINOUT);
-		blend_image(ictx.anchor, 0.0, time, INTERP_EXPINOUT);
+		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPIN);
+		blend_image(ictx.anchor, 0.0, time, INTERP_EXPIN);
 		if (time > 0) then
 			PENDING_FADE = ictx.anchor;
-			expire_image(ictx.anchor, time + 2);
+			expire_image(ictx.anchor, time + 1);
 			tag_image_transform(ictx.anchor, MASK_OPACITY, function()
 				PENDING_FADE = nil;
 			end);
