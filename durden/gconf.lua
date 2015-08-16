@@ -12,15 +12,20 @@ local defaults = {
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
-	transition = 10,
+	transition = 5,
 
 -- (none, move-h, move-v, fade)
-	ws_transition_in = "move-h",
-	ws_transition_out = "move-v",
+	ws_transition_in = "fade",
+	ws_transition_out = "fade",
 	ws_autodestroy = false,
 
 -- focus follows mouse
 	mouse_focus = true,
+
+-- audio settings
+	global_gain = 1.0,
+	gain_fade = 10,
+	global_mute = false,
 
 -- default keyboard repeat rate for all windows, some archetypes have
 -- default overrides and individual windows can have strong overrides

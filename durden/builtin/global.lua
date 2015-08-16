@@ -34,16 +34,6 @@ end
 -- ICC Profile (one, all)
 local display_menu = {
 	{
-		name = "list_displays",
-		label = "Displays",
-		kind = "action",
-		submenu = true,
-		handler = function(ctx)
-			warning("enum known displays, list here with dynamic handler to " ..
-	"enable / disable or switch resolution");
-		end
-	},
-	{
 		name = "display_rescan",
 		label = "Rescan",
 		kind = "action",
@@ -147,8 +137,43 @@ if (DEBUGLEVEL > 0) then
 	});
 end
 
+local audio_menu = {
+	{
+		name = "toggle_audio",
+		label = "Toggle On/Off",
+		kind = "action",
+		handler = grab_global_function("toggle_audio")
+	},
+	{
+		name = "global_gain",
+		label = "Global Gain",
+		kind = "action",
+		handler = grab_global_function("query_global_gain")
+	},
+	{
+		name = "gain_pos10",
+		label = "+10%",
+		kind = "action",
+		handler = function()
+			grab_global_function("gain_stepv")(0.1);
+		end
+	},
+	{
+		name = "gain_neg10",
+		label = "-10%",
+		kind = "action",
+		handler = function()
+			grab_global_function("gain_stepv")(-0.1);
+		end
+	}
+};
+
 local function show_displaymenu()
 	launch_menu(displays.main, {list = display_menu}, true, "Displays:");
+end
+
+local function show_audiomenu()
+	launch_menu(displays.main, {list = audio_menu}, true, "Audio");
 end
 
 local function show_systemmenu()
@@ -173,58 +198,7 @@ local input_menu = {
 		kind = "action",
 		label = "Bind Meta",
 		handler = grab_global_function("rebind_meta")
-	},
-	{
-		name = "input_save_layout",
-		label = "Save Current",
-		handler = function()
-			warning("query current- save");
-		end
-	},
-	{
-		name = "input_keyboard",
-		label = "Keyboard",
-		submenu = true,
-		handler = function()
-			warning("keyboard menu");
--- really just repeat- rate we're interested in(?!)
-		end
-	},
-	{
-		name = "input_devices",
-		label = "Devices",
-		submenu = true,
-		handler = function()
-			warning("input devices menu");
--- match [ inputanalog_query(num, ax, scan), empty gives table ]
--- each device [toggle on / off], filtering requires calibration window
-		end,
-	},
-	{
-		name = "mouse",
-		label = "Mouse",
-		submenu = true,
-		handler = function()
-			warning("mouse menu");
--- focus follow mouse
--- mouse follows focus
--- autohide
--- acceleration rate
--- reverse buttons
--- invert y axis
--- invert x axis
--- drag traction
--- dblclick interval
-		end
-	},
-	{
-		name = "load_layout",
-		label = "Load Layout",
-		submenu = true,
-		handler = function()
-			warning("list / browse layout");
-		end
-	},
+	}
 };
 
 local function show_inputmenu()
@@ -509,16 +483,14 @@ local toplevel = {
 		label = "Display",
 		kind = "action",
 		submenu = true,
-		handler = show_displaymenu,
+		handler = show_displaymenu
 	},
 	{
 		name = "audio",
 		label = "Audio",
 		kind = "action",
 		submenu = true,
-		handler = function(ctx, value)
-			warning("spawn audio menu");
-		end
+		handler = show_audiomenu
 	},
 	{
 		name = "input",
