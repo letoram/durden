@@ -263,6 +263,34 @@ gf["rename_space"] = function()
 	);
 end
 
+local function allgain(val)
+	for k,v in pairs(displays) do
+		for i,j in ipairs(v.windows) do
+			if (j.source_audio) then
+				audio_gain(j.source_audio,
+					val * (j.source_gain and j.source_gain or 1.0),
+			  	gconfig_get("gain_fade")
+				);
+			end
+		end
+	end
+end
+
+gf["gain_stepv"] = function(val)
+	val = val or 0.1;
+	local gv = gconfig_get("global_gain");
+	gv = gv + val;
+	gv = (gv > 1.0 and 1.0 or gv) < 0.0 and 0.0 or gv;
+	gconfig_set("global_gain", gv);
+	allgain(gv);
+end
+
+gf["toggle_audio"] = function()
+	local new_state = not gconfig_get("global_mute");
+	allgain(new_state and 0.0 or gconfig_get("global_gain"));
+	gconfig_set("global_mute", new_state);
+end
+
 gf["save_space_shallow"] = function()
 	local wspace = displays.main.spaces[displays.main.space_ind];
 	if (not wspace) then
