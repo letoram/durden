@@ -386,9 +386,12 @@ local function drop_float(space, swap)
 
 	local lst = linearize(space);
 	for i,v in ipairs(lst) do
+		local pos = image_surface_properties(v.anchor);
 		v.last_float = {
 			width = v.width,
-			height = v.height
+			height = v.height,
+			x = pos.x,
+			y = pos.y
 		};
 	end
 
@@ -512,6 +515,7 @@ local function set_float(space)
 			if (v.last_float) then
 				neww = v.last_float.width;
 				newh = v.last_float.height;
+				move_image(v.anchor, v.last_float.x, v.last_float.y);
 			else
 				neww = props.width + v.pad_left + v.pad_right;
 				newh = props.height + v.pad_top + v.pad_bottom;
