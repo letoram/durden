@@ -149,6 +149,8 @@ function def_handler(source, stat)
 		wnd:set_message(stat.v, gconfig_get("msg_timeout"));
 
 	elseif (stat.kind == "terminated") then
+-- if an lbar is active that requires this target window, that should be
+-- dropped as well to avoid a race
 		wnd:destroy();
 
 	elseif (stat.kind == "ident") then
