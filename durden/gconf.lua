@@ -8,7 +8,8 @@ local defaults = {
 	msg_timeout = 100,
 	font_str = "\\fdefault.ttf,12",
 	text_color = "\\#aaaaaa",
-	borderw = 2,
+	borderw = 1,
+	bordert = 0,
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
