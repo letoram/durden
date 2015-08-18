@@ -176,6 +176,13 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		chofs = 1,
 		ulim = VRESW,
 		msg = "",
+		undo = function(ctx)
+			if (ctx.oldmsg) then
+				ctx.msg = ctx.oldmsg;
+				ctx.caretpos = ctx.oldpos;
+--				redraw(ctx);
+			end
+		end,
 		caret_left   = SYSTEM_KEYS["caret_left"],
 		caret_right  = SYSTEM_KEYS["caret_right"],
 		caret_down   = SYSTEM_KEYS["caret_down"],
@@ -257,8 +264,11 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 			return ctx;
 		end
 
+		ctx.oldmsg = ctx.msg;
+		ctx.oldpos = ctx.caretpos;
 		ctx.msg, nch = string.insert(ctx.msg,
 			keych, ctx.caretpos, ctx.nchars);
+
 		ctx.caretpos = ctx.caretpos + nch;
 		caretofs();
 		redraw(ctx);
@@ -296,6 +306,17 @@ end
 
 local menu_hook = nil;
 local path = nil;
+
+local function run_value(ctx)
+	local bar = displays.main:lbar(function(ctx, instr, done, lastv)
+		if (done and ctx.validator(instr)) then
+			ctx.handler(ctx, instr);
+		end
+		return ctx.validator(instr);
+	end, ctx, {label = (ctx.label and ctx.label or "") .. ":"});
+	return bar;
+end
+
 local function lbar_fun(ctx, instr, done, lastv)
 	if (done) then
 		local tgt = nil;
@@ -308,30 +329,32 @@ local function lbar_fun(ctx, instr, done, lastv)
 			return;
 		end
 
-		if (tgt.validator) then
-			if (not tgt.validator(ctx, instr)) then
-				return false;
-			end
-		end
-
 -- a little odd combination, used to manually build a path to a specific menu
 -- item for shortcuts. handler_hook needs to be set and either meta+submenu or
 -- just non-submenu for the hook to be called instead of the default handler
 		if (tgt.kind == "action") then
 			path = path and (path .. "/" .. tgt.name) or tgt.name;
 			local m1, m2 = dispatch_meta();
-
 			if (menu_hook and
 				(tgt.submenu and m1 or not tgt.submenu)) then
 					menu_hook(path);
 					menu_hook = nil;
 					path = "";
 					return;
+			elseif (tgt.submenu) then
+				ctx.list = type(tgt.handler) == "function"
+					and tgt.handler() or tgt.handler;
+				return launch_menu(ctx.wm, ctx, tgt.force, tgt.hint);
+
 			elseif (tgt.handler) then
-				return tgt.handler(ctx.handler, instr, ctx);
+				tgt.handler(ctx.handler, instr, ctx);
+				path = "";
+				return;
 			end
+		elseif (tgt.kind == "value") then
+			path = path and (path .. "/" .. tgt.name) or tgt.name;
+			return run_value(tgt);
 		end
-		return;
 	end
 
 	local res = {};
@@ -370,6 +393,7 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
 	opts.label = label;
+	ctx.wm = wm;
 
 	local bar = wm:lbar(lbar_fun, ctx, opts);
 	return bar;

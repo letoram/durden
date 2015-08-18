@@ -6,8 +6,12 @@
 --
 
 local function shared_valid01_float(inv)
+	if (string.len(inv) == 0) then
+		return true;
+	end
+
 	local val = tonumber(inv);
-	return val >= 0.0 and val <= 1.0;
+	return val and (val >= 0.0 and val <= 1.0) or false;
 end
 
 local function shared_reset(wnd)
@@ -32,20 +36,13 @@ local shared_settings = {
 	{
 		name = "set_gain",
 		label = "Gain",
-		kind = "number",
+		kind = "valu",
 		validator = shared_valid01_float,
 		handler = function(ctx, value)
 			if (ctx.wnd.source_audio) then
 				audio_gain(ctx.wnd.source_audio, value, gconfig_get("transition_time"));
 			end
 		end,
-	},
-	{
-		name = "auto_suspend",
-		label = "Auto Suspend",
-		kind = "boolean",
-		handler = function(ctx, value)
-		end
 	},
 	{
 		name = "filtering",
@@ -60,9 +57,36 @@ local shared_settings = {
 		handler = function(ctx, value)
 			image_texfilter(ctx.external, value);
 		end
+	}
+};
+
+local audio_menu = {
+	{
+		name = "target_audio",
+		label = "Toggle On/Off",
+		kind = "action",
+		handler = toggle_audio
 	},
--- scaler
--- positioning
+	{
+		name = "gain_add10",
+		label = "+10%",
+		kind = "action",
+		handler = function() gain_stepv(0.1); end
+	},
+	{
+		name = "gain_sub10",
+		label = "-10%",
+		kind = "action",
+		handler = function() gain_stepv(-0.1); end
+	},
+	{
+		name ="target_audio_gain",
+		label = "Gain",
+		hint = "(0..1)",
+		kind = "value",
+		validator = shared_valid01_float,
+		handler = function(ctx, val) warning(val); end
+	},
 };
 
 -- Will be presented in order, not sorted. Make sure they come in order
@@ -70,27 +94,36 @@ local shared_settings = {
 -- mispress doing something damaging
 local shared_actions = {
 	{
-		name = "suspend",
+		name = "shared_suspend",
 		label = "Suspend",
 		kind = "action",
-		eval = function(ctx) return true; end,
 		handler = shared_suspend
 	},
 	{
-		name = "suspend",
+		name = "shared_resume",
 		label = "Resume",
 		kind = "action",
-		eval = function(ctx) return true; end,
 		handler = shared_resume
+	},
+	{
+		name = "shared_audio",
+		label = "Audio",
+		submenu = true,
+		kind = "action",
+		handler = audio_menu,
+		force = true,
+		eval = function(ctx)
+			return displays.main.selected and displays.main.selected.source_audio
+		end
 	},
 	{
 		name = "reset",
 		label = "Reset",
 		kind = "action",
+		dangerous = true,
 		handler = shared_reset
 	},
 };
-
 
 local function query_tracetag()
 	local bar = tiler_lbar(displays.main, function(ctx,msg,done,set)
@@ -116,10 +149,10 @@ if (DEBUGLEVEL > 0) then
 		name = "debug",
 		label = "Debug",
 		kind = "action",
+		hint = "Debug:",
 		submenu = true,
-		handler = function()
-			launch_menu(displays.main, {list = debug_menu}, true, "Debug:");
-		end
+		force = true,
+		handler = debug_menu
 	});
 end
 
@@ -157,6 +190,8 @@ end
 register_shared("pause", pausetgt);
 register_shared("reset", resettgt);
 register_shared("target_actions", show_shmenu);
+register_shared("gain_stepv", gain_stepv);
+register_shared("toggle_audio", aduio_toggle);
 
 --gf["cycle_scalemode"] = function()
 --	local sel = displays.main.selected;

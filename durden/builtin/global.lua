@@ -7,10 +7,6 @@ local function global_valid01_uri(str)
 	return true;
 end
 
-local function display_rescan()
-	video_displaymodes();
-end
-
 local function query_synch()
 	local lst = video_synchronization();
 	if (lst) then
@@ -26,7 +22,7 @@ local function query_synch()
 				end
 			};
 		end
-		launch_menu(displays.main, {list = res}, true, "Synchronization:");
+		return res;
 	end
 end
 
@@ -37,54 +33,50 @@ local display_menu = {
 		name = "display_rescan",
 		label = "Rescan",
 		kind = "action",
-		handler = function(ctx)
-			video_displaymodes();
-		end
+		handler = video_displaymodes,
 	},
 	{
 		name = "synchronization_strategies",
 		label = "Synchronization",
 		kind = "action",
+		hint = "Synchronization:",
 		submenu = true,
-		handler = function(ctx)
-			query_synch();
-		end
+		force = true,
+		handler = function() return query_synch(); end
 	},
 };
 
-local function query_exit()
-	launch_menu(displays.main, {list = {
-		{
-			name = "shutdown_no",
-			label = "No",
-			kind = "action",
-			handler = function() end
-		},
-		{
-			name = "shutdown_yes",
-			label = "Yes",
-			kind = "action",
-			handler = function() shutdown(); end
-		}
-	}}, true, "Shutdown?");
-end
+local exit_query = {
+{
+	name = "shutdown_no",
+	label = "No",
+	kind = "action",
+	handler = function() end
+},
+{
+	name = "shutdown_yes",
+	label = "Yes",
+	kind = "action",
+	dangerous = true,
+		handler = function() shutdown(); end
+	}
+};
 
-local function query_reset()
-	launch_menu(displays.main, {list = {
-		{
-			name = "reset_no",
-			label = "No",
-			kind = "action",
-			handler = function() end
-		},
-		{
-			name = "reset_yes",
-			label = "Yes",
-			kind = "action",
-			handler = function() system_collapse(APPLID); end
-		},
-	}}, true, "Reset?");
-end
+local reset_query = {
+	{
+		name = "reset_no",
+		label = "No",
+		kind = "action",
+		handler = function() end
+	},
+	{
+		name = "reset_yes",
+		label = "Yes",
+		kind = "action",
+		dangerous = true,
+		handler = function() system_collapse(APPLID); end
+	},
+};
 
 local function query_dump()
 	local bar = tiler_lbar(displays.main, function(ctx, msg, done, set)
@@ -106,24 +98,24 @@ local debug_menu = {
 	}
 };
 
-local function show_debugmenu()
-	launch_menu(displays.main, {list = debug_menu}, true, "Debug:");
-end
-
 local system_menu = {
 	{
 		name = "shutdown",
 		label = "Shutdown",
 		kind = "action",
 		submenu = true,
-		handler = query_exit
+		force = true,
+		hint = "Shutdown?",
+		handler = exit_query
 	},
 	{
 		name = "reset",
 		label = "Reset",
 		kind = "action",
 		submenu = true,
-		handler = query_reset
+		force = true,
+		hint = "Reset?",
+		handler = reset_query
 	}
 };
 
@@ -133,7 +125,9 @@ if (DEBUGLEVEL > 0) then
 		label = "Debug",
 		kind = "action",
 		submenu = true,
-		handler = show_debugmenu
+		force = true,
+		hint = "Debug:",
+		handler = debug_menu,
 	});
 end
 
@@ -168,18 +162,6 @@ local audio_menu = {
 	}
 };
 
-local function show_displaymenu()
-	launch_menu(displays.main, {list = display_menu}, true, "Displays:");
-end
-
-local function show_audiomenu()
-	launch_menu(displays.main, {list = audio_menu}, true, "Audio");
-end
-
-local function show_systemmenu()
-	launch_menu(displays.main, {list = system_menu}, true, "System:");
-end
-
 local input_menu = {
 	{
 		name = "input_rebind_basic",
@@ -201,9 +183,6 @@ local input_menu = {
 	}
 };
 
-local function show_inputmenu()
-	launch_menu(displays.main, {list = input_menu}, true, "Input:");
-end
 -- workspace actions:
 -- 	layout (save [shallow, deep], load), display affinity,
 -- 	reassign (if multiple displays), layout, shared
@@ -219,7 +198,7 @@ local function switch_ws_menu()
 		};
 	end
 
-	launch_menu(displays.main, {list = spaces}, true, "Switch Space:");
+	return spaces;
 end
 
 local workspace_layout_menu = {
@@ -260,10 +239,6 @@ local workspace_layout_menu = {
 		end
 	}
 };
-
-local function show_workspace_layout_menu()
-	launch_menu(displays.main, {list = workspace_layout_menu}, true, "Layout:");
-end
 
 local function load_bg(fn)
 	local space = displays.main.spaces[displays.main.space_ind];
@@ -309,10 +284,6 @@ local save_ws = {
 	}
 };
 
-local function save_ws_menu()
-	launch_menu(displays.main, {list = save_ws}, true, "Save Workspace:");
-end
-
 local function set_ws_background()
 	local imgfiles = {
 	png = load_bg,
@@ -336,7 +307,7 @@ local function swap_ws_menu()
 			});
 		end
 	end
-	launch_menu(displays.main, {list = res}, true, "Workspace:");
+	return res;
 end
 
 local workspace_menu = {
@@ -346,6 +317,8 @@ local workspace_menu = {
 		kind = "action",
 		eval = function() return displays.main:active_spaces() > 1; end,
 		submenu = true,
+		force = true,
+		hint = "Swap:",
 		handler = swap_ws_menu
 	},
 	{
@@ -353,7 +326,9 @@ local workspace_menu = {
 		label = "Layout",
 		kind = "action",
 		submenu = true,
-		handler = show_workspace_layout_menu
+		force = true,
+		hint = "Layout:",
+		handler = workspace_layout_menu
 	},
 	{
 		name = "workspace_rename",
@@ -365,7 +340,6 @@ local workspace_menu = {
 		name = "workspace_background",
 		label = "Background",
 		kind = "action",
-		submenu = true,
 		handler = set_ws_background,
 	},
 	{
@@ -373,13 +347,17 @@ local workspace_menu = {
 		label = "Save",
 		kind = "action",
 		submenu = true,
-		handler = save_ws_menu
+		force = true,
+		hint = "Save Workspace:",
+		handler = save_ws
 	},
 	{
 		name = "workspace_switch",
 		label = "Switch",
 		kind = "action",
 		submenu = true,
+		force = true,
+		hint = "Switch To:",
 		handler = switch_ws_menu
 	},
 	{
@@ -389,10 +367,6 @@ local workspace_menu = {
 		handler = function() grab_global_function("switch_ws_byname")(); end
 	}
 };
-
-local function show_workspacemenu()
-	launch_menu(displays.main, {list = workspace_menu}, true, "Workspace:");
-end
 
 local function imgwnd(fn)
 	load_image_asynch(fn, function(src, stat)
@@ -476,35 +450,45 @@ local toplevel = {
 		label = "Workspace",
 		kind = "action",
 		submenu = true,
-		handler = show_workspacemenu
+		force = true,
+		hint = "Workspace:",
+		handler = workspace_menu
 	},
 	{
 		name = "display",
 		label = "Display",
 		kind = "action",
 		submenu = true,
-		handler = show_displaymenu
+		force = true,
+		hint = "Displays:",
+		handler = display_menu
 	},
 	{
 		name = "audio",
 		label = "Audio",
 		kind = "action",
 		submenu = true,
-		handler = show_audiomenu
+		force = true,
+		hint = "Audio:",
+		handler = audio_menu
 	},
 	{
 		name = "input",
 		label = "Input",
 		kind = "action",
 		submenu = true,
-		handler = show_inputmenu
+		force = true,
+		hint = "Input:",
+		handler = input_menu
 	},
 	{
 		name = "system",
 		label = "System",
 		kind = "action",
 		submenu = true,
-		handler = show_systemmenu
+		force = true,
+		hint = "System:",
+		handler = system_menu
 	},
 };
 

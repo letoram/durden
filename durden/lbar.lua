@@ -141,6 +141,14 @@ end
 
 local function lbar_ih(wm, ictx, inp, sym, caret)
 	if (caret == nil) then
+		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
+		if (res == false) then
+			ictx.inp:undo();
+		elseif (res == true) then
+		elseif (res ~= nil and res.set) then
+			update_completion_set(wm, ictx, res.set);
+		end
+
 		if (valid_vid(ictx.text)) then
 			delete_image(ictx.text);
 		end
@@ -151,11 +159,8 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		image_inherit_order(ictx.text, true);
 		move_image(ictx.text, ictx.textofs, math.floor(0.5*(
 			gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
-		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
-		if (res ~= nil and res.set) then
-			update_completion_set(wm, ictx, res.set);
-		end
 	end
+
 	update_caret(ictx);
 end
 
@@ -220,8 +225,14 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 		lbar_ih(wm, ictx, inp, sym, caret);
 	end);
 
+-- unfortunately the haphazard lbar design makes filtering / forced reverting
+-- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't
+-- permit, -> tbl with set? change completion view
 	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
-	if (res ~= nil and res.set) then
+	if (res == false) then
+		ictx.inp:undo();
+	elseif (res == true) then
+	elseif (res ~= nil and res.set) then
 		update_completion_set(wm, ictx, res.set);
 	end
 end
@@ -339,6 +350,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
+		cleanup = opts.cleanup,
 		iostate = iostatem_save(),
 		force_completion = opts.force_completion and true or false
 	};

@@ -44,7 +44,6 @@ function dispatch_reset(save)
 	tbl["m1_o"] = "debug_testwnd_nobar";
 
 	tbl["m1_g"] = "global_actions";
-	tbl["m1_m2_g"] = "workspace_actions";
 	tbl["m1_t"] = "target_actions";
 	tbl["m1_m2_t"] = "target_settings";
 	tbl["m1_RIGHT"] = "step_right";
