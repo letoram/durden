@@ -32,18 +32,24 @@ local function shared_suspend(wnd)
 	end
 end
 
+local function gain_stepv(gainv, abs)
+	local wnd = displays.main.selected;
+	if (not wnd or not wnd.source_audio) then
+		return;
+	end
+
+	if (not abs) then
+		gainv = gainv + (wnd.source_gain and wnd.source_gain or 1.0);
+	end
+
+	gainv = gainv < 0.0 and 0.0 or gainv;
+	gainv = gainv > 1.0 and 1.0 or gainv;
+	wnd.source_gain = gainv;
+	audio_gain(wnd.source_audio, gconfig_get("global_gain") * gainv,
+		gconfig_get("gain_fade"));
+end
+
 local shared_settings = {
-	{
-		name = "set_gain",
-		label = "Gain",
-		kind = "valu",
-		validator = shared_valid01_float,
-		handler = function(ctx, value)
-			if (ctx.wnd.source_audio) then
-				audio_gain(ctx.wnd.source_audio, value, gconfig_get("transition_time"));
-			end
-		end,
-	},
 	{
 		name = "filtering",
 		label = "Filtering",
@@ -85,12 +91,56 @@ local audio_menu = {
 		hint = "(0..1)",
 		kind = "value",
 		validator = shared_valid01_float,
-		handler = function(ctx, val) warning(val); end
+		handler = function(ctx, val) gain_stepv(tonumber(val), true); end
 	},
 };
 
+local function set_scalef(mode)
+	local wnd = displays.main.selected;
+	if (wnd) then
+		wnd.scalemode = mode;
+		wnd:resize(wnd.width, wnd.height);
+	end
+end
+
+local scalemodes = {
+	{
+		name = "target_scale_normal",
+		label = "Normal",
+		kind = "action",
+		handler = function() set_scalef("normal"); end
+	},
+	{
+		name = "target_scale_stretch",
+		label = "Stretch",
+		handler = function() set_scalef("stretch"); end
+	}
+};
+
+local video_menu = {
+	{
+		name = "target_scaling",
+		label = "Scaling",
+		kind = "action",
+		hint = "Scale Mode:",
+		submenu = true,
+		force = true,
+		handler = scalemodes
+	},
+	{
+		name = "target_filtering",
+		label = "Filtering",
+		kind = "action",
+		hint = "Basic Filter:",
+		submenu = true,
+		force = true,
+		handler = filtermodes
+	}
+-- good place to add advanced upscalers (xBR, CRT etc.)
+};
+
 -- Will be presented in order, not sorted. Make sure they come in order
--- useful:safe -> uncommon:dangerous to avoid the change of some quick
+-- useful:safe -> uncommon:dangerous to reduce the change of some quick
 -- mispress doing something damaging
 local shared_actions = {
 	{
@@ -115,6 +165,15 @@ local shared_actions = {
 		eval = function(ctx)
 			return displays.main.selected and displays.main.selected.source_audio
 		end
+	},
+	{
+		name = "shared_video",
+		label = "Video",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = video_menu,
+		hint = "Video:"
 	},
 	{
 		name = "reset",
@@ -186,12 +245,6 @@ local function show_shmenu(wnd)
 
 	launch_menu(wnd.wm, ctx, true, "Action:");
 end
-
-register_shared("pause", pausetgt);
-register_shared("reset", resettgt);
-register_shared("target_actions", show_shmenu);
-register_shared("gain_stepv", gain_stepv);
-register_shared("toggle_audio", aduio_toggle);
 
 --gf["cycle_scalemode"] = function()
 --	local sel = displays.main.selected;

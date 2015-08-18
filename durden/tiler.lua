@@ -21,6 +21,7 @@ local ent_count = 1;
 local border_shader = [[
 	uniform sampler2D map_diffuse;
 	uniform float border;
+	uniform float thickness;
 	uniform float obj_opacity;
 	uniform vec2 obj_output_sz;
 
@@ -30,9 +31,18 @@ local border_shader = [[
 	{
 		float margin_s = (border / obj_output_sz.x);
 		float margin_t = (border / obj_output_sz.y);
+		float margin_w = (thickness / obj_output_sz.x);
+		float margin_h = (thickness / obj_output_sz.y);
 
-		if ( texco.s <= 1.0 - margin_s && texco.s >= margin_s &&
-			texco.t <= 1.0 - margin_t && texco.t >= margin_t )
+/* discard both inner and outer border in order to support 'gaps' */
+		if (
+			( texco.s <= 1.0 - margin_s && texco.s >= margin_s &&
+			texco.t <= 1.0 - margin_t && texco.t >= margin_t ) ||
+			(
+				texco.s < margin_w || texco.t < margin_h ||
+				texco.s > 1.0 - margin_w || texco.t > 1.0 - margin_h
+			)
+		)
 			discard;
 
 		gl_FragColor = vec4(texture2D(map_diffuse, texco).rgb, obj_opacity);
@@ -62,11 +72,14 @@ void main()
 
 local function build_shaders()
 	local bw = gconfig_get("borderw");
+	local bt = gconfig_get("bordert");
 	local a = build_shader(nil, border_shader, "border_act");
 	shader_uniform(a, "border", "f", PERSIST, bw);
+	shader_uniform(a, "thickness", "f", PERSIST, bt);
 
 	a = build_shader(nil, border_shader, "border_inact");
 	shader_uniform(a, "border", "f", PERSIST, bw);
+	shader_uniform(a, "thickness", "f", PERSIST, bt);
 
 	a = build_shader(nil, tile_shader, "tile_act");
 	local col = gconfig_get("pcol_act_border");
