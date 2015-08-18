@@ -2,81 +2,146 @@ About
 =====
 
 Durden is a simple tiling window manager for Arcan, thus it requires a working
-arcan installation, optionally set-up with compatible launch targets etc. It
-currently serves like a testing and development ground, much like
-[AWB](http://github.com/letoram/awb) and
-[Gridle](http://github.com/letoram/gridle) but will become a supported 'real'
-desktop environment.
+arcan installation, optionally set-up with compatible launch targets etc. See the
+[Arcan](http://github.com/letoram/arcan) repository and wiki for those details.
 
-Long-term plans (Q3-Q4 2015) is to make it similar in style and behavior to the
-great i3 window manager, but also use and showcase some of the more hardcore and
-unique features that arcan provides.
+Durden serves like a testing and development ground for refining the Arcan Lua
+API, much like [AWB](http://github.com/letoram/awb) and 
+[Gridle](http://github.com/letoram/gridle) but will remain as a supported 'real'
+desktop environment, rather than proof of concepts.
 
-Configuring / Starting
+For a complete list of features and estimated state, see the _Features and Status_
+section below.
+
+Starting / Configuring
 =====
 
-Start arcan with resource path set to durden/res and active appl to durden/durden,
-like:
+Make sure that arcan is built with support for builtin frameservers for terminal,
+decode, encode, remoting etc. else those features will be missing. Durden probes
+for available engine features and enables/disables access to these accordingly.
 
-    arcan -p path/to/durden\_root/res path/to/durden\_root/durden
+Start arcan with the resource path set to durden/res and active appl to durden/durden,
+like this (there are tons of better 'installation' setups, this is merely to get you
+going):
+
+    arcan -p path/to/durden\_root/res &path/to/durden\_root/durden
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua for the
 currently mapped functions. If you don't press any of the META keys during the first
 n (20 or so) keypresses, it is assumed that your meta bindings are broken and you
 will be queried for new ones.
 
-Make sure that arcan is built with support for builtin
-frameservers for terminal, decode, encode, remoting etc. else those features will be
-missing.
+A big point with durden as a window manager is that absolutely no configuration file
+editing etc. should be needed, everything is accessible and remappable from the UI.
+Most configuration changes are done through the global menu (by default, meta1+meta2+g)
+and through the window menu (by default, meta1+meta2+t but requires a selected window).
 
-Configuration can be done both statically and dynamically. Statically by editing
-gconf/fglobal/keybindings.lua and dynamically through submenus in the input/bind
-category. By holding m1 (and m2 if it is a target specific option that should
-apply only for the specific configuration) when entering a configuration option
-(you can see it on the label color in the menu, green for selections, yellow for
-querying values).
+The menus are navigated by default using the arrow keys and enter to select and you
+can filter the list of shown items by typing.
 
-Durden listens on the connection key 'durden' (export ARCAN\_CONNPATH=durden) and
-this is also set by default in internally spawned terminals.
+Any path or menu item in the global or window menu can be bound to a keycombination,
+and this is done by going to global/input/bind custom. You will be prompted to press
+the binding you like and then navigate to the menu item you want to bind it to. To bind
+a sub-menu, hold meta1 while selecting.
 
-You should be able to set most (non-visual) settings dynamically without modifying any
-files, but if you strongly feel the need to tweak things, look into keybindings.lua and
-gconf.lua.
+It is however also possible to tweak/modify the startup defaults (see keybindings.lua
+and gconf.lua).
 
 Database Configuration
 ====
-The launch menu (default META1+d) uses preconfigured execution profiles that
-are managed with a separate external tool as part of Arcan, check the
+The launch bar (default meta1+d) uses preconfigured execution profiles that
+are managed with a separate external tool as part of Arcan, called *arcan_db*, check the
 [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
-
-Menu Structure
-====
-In addition to the launch menu and the quick terminal (default META1+enter),
-the global actions (META1+g), target actions (META1+t) and target
-settings (META1+META2+t) are rather useful.
-
-A flat view of the global menu:
-
- * Open - Specify URI as a quick- launch
- * Workspace - (Rename, Reassign, Mode, Stash, (dynamic list of stashed), Save, Load)
- * Display - (Rescan) + (dynamic list of displays, options to resize / toggle)
- * System - (Shutdown, Reload, Switch Appl)
- * Debug - (Save state)
- * Input - (Rescan, Bind, Dynamic list of Devices, options to calibrate / set default map)
- * Audio - (Mute, Gain)
-
-Target actions will vary with the kind of target that is running, some options
-are always available (like setting gain).
 
 Statusbar
 ====
-Durden looks for a named pipe (FIFO) in APPLTEMP (usually the same as the appl dir
-specified as last argument to arcan) with the name *durden\_cmd*. This pipe can be
-used to send external commands similar to navigating the menus, and to update the
-statusbar. For instance, using i3status:
+Durden looks for a named pipe (FIFO) in the APPLTEMP namespace (usually the same as the
+appl dir specified as last argument to arcan) with the name *durden\_cmd*. This pipe
+can be used to send external commands similar to navigating the menus, and to update
+the statusbar. For instance, using i3status:
 
     mkfifo c ~/durden/durden_cmd
     i3status | sed -e 's/^/status:/' > ~/durden/durden_cmd
+
+Features and Status
+=====
+To get an overview of the features that have been implemented and features that are
+being implemented, we have the following list:
+
+- [x] Basic Window Management Modes: float, tab, vertical-tab, tiled, fullscreen
+- [ ] Workspace Management
+  - [x] Naming/Renaming
+  - [x] Searching Based On Name
+  - [ ] Saving/Restoring Layout
+- [ ] Basic Window Management
+  - [x] Reassign
+  - [x] Merge/Split
+  - [ ] Swap Left/Right/Up/Down
+- [x] Visual Enhancements
+  - [x] Animated Transitions (fade, move)
+  - [x] Dim-Layer on Menus
+  - [x] Configurable Bar Positioning
+  - [x] Workspace Event Notification
+  - [ ] Mouse Cursor Event Flash
+  - [ ] Font Customization
+  - [ ] Color Customization
+- [x] Configurable Border Width/Gaps
+- [x] Global and Window- specific audio controls
+- [x] Background Images
+- [ ] Screen-Rotate Trigger
+- [x] Resource Browser
+- [ ] IPC
+  -  [x] Basic Notification Bar Control
+- [ ] Input
+  - [ ] Gaming Devices
+  - [x] Focus-Follows-Mouse
+  - [x] Drag Reposition/Resize in Float
+  - [ ] Mouse Scale Factors
+  - [ ] Mouse Emulation
+  - [ ] Mouse-Hover Focus
+  - [ ] Mouse Follows Selection
+  - [ ] Autohiding Mouse
+  - [ ] Macro Record / Replay
+  - [ ] Per/Window Keyremapping
+  - [ ] Keyboard layout hotswapping
+  - [ ] Lock-input-to-Window
+  - [ ] LED keybinding highlights
+- [ ] Internationalization
+  - [ ] Menu Translations
+  - [ ] Foreign IME
+  - [ ] Unicode Binding
+- [ ] Advanced Window Integration
+  - [ ] Cloning Windows
+  - [ ] State Transfers
+  - [ ] Debugging Subwindows
+  - [ ] Overlay Surfaces
+  - [ ] Customized Titlebar
+  - [ ] Customized Cursors, Cursorhints
+  - [ ] Popup Windows
+  - [ ] Font Hinting
+  - [ ] Screenreader support
+- [ ] Display Sharing
+  - [ ] Recording/Streaming
+  - [ ] VNC Server
+- [ ] Cut and Paste
+  - [ ] Simple Text
+  - [ ] Streaming Text
+  - [ ] Images
+  - [ ] Videos
+- [x] Basic Crash Recovery/Reset/Reload
+- [ ] Advanced Displays Support
+  - [ ] Resolution Switching
+  - [x] Synchronization Strategy Switching
+  - [ ] Offscreen Workspace Rendering
+  - [ ] Home Workspace to Preferred Display
+- [ ] LED Controller Support
+- [ ] ICC / Color Calibration Profiles
+- [ ] Redshift Color Temperature
+- [ ] Advanced scaling effects
+
+Bear in mind that a lot of these features are primarily mapping to what arcan already
+supports an the remaining job is the user interface mapping rather than time-consuming
+hardcore development.
 
 Repository
 =====
