@@ -238,7 +238,7 @@ gf["query_launch"] = function()
 				displays.main:lbar(tiler_lbarforce(cfgs, function(cfstr)
 					local vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
 					if (valid_vid(vid)) then
-						durden_launch(vid, string.format("%s:%s", str, cfstr));
+						durden_launch(vid, cfstr, str);
 					end
 				end), {}, {label = str .. ", Config:", force_completion = true});
 			else

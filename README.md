@@ -1,9 +1,10 @@
 About
 =====
 
-Durden is a simple tiling window manager for Arcan, thus it requires a working
-arcan installation, optionally set-up with compatible launch targets etc. See the
-[Arcan](http://github.com/letoram/arcan) repository and wiki for those details.
+Durden is a tiling desktop environment for Arcan, thus it requires a working
+arcan installation, optionally set-up with compatible launch targets etc.  See
+the [Arcan](http://github.com/letoram/arcan) repository and wiki for those
+details.
 
 Durden serves like a testing and development ground for refining the Arcan Lua
 API, much like [AWB](http://github.com/letoram/awb) and
@@ -81,6 +82,7 @@ are being implemented, we have the following list:
   - [x] Reassign
   - [ ] Named Reassign
   - [x] Merge/Split
+  - [x] Custom tags in Titlebar
   - [ ] Swap Left/Right/Up/Down
 - [x] Visual Enhancements
   - [x] Animated Transitions (fade, move)
@@ -90,7 +92,8 @@ are being implemented, we have the following list:
   - [ ] Mouse Cursor Event Flash
   - [ ] Font Customization
   - [ ] Color Customization
-  - [ ] Window Translucency
+  - [x] Window Translucency
+  - [ ] Window Alpha Channel Behavior Control
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Background Images
@@ -119,6 +122,7 @@ are being implemented, we have the following list:
   - [ ] Foreign IME
   - [ ] Unicode Binding
 - [ ] Advanced Window Integration
+  - [ ] Omnipresent Windows
   - [ ] Cloning Windows
   - [ ] State Transfers
   - [ ] Debugging Subwindows
@@ -128,6 +132,7 @@ are being implemented, we have the following list:
   - [ ] Customized Border
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
+  - [ ] Suspend/Resume Follows Focus
   - [ ] Font Hinting
   - [ ] LL Origo Invert
   - [ ] Screenreader Support
@@ -146,6 +151,7 @@ are being implemented, we have the following list:
   - [ ] Offscreen Workspace Rendering
   - [ ] Home Workspace to Preferred Display
 - [ ] ICC / Color Calibration Profiles
+- [ ] Daltonization
 - [ ] Redshift Color Temperature
 - [ ] Advanced scaling effects
 

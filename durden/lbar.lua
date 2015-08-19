@@ -178,9 +178,9 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	end
 
 	if (sym == ictx.cancel or sym == ictx.accept) then
-		local time = gconfig_get("transition");
-		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPIN);
-		blend_image(ictx.anchor, 0.0, time, INTERP_EXPIN);
+		local time = gconfig_get("lbar_transition");
+		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
+		blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
 		if (time > 0) then
 			PENDING_FADE = ictx.anchor;
 			expire_image(ictx.anchor, time + 1);
@@ -296,7 +296,7 @@ end
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 
-	local time = gconfig_get("transition");
+	local time = gconfig_get("lbar_transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;

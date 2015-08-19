@@ -165,6 +165,22 @@ function table.remove_vmatch(tbl, match)
 	return nil;
 end
 
+function table.i_subsel(table, label, field)
+	local res = {};
+	local ll = label and string.lower(label) or "";
+	local i = 1;
+
+	for k,v in ipairs(table) do
+		local match = string.lower(field and v[field] or v);
+		if (string.len(ll) == 0 or string.sub(match, 1, string.len(ll)) == ll) then
+			res[i] = v;
+			i = i + 1;
+		end
+	end
+
+	return res;
+end
+
 -- will return ctx (initialized if nil in the first call), to track state
 -- between calls iotbl matches the format from _input(iotbl) and sym should be
 -- the symbol table lookup. The redraw(ctx, caret_only) will be called when
@@ -308,27 +324,36 @@ local menu_hook = nil;
 local path = nil;
 
 local function run_value(ctx)
-	local hintstr = string.format("%s [%s] %s:",
+	local hintstr = string.format("%s %s %s",
 		ctx.label and ctx.label or "",
-		ctx.initial and (type(ctx.initial) == "function"
-			and ctx.initial() or ctx.initial) or "",
-		type(ctx.hint) == "function" and ctx.hint() or ctx.hint
+		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
+			and ctx.initial() or ctx.initial) .. " ] ") or "",
+		ctx.hint and ((type(ctx.hint) == "function"
+		and ctx.hint() or ctx.hint) .. ":") or ""
 	);
 
-	local bar = displays.main:lbar(function(ctx, instr, done, lastv)
-		if (done and ctx.validator(instr)) then
-			ctx.handler(ctx, instr);
-		end
+	if (ctx.set) then
+		return displays.main:lbar(function(ctx, instr, done, lastv)
+			if (done) then
+				ctx.handler(ctx, instr);
+			end
+			return {set = table.i_subsel(ctx.set, instr)};
+		end, ctx, {label = hintstr});
+	else
+		return displays.main:lbar(function(ctx, instr, done, lastv)
+			if (done and ctx.validator(instr)) then
+				ctx.handler(ctx, instr);
+			end
 		return ctx.validator(instr);
 	end, ctx, {label = hintstr});
-	return bar;
+	end
 end
 
 local function lbar_fun(ctx, instr, done, lastv)
 	if (done) then
 		local tgt = nil;
 		for k,v in ipairs(ctx.list) do
-			if (v.label == instr) then
+			if (string.lower(v.label) == string.lower(instr)) then
 				tgt = v;
 			end
 		end
@@ -364,30 +389,26 @@ local function lbar_fun(ctx, instr, done, lastv)
 		end
 	end
 
+	local subs = table.i_subsel(ctx.list, instr, "label");
 	local res = {};
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
 
--- match empty or case-insensitive
-	for i,v in ipairs(ctx.list) do
-		if (instr == nil or string.len(instr) == 0 or
-			string.lower(string.sub(v.label, 1, string.len(instr))) ==
-			string.lower(instr)) then
-			if ((v.eval == nil or v.eval(ctx, instr)) and
-				(ctx.show_invisible or not v.invisible)) then
-				if (v.submenu) then
-					table.insert(res, {mlbl, msellbl, v.label});
+	for i=1,#subs do
+			if ((subs[i].eval == nil or subs[i].eval(ctx, instr)) and
+			(ctx.show_invisible or not subs[i].invisible)) then
+			if (subs[i].submenu) then
+					table.insert(res, {mlbl, msellbl, subs[i].label});
 				else
-					table.insert(res, v.label);
+					table.insert(res, subs[i].label);
 				end
-			end
 		end
 	end
 
 	return {set = res, valid = false};
 end
 
-function gen_valid_int(lb, ub)
+function gen_valid_num(lb, ub)
 	return function(val)
 		if (string.len(val) == 0) then
 			return true;

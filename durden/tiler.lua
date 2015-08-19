@@ -442,7 +442,7 @@ local function set_tab(space)
 		hide_image(v.border);
 		link_image(v.titlebar, space.anchor);
 		order_image(v.titlebar, 2);
-		move_image(v.titlebar, ofs, bw);
+		move_image(v.titlebar, ofs, 0);
 		resize_image(v.titlebar, fairw, tbar_sz);
 		ofs = ofs + fairw;
 	end
@@ -966,8 +966,12 @@ local function wnd_title(wnd, message)
 	end
 
 	if (type(message) == "string") then
-		message = render_text(string.format("%s %s",
-			gconfig_get("tbar_textstr"), string.gsub(message, "\\", "\\\\")));
+		wnd.title_text = string.gsub(message, "\\", "\\\\");
+		message = render_text(string.format("%s %s %s",
+			gconfig_get("tbar_textstr"),
+			wnd.title_prefix and (wnd.title_prefix .. ": ") or "",
+			wnd.title_text
+		));
 	end
 
 	if (not valid_vid(message)) then
@@ -1227,6 +1231,11 @@ local function wnd_alert(wnd)
 	image_sharestorage(wm.alert_color, wnd.border);
 end
 
+local function wnd_prefix(wnd, prefix)
+	wnd.title_prefix = prefix and prefix or "";
+	wnd:set_title(wnd.title_text and wnd.title_text or "");
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -1258,6 +1267,7 @@ local function wnd_create(wm, source, opts)
 		destroy = wnd_destroy,
 		set_message = wnd_message,
 		set_title = wnd_title,
+		set_prefix = wnd_prefix,
 		resize = wnd_resize,
 		resize_effective = wnd_effective_resize,
 		select = wnd_select,
@@ -1520,6 +1530,11 @@ local function tiler_rebuild_border()
 			v.pad_top = v.pad_top - old_bw + bw;
 			v.pad_bottom = v.pad_bottom - old_bw + bw;
 			v.border_w = bw;
+			if (v.space.mode == "tile" or v.space.mode == "float") then
+				move_image(v.titlebar, v.border_w, v.border_w);
+				resize_image(v.titlebar,
+				v.width - v.border_w * 2, gconfig_get("tbar_sz"));
+			end
 		end
 	end
 end
