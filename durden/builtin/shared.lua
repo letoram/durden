@@ -99,9 +99,44 @@ local function set_scalef(mode)
 	local wnd = displays.main.selected;
 	if (wnd) then
 		wnd.scalemode = mode;
+		wnd.settings['scalemode'] = mode;
 		wnd:resize(wnd.width, wnd.height);
 	end
 end
+
+local function set_filterm(mode)
+	if (mode and wnd) then
+		wnd.settings['filtermode'] = mode;
+		image_texfilter(wnd.canvas, mode);
+	end
+end
+
+local filtermodes = {
+	{
+		name = "target_filter_none",
+		label = "None",
+		kind = "action",
+		handler = function() set_filterm(FILTER_NONE); end
+	},
+	{
+		name = "target_filter_linear",
+		label = "Linear",
+		kind = "action",
+		handler = function() set_filterm(FILTER_LINEAR); end
+	},
+	{
+		name = "target_filter_bilinear",
+		label = "Bilinear",
+		kind = "action",
+		handler = function() set_filterm(FILTER_BILINEAR); end
+	},
+	{
+		name = "target_filter_trilinear",
+		label = "Trilinear",
+		kind = "action",
+		handler = function() set_filterm(FILTER_TRILINEAR); end
+	}
+};
 
 local scalemodes = {
 	{
@@ -113,7 +148,14 @@ local scalemodes = {
 	{
 		name = "target_scale_stretch",
 		label = "Stretch",
+		kind = "action",
 		handler = function() set_scalef("stretch"); end
+	},
+	{
+		name = "target_scale_aspect",
+		label = "Aspect",
+		kind = "action",
+		handler = function() set_scalef("aspect"); end
 	}
 };
 
@@ -246,24 +288,4 @@ local function show_shmenu(wnd)
 	launch_menu(wnd.wm, ctx, true, "Action:");
 end
 
---gf["cycle_scalemode"] = function()
---	local sel = displays.main.selected;
---	local modes = displays.main.scalemodes;
-
---	if (sel and modes) then
---		local ind = 1;
-
---		for i,v in ipairs(modes) do
---			if (v == sel.scalemode) then
---				ind = i;
---				break;
---			end
---		end
-
--- recall that not all displays need to support the same scalemodes, this is
--- due to the cost/filtering capability of some special displays
---		ind = (ind + 1 > #modes) and 1 or (ind + 1);
---		sel.scalemode = modes[ind];
---		sel:resize(sel.width, sel.height);
---	end
---end
+register_shared("target_actions", show_shmenu);

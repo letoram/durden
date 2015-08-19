@@ -115,7 +115,6 @@ end
 -- filtered subset
 function gconfig_shutdown()
 	local ktbl = {};
-
 	for k,v in pairs(defaults) do
 		if (type(ktbl[k]) ~= "table") then
 			ktbl[k] = tostring(v);

@@ -308,12 +308,19 @@ local menu_hook = nil;
 local path = nil;
 
 local function run_value(ctx)
+	local hintstr = string.format("%s [%s] %s:",
+		ctx.label and ctx.label or "",
+		ctx.initial and (type(ctx.initial) == "function"
+			and ctx.initial() or ctx.initial) or "",
+		type(ctx.hint) == "function" and ctx.hint() or ctx.hint
+	);
+
 	local bar = displays.main:lbar(function(ctx, instr, done, lastv)
 		if (done and ctx.validator(instr)) then
 			ctx.handler(ctx, instr);
 		end
 		return ctx.validator(instr);
-	end, ctx, {label = (ctx.label and ctx.label or "") .. ":"});
+	end, ctx, {label = hintstr});
 	return bar;
 end
 
@@ -378,6 +385,19 @@ local function lbar_fun(ctx, instr, done, lastv)
 	end
 
 	return {set = res, valid = false};
+end
+
+function gen_valid_int(lb, ub)
+	return function(val)
+		if (string.len(val) == 0) then
+			return true;
+		end
+		local num = tonumber(val);
+		if (num == nil) then
+			return false;
+		end
+		return not(num < lb or num > ub);
+	end
 end
 
 --
