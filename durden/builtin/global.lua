@@ -378,7 +378,7 @@ local durden_visual = {
 		hint = function() return
 			string.format("(0..%d)", gconfig_get("borderw")) end,
 		validator = function(val)
-			return gen_valid_int(0, gconfig_get("borderw"))(val);
+			return gen_valid_num(0, gconfig_get("borderw"))(val);
 		end,
 		initial = function() return tostring(gconfig_get("bordert")); end,
 		handler = function(ctx, val)
@@ -394,11 +394,42 @@ local durden_visual = {
 		kind = "value",
 		hint = "(0..20)",
 		inital = function() return tostring(gconfig_get("borderw")); end,
-		validator = gen_valid_int(0, 20),
+		validator = gen_valid_num(0, 20),
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
 			displays.main.rebuild_border();
 			displays.main.spaces[displays.main.space_ind]:resize();
+		end
+	},
+	{
+		name = "transition_speed",
+		label = "Animation Speed",
+		kind = "value",
+		hint = "(1..100)",
+		validator = gen_valid_num(1, 100),
+		initial = function() return tostring(gconfig_get("transition")); end,
+		handler = function(ctx, val)
+			gconfig_set("transition", tonumber(val));
+		end
+	},
+	{
+		name = "transition_in",
+		label = "In-Animation",
+		kind = "value",
+		set = {"fade", "slide"},
+		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
+		handler = function(ctx, val)
+			gconfig_set("ws_transition_in", val);
+		end
+	},
+	{
+		name = "transition_out",
+		label = "Out-Animation",
+		kind = "value",
+		set = {"fade", "slide"},
+		initial = function() return tostring(gconfig_get("ws_transition_out")); end,
+		handler = function(ctx, val)
+			gconfig_set("ws_transition_out", val);
 		end
 	},
 };

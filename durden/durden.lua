@@ -96,10 +96,11 @@ local function tile_changed(wnd)
 	end
 end
 
-function durden_launch(vid, ptitle)
+function durden_launch(vid, title, prefix)
 	local wnd = displays.main:add_window(vid);
 	wnd.external = vid;
-	wnd:set_title(ptitle and ptitle or "unknown");
+	wnd:set_title(title and title or "?");
+	wnd:set_prefix(prefix);
 	wnd.resize_hook = tile_changed;
 	tile_changed(wnd);
 	show_image(vid);
@@ -115,7 +116,7 @@ function spawn_terminal()
 	local vid = launch_avfeed(
 		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
 	if (valid_vid(vid)) then
-		durden_launch(vid, "terminal");
+		durden_launch(vid, "", "terminal");
 		def_handler(vid, {kind = "registered", segkind = "terminal"});
 	else
 		displays.main:message( "Builtin- terminal support broken" );

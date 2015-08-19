@@ -49,23 +49,6 @@ local function gain_stepv(gainv, abs)
 		gconfig_get("gain_fade"));
 end
 
-local shared_settings = {
-	{
-		name = "filtering",
-		label = "Filtering",
-		kind = "list",
-		validator = {
-			None = FILTER_NONE,
-			Linear = FILTER_LINEAR,
-			Bilinear = FILTER_BILINEAR,
-			Trilinear = FILTER_TRILINEAR
-		},
-		handler = function(ctx, value)
-			image_texfilter(ctx.external, value);
-		end
-	}
-};
-
 local audio_menu = {
 	{
 		name = "target_audio",
@@ -99,14 +82,15 @@ local function set_scalef(mode)
 	local wnd = displays.main.selected;
 	if (wnd) then
 		wnd.scalemode = mode;
-		wnd.settings['scalemode'] = mode;
+		wnd.settings.scalemode = mode;
 		wnd:resize(wnd.width, wnd.height);
 	end
 end
 
 local function set_filterm(mode)
+	local wnd = displays.main.selected;
 	if (mode and wnd) then
-		wnd.settings['filtermode'] = mode;
+		wnd.settings.filtermode = mode;
 		image_texfilter(wnd.canvas, mode);
 	end
 end
@@ -177,8 +161,39 @@ local video_menu = {
 		submenu = true,
 		force = true,
 		handler = filtermodes
-	}
+	},
+	{
+		name = "Opacity",
+		label = "Opacity",
+		kind = "value",
+		hint = "(0..1)",
+		validator = gen_valid_num(0, 1),
+		handler = function(ctx, val)
+			local wnd = displays.main.selected;
+			if (wnd) then
+				local opa = tonumber(val);
+				wnd.settings.opacity = opa;
+				blend_image(wnd.border, opa);
+				blend_image(wnd.canvas, opa);
+			end
+		end
+	},
 -- good place to add advanced upscalers (xBR, CRT etc.)
+};
+
+local window_menu = {
+	{
+		name = "window_prefix",
+		label = "Tag",
+		kind = "value",
+		validator = function() return true; end,
+		handler = function(ctx, val)
+			local wnd = displays.main.selected;
+			if (wnd) then
+				wnd:set_prefix(string.gsub(val, "\\", "\\\\"));
+			end
+		end
+	}
 };
 
 -- Will be presented in order, not sorted. Make sure they come in order
@@ -216,6 +231,15 @@ local shared_actions = {
 		force = true,
 		handler = video_menu,
 		hint = "Video:"
+	},
+	{
+		name = "shared_window",
+		label = "Window",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = window_menu,
+		Hint = "Window: "
 	},
 	{
 		name = "reset",
