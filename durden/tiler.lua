@@ -72,7 +72,7 @@ void main()
 
 local function build_shaders()
 	local bw = gconfig_get("borderw");
-	local bt = gconfig_get("bordert");
+	local bt = bw - gconfig_get("bordert");
 	local a = build_shader(nil, border_shader, "border_act");
 	shader_uniform(a, "border", "f", PERSIST, bw);
 	shader_uniform(a, "thickness", "f", PERSIST, bt);
@@ -187,7 +187,6 @@ local function wnd_destroy(wnd)
 		wnd[k] = nil;
 	end
 
-	space:bgon();
 
 -- drop global tracking
 	table.remove_match(wm.windows, wnd);
@@ -301,7 +300,6 @@ local function workspace_activate(space, noanim)
 	end
 
 	local tgt = space.selected and space.selected or space.children[1];
-	space:bgon();
 end
 
 local function workspace_inactivate(space, noanim)
@@ -321,8 +319,6 @@ local function workspace_inactivate(space, noanim)
 	else
 		hide_image(space.anchor);
 	end
-
-	space:bgoff();
 end
 
 local function switch_fullscreen(space, to)
@@ -409,7 +405,6 @@ local function drop_float(space, swap)
 	end
 
 	reorder_space(space);
-	space:bgon();
 end
 
 local function reassign_float(space, wnd)
@@ -518,7 +513,6 @@ local function set_float(space)
 		space.in_float = true;
 		space.reassign_hook = reassign_float;
 		space.mode_hook = drop_float;
-		space:bgon();
 		local tbl = linearize(space);
 		for i,v in ipairs(tbl) do
 			local props = image_storage_properties(v.canvas);
@@ -636,19 +630,6 @@ local function workspace_label(space, lbl)
 	space.wm:update_statusbar();
 end
 
-local function workspace_bgon(space)
-	if (space.background) then
-		blend_image(space.background,
-			(space.mode == "float" or #space.children == 0) and 1.0 or 0.0);
-	end
-end
-
-local function workspace_bgoff(space)
-	if (space.background) then
-		hide_image(space.background);
-	end
-end
-
 local function create_workspace(wm, anim)
 	local res = {
 		activate = workspace_activate,
@@ -668,11 +649,6 @@ local function create_workspace(wm, anim)
 		float = function(ws) workspace_set(ws, "float"); end,
 
 		set_label = workspace_label,
-
--- only floating layout and empty sets have use for background, otherwise
--- it's a waste of good fillrate
-		bgon = workspace_bgon,
-		bgoff = workspace_bgoff,
 
 -- can be used for clipping / transitions
 		anchor = null_surface(wm.width, wm.height),
@@ -1291,7 +1267,9 @@ local function wnd_create(wm, source, opts)
 		collapse = wnd_collapse,
 		prev = wnd_prev,
 		grow = wnd_grow,
-		name = "wnd_" .. tostring(ent_count);
+		name = "wnd_" .. tostring(ent_count),
+-- user defined, for storing / restoring
+		settings = {}
 	};
 
 	ent_count = ent_count + 1;
@@ -1362,7 +1340,6 @@ local function wnd_create(wm, source, opts)
 		res:resize(wm.min_width, wm.min_height);
 	end
 
-	space:bgon();
 	order_image(res.wm.order_anchor,
 		#wm.windows * WND_RESERVED + 2 * WND_RESERVED);
 	return res;
@@ -1532,6 +1509,21 @@ end
 local function tiler_message(tiler)
 end
 
+local function tiler_rebuild_border()
+	local bw = gconfig_get("borderw");
+	build_shaders();
+	for a,b in pairs(displays) do
+		for i,v in ipairs(b.windows) do
+			local old_bw = v.border_w;
+			v.pad_left = v.pad_left - old_bw + bw;
+			v.pad_right = v.pad_right - old_bw + bw;
+			v.pad_top = v.pad_top - old_bw + bw;
+			v.pad_bottom = v.pad_bottom - old_bw + bw;
+			v.border_w = bw;
+		end
+	end
+end
+
 local function wm_countspaces(wm)
 	local r = 0;
 	for i=1,10 do
@@ -1592,6 +1584,7 @@ function tiler_create(width, height, opts)
 		find_window = tiler_find,
 		message = tiler_message,
 		update_statusbar = tiler_statusbar_update,
+		rebuild_border = tiler_rebuild_border
 	};
 	res.width = width;
 	res.height = height;

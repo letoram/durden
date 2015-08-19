@@ -6,7 +6,7 @@ arcan installation, optionally set-up with compatible launch targets etc. See th
 [Arcan](http://github.com/letoram/arcan) repository and wiki for those details.
 
 Durden serves like a testing and development ground for refining the Arcan Lua
-API, much like [AWB](http://github.com/letoram/awb) and 
+API, much like [AWB](http://github.com/letoram/awb) and
 [Gridle](http://github.com/letoram/gridle) but will remain as a supported 'real'
 desktop environment, rather than proof of concepts.
 
@@ -16,65 +16,70 @@ section below.
 Starting / Configuring
 =====
 
-Make sure that arcan is built with support for builtin frameservers for terminal,
-decode, encode, remoting etc. else those features will be missing. Durden probes
-for available engine features and enables/disables access to these accordingly.
+Make sure that arcan is built with support for builtin frameservers for
+terminal, decode, encode, remoting etc. else those features will be missing.
+Durden probes for available engine features and enables/disables access to
+these accordingly.
 
-Start arcan with the resource path set to durden/res and active appl to durden/durden,
-like this (there are tons of better 'installation' setups, this is merely to get you
-going):
+Start arcan with the resource path set to durden/res and active appl to
+durden/durden, like this (there are tons of better 'installation' setups, this
+is merely to get you going):
 
-    arcan -p path/to/durden\_root/res &path/to/durden\_root/durden
+		arcan -p path/to/durden\_root/res &path/to/durden\_root/durden
 
-Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua for the
-currently mapped functions. If you don't press any of the META keys during the first
-n (20 or so) keypresses, it is assumed that your meta bindings are broken and you
-will be queried for new ones.
+Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
+for the currently mapped functions. If you don't press any of the META keys
+during the first n (20 or so) keypresses, it is assumed that your meta bindings
+are broken and you will be queried for new ones.
 
-A big point with durden as a window manager is that absolutely no configuration file
-editing etc. should be needed, everything is accessible and remappable from the UI.
-Most configuration changes are done through the global menu (by default, meta1+meta2+g)
-and through the window menu (by default, meta1+meta2+t but requires a selected window).
+A big point with durden as a window manager is that absolutely no configuration
+file editing etc. should be needed, everything is accessible and remappable
+from the UI.  Most configuration changes are done through the global menu (by
+default, meta1+meta2+g) and through the window menu (by default, meta1+meta2+t
+but requires a selected window).
 
-The menus are navigated by default using the arrow keys and enter to select and you
-can filter the list of shown items by typing.
+The menus are navigated by default using the arrow keys and enter to select and
+you can filter the list of shown items by typing.
 
-Any path or menu item in the global or window menu can be bound to a keycombination,
-and this is done by going to global/input/bind custom. You will be prompted to press
-the binding you like and then navigate to the menu item you want to bind it to. To bind
-a sub-menu, hold meta1 while selecting.
+Any path or menu item in the global or window menu can be bound to a
+keycombination, and this is done by going to global/input/bind custom. You will
+be prompted to press the binding you like and then navigate to the menu item
+you want to bind it to. To bind a sub-menu, hold meta1 while selecting.
 
-It is however also possible to tweak/modify the startup defaults (see keybindings.lua
-and gconf.lua).
+It is however also possible to tweak/modify the startup defaults (see
+keybindings.lua and gconf.lua).
 
 Database Configuration
 ====
-The launch bar (default meta1+d) uses preconfigured execution profiles that
-are managed with a separate external tool as part of Arcan, called *arcan_db*, check the
-[Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
+The launch bar (default meta1+d) uses preconfigured execution profiles that are
+managed with a separate external tool as part of Arcan, called *arcan_db*,
+check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
 
 Statusbar
 ====
-Durden looks for a named pipe (FIFO) in the APPLTEMP namespace (usually the same as the
-appl dir specified as last argument to arcan) with the name *durden\_cmd*. This pipe
-can be used to send external commands similar to navigating the menus, and to update
-the statusbar. For instance, using i3status:
+Durden looks for a named pipe (FIFO) in the APPLTEMP namespace (usually the
+same as the appl dir specified as last argument to arcan) with the name
+*durden\_cmd*. This pipe can be used to send external commands similar to
+navigating the menus, and to update the statusbar. For instance, using
+i3status:
 
     mkfifo c ~/durden/durden_cmd
     i3status | sed -e 's/^/status:/' > ~/durden/durden_cmd
 
 Features and Status
 =====
-To get an overview of the features that have been implemented and features that are
-being implemented, we have the following list:
+To get an overview of the features that have been implemented and features that
+are being implemented, we have the following list:
 
 - [x] Basic Window Management Modes: float, tab, vertical-tab, tiled, fullscreen
 - [ ] Workspace Management
   - [x] Naming/Renaming
   - [x] Searching Based On Name
   - [ ] Saving/Restoring Layout
+  - [ ] Hide Named Workspaces
 - [ ] Basic Window Management
   - [x] Reassign
+  - [ ] Named Reassign
   - [x] Merge/Split
   - [ ] Swap Left/Right/Up/Down
 - [x] Visual Enhancements
@@ -85,6 +90,7 @@ being implemented, we have the following list:
   - [ ] Mouse Cursor Event Flash
   - [ ] Font Customization
   - [ ] Color Customization
+  - [ ] Window Translucency
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Background Images
@@ -94,7 +100,9 @@ being implemented, we have the following list:
   -  [x] Basic Notification Bar Control
 - [ ] Input
   - [ ] Gaming Devices
+    - [ ] Analog Calibration
   - [x] Focus-Follows-Mouse
+  - [x] Configurable/Per Window Keyboard Repeat
   - [x] Drag Reposition/Resize in Float
   - [ ] Mouse Scale Factors
   - [ ] Mouse Emulation
@@ -117,9 +125,12 @@ being implemented, we have the following list:
   - [ ] Overlay Surfaces
   - [ ] Customized Titlebar
   - [ ] Customized Cursors, Cursorhints
+  - [ ] Customized Border
+  - [ ] Content/Scroll Integration
   - [ ] Popup Windows
   - [ ] Font Hinting
-  - [ ] Screenreader support
+  - [ ] LL Origo Invert
+  - [ ] Screenreader Support
 - [ ] Display Sharing
   - [ ] Recording/Streaming
   - [ ] VNC Server
@@ -134,14 +145,13 @@ being implemented, we have the following list:
   - [x] Synchronization Strategy Switching
   - [ ] Offscreen Workspace Rendering
   - [ ] Home Workspace to Preferred Display
-- [ ] LED Controller Support
 - [ ] ICC / Color Calibration Profiles
 - [ ] Redshift Color Temperature
 - [ ] Advanced scaling effects
 
-Bear in mind that a lot of these features are primarily mapping to what arcan already
-supports an the remaining job is the user interface mapping rather than time-consuming
-hardcore development.
+Bear in mind that a lot of these features are primarily mapping to what arcan
+already supports an the remaining job is the user interface mapping rather than
+time-consuming hardcore development.
 
 Repository
 =====

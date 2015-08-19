@@ -266,6 +266,10 @@ function durden_display_state(action, id)
 	end
 end
 
+function durden_shutdown()
+	gconfig_shutdown();
+end
+
 function durden_clock_pulse()
 	local tt = iostatem_tick();
 	if (tt) then

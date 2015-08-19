@@ -255,8 +255,8 @@ local function load_bg(fn)
 			space.background_name = fn;
 			resize_image(src, space.wm.width, space.wm.client_height);
 			link_image(src, space.anchor);
-			space:bgon();
-			else
+			show_image(src);
+		else
 			delete_image(src);
 		end
 	end);
@@ -368,6 +368,53 @@ local workspace_menu = {
 	}
 };
 
+local durden_visual = {
+-- thickness is dependent on area, make sure the labels and
+-- constraints update dynamically
+	{
+		name = "border_thickness",
+		label = "Border Thickness",
+		kind = "value",
+		hint = function() return
+			string.format("(0..%d)", gconfig_get("borderw")) end,
+		validator = function(val)
+			return gen_valid_int(0, gconfig_get("borderw"))(val);
+		end,
+		initial = function() return tostring(gconfig_get("bordert")); end,
+		handler = function(ctx, val)
+			local num = tonumber(val);
+			gconfig_set("bordert", tonumber(val));
+			displays.main.rebuild_border();
+			displays.main.spaces[displays.main.space_ind]:resize();
+		end
+	},
+	{
+		name = "border_area",
+		label = "Border Area",
+		kind = "value",
+		hint = "(0..20)",
+		inital = function() return tostring(gconfig_get("borderw")); end,
+		validator = gen_valid_int(0, 20),
+		handler = function(ctx, val)
+			gconfig_set("borderw", tonumber(val));
+			displays.main.rebuild_border();
+			displays.main.spaces[displays.main.space_ind]:resize();
+		end
+	},
+};
+
+local durden_menu = {
+	{
+		name = "durden_visual",
+		label = "Visual",
+		kind = "action",
+		submenu = true,
+		force = true,
+		hint = "Visual:",
+		handler = durden_visual
+	}
+};
+
 local function imgwnd(fn)
 	load_image_asynch(fn, function(src, stat)
 		if (stat.kind == "loaded") then
@@ -462,6 +509,15 @@ local toplevel = {
 		force = true,
 		hint = "Displays:",
 		handler = display_menu
+	},
+	{
+		name = "durden",
+		label = "Durden",
+		kind = "action",
+		submenu = true,
+		force = true,
+		hint = "Durden:",
+		handler = durden_menu
 	},
 	{
 		name = "audio",
