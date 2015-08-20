@@ -304,7 +304,8 @@ local function show_shmenu(wnd)
 	end
 
 	local ctx = {
-		list = wnd.dispatch and merge_menu(shared_actions, wnd.dispatch) or
+		list = wnd.dispatch and merge_menu(wnd.no_shared
+		and {} or shared_actions, wnd.dispatch) or
 			shared_actions,
 		handler = wnd
 	};

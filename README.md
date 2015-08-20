@@ -108,7 +108,7 @@ are being implemented, we have the following list:
   - [x] Configurable/Per Window Keyboard Repeat
   - [x] Drag Reposition/Resize in Float
   - [ ] Mouse Scale Factors
-  - [ ] Mouse Emulation
+  - [ ] Keyboard/Game Device Mouse Emulation
   - [ ] Mouse-Hover Focus
   - [ ] Mouse Follows Selection
   - [ ] Autohiding Mouse
@@ -150,10 +150,10 @@ are being implemented, we have the following list:
   - [x] Synchronization Strategy Switching
   - [ ] Offscreen Workspace Rendering
   - [ ] Home Workspace to Preferred Display
-- [ ] ICC / Color Calibration Profiles
-- [ ] Daltonization
-- [ ] Redshift Color Temperature
-- [ ] Advanced scaling effects
+  - [ ] ICC / Color Calibration Profiles
+  - [ ] Daltonization
+  - [ ] Redshift Color Temperature
+  - [ ] Advanced scaling effects (xBR, ...)
 
 Bear in mind that a lot of these features are primarily mapping to what arcan
 already supports an the remaining job is the user interface mapping rather than

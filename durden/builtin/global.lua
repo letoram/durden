@@ -92,9 +92,15 @@ end
 local debug_menu = {
 	{
 		name = "query_dump",
-		label = "Dump State",
+		label = "Dump",
 		kind = "action",
 		handler = query_dump
+	},
+	{
+		name = "debug_console",
+		label = "Console",
+		kind = "action",
+		handler = grab_global_function("debug_debugwnd")
 	}
 };
 
@@ -416,7 +422,7 @@ local durden_visual = {
 		name = "transition_in",
 		label = "In-Animation",
 		kind = "value",
-		set = {"fade", "slide"},
+		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
 		handler = function(ctx, val)
 			gconfig_set("ws_transition_in", val);
@@ -426,7 +432,7 @@ local durden_visual = {
 		name = "transition_out",
 		label = "Out-Animation",
 		kind = "value",
-		set = {"fade", "slide"},
+		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_out")); end,
 		handler = function(ctx, val)
 			gconfig_set("ws_transition_out", val);
@@ -469,7 +475,7 @@ local function decwnd(fn)
 		elseif (status.kind == "connected") then
 			local wnd = displays.main:add_window(source);
 			wnd.external = source;
-			wnd.resize_hook = tile_changed;
+			wnd:add_handler("resize", tile_changed);
 			target_updatehandler(source, dechnd);
 			tile_changed(wnd);
 		end
@@ -542,12 +548,12 @@ local toplevel = {
 		handler = display_menu
 	},
 	{
-		name = "durden",
-		label = "Durden",
+		name = "settings",
+		label = "Config",
 		kind = "action",
 		submenu = true,
 		force = true,
-		hint = "Durden:",
+		hint = "settings:",
 		handler = durden_menu
 	},
 	{

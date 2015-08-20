@@ -33,6 +33,7 @@ function durden()
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global
+	system_load("builtin/debug.lua")(); -- global event viewer
 	system_load("builtin/global.lua")(); -- desktop related global
 	system_load("builtin/shared.lua")(); -- shared window related global
 
@@ -90,9 +91,9 @@ function durden()
 	iostatem_init();
 end
 
-local function tile_changed(wnd)
-	if (wnd.effective_w > 1 and wnd.effective_h > 1) then
-		target_displayhint(wnd.external, wnd.effective_w, wnd.effective_h);
+local function tile_changed(wnd, neww, newh, efw, efh)
+	if (neww > 0 and newh > 0) then
+		target_displayhint(wnd.external, neww, newh);
 	end
 end
 
@@ -101,8 +102,7 @@ function durden_launch(vid, title, prefix)
 	wnd.external = vid;
 	wnd:set_title(title and title or "?");
 	wnd:set_prefix(prefix);
-	wnd.resize_hook = tile_changed;
-	tile_changed(wnd);
+	wnd:add_handler("resize", tile_changed);
 	show_image(vid);
 	target_updatehandler(vid, def_handler);
 end
@@ -127,9 +127,17 @@ function def_handler(source, stat)
 	local wnd = displays.main:find_window(source);
 	assert(wnd ~= nil);
 
+	if (DEBUGLEVEL > 0 and displays.main.debug_console) then
+		displays.main.debug_console:target_event(source, stat);
+	end
+
 -- registered subtype handler may say that this event should not
 -- propagate to the default implementation (below)
 	if (wnd.dispatch[stat.kind]) then
+		if (DEBUGLEVEL > 0 and displays.main.debug_console) then
+			displays.main.debug_console:event_dispatch(wnd, stat.kind, stat);
+		end
+
 		if (wnd.dispatch[stat.kind](source, stat)) then
 			return;
 		end
@@ -166,6 +174,8 @@ function def_handler(source, stat)
 		wnd.atype = stat.segkind;
 		wnd.source_audio = stat.source_audio;
 		register_shared_atype(wnd, atbl.actions, atbl.settings, atbl.labels);
+	else
+		warning("unhandled" .. stat.kind);
 	end
 end
 
@@ -178,7 +188,7 @@ function new_connection(source, status)
 		resize_image(source, status.width, status.height);
 		local wnd = displays.main:add_window(source);
 		wnd.external = source;
-		wnd.resize_hook = tile_changed;
+		wnd:add_handler("resize", tile_changed);
 		target_updatehandler(source, def_handler);
 		tile_changed(wnd);
 	end
@@ -212,6 +222,10 @@ end
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl, fromim)
+	if (DEBUGLEVEL > 0 and displays.main.debug_wnd) then
+		displays.main.debug_wnd:add_input(iotbl, fromim);
+	end
+
 	if (not fromim) then
 		local it = iostatem_input(iotbl);
 		if (it) then

@@ -194,10 +194,15 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 		wm.input_ctx = nil;
 		wm.input_lock = nil;
 		if (sym == ictx.accept) then
-			ictx.get_cb(ictx.cb_ctx, ictx.force_completion and
-				(type(ictx.set[ictx.csel]) == "table" and ictx.set[ictx.csel][3] or
-				ictx.set[ictx.csel]) or ictx.inp.msg, true, ictx.set
-			);
+			local base = ictx.inp.msg;
+
+			if (ictx.force_completion or string.len(base) == 0) then
+				if (ictx.set[ictx.csel]) then
+					base = type(ictx.set[ictx.csel]) == "table" and
+						ictx.set[ictx.csel][3] or ictx.set[ictx.csel];
+				end
+			end
+			ictx.get_cb(ictx.cb_ctx, base, true, ictx.set);
 		end
 		return;
 	end
