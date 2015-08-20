@@ -133,6 +133,13 @@ local function reorder_space(space)
 	end
 end
 
+local function run_event(wnd, event, ...)
+	assert(wnd.handlers[event]);
+	for i,v in ipairs(wnd.handlers[event]) do
+		v(wnd, unpack({...}));
+	end
+end
+
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
 	if (wnd.fullscreen) then
@@ -153,10 +160,16 @@ local function wnd_destroy(wnd)
 	end
 
 -- re-assign to parent
-	for k,v in ipairs(wnd.children) do
+	for i,v in ipairs(wnd.children) do
 		table.insert(wnd.parent.children, v);
 		v.parent = wnd.parent;
 	end
+
+	run_event(wnd, "destroy");
+	for i,v in ipairs(wnd.relatives) do
+		run_event(v, "lost_relative", wnd);
+	end
+	table.remove_match(wnd.relatives, wnd);
 
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
@@ -186,7 +199,6 @@ local function wnd_destroy(wnd)
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
 	end
-
 
 -- drop global tracking
 	table.remove_match(wm.windows, wnd);
@@ -293,7 +305,7 @@ local function workspace_activate(space, noanim)
 			blend_image(space.anchor, 0.0, 0.5 * time);
 			blend_image(space.anchor, 1.0, 0.5 * time);
 		else
-			warning("broken method set for ws_transition_in");
+			warning("broken method set for ws_transition_in: " ..method);
 		end
 	else
 		show_image(space.anchor);
@@ -314,7 +326,7 @@ local function workspace_inactivate(space, noanim)
 		elseif (method == "fade") then
 			blend_image(space.anchor, 0.0, 0.5 * time);
 		else
-			warning("broken method set for ws_transition_out");
+			warning("broken method set for ws_transition_out: "..method);
 		end
 	else
 		hide_image(space.anchor);
@@ -763,10 +775,6 @@ local function wnd_resize(wnd, neww, newh, force)
 	wnd.effective_w = neww;
 	wnd.effective_h = newh;
 
-	if (wnd.resize_hook) then
-		wnd:resize_hook(neww, newh);
-	end
-
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
 
@@ -776,6 +784,8 @@ local function wnd_resize(wnd, neww, newh, force)
 		move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
 			math.floor(0.5*(newh - wnd.effective_h)));
 	end
+
+	run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 end
 
 local function wnd_next(mw, level)
@@ -1236,6 +1246,16 @@ local function wnd_prefix(wnd, prefix)
 	wnd:set_title(wnd.title_text and wnd.title_text or "");
 end
 
+local function wnd_addhandler(wnd, ev, fun)
+	assert(ev);
+	if (wnd.handlers[ev] == nil) then
+		warning("tried to add handler for unknown event: " .. ev);
+		return;
+	end
+	table.remove_match(wnd.handlers[ev], fun);
+	table.insert(wnd.handlers[ev], fun);
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -1249,7 +1269,14 @@ local function wnd_create(wm, source, opts)
 		canvas = source,
 		gain = 1.0,
 		children = {},
+		relatives = {},
 		dispatch = {},
+		handlers = {
+			destroy = {},
+			resize = {},
+			gained_relative = {},
+			lost_relative = {}
+		},
 		pad_left = bw,
 		pad_right = bw,
 		pad_top = bw,
@@ -1268,6 +1295,7 @@ local function wnd_create(wm, source, opts)
 		set_message = wnd_message,
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
+		add_handler = wnd_addhandler,
 		resize = wnd_resize,
 		resize_effective = wnd_effective_resize,
 		select = wnd_select,
@@ -1586,6 +1614,8 @@ function tiler_create(width, height, opts)
 		spaces = {},
 		windows = {},
 		space_ind = 1,
+
+-- debug
 
 -- kept per/tiler in order to allow custom modes as well
 		scalemodes = {"normal", "stretch", "aspect"},
