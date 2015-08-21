@@ -7,6 +7,7 @@
 local defaults = {
 	msg_timeout = 100,
 	font_str = "\\fdefault.ttf,12",
+	font_sz = 12,
 	text_color = "\\#aaaaaa",
 	borderw = 1,
 	bordert = 0,

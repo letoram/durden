@@ -440,6 +440,19 @@ local durden_visual = {
 	},
 };
 
+local durden_workspace = {
+	{
+		name = "durden_ws_autodel",
+		label = "Autodelete",
+		kind = "value",
+		set = {"true", "false"},
+		initial = function() return tostring(gconfig_get("ws_autodestroy")); end,
+		handler = function(ctx, val)
+			gconfig_set("ws_autodestroy", val == "true");
+		end
+	}
+};
+
 local durden_menu = {
 	{
 		name = "durden_visual",
@@ -449,6 +462,15 @@ local durden_menu = {
 		force = true,
 		hint = "Visual:",
 		handler = durden_visual
+	},
+	{
+		name = "durden_workspace",
+		label = "Workspaces",
+		kind = "action",
+		submenu = true,
+		force = true,
+		hint = "Config Workspaces:",
+		handler = durden_workspace
 	}
 };
 
