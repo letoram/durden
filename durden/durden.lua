@@ -175,7 +175,7 @@ function def_handler(source, stat)
 		wnd.source_audio = stat.source_audio;
 		register_shared_atype(wnd, atbl.actions, atbl.settings, atbl.labels);
 	else
-		warning("unhandled" .. stat.kind);
+--		warning("unhandled" .. stat.kind);
 	end
 end
 
@@ -253,12 +253,17 @@ function durden_input(iotbl, fromim)
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
 			local sel = displays.main.selected;
-			if (sel and valid_vid(sel.external, TYPE_FRAMESERVER)) then
+			if (sel) then
+			if (valid_vid(sel.external, TYPE_FRAMESERVER)) then
 -- possible injection site for higher level inputs
 				target_input(sel.external, iotbl);
+			elseif (sel.key_input) then
+				sel:key_input(sym, iotbl);
+			end
 			end
 		end
 	end
+
 end
 
 function durden_display_state(action, id)
