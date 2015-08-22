@@ -104,6 +104,7 @@ function durden_launch(vid, title, prefix)
 	wnd:set_prefix(prefix);
 	wnd:add_handler("resize", tile_changed);
 	show_image(vid);
+	wnd.dispatch = shared_dispatch();
 	target_updatehandler(vid, def_handler);
 end
 
@@ -128,7 +129,7 @@ function def_handler(source, stat)
 	assert(wnd ~= nil);
 
 	if (DEBUGLEVEL > 0 and displays.main.debug_console) then
-		displays.main.debug_console:target_event(source, stat);
+		displays.main.debug_console:target_event(wnd, source, stat);
 	end
 
 -- registered subtype handler may say that this event should not
@@ -138,7 +139,7 @@ function def_handler(source, stat)
 			displays.main.debug_console:event_dispatch(wnd, stat.kind, stat);
 		end
 
-		if (wnd.dispatch[stat.kind](source, stat)) then
+		if (wnd.dispatch[stat.kind](wnd, source, stat)) then
 			return;
 		end
 	end
@@ -173,9 +174,7 @@ function def_handler(source, stat)
 		end
 		wnd.atype = stat.segkind;
 		wnd.source_audio = stat.source_audio;
-		register_shared_atype(wnd, atbl.actions, atbl.settings, atbl.labels);
-	else
---		warning("unhandled" .. stat.kind);
+-- register_shared_atype(wnd, atbl.actions, atbl.settings);
 	end
 end
 
@@ -189,6 +188,7 @@ function new_connection(source, status)
 		local wnd = displays.main:add_window(source);
 		wnd.external = source;
 		wnd:add_handler("resize", tile_changed);
+		wnd.dispatch = shared_dispatch();
 		target_updatehandler(source, def_handler);
 		tile_changed(wnd);
 	end

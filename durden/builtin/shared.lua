@@ -294,6 +294,19 @@ end
 -- Clone
 --
 
+local sdisp = {
+	input_label = function(wnd, source, tbl)
+		if (not wnd.input_labels) then wnd.input_labels = {}; end
+		if (#wnd.input_labels < 100) then
+			table.insert(wnd.input_labels, {tbl.labelinfo, tbl.idatatype});
+		end
+	end
+};
+
+function shared_dispatch()
+	return sdisp;
+end
+
 -- the handler maneuver is to make sure that the callback that is triggered
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
@@ -304,9 +317,7 @@ local function show_shmenu(wnd)
 	end
 
 	local ctx = {
-		list = wnd.dispatch and merge_menu(wnd.no_shared
-		and {} or shared_actions, wnd.dispatch) or
-			shared_actions,
+		list = merge_menu(wnd.no_shared and {} or shared_actions, wnd.actions),
 		handler = wnd
 	};
 

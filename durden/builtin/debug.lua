@@ -12,22 +12,22 @@ local function debugwnd_resize(wnd, w, h)
 	wnd:refresh();
 end
 
-local function target_event(wnd, src, tbl)
+local function target_event(self, wnd, src, tbl)
 	local ostr = "";
 	if (tbl.kind == "framestatus") then
 -- noisy and mostly useless debuggingwise
 	elseif (tbl.kind == "input_label") then
-		wnd:add_event(1, string.format(
+		self:add_event(1, string.format(
 			"(%d)[%s] label: %s", CLOCK, wnd.name, tbl.labelhint));
 	else
-		wnd:add_event(1, string.format(
+		self:add_event(1, string.format(
 		"(%d)[%s] kind: %s", CLOCK, wnd.name, tbl.kind));
 	end
 end
 
-local function event_dispatch(wnd, kind, tbl)
+local function event_dispatch(wnd, tgt, kind, tbl)
 	wnd:add_event(2, string.format(
-		"(%d)[%s] => %s [%s]", CLOCK, kind, wnd.name));
+		"(%d)[%s] <= %s", CLOCK, kind, tgt.name));
 end
 
 local function add_input(wnd, iotbl)
