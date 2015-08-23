@@ -49,6 +49,28 @@ local function gain_stepv(gainv, abs)
 		gconfig_get("gain_fade"));
 end
 
+local input_menu = {
+	{
+		name = "target_input_labels",
+		label = "Labels",
+		kind = "action",
+		submenu = true,
+		force = true,
+		eval = function(ctx)
+			return displays.main.selected and #displays.main.selected.input_labels > 0
+		end,
+		handler = label_menu
+	},
+	{
+		name = "target_input_keyboard",
+		label = "Keyboard",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = keyboard_menu
+	}
+};
+
 local audio_menu = {
 	{
 		name = "target_audio",
@@ -213,6 +235,13 @@ local shared_actions = {
 		handler = shared_resume
 	},
 	{
+		name = "shared_input",
+		label = "Input",
+		submenu = true,
+		kind = "action",
+		handler = input_menu
+	},
+	{
 		name = "shared_audio",
 		label = "Audio",
 		submenu = true,
@@ -281,18 +310,59 @@ if (DEBUGLEVEL > 0) then
 	});
 end
 
---
--- Missing:
--- Input (local binding / rebinding or call once)
---  [atype game: frame management,
---   special filtering,
---   preaudio,
---   block opposing,
---  ]
--- State Management (if state-size is known)
--- Advanced (spawn debug, autojoin workspace)
--- Clone
---
+local label_menu = {
+	{
+		name = "input",
+		label = "Input",
+		kind = "action",
+		hint = "Action:",
+		submenu = true,
+		force = true,
+		handler = build_labelmenu
+	},
+	{
+		name = "target_input_localbind",
+		label = "Local-Bind",
+		kind = "action",
+		hint = "Action:",
+		submenu = true,
+		force = true,
+		handler = function() build_bindmenu(true); end
+	},
+	{
+		name = "target_input_globalbind",
+		label = "Global-Bind",
+		kind = "action",
+		hint = "Action:",
+		submenu = true,
+		force = true,
+		handler = function() build_bindmenu(false); end
+	}
+};
+
+local keyboard_menu = {
+	{
+		name = "target_keyboard_repeat",
+		label = "Repeat Period",
+		kind = "value",
+		initial = function() return tostring(0); end,
+		hint = "cps (0:disabled - 100)",
+		validator = gen_valid_num(0, 100);
+		handler = function()
+			warning("set repeat rate");
+		end
+	},
+	{
+		name = "target_keyboard_delay",
+		label = "Initial Delay",
+		kind = "value",
+		initial = function() return tostring(0); end,
+		hint = "ms (0:disable - 1000)",
+		handler = function()
+			warning("set repeat delay");
+		end
+	}
+};
 
 local sdisp = {
 	input_label = function(wnd, source, tbl)

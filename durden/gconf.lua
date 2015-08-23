@@ -20,9 +20,15 @@ local defaults = {
 	ws_transition_in = "fade",
 	ws_transition_out = "fade",
 	ws_autodestroy = false,
+	ws_default = "tile",
 
 -- focus follows mouse
 	mouse_focus = true,
+
+-- "native' or "nonnative", while native is more energy- efficient as mouse
+-- motion do not contribute to a full refresh, it may be bugged on some
+-- platforms
+	mouse_mode = "nonnative",
 
 -- audio settings
 	global_gain = 1.0,

@@ -64,7 +64,7 @@ same as the appl dir specified as last argument to arcan) with the name
 navigating the menus, and to update the statusbar. For instance, using
 i3status:
 
-    mkfifo c ~/durden/durden_cmd
+    mkfifo ~/durden/durden_cmd
     i3status | sed -e 's/^/status:/' > ~/durden/durden_cmd
 
 Features and Status

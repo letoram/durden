@@ -220,6 +220,8 @@ local function wnd_deselect(wnd)
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 	image_sharestorage(wnd.wm.tbar_color, wnd.titlebar);
+
+	run_event(wnd, "deselect");
 end
 
 local function wnd_select(wnd, source)
@@ -235,7 +237,7 @@ local function wnd_select(wnd, source)
 	image_shader(wnd.border, "border_act");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
 	image_sharestorage(wnd.wm.active_tbar_color, wnd.titlebar);
-
+	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
 	wnd.wm.selected = wnd;
 	wnd.space.selected = wnd;
@@ -450,6 +452,7 @@ local function set_tab(space)
 	for k,v in ipairs(lst) do
 		v:resize_effective(space.wm.width, space.wm.client_height - tbar_sz);
 		move_image(v.anchor, 0, 0);
+		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
 		hide_image(v.border);
 		link_image(v.titlebar, space.anchor);
@@ -1275,7 +1278,9 @@ local function wnd_create(wm, source, opts)
 			destroy = {},
 			resize = {},
 			gained_relative = {},
-			lost_relative = {}
+			lost_relative = {},
+			select = {},
+			deselect = {}
 		},
 		pad_left = bw,
 		pad_right = bw,
@@ -1426,6 +1431,7 @@ local function tiler_statusbar_update(wm, msg, state)
 				local tile = fill_surface(tilew, statush, 255, 255, 255);
 				link_image(text, tile);
 				show_image({text, tile});
+				image_mask_set(text, MASK_UNPICKABLE);
 				image_inherit_order(tile, true);
 				image_inherit_order(text, true);
 				link_image(tile, wm.statusbar);
@@ -1434,6 +1440,18 @@ local function tiler_statusbar_update(wm, msg, state)
 
 			image_shader(space.label_id,
 				i == wm.space_ind and "tile_act" or "tile_inact");
+
+			space.tile_ml = {
+				own = function(ctx, vid, event)
+					return vid == space.label_id;
+				end,
+				click = function(ctx, vid, event)
+					wm:switch_ws(i);
+				end,
+				rclick = click,
+				name = "tile_ml_" .. tostring(i)
+			};
+			mouse_addlistener(space.tile_ml, {"click", "rclick"});
 
 -- tiles can have variable width
 			local props = image_surface_properties(space.label_id);
@@ -1454,9 +1472,9 @@ local function tiler_statusbar_update(wm, msg, state)
 		local props = image_surface_properties(msg);
 		local xpos = wm.width - props.width;
 
--- align to 20px just to lessen the effect of non-monospace font
-		if (xpos % 20 ~= 0) then
-			xpos = xpos - (xpos % 20);
+-- align to 40px just to lessen the effect of non-monospace font
+		if (xpos % 40 ~= 0) then
+			xpos = xpos - (xpos % 40);
 		end
 		xpos = xpos < ofs and ofs or xpos;
 		move_image(msg, xpos, 3);
@@ -1524,11 +1542,13 @@ local function tiler_swapws(wm, ind2)
 	wm.space_ind = ind1;
  -- now the swap is done with, need to update bar again
 	if (valid_vid(wm.spaces[ind1].label_id)) then
+		mouse_droplistener(wm.spaces[ind1].tile_ml);
 		delete_image(wm.spaces[ind1].label_id);
 		wm.spaces[ind1].label_id = nil;
 	end
 
 	if (valid_vid(wm.spaces[ind2].label_id)) then
+		mouse_droplistener(wm.spaces[ind1].tile_m2);
 		delete_image(wm.spaces[ind2].label_id);
 		wm.spaces[ind2].label_id = nil;
 	end
@@ -1639,7 +1659,8 @@ function tiler_create(width, height, opts)
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
 
 	move_image(res.statusbar, 0, clh);
-	link_image(res.statusbar, res.anchor);
+	link_image(res.statusbar, res.order_anchor);
+	image_inherit_order(res.statusbar, true);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 
 	res.spaces[1] = create_workspace(res, true);

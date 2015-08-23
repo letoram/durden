@@ -58,7 +58,13 @@ function durden()
 
 	displays.main = tiler_create(VRESW, VRESH, {});
 	SYMTABLE = system_load("symtable.lua")();
-	mouse_setup_native(load_image("cursor/default.png"), 0, 0);
+
+	if (gconfig_get("mouse_mode") == "native") then
+		mouse_setup_native(load_image("cursor/default.png"), 0, 0);
+	else
+-- 65535 is special in that it will never be returned as 'max current image order'
+		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
+	end
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution
@@ -195,7 +201,7 @@ function new_connection(source, status)
 end
 
 --
--- line over fifo API for doing status bar updates, etc.
+-- text/line command protocol for doing status bar updates, etc.
 --
 function poll_control_channel()
 	local line = control_channel:read();
@@ -203,11 +209,13 @@ function poll_control_channel()
 		return;
 	end
 
+	warning(line);
+
 	local cmd = string.split(line, ":");
 	cmd = cmd == nil and {} or cmd;
 
 	if (cmd[1] == "status") then
- -- unkown command, just draw (allows us to just pipe i3status)
+-- escape control characters so we don't get nasty \f etc. commands
 		local msg = string.gsub(string.sub(line, 6), "\\", "\\\\");
 		local vid = render_text(
 			string.format("%s \\#ffffff %s", gconfig_get("font_str"), msg));
@@ -222,8 +230,8 @@ end
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl, fromim)
-	if (DEBUGLEVEL > 0 and displays.main.debug_wnd) then
-		displays.main.debug_wnd:add_input(iotbl, fromim);
+	if (DEBUGLEVEL > 0 and displays.main.debug_console) then
+		displays.main.debug_console:add_input(iotbl, fromim);
 	end
 
 	if (not fromim) then

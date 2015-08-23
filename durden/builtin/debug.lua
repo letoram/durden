@@ -8,6 +8,11 @@ local debug_metatbl = {
 	end
 };
 
+local TARGET_EVGRP = 1;
+local TARGET_DISPGRP = 2;
+local INPUT_EVGRP = 3;
+local INPUT_SYMGRP = 4;
+
 local function debugwnd_resize(wnd, w, h)
 	wnd:refresh();
 end
@@ -17,28 +22,49 @@ local function target_event(self, wnd, src, tbl)
 	if (tbl.kind == "framestatus") then
 -- noisy and mostly useless debuggingwise
 	elseif (tbl.kind == "input_label") then
-		self:add_event(1, string.format(
+		self:add_event(TARGET_EVGRP, string.format(
 			"(%d)[%s] label: %s", CLOCK, wnd.name, tbl.labelhint));
 	else
-		self:add_event(1, string.format(
+		self:add_event(TARGET_EVGRP, string.format(
 		"(%d)[%s] kind: %s", CLOCK, wnd.name, tbl.kind));
 	end
 end
 
 local function event_dispatch(wnd, tgt, kind, tbl)
-	wnd:add_event(2, string.format(
+	wnd:add_event(TARGET_DISPGRP, string.format(
 		"(%d)[%s] <= %s", CLOCK, kind, tgt.name));
 end
 
-local function add_input(wnd, iotbl)
-	print(wnd, iotbl);
+local function add_input(wnd, iotbl, resolve)
+	if (iotbl.kind == "digital") then
+		if (iotbl.translated) then
+			wnd:add_event(INPUT_EVGRP, string.format(
+			"keyboard %s: dev:sub=%d:%d mod=%s, sym: %s=%s",
+				iotbl.active and "press" or "release", iotbl.devid, iotbl.subid,
+				table.concat(decode_modifiers(iotbl.modifiers), "+"),
+				iotbl.keysym and iotbl.keysym or "none",
+				SYMTABLE[iotbl.keysym] and SYMTABLE[iotbl.keysym] or "none")
+			);
+		else
+			wnd:add_event(INPUT_EVGRP, string.format(
+				"digital %s: dev:sub=%d:%d", iotbl.active and "press" or "release",
+				iotbl.devid, iotbl.subid
+			));
+		end
+	elseif (iotbl.kind == "analog") then
+		-- samples
+	elseif (iotbl.kind == "touch") then
+		wnd:add_event(INPUT_EVGRP, string.format(
+			"touch: dev:sub=%d:%d, @x,y=%d,%d pressure=%d size=%d",
+			iotbl.devid, iotbl.subid, iotbl.x, iotbl.y, iotbl.pressure, iotbl.size));
+	end
 end
 
 local function refresh(wnd)
 	if (valid_vid(wnd.history)) then
 		delete_image(wnd.history);
 	end
-	local nr = math.ceil(wnd.height / gconfig_get("font_sz") - 0.5);
+	local nr = math.ceil(wnd.height / (1.75 * gconfig_get("font_sz") - 0.5));
 	if (nr > 0) then
 		local ec = #wnd.events[wnd.gind].ent;
 		nr = nr > ec and ec or nr;
@@ -104,22 +130,23 @@ local function debugwnd_spawn()
 	wnd.event_dispatch = event_dispatch;
 	wnd.add_input = add_input;
 	wnd.gind = 1;
-	wnd.events = {{
+	wnd.events = {};
+	wnd.events[TARGET_EVGRP] = {
 		tag = "target-event handler",
 		ent= {}
-	},
-	{
+	};
+	wnd.events[TARGET_DISPGRP] = {
 		tag = "target-event dispatch",
 		ent= {}
-	},
-	{
+	};
+	wnd.events[INPUT_EVGRP] = {
 		tag = "input-event handler",
 		ent= {}
-	},
-	{
+	};
+	wnd.events[INPUT_SYMGRP] = {
 		tag = "symbol dispatch",
 		ent= {}
-	}};
+	};
 	wnd.key_input = wnd_input;
 	wnd.add_event = add_event;
 	wnd.refresh = refresh;
