@@ -287,8 +287,7 @@ function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 	mouse_add_cursor("default", cvid, 0, 0);
 	mouse_switch_cursor();
 
-	if (hidden ~= nil and hidden ~= true) then
-	else
+	if (not hidden) then
 		show_image(mstate.cursor);
 	end
 
