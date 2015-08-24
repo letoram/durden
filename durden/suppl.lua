@@ -481,7 +481,11 @@ function launch_menu_path(wm, gfunc, pathdescr)
 				warning("missing handler for: " .. found.name);
 			elseif (found.submenu) then
 				launch_menu = i == #elems and old_launch or launch_menu;
-				found.handler(); -- will call launch_menu that will update cl
+				local menu = found.handler;
+				if (type(found.handler) == "function") then
+					menu = found.handler();
+				end
+				launch_menu(wm, {list=menu}, found.force, found.hint);
 			else
 				launch_menu = old_launch;
 				found.handler(cl.handler, "", cl); -- is reserved for when we support vals
