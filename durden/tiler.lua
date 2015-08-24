@@ -290,20 +290,21 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
-local function workspace_activate(space, noanim)
+local function workspace_activate(space, noanim, negdir)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_in");
 
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
-			move_image(space.anchor, -space.wm.width, 0);
+			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
 			move_image(space.anchor, 0, 0, time);
 			show_image(space.anchor);
 		elseif (method == "move-v") then
-			move_image(space.anchor, 0, -space.wm.height);
+			move_image(space.anchor, 0, (negdir and -1 or 1) * space.wm.height);
 			move_image(space.anchor, 0, 0, time);
 			show_image(space.anchor);
 		elseif (method == "fade") then
+			move_image(space.anchor, 0, 0);
 			blend_image(space.anchor, 0.0, 0.5 * time);
 			blend_image(space.anchor, 1.0, 0.5 * time);
 		else
@@ -316,37 +317,61 @@ local function workspace_activate(space, noanim)
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
-local function workspace_inactivate(space, noanim)
+local function workspace_inactivate(space, noanim, negdir)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_out");
 
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
-			move_image(space.anchor, space.wm.width, 0, time);
+			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0, time);
 		elseif (method == "move-v") then
-			move_image(space.anchor, 0, space.wm.height, time);
+			move_image(space.anchor, 0, (negdir and -1 or 1) * space.wm.height, time);
 		elseif (method == "fade") then
 			blend_image(space.anchor, 0.0, 0.5 * time);
 		else
 			warning("broken method set for ws_transition_out: "..method);
 		end
 	else
+		print("just hide");
 		hide_image(space.anchor);
 	end
 end
 
-local function switch_fullscreen(space, to)
+-- undo / redo the effect that deselect will hide the active window
+local function switch_tab(space, to, ndir)
+	local wnds = linearize(space);
+	if (to) then
+		for k,v in ipairs(wnds) do
+			hide_image(v.anchor);
+		end
+		workspace_activate(space, false, ndir);
+	else
+		for k,v in ipairs(wnds) do
+			show_image(v.anchor);
+		end
+		workspace_inactivate(space, false, ndir);
+	end
+end
+
+local function switch_fullscreen(space, to, ndir)
 	if (space.selected == nil) then
 		return;
 	end
 
-	workspace_inactivate(space, true);
 	if (to) then
---		image_mask_clear(space.selected.canvas, MASK_OPACITY);
 		hide_image(space.wm.statusbar);
+		workspace_activate(space, false, ndir);
+		local lst = linearize(space);
+		for k,v in ipairs(space) do
+			hide_image(space.anchor);
+		end
+		show_image(space.selected.anchor);
 	else
---		image_mask_set(space.selected.canvas, MASK_OPACITY);
+		show_image(space.wm.statusbar);
+		workspace_inactivate(space, false, ndir);
 	end
+--		image_mask_clear(space.selected.canvas, MASK_OPACITY);
+--		image_mask_set(space.selected.canvas, MASK_OPACITY);
 end
 
 local function drop_fullscreen(space, swap)
@@ -355,8 +380,13 @@ local function drop_fullscreen(space, swap)
 		return;
 	end
 
+	local wnds = linearize(space);
+	for k,v in ipairs(wnds) do
+		show_image(v.anchor);
+	end
+
 	local dw = space.selected;
-	space.locked = false;
+	show_image(dw.titlebar);
 	dw.fullscreen = nil;
 	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
@@ -364,44 +394,18 @@ end
 
 local function drop_tab(space)
 	local res = linearize(space);
-
 -- new mode will resize so don't worry about that, just relink
 	for k,v in ipairs(res) do
 		link_image(v.titlebar, v.anchor);
 		order_image(v.titlebar, 2);
 		show_image(v.border);
-		show_image(v.anchor)
+		show_image(v.anchor);
 		move_image(v.titlebar, v.border_w, v.border_w);
 	end
 
 	space.mode_hook = nil;
 	space.switch_hook = nil;
 	space.reassign_hook = nil;
-end
-
-local function switch_tab(space, to)
-	local lst = linearize(space);
-	for k,v in ipairs(lst) do
-		if (to) then
-			show_image(v.titlebar);
-		else
-			hide_image(v.titlebar);
-		end
-	end
-
-	if (space.selected) then
-		if (to) then
-			show_image(space.selected.anchor);
-		else
-			hide_image(space.selected.anchor);
-		end
-	end
-
-	if (to) then
-		workspace_activate(space)
-	else
-		workspace_inactivate(space)
-	end
 end
 
 local function drop_float(space, swap)
@@ -476,7 +480,7 @@ local function set_vtab(space)
 	end
 
 	space.mode_hook = drop_tab;
-	space.switch_hook = switch_tab;
+	space.switch_hook = nil; -- switch_tab;
 	space.reassign_hook = reassign_tab;
 
 	local tbar_sz = gconfig_get("tbar_sz");
@@ -513,12 +517,17 @@ local function set_fullscreen(space)
 
 -- hide all images + statusbar
 	hide_image(dw.wm.statusbar);
-	workspace_inactivate(space, true);
+	local wnds = linearize(space);
+	for k,v in ipairs(wnds) do
+		hide_image(v.anchor);
+	end
+	show_image(dw.anchor);
+	hide_image(dw.titlebar);
+--	workspace_inactivate(space, true);
 	dw.fullscreen = true;
-	space.locked = true;
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
-	image_mask_clear(dw.canvas, MASK_OPACITY);
+--	image_mask_clear(dw.canvas, MASK_OPACITY);
 	dw:resize(dw.wm.width, dw.wm.height);
 	move_image(dw.anchor, 0, 0);
 end
@@ -941,10 +950,6 @@ end
 -- range and the last cell will always pad to fit
 --
 local function wnd_grow(wnd, w, h)
-	if (wnd.locked) then
-		return;
-	end
-
 	if (wnd.space.mode == "float") then
 		wnd:resize(wnd.width + (VRESW * w), wnd.height + (VRESH * h));
 		return;
@@ -1490,15 +1495,15 @@ end
 local function tiler_switchws(wm, ind)
 	local cur = wm.spaces[wm.space_ind];
 	local cw = wm.selected;
-
 	if (ind == wm.space_ind) then
 		return;
 	end
+	local nd = wm.space_ind < ind;
 
 	if (cur.switch_hook) then
-		cur:switch_hook(false);
+		cur:switch_hook(false, nd);
 	else
-		workspace_inactivate(cur);
+		workspace_inactivate(cur, false, nd);
 	end
 
 	if (#cur.children == 0 and gconfig_get("ws_autodestroy")) then
@@ -1516,9 +1521,9 @@ local function tiler_switchws(wm, ind)
 	wm:update_statusbar();
 
 	if (wm.spaces[ind].switch_hook) then
-		wm.spaces[ind]:switch_hook(true);
+		wm.spaces[ind]:switch_hook(true, not nd);
 	else
-		workspace_activate(wm.spaces[ind]);
+		workspace_activate(wm.spaces[ind], false, not nd);
 	end
 
 	if (wm.spaces[ind].selected) then

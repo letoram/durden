@@ -49,6 +49,98 @@ local function gain_stepv(gainv, abs)
 		gconfig_get("gain_fade"));
 end
 
+local function run_input_label(wnd, v)
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
+	local iotbl = {
+		kind = "digital",
+		label = v[1],
+		active = true,
+		devid = 8,
+		subid = 8
+	};
+
+	target_input(wnd.external, iotbl);
+	iotbl.active = false;
+	target_input(wnd.external, iotbl);
+end
+
+local function build_labelmenu()
+	local wnd = displays.main.selected;
+	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
+		return;
+	end
+
+	local res = {};
+	for k,v in ipairs(wnd.input_labels) do
+		table.insert(res, {
+			name = "input_" .. v[1],
+			label = v[1],
+			vref = v,
+			handler = function()
+				run_input_label(wnd, v);
+			end
+		});
+	end
+
+	return res;
+end
+
+local function build_bindmenu(wide)
+	local wnd = displays.main.selected;
+	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
+		return;
+	end
+
+	local res = {};
+--	for k,v in ipairs(wnd.input_labels) do
+--		table.insert(res, {
+---			name = "target_input_" .. v[1],
+--			label = v[1],
+--			handler = function()
+--				tiler_bbar(displays.main,
+--					string.format("Bind: %s, hold desired combination.",
+--					);
+--			end
+--		});
+--	end
+
+	return res;
+end
+
+local label_menu = {
+	{
+		name = "input",
+		label = "Input",
+		kind = "action",
+		hint = "Input Label:",
+		submenu = true,
+		force = true,
+		handler = build_labelmenu
+	},
+	{
+		name = "target_input_localbind",
+		label = "Local-Bind",
+		kind = "action",
+		hint = "Action:",
+		submenu = true,
+		force = true,
+		handler = function() build_bindmenu(true); end
+	},
+	{
+		name = "target_input_globalbind",
+		label = "Global-Bind",
+		kind = "action",
+		hint = "Action:",
+		submenu = true,
+		force = true,
+		handler = function() build_bindmenu(false); end
+	}
+};
+
+
 local input_menu = {
 	{
 		name = "target_input_labels",
@@ -57,7 +149,8 @@ local input_menu = {
 		submenu = true,
 		force = true,
 		eval = function(ctx)
-			return displays.main.selected and #displays.main.selected.input_labels > 0
+			local sel = displays.main.selected;
+			return sel and sel.input_labels and #sel.input_labels > 0;
 		end,
 		handler = label_menu
 	},
@@ -310,36 +403,6 @@ if (DEBUGLEVEL > 0) then
 	});
 end
 
-local label_menu = {
-	{
-		name = "input",
-		label = "Input",
-		kind = "action",
-		hint = "Action:",
-		submenu = true,
-		force = true,
-		handler = build_labelmenu
-	},
-	{
-		name = "target_input_localbind",
-		label = "Local-Bind",
-		kind = "action",
-		hint = "Action:",
-		submenu = true,
-		force = true,
-		handler = function() build_bindmenu(true); end
-	},
-	{
-		name = "target_input_globalbind",
-		label = "Global-Bind",
-		kind = "action",
-		hint = "Action:",
-		submenu = true,
-		force = true,
-		handler = function() build_bindmenu(false); end
-	}
-};
-
 local keyboard_menu = {
 	{
 		name = "target_keyboard_repeat",
@@ -368,7 +431,7 @@ local sdisp = {
 	input_label = function(wnd, source, tbl)
 		if (not wnd.input_labels) then wnd.input_labels = {}; end
 		if (#wnd.input_labels < 100) then
-			table.insert(wnd.input_labels, {tbl.labelinfo, tbl.idatatype});
+			table.insert(wnd.input_labels, {tbl.labelhint, tbl.idatatype});
 		end
 	end
 };

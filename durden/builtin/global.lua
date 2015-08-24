@@ -33,7 +33,7 @@ local display_menu = {
 		name = "display_rescan",
 		label = "Rescan",
 		kind = "action",
-		handler = video_displaymodes,
+		handler = function() video_displaymodes(); end
 	},
 	{
 		name = "synchronization_strategies",
@@ -391,7 +391,9 @@ local durden_visual = {
 			local num = tonumber(val);
 			gconfig_set("bordert", tonumber(val));
 			displays.main.rebuild_border();
-			displays.main.spaces[displays.main.space_ind]:resize();
+			for k,v in pairs(displays.main.spaces) do
+				v:resize();
+			end
 		end
 	},
 	{
@@ -404,7 +406,9 @@ local durden_visual = {
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
 			displays.main.rebuild_border();
-			displays.main.spaces[displays.main.space_ind]:resize();
+			for k,v in pairs(displays.main.spaces) do
+				v:resize();
+			end
 		end
 	},
 	{

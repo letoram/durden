@@ -112,6 +112,8 @@ local function gconfig_setup()
 -- should really support deep table serialization
 			elseif (type(vl) == "table") then
 				defaults[k] = defaults[k];
+			elseif (type(vl) == "boolean") then
+				defaults[k] = v == "true";
 			else
 				defaults[k] = v;
 			end

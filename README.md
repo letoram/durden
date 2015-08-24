@@ -83,6 +83,7 @@ are being implemented, we have the following list:
   - [ ] Named Reassign
   - [x] Merge/Split
   - [x] Custom tags in Titlebar
+  - [ ] Find window based on tag
   - [ ] Swap Left/Right/Up/Down
 - [x] Visual Enhancements
   - [x] Animated Transitions (fade, move)
