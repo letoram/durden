@@ -12,6 +12,7 @@ local TARGET_EVGRP = 1;
 local TARGET_DISPGRP = 2;
 local INPUT_EVGRP = 3;
 local INPUT_SYMGRP = 4;
+local INPUT_SYSGRP = 5;
 
 local function debugwnd_resize(wnd, w, h)
 	wnd:refresh();
@@ -23,16 +24,16 @@ local function target_event(self, wnd, src, tbl)
 -- noisy and mostly useless debuggingwise
 	elseif (tbl.kind == "input_label") then
 		self:add_event(TARGET_EVGRP, string.format(
-			"(%d)[%s] label: %s", CLOCK, wnd.name, tbl.labelhint));
+			"[%s] label: %s", wnd.name, tbl.labelhint));
 	else
 		self:add_event(TARGET_EVGRP, string.format(
-		"(%d)[%s] kind: %s", CLOCK, wnd.name, tbl.kind));
+		"[%s] kind: %s", wnd.name, tbl.kind));
 	end
 end
 
 local function event_dispatch(wnd, tgt, kind, tbl)
 	wnd:add_event(TARGET_DISPGRP, string.format(
-		"(%d)[%s] <= %s", CLOCK, kind, tgt.name));
+		"[%s] <= %s", kind, tgt.name));
 end
 
 local function add_input(wnd, iotbl, resolve)
@@ -87,6 +88,10 @@ local function refresh(wnd)
 end
 
 local function add_event(wnd, ind, str)
+	if (wnd.out_file) then
+		wnd.out_file:write(tostring(ind)..":"..str.."\n");
+	end
+
 	if (str) then
 		table.insert(wnd.events[ind].ent, str);
 	end
@@ -117,6 +122,22 @@ local function wnd_input(wnd, sym, iotbl)
 	end
 end
 
+local function query_outf(ctx, wnd)
+	local bar = tiler_lbar(displays.main,
+	function(ctx, msg, done, set)
+		local wnd = displays.main.selected;
+		if (done and wnd) then
+			if (wnd.out_file) then
+				wnd.out_file:close();
+				wnd.out_file = nil;
+			else
+				zap_resource("debug/" .. msg);
+				wnd.out_file = open_nonblock("debug/" .. msg, true);
+			end
+		end
+	end, "filename (debug/):");
+end
+
 local function debugwnd_spawn()
 	if (displays.main.debug_console) then
 		return;
@@ -129,7 +150,7 @@ local function debugwnd_spawn()
 	wnd.target_event = target_event;
 	wnd.event_dispatch = event_dispatch;
 	wnd.add_input = add_input;
-	wnd.gind = 1;
+	wnd.gind = 3;
 	wnd.events = {};
 	wnd.events[TARGET_EVGRP] = {
 		tag = "target-event handler",
@@ -147,6 +168,18 @@ local function debugwnd_spawn()
 		tag = "symbol dispatch",
 		ent= {}
 	};
+	wnd.events[INPUT_SYSGRP] = {
+		tag = "system events",
+		ent = {}
+	};
+	wnd.actions = {
+		{
+			name = "debug_outfile",
+			label = "Toggle File Output",
+			handler = query_outf,
+			kind = "action"
+		}
+	};
 	wnd.key_input = wnd_input;
 	wnd.add_event = add_event;
 	wnd.refresh = refresh;
@@ -154,8 +187,12 @@ local function debugwnd_spawn()
 	wnd:set_title("Debug Console");
 	wnd.no_shared = true;
 	wnd.scalemode = "stretch";
+
 	table.insert(wnd.handlers.destroy, function()
 		 displays.main.debug_console = nil;
+		 if (wnd.out_file) then
+				wnd.out_file:close();
+		 end
 	end);
 	table.insert(wnd.handlers.resize, debugwnd_resize);
 	setmetatable(wnd, debug_metatbl);

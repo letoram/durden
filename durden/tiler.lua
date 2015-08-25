@@ -966,10 +966,13 @@ local function wnd_grow(wnd, w, h)
 
 	if (w ~= 0) then
 		wnd.weight = wnd.weight + w;
+		if (#wnd.parent.children > 1) then
+			local ws = w / (#wnd.parent.children - 1);
 		for i=1,#wnd.parent.children do
 			if (wnd.parent.children[i] ~= wnd) then
-				wnd.parent.children[i].weight = wnd.parent.children[i].weight - w;
+				wnd.parent.children[i].weight = wnd.parent.children[i].weight - ws;
 			end
+		end
 		end
 	end
 
