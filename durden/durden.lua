@@ -275,6 +275,18 @@ function durden_input(iotbl, fromim)
 end
 
 function durden_display_state(action, id)
+	if (displays.main.debug_console) then
+		displays.main.debug_console:system_event("display event: " .. action);
+	end
+
+-- display subsystem and input subsystem are connected when it comes
+-- to platform specific actions e.g. virtual terminal switching, assume
+-- keystate change between display resets.
+	if (action == "reset") then
+		dispatch_meta_reset();
+		return;
+	end
+
 	if (action == "added") then
 		if (displays[id] == nil) then
 			displays[id] = {};
