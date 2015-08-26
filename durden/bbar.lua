@@ -8,7 +8,7 @@
 PENDING_FADE = nil;
 local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
-	wm.input_lock = nil;
+	wm:set_input_lock();
 	local time = gconfig_get("transition");
 	local bar = wm.input_ctx.bar;
 	blend_image(bar, 0.0, time, INTERP_EXPINOUT);
@@ -185,7 +185,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	end
 
 	iostatem_repeat(0, 0);
-	wm.input_lock = key and bbar_input_key or bbar_input_combo;
+	wm:set_input_lock(key and bbar_input_key or bbar_input_combo);
 	wm.input_ctx = ctx;
 	ctx:label(msg);
 	return ctx;

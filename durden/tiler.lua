@@ -142,6 +142,10 @@ end
 
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
+	if (wm.debug_console) then
+		wm.debug_console:system_event("lost " .. wnd.name);
+	end
+
 	if (wnd.fullscreen) then
 		wnd.space:tile();
 	end
@@ -771,6 +775,11 @@ local function wnd_resize(wnd, neww, newh, force)
 
 	local props = image_storage_properties(wnd.canvas);
 
+	if (wnd.wm.debug_console) then
+		wnd.wm.debug_console:system_event(string.format("%s%s resized to %d, %d",
+			wnd.name, force and " force" or "", neww, newh));
+	end
+
 -- to save space for border width, statusbar and other properties
 	if (not wnd.fullscreen) then
 		move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
@@ -1323,6 +1332,10 @@ local function wnd_create(wm, source, opts)
 		settings = {}
 	};
 
+	if (wm.debug_console) then
+		wm.debug_console:system_event(string.format("new window using %d", source));
+	end
+
 	ent_count = ent_count + 1;
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");
@@ -1603,6 +1616,14 @@ local function wm_countspaces(wm)
 	return r;
 end
 
+local function tiler_input_lock(wm, dst)
+	if (wm.debug_console) then
+		wm.debug_console:system_event(dst and ("input lock set to "
+			.. tostring(dst)) or "input lock cleared");
+	end
+	wm.input_lock = dst;
+end
+
 function tiler_create(width, height, opts)
 	opts.font_sz = (opts.font_sz ~= nil) and opts.font_sz or 12;
 	opts.font = (opts.font ~= nil) and opts.font or "default.ttf";
@@ -1657,7 +1678,8 @@ function tiler_create(width, height, opts)
 		find_window = tiler_find,
 		message = tiler_message,
 		update_statusbar = tiler_statusbar_update,
-		rebuild_border = tiler_rebuild_border
+		rebuild_border = tiler_rebuild_border,
+		set_input_lock = tiler_input_lock
 	};
 	res.width = width;
 	res.height = height;

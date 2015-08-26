@@ -190,9 +190,13 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 		else
 			delete_image(ictx.anchor);
 		end
+		if (wm.debug_console) then
+			wm.debug_console:system_event(string.format(
+				"lbar(%s) returned %s", sym, ictx.inp.msg));
+		end
 		iostatem_restore(ictx.iostate);
 		wm.input_ctx = nil;
-		wm.input_lock = nil;
+		wm:set_input_lock();
 		if (sym == ictx.accept) then
 			local base = ictx.inp.msg;
 
@@ -336,7 +340,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		move_image(bar, 0, math.floor(0.5*(wm.height-gconfig_get("lbar_sz"))));
 	else
 	end
-	wm.input_lock = lbar_input;
+	wm:set_input_lock(lbar_input);
 	wm.input_ctx = {
 		anchor = bg,
 		text_anchor = bar,
@@ -366,5 +370,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		wm.input_ctx:set_label(opts.label);
 	end
 
+	if (wm.debug_console) then
+		wm.debug_console:system_event("lbar activated");
+	end
 	return wm.input_ctx;
 end

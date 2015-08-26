@@ -163,6 +163,11 @@ function dispatch_meta()
 	return meta_1_state, meta_2_state;
 end
 
+function dispatch_meta_reset()
+	meta_1_state = false;
+	meta_2_state = false;
+end
+
 function dispatch_lookup(iotbl, keysym, hook_handler)
 	local metadrop = false;
 	if (keysym == nil) then

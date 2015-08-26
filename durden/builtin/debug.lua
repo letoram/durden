@@ -12,7 +12,7 @@ local TARGET_EVGRP = 1;
 local TARGET_DISPGRP = 2;
 local INPUT_EVGRP = 3;
 local INPUT_SYMGRP = 4;
-local INPUT_SYSGRP = 5;
+local SYSTEM_GRP = 5;
 
 local function debugwnd_resize(wnd, w, h)
 	wnd:refresh();
@@ -40,11 +40,12 @@ local function add_input(wnd, iotbl, resolve)
 	if (iotbl.kind == "digital") then
 		if (iotbl.translated) then
 			wnd:add_event(INPUT_EVGRP, string.format(
-			"keyboard %s: dev:sub=%d:%d mod=%s, sym: %s=%s",
+			"keyboard %s: dev:sub=%d:%d mod=%s, sym: %s=%s, scancode=%d, utf8=%s",
 				iotbl.active and "press" or "release", iotbl.devid, iotbl.subid,
 				table.concat(decode_modifiers(iotbl.modifiers), "+"),
 				iotbl.keysym and iotbl.keysym or "none",
-				SYMTABLE[iotbl.keysym] and SYMTABLE[iotbl.keysym] or "none")
+				SYMTABLE[iotbl.keysym] and SYMTABLE[iotbl.keysym] or "none",
+				iotbl.number, iotbl.utf8)
 			);
 		else
 			wnd:add_event(INPUT_EVGRP, string.format(
@@ -59,6 +60,10 @@ local function add_input(wnd, iotbl, resolve)
 			"touch: dev:sub=%d:%d, @x,y=%d,%d pressure=%d size=%d",
 			iotbl.devid, iotbl.subid, iotbl.x, iotbl.y, iotbl.pressure, iotbl.size));
 	end
+end
+
+local function add_sevent(wnd, msg)
+	wnd:add_event(SYSTEM_GRP, msg);
 end
 
 local function refresh(wnd)
@@ -93,6 +98,7 @@ local function add_event(wnd, ind, str)
 	end
 
 	if (str) then
+		local str = string.gsub(str, "\\", "\\\\");
 		table.insert(wnd.events[ind].ent, str);
 	end
 	if (#wnd.events[ind].ent> 100) then
@@ -149,6 +155,7 @@ local function debugwnd_spawn()
 	wnd.tick = function() end
 	wnd.target_event = target_event;
 	wnd.event_dispatch = event_dispatch;
+	wnd.system_event = add_sevent;
 	wnd.add_input = add_input;
 	wnd.gind = 3;
 	wnd.events = {};
@@ -168,7 +175,7 @@ local function debugwnd_spawn()
 		tag = "symbol dispatch",
 		ent= {}
 	};
-	wnd.events[INPUT_SYSGRP] = {
+	wnd.events[SYSTEM_GRP] = {
 		tag = "system events",
 		ent = {}
 	};
