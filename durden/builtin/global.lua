@@ -368,9 +368,15 @@ local workspace_menu = {
 	},
 	{
 		name = "workspace_name",
-		label = "Find",
+		label = "Find Workspace",
 		kind = "action",
 		handler = function() grab_global_function("switch_ws_byname")(); end
+	},
+	{
+		name = "workspace_wnd",
+		label = "Find Tagged Window",
+		kind = "action",
+		handler = function() grab_global_function("switch_wnd_bytag")(); end
 	}
 };
 

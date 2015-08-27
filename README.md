@@ -80,10 +80,10 @@ are being implemented, we have the following list:
   - [ ] Hide Named Workspaces
 - [ ] Basic Window Management
   - [x] Reassign
-  - [ ] Named Reassign
+  - [x] Named Reassign
   - [x] Merge/Split
   - [x] Custom tags in Titlebar
-  - [ ] Find window based on tag
+  - [x] Find window based on tag
   - [x] Swap Left/Right/Up/Down
 - [x] Visual Enhancements
   - [x] Animated Transitions (fade, move)
