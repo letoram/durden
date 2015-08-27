@@ -95,6 +95,7 @@ are being implemented, we have the following list:
   - [ ] Color Customization
   - [x] Window Translucency
   - [ ] Window Alpha Channel Behavior Control
+  - [x] Off-Screen Window Alert
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Per Workspace Background Image
@@ -108,16 +109,16 @@ are being implemented, we have the following list:
   - [x] Focus-Follows-Mouse
   - [x] Configurable/Per Window Keyboard Repeat
   - [x] Drag Reposition/Resize in Float
-  - [ ] Mouse Scale Factors
+  - [x] Mouse Scale Factors
   - [ ] Keyboard/Game Device Mouse Emulation
-  - [ ] Mouse-Hover Focus
+  - [x] Mouse-Hover Focus
   - [ ] Mouse Follows Selection
-  - [ ] Autohiding Mouse
+  - [x] Autohiding Mouse
   - [ ] Macro Record / Replay
   - [ ] Per/Window Keyremapping
   - [ ] Keyboard layout hotswapping
   - [ ] Lock-input-to-Window
-  - [ ] LED keybinding highlights
+  - [ ] LED keybinding highlights (k70 etc. kbds)
 - [ ] Internationalization
   - [ ] Menu Translations
   - [ ] Foreign IME

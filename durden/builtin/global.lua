@@ -168,6 +168,107 @@ local audio_menu = {
 	}
 };
 
+-- mouse_remember_position = true,
+
+local mouse_menu = {
+	{
+		name = "mouse_sensitivity",
+		kind = "value",
+		label = "Sensitivity",
+		force = true,
+		hint = function() return "(0.01..10)"; end,
+		validator = function(val)
+			return gen_valid_num(0, 10)(val);
+		end,
+		initial = function()
+			return tostring(gconfig_get("mouse_factor"));
+		end,
+		handler = function(ctx, val)
+			val = tonumber(val);
+			val = val < 0.01 and 0.01 or val;
+			gconfig_set("mouse_factor", val);
+			mouse_acceleration(val, val);
+		end
+	},
+	{
+		name = "mouse_hover_delay",
+		kind = "value",
+		label = "Hover Delay",
+		force = true,
+		hint = function() return "10..80"; end,
+		validator = function(val)
+			return gen_valid_num(0, 80)(val);
+		end,
+		initial = function()
+			return tostring(gconfig_get("mouse_hovertime"));
+		end,
+		handler = function(ctx, val)
+			val = math.ceil(tonumber(val));
+			val = val < 10 and 10 or val;
+			gconfig_set("mouse_hovertime", val);
+			mouse_state().hover_ticks = val;
+		end
+	},
+	{
+		name = "mouse_remember_position",
+		kind = "value",
+		label = "Remember Position",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("mouse_remember_position") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_remember_position", val == LBL_YES);
+			mouse_state().autohide = val == LBL_YES;
+		end
+	},
+	{
+		name = "mouse_autohide",
+		kind = "value",
+		label = "Autohide",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("mouse_autohide") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_autohide", val == LBL_YES);
+			mouse_state().autohide = val == LBL_YES;
+		end
+	},
+	{
+		name = "mouse_hover_delay",
+		kind = "value",
+		label = "Hover Delay",
+		force = true,
+		hint = function() return "10..80"; end,
+		validator = function(val)
+			return gen_valid_num(0, 80)(val);
+		end,
+		initial = function()
+			return tostring(gconfig_get("mouse_hovertime"));
+		end,
+		handler = function(ctx, val)
+			val = math.ceil(tonumber(val));
+			val = val < 10 and 10 or val;
+			gconfig_set("mouse_hovertime", val);
+			mouse_state().hover_ticks = val;
+		end
+	},
+	{
+		name = "mouse_focus",
+		kind = "value",
+		label = "Focus Event",
+		force = true,
+		set = {"click", "motion", "hover", "none"},
+		initial = function()
+			return gconfig_get("mouse_focus_event");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_focus_event", val);
+		end
+	},
+};
+
 local input_menu = {
 	{
 		name = "input_rebind_basic",
@@ -186,6 +287,14 @@ local input_menu = {
 		kind = "action",
 		label = "Bind Meta",
 		handler = grab_global_function("rebind_meta")
+	},
+	{
+		name = "input_mouse_menu",
+		kind = "action",
+		label = "Mouse",
+		submenu = true,
+		force = true,
+		handler = mouse_menu
 	}
 };
 
@@ -455,10 +564,10 @@ local durden_workspace = {
 		name = "durden_ws_autodel",
 		label = "Autodelete",
 		kind = "value",
-		set = {"true", "false"},
+		set = {LBL_YES, LBL_NO},
 		initial = function() return tostring(gconfig_get("ws_autodestroy")); end,
 		handler = function(ctx, val)
-			gconfig_set("ws_autodestroy", val == "true");
+			gconfig_set("ws_autodestroy", val == LBL_YES);
 		end
 	}
 };
