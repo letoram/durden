@@ -112,7 +112,11 @@ gf["switch_ws_byname"] = function()
 	bar:set_label("workspace:");
 end
 
+gf["swap_left"] = function() displays.main:swap_left(); end
 gf["swap_up"] = function() displays.main:swap_up(); end
+gf["swap_down"] = function() displays.main:swap_down(); end
+gf["swap_right"] = function() displays.main:swap_right(); end
+
 gf["debug_testwnd_bar"] = function() testwnd_spawn(true); end
 gf["debug_testwnd_nobar"] = function() testwnd_spawn(); end
 

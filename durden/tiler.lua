@@ -336,7 +336,6 @@ local function workspace_inactivate(space, noanim, negdir)
 			warning("broken method set for ws_transition_out: "..method);
 		end
 	else
-		print("just hide");
 		hide_image(space.anchor);
 	end
 end
@@ -374,8 +373,6 @@ local function switch_fullscreen(space, to, ndir)
 		show_image(space.wm.statusbar);
 		workspace_inactivate(space, false, ndir);
 	end
---		image_mask_clear(space.selected.canvas, MASK_OPACITY);
---		image_mask_set(space.selected.canvas, MASK_OPACITY);
 end
 
 local function drop_fullscreen(space, swap)
@@ -391,6 +388,7 @@ local function drop_fullscreen(space, swap)
 
 	local dw = space.selected;
 	show_image(dw.titlebar);
+	show_image(dw.border);
 	dw.fullscreen = nil;
 	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
@@ -527,11 +525,12 @@ local function set_fullscreen(space)
 	end
 	show_image(dw.anchor);
 	hide_image(dw.titlebar);
---	workspace_inactivate(space, true);
+	hide_image(space.selected.border);
+
 	dw.fullscreen = true;
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
---	image_mask_clear(dw.canvas, MASK_OPACITY);
+
 	dw:resize(dw.wm.width, dw.wm.height);
 	move_image(dw.anchor, 0, 0);
 end
@@ -1577,12 +1576,123 @@ local function tiler_swapws(wm, ind2)
 	wm:update_statusbar();
 end
 
-local function tiler_swapdn(wm)
-	if (wm.selected == nil or wm.selected.parent == nil) then
+local function wnd_swap(w1, w2, deep)
+	if (w1 == w2) then
+		return;
+	end
+-- 1. weights, only makes sense in tile mode
+	if (w1.space.mode == "tile") then
+		local wg1 = w1.weight;
+		local wg1v = w1.vweight;
+		w1.weight = w2.weight;
+		w1.vweight = w2.vweight;
+		w2.weight = wg1;
+	end
+-- 2. parent->children entries
+	local wp1 = w1.parent;
+	local wp1i = table.find_i(wp1.children, w1);
+	local wp2 = w2.parent;
+	local wp2i = table.find_i(wp2.children, w2);
+	wp1.children[wp1i] = w2;
+	wp2.children[wp2i] = w1;
+-- 3. parents
+	w1.parent = wp2;
+	w2.parent = wp1;
+-- 4. question is if we want children to tag along or not
+	if (not deep) then
+		for i=1,#w1.children do
+			w1.children[i].parent = w2;
+		end
+		for i=1,#w2.children do
+			w2.children[i].parent = w1;
+		end
+		local wc = w1.children;
+		w1.children = w2.children;
+		w2.children = wc;
+	end
+end
+
+local function tiler_swapup(wm, deep, resel)
+	local wnd = wm.selected;
+	if (not wnd or wnd.parent.parent == nil) then
 		return;
 	end
 
-	local tw = wm.selected;
+	local p1 = wnd.parent;
+	wnd_swap(wnd, wnd.parent, deep);
+	if (resel) then
+		p1:select();
+	end
+
+	wnd.space:resize();
+end
+
+local function tiler_swapdown(wm, resel)
+	local wnd = wm.selected;
+	if (not wnd or #wnd.children == 0) then
+		return;
+	end
+
+	local pl = wnd.children[1];
+	wnd_swap(wnd, wnd.children[1]);
+	if (resel) then
+		pl:select();
+	end
+
+	wnd.space:resize();
+end
+
+local function tiler_swapleft(wm, deep, resel)
+	local wnd = wm.selected;
+	if (not wnd) then
+		return;
+	end
+
+	local ind = table.find_i(wnd.parent.children, wnd);
+	assert(ind);
+
+	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
+		local li = (ind - 1) == 0 and #wnd.parent.children or (ind - 1);
+		local oldi = wnd.parent.children[li];
+		wnd_swap(wnd, oldi, deep);
+		if (resel) then oldi:select(); end
+	elseif (ind == 1) then
+		local root_node = wnd.parent;
+		while (root_node.parent.parent) do
+			root_node = root_node.parent;
+		end
+		local li = table.find_i(root_node.parent.children, root_node);
+		li = (li - 1) == 0 and #root_node.parent.children or (li - 1);
+		wnd_swap(wnd, root_node.parent.children[li]);
+	end
+	wnd.space:resize();
+end
+
+local function tiler_swapright(wm, deep, resel)
+	local wnd = wm.selected;
+	if (not wnd) then
+		return;
+	end
+
+	local ind = table.find_i(wnd.parent.children, wnd);
+	assert(ind);
+
+	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
+		local li = (ind + 1) > #wnd.parent.children and 1 or (ind + 1);
+		local oldi = wnd.parent.children[li];
+		wnd_swap(wnd, oldi, deep);
+		if (resel) then oldi:select(); end
+	elseif (ind == 1) then
+		local root_node = wnd.parent;
+		while (root_node.parent.parent) do
+			root_node = root_node.parent;
+		end
+		local li = table.find_i(root_node.parent.children, root_node);
+		li = (li + 1) > #root_node.parent.children and 1 or (li + 1);
+		wnd_swap(wnd, root_node.parent.children[li]);
+	end
+
+	wnd.space:resize();
 end
 
 local function tiler_message(tiler)
@@ -1673,6 +1783,9 @@ function tiler_create(width, height, opts)
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
 		swap_up = tiler_swapup,
+		swap_down = tiler_swapdown,
+		swap_left = tiler_swapleft,
+		swap_right = tiler_swapright,
 		active_spaces = wm_countspaces,
 		add_window = wnd_create,
 		find_window = tiler_find,

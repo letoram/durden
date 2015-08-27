@@ -84,7 +84,7 @@ are being implemented, we have the following list:
   - [x] Merge/Split
   - [x] Custom tags in Titlebar
   - [ ] Find window based on tag
-  - [ ] Swap Left/Right/Up/Down
+  - [x] Swap Left/Right/Up/Down
 - [x] Visual Enhancements
   - [x] Animated Transitions (fade, move)
   - [x] Dim-Layer on Menus
@@ -97,7 +97,7 @@ are being implemented, we have the following list:
   - [ ] Window Alpha Channel Behavior Control
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
-- [x] Background Images
+- [x] Per Workspace Background Image
 - [ ] Screen-Rotate Trigger
 - [x] Resource Browser
 - [ ] IPC
@@ -122,6 +122,8 @@ are being implemented, we have the following list:
   - [ ] Menu Translations
   - [ ] Foreign IME
   - [ ] Unicode Binding
+  - [ ] Swappable Layouts
+  - [ ] Per-Keyboard Layout
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [ ] Cloning Windows

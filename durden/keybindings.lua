@@ -57,6 +57,10 @@ function dispatch_reset(save)
 	tbl["m1_m2_RIGHT"] = "grow_h";
 	tbl["m1_m2_UP"] = "shrink_v";
 	tbl["m1_m2_DOWN"] = "grow_v";
+	tbl["m1_m2_h"] = "swap_left";
+	tbl["m1_m2_j"] = "swap_up";
+	tbl["m1_m2_k"] = "swap_down";
+	tbl["m1_m2_l"] = "swap_right";
 	tbl["m1_f"] = "fullscreen";
 	tbl["m1_e"] = "tabtile";
 	tbl["m1_r"] = "vtabtile";
