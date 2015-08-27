@@ -881,6 +881,18 @@ local function wnd_prev(mw, level)
 end
 
 local function wnd_reassign(wnd, ind)
+-- for reassign by name, resolve to index
+	if (type(ind) == "string") then
+		for k,v in pairs(wnd.wm.spaces) do
+			if (v.label == ind) then
+				ind = k;
+			end
+		end
+		if (type(ind) == "string") then
+			return;
+		end
+	end
+
 	local newspace = wnd.wm.spaces[ind];
 
 -- don't switch unless necessary
@@ -1508,12 +1520,22 @@ local function wm_order(wm)
 end
 
 local function tiler_switchws(wm, ind)
-	local cur = wm.spaces[wm.space_ind];
+
+	if (type(ind) ~= "number") then
+		for k,v in pairs(wm.spaces) do
+			if (v == ind) then
+				ind = k;
+				break;
+			end
+		end
+	end
+
 	local cw = wm.selected;
 	if (ind == wm.space_ind) then
 		return;
 	end
 	local nd = wm.space_ind < ind;
+	local cur = wm.spaces[wm.space_ind];
 
 	if (cur.switch_hook) then
 		cur:switch_hook(false, nd);

@@ -308,6 +308,12 @@ local window_menu = {
 				wnd:set_prefix(string.gsub(val, "\\", "\\\\"));
 			end
 		end
+	},
+	{
+		name = "window_reassign_byname",
+		label = "Reassign",
+		kind = "action",
+		handler = grab_shared_function("reassign_wnd_bywsname");
 	}
 };
 

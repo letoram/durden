@@ -51,6 +51,10 @@ function grab_global_function(funname)
 	return gf[funname];
 end
 
+function grab_shared_function(funname)
+	return sf[funname];
+end
+
 function dispatch_symbol(sym)
 	local ms = displays.main.selected;
 	local ch = string.sub(sym, 1, 1);
@@ -90,7 +94,28 @@ local testwnd_spawn = function(bar)
 	end
 end
 
-gf["switch_ws_byname"] = function()
+gf["switch_wnd_bytag"] = function()
+	local tags = {};
+	for i,v in ipairs(displays.main.windows) do
+		if (v.title_prefix and string.len(v.title_prefix) > 0) then
+			table.insert(tags, v.title_prefix);
+		end
+	end
+	if (#tags == 0) then
+		displays.main:message("no tagged windows found");
+	end
+	local bar = displays.main:lbar(tiler_lbarforce(tags, function(cfstr)
+		for k,v in ipairs(displays.main.windows) do
+			if (v.title_prefix and v.title_prefix == cfstr) then
+				displays.main:switch_ws(v.space);
+				v:select();
+				return;
+			end
+		end
+	end), {}, {label = "Find Tagged Window:", force_completion = true});
+end
+
+local function query_ws(fptr, label)
 	local names = {};
 	for k,v in pairs(displays.main.spaces) do
 		if (v.label) then
@@ -102,14 +127,22 @@ gf["switch_ws_byname"] = function()
 	end
 
 	local bar = displays.main:lbar(tiler_lbarforce(names, function(cfstr)
-		for k, v in pairs(displays.main.spaces) do
-			if (v.label == cfstr) then
-				displays.main:switch_ws(k);
-				return;
-			end
-		end
-	end), {}, {label = "Find Workspace:", force_completion = true});
-	bar:set_label("workspace:");
+		fptr(cfstr);
+	end), {}, {label = "Find Workspace:", force_completion = true}
+	);
+end
+
+sf["reassign_wnd_bywsname"] = function(wnd)
+	query_ws(function(k)
+		wnd:assign_ws(k);
+	end, "Reassign to:");
+end
+
+gf["switch_ws_byname"] = function()
+	query_ws(function(k)
+		displays.main:switch_ws(k);
+	end, "Find Workspace:"
+	);
 end
 
 gf["swap_left"] = function() displays.main:swap_left(); end
