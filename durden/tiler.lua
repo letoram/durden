@@ -225,6 +225,19 @@ local function wnd_deselect(wnd)
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 	image_sharestorage(wnd.wm.tbar_color, wnd.titlebar);
 
+-- save scaled coordinates so we can handle a resize
+	if (gconfig_get("mouse_remember_position")) then
+		local x, y = mouse_xy();
+		local props = image_surface_resolve_properties(wnd.canvas);
+		if (x >= props.x and y >= props.y and
+			x <= props.x + props.width and y <= props.y + props.height) then
+			wnd.mouse = {
+				(x - props.x) / props.width,
+				(y - props.y) / props.height
+			};
+		end
+	end
+
 	run_event(wnd, "deselect");
 end
 
@@ -245,6 +258,12 @@ local function wnd_select(wnd, source)
 	wnd.space.previous = wnd.space.selected;
 	wnd.wm.selected = wnd;
 	wnd.space.selected = wnd;
+
+	if (gconfig_get("mouse_remember_position") and wnd.mouse) then
+		local props = image_surface_resolve_properties(wnd.canvas);
+		mouse_absinput(props.x + wnd.mouse[1] * props.width,
+		props.y + wnd.mouse[2] * props.height);
+	end
 end
 
 --
@@ -1094,7 +1113,11 @@ local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 end
 
 local function wnd_mouseclick(ctx, vid)
--- order anchor to front
+	local wnd = ctx.wnd;
+	if (wnd.wm.selected ~= ctx.wnd and
+		gconfig_get("mouse_focus_event") == "click") then
+		wnd:select();
+	end
 end
 
 local function wnd_mousepress(ctx, vid)
@@ -1177,6 +1200,10 @@ local function wnd_borderpos(wnd)
 	end
 end
 
+local function wnd_mousedrop(ctx, vid)
+	mouse_switch_cursor("default");
+end
+
 local function wnd_mousedrag(ctx, vid, dx, dy)
 	local wnd = ctx.wnd;
 	if (wnd.space.mode ~= "float") then
@@ -1210,11 +1237,26 @@ local dir_lut = {
 	 l = {"rz_left", {-1, 0, -1, 0}}
 };
 
+local function wnd_mousehover(ctx, vid)
+	local wnd = ctx.wnd;
+-- this event can be triggered slightly deferred and race against destroy
+	if (not wnd.wm) then
+		return;
+	end
+
+	if (wnd.wm.selected ~= ctx.wnd and
+		gconfig_get("mouse_focus_event") == "hover") then
+		wnd:select();
+	end
+-- good place for tooltip hover hint
+end
+
 local function wnd_mouseover(ctx, vid)
 -- focus follows mouse
 	local wnd = ctx.wnd;
 
-	if (wnd.wm.selected ~= ctx.wnd and gconfig_get("mouse_focus")) then
+	if (wnd.wm.selected ~= ctx.wnd and
+		gconfig_get("mouse_focus_event") == "motion") then
 		wnd:select();
 	end
 
@@ -1245,8 +1287,11 @@ local function add_mousehandler(wnd)
 		own = wnd_mouseown,
 		button = wnd_mousebutton,
 		press = wnd_mousepress,
+		click = wnd_mouseclick,
+		hover = wnd_mousehover,
 		motion = wnd_mousemotion,
 		drag = wnd_mousedrag,
+		drop = wnd_mousedrop,
 		over = wnd_mouseover,
 		out = wnd_mouseout,
 		name = "wnd_mouseh" .. tostring(seqn);
@@ -1254,7 +1299,10 @@ local function add_mousehandler(wnd)
 	seqn = seqn + 1;
 	wnd.mouse_handler = mh;
 	mh.wnd = wnd;
-	mouse_addlistener(mh, {"button","motion","press","drag","over","out"});
+	mouse_addlistener(mh, {
+		"button", "hover","motion",
+		"press","drop","drag","over","out"
+	});
 end
 
 local function wnd_alert(wnd)

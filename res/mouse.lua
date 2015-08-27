@@ -109,18 +109,6 @@ local cursors = {
 };
 
 local function mouse_cursorupd(x, y)
-	if (mstate.hidden and (x ~= 0 or y ~= 0)) then
-
-		if (mstate.native == nil) then
-			instant_image_transform(mstate.cursor);
-			blend_image(mstate.cursor, 1.0, 10);
-			mstate.hidden = false;
-		end
-
-	elseif (mstate.hidden) then
-		return 0, 0;
-	end
-
 	x = x * mstate.accel_x;
 	y = y * mstate.accel_y;
 
@@ -336,11 +324,16 @@ end
 --
 function mouse_absinput(x, y)
 
-	mstate.rel_x = x - mstate.x;
-	mstate.rel_y = y - mstate.y;
+	local arx = mstate.accel_x * (x - mstate.x);
+	local ary = mstate.accel_y * (y - mstate.y);
+	local rx = x - mstate.x;
+	local ry = y - mstate.y;
 
-	mstate.x = x;
-	mstate.y = y;
+	mstate.rel_x = arx;
+	mstate.rel_y = ary;
+
+	mstate.x = x + (arx - rx);
+	mstate.y = y + (ary - ry);
 
 	if (mstate.native) then
 		move_cursor(mstate.x, mstate.y);
@@ -491,7 +484,7 @@ function mouse_button_input(ind, active)
 		mstate.y + mstate.hotspot_y, mstate.pickdepth, 1, mstate.rt);
 
 	if (DEBUGLEVEL > 2) then
-		local res = {};
+		local res = {}
 		print("button matches:");
 		for i, v in ipairs(hists) do
 			print("\t" .. tostring(v) .. ":" .. (image_tracetag(v) ~= nil
@@ -536,13 +529,24 @@ local function mbh(hists, state)
 end
 
 function mouse_input(x, y, state, noinp)
+	if (mstate.hidden and (x ~= 0 or y ~= 0)) then
+
+		if (mstate.native == nil) then
+			instant_image_transform(mstate.cursor);
+			blend_image(mstate.cursor, 1.0, 10);
+			mstate.hidden = false;
+		end
+
+	elseif (mstate.hidden) then
+		return 0, 0;
+	end
+
 	if (noinp == nil or noinp == false) then
 		x, y = mouse_cursorupd(x, y);
 	else
 		x = mstate.rel_x;
 		y = mstate.rel_y;
 	end
-
 	mstate.hover_count = 0;
 
 	if (#mstate.hover_track > 0) then
@@ -779,21 +783,23 @@ function mouse_tick(val)
 	mstate.hover_count = mstate.hover_count + 1;
 	mstate.click_cnt = mstate.click_cnt > 0 and mstate.click_cnt - 1 or 0;
 
-	if (mstate.autohide and mstate.hidden == false) then
+	if (not mstate.drag and mstate.autohide and mstate.hidden == false) then
 		mstate.hide_count = mstate.hide_count - val;
 		if (mstate.hide_count <= 0 and mstate.native == nil) then
 			mstate.hidden = true;
 			instant_image_transform(mstate.cursor);
 			mstate.hide_count = mstate.hide_base;
 			blend_image(mstate.cursor, 0.0, 20, INTERP_EXPOUT);
+			return;
 		end
 	end
 
 	local hval = mstate.hover_ticks;
-	if (CLOCK - mstate.last_hover < 200) then
-		hval = 2;
-	end
+--	if (CLOCK - mstate.last_hover < 200) then
+--		hval = 2;
+--	end
 
+--	print(CLOCK, mstate.last_hover, mstate.hover_count);
 	if (mstate.hover_count > hval) then
 		if (hover_reset) then
 			local hists = mouse_pickfun(mstate.x, mstate.y, mstate.pickdepth, 1);

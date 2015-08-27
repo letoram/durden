@@ -4,6 +4,11 @@
 -- Description: Global / Persistent configuration management copied from
 -- senseye, tracks default font, border, layout and other settings.
 --
+
+-- here for the time being, will move with internationalization
+LBL_YES = "yes";
+LBL_NO = "no";
+
 local defaults = {
 	msg_timeout = 100,
 	font_str = "\\fdefault.ttf,12",
@@ -14,7 +19,7 @@ local defaults = {
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
-	transition = 5,
+	transition = 10,
 
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
@@ -22,8 +27,16 @@ local defaults = {
 	ws_autodestroy = false,
 	ws_default = "tile",
 
--- focus follows mouse
-	mouse_focus = true,
+-- we repeat regular mouse/mstate properties here to avoid a separate
+-- path for loading / restoring / updating
+	mouse_focus_event = "click", -- motion, hover
+	mouse_remember_position = true,
+	mouse_factor = 1.0,
+	mouse_autohide = false,
+	mouse_dblclick_step = 12,
+	mouse_hidetime = 40,
+	mouse_hovertime = 40,
+	mouse_dragdelta = 4,
 
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some
@@ -119,6 +132,12 @@ local function gconfig_setup()
 			end
 		end
 	end
+
+	local ms = mouse_state();
+	mouse_acceleration(defaults.mouse_factor, defaults.mouse_factor);
+	ms.autohide = defaults.mouse_autohide;
+	ms.hover_ticks = defaults.mouse_hovertime;
+	ms.drag_delta = defaults.mouse_dragdelta;
 end
 
 -- shouldn't store all of default overrides in database, just from a

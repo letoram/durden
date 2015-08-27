@@ -22,8 +22,8 @@ displays = {};
 archtypes = {};
 
 function durden()
-	system_load("gconf.lua")(); -- configuration management
 	system_load("mouse.lua")(); -- mouse gestures
+	system_load("gconf.lua")(); -- configuration management
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("bbar.lua")(); -- input binding
 	system_load("keybindings.lua")(); -- static key configuration
@@ -170,17 +170,16 @@ function def_handler(source, stat)
 		wnd:destroy();
 
 	elseif (stat.kind == "ident") then
-
 -- this can come multiple times if the title of the window is changed,
 -- (whih happens a lot with some types)
 	elseif (stat.kind == "registered") then
 		local atbl = archtypes[stat.segkind];
-		if (atbl == nil or wnd.atype == stat.segkind) then
+		if (atbl == nil or wnd.atype ~= nil) then
 			return;
 		end
-		wnd.atype = stat.segkind;
+		wnd.actions = atbl.actions;
+		wnd.dispatch = merge_menu(shared_dispatch(), atbl.dispatch);
 		wnd.source_audio = stat.source_audio;
--- register_shared_atype(wnd, atbl.actions, atbl.settings);
 	end
 end
 
@@ -322,6 +321,7 @@ function durden_clock_pulse()
 --		print(current_context_usage());
 --	end
 
+	mouse_tick(1);
 	displays.main:tick();
 	if (CLOCK % 4 == 0 and control_channel ~= nil) then
 		poll_control_channel();

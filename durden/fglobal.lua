@@ -299,6 +299,12 @@ gf["rename_space"] = function()
 	);
 end
 
+gf["mouse_sensitivity"] = function(val)
+	gconfig_set("mouse_factor")(val and tonumber(val) or 1.0);
+	mouse_state().accel_x = gconfig_get("mouse_factor");
+	mouse_state().accel_y = gconfig_get("mouse_factor");
+end
+
 local function allgain(val)
 	for k,v in pairs(displays) do
 		for i,j in ipairs(v.windows) do
