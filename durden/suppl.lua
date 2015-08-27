@@ -165,6 +165,12 @@ function table.remove_vmatch(tbl, match)
 	return nil;
 end
 
+function table.find_i(table, r)
+	for k,v in ipairs(table) do
+		if (v == r) then return k; end
+	end
+end
+
 function table.i_subsel(table, label, field)
 	local res = {};
 	local ll = label and string.lower(label) or "";
