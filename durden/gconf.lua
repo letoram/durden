@@ -138,6 +138,7 @@ local function gconfig_setup()
 	ms.autohide = defaults.mouse_autohide;
 	ms.hover_ticks = defaults.mouse_hovertime;
 	ms.drag_delta = defaults.mouse_dragdelta;
+	ms.hide_base = defaults.mouse_hidetime;
 end
 
 -- shouldn't store all of default overrides in database, just from a

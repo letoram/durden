@@ -76,7 +76,7 @@ local function browse_cb(ctx, instr, done, lastv)
 end
 
 function browse_file(pathtbl, extensions, mask, donecb, tblmin)
-	displays.main:lbar(browse_cb, {
+	active_display():lbar(browse_cb, {
 		base = prefix,
 		path = pathtbl,
 		paths = {},

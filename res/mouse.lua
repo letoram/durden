@@ -549,7 +549,7 @@ function mouse_input(x, y, state, noinp)
 	end
 	mstate.hover_count = 0;
 
-	if (#mstate.hover_track > 0) then
+	if (not mstate.hover_ign and #mstate.hover_track > 0) then
 		local dx = math.abs(mstate.hover_x - mstate.x);
 		local dy = math.abs(mstate.hover_y - mstate.y);
 
@@ -795,6 +795,7 @@ function mouse_tick(val)
 	end
 
 	local hval = mstate.hover_ticks;
+-- "cooldown"
 --	if (CLOCK - mstate.last_hover < 200) then
 --		hval = 2;
 --	end

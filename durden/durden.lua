@@ -30,6 +30,7 @@ function durden()
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
+	system_load("display.lua")();
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global
@@ -56,7 +57,7 @@ function durden()
 		end
 	end
 
-	displays.main = tiler_create(VRESW, VRESH, {});
+	display_manager_init();
 	SYMTABLE = system_load("symtable.lua")();
 
 	if (gconfig_get("mouse_mode") == "native") then
@@ -104,7 +105,7 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 end
 
 function durden_launch(vid, title, prefix)
-	local wnd = displays.main:add_window(vid);
+	local wnd = active_display():add_window(vid);
 	wnd.external = vid;
 	wnd:set_title(title and title or "?");
 	wnd:set_prefix(prefix);
@@ -126,23 +127,23 @@ function spawn_terminal()
 		durden_launch(vid, "", "terminal");
 		def_handler(vid, {kind = "registered", segkind = "terminal"});
 	else
-		displays.main:message( "Builtin- terminal support broken" );
+		active_display():message( "Builtin- terminal support broken" );
 	end
 end
 
 function def_handler(source, stat)
-	local wnd = displays.main:find_window(source);
+	local wnd = active_display():find_window(source);
 	assert(wnd ~= nil);
 
-	if (DEBUGLEVEL > 0 and displays.main.debug_console) then
-		displays.main.debug_console:target_event(wnd, source, stat);
+	if (DEBUGLEVEL > 0 and active_display().debug_console) then
+		active_display().debug_console:target_event(wnd, source, stat);
 	end
 
 -- registered subtype handler may say that this event should not
 -- propagate to the default implementation (below)
 	if (wnd.dispatch[stat.kind]) then
-		if (DEBUGLEVEL > 0 and displays.main.debug_console) then
-			displays.main.debug_console:event_dispatch(wnd, stat.kind, stat);
+		if (DEBUGLEVEL > 0 and active_display().debug_console) then
+			active_display().debug_console:event_dispatch(wnd, stat.kind, stat);
 		end
 
 		if (wnd.dispatch[stat.kind](wnd, source, stat)) then
@@ -190,7 +191,7 @@ function new_connection(source, status)
 
 	elseif (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
-		local wnd = displays.main:add_window(source);
+		local wnd = active_display():add_window(source);
 		wnd.external = source;
 		wnd:add_handler("resize", tile_changed);
 		wnd.dispatch = shared_dispatch();
@@ -219,7 +220,7 @@ function poll_control_channel()
 		local vid = render_text(
 			string.format("%s \\#ffffff %s", gconfig_get("font_str"), msg));
 		if (valid_vid(vid)) then
-			displays.main:update_statusbar(vid);
+			active_display():update_statusbar(vid);
 		end
 	else
 		dispatch_symbol(cmd[1]);
@@ -229,8 +230,8 @@ end
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl, fromim)
-	if (DEBUGLEVEL > 0 and displays.main.debug_console) then
-		displays.main.debug_console:add_input(iotbl, fromim);
+	if (DEBUGLEVEL > 0 and active_display().debug_console) then
+		active_display().debug_console:add_input(iotbl, fromim);
 	end
 
 	if (not fromim) then
@@ -258,8 +259,8 @@ function durden_input(iotbl, fromim)
 	elseif (iotbl.translated) then
 		local sym = SYMTABLE[ iotbl.keysym ];
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
-		if (not dispatch_lookup(iotbl, sym, displays.main.input_lock)) then
-			local sel = displays.main.selected;
+		if (not dispatch_lookup(iotbl, sym, active_display().input_lock)) then
+			local sel = active_display().selected;
 			if (sel) then
 			if (valid_vid(sel.external, TYPE_FRAMESERVER)) then
 -- possible injection site for higher level inputs
@@ -271,38 +272,6 @@ function durden_input(iotbl, fromim)
 		end
 	end
 
-end
-
-function durden_display_state(action, id)
-	if (displays.main.debug_console) then
-		displays.main.debug_console:system_event("display event: " .. action);
-	end
-
--- display subsystem and input subsystem are connected when it comes
--- to platform specific actions e.g. virtual terminal switching, assume
--- keystate change between display resets.
-	if (action == "reset") then
-		dispatch_meta_reset();
-		return;
-	end
-
-	if (action == "added") then
-		if (displays[id] == nil) then
-			displays[id] = {};
--- find out if there is a known profile for this display, activate
--- corresponding desired resolution, set mapping, create tiler, color
--- correction profile, RGB tuning etc.
-		end
-	elseif (action == "removed") then
-		if (displays[id] == nil) then
-			warning("lost unknown display: " .. tostring(id));
-			return;
-		end
-
--- sweep workspaces and migrate back to previous display (and toggle
--- rendertarget output on/off), destroy tiler, save settings, if workspace slot
--- is occupied, add to "orphan-" list.
-	end
 end
 
 function durden_shutdown()
@@ -322,7 +291,7 @@ function durden_clock_pulse()
 --	end
 
 	mouse_tick(1);
-	displays.main:tick();
+	display_tick();
 	if (CLOCK % 4 == 0 and control_channel ~= nil) then
 		poll_control_channel();
 	end

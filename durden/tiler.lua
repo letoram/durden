@@ -259,11 +259,23 @@ local function wnd_select(wnd, source)
 	wnd.wm.selected = wnd;
 	wnd.space.selected = wnd;
 
-	if (gconfig_get("mouse_remember_position") and wnd.mouse) then
+	mouse_state().hover_ign = true;
+	if (gconfig_get("mouse_remember_position")) then
 		local props = image_surface_resolve_properties(wnd.canvas);
-		mouse_absinput(props.x + wnd.mouse[1] * props.width,
-		props.y + wnd.mouse[2] * props.height);
+		local px = 0.0;
+		local py = 0.0;
+
+		if (wnd.mouse) then
+			px = wnd.mouse[1];
+			py = wnd.mouse[2];
+		end
+		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
+	elseif (gconfig_get("mouse_focus_event") == "hover") then
+		local props = image_surface_resolve_properties(wnd.canvas);
+		mouse_absinput(props.x + 0.5 * props.width, props.y + 0.5 * props.height);
 	end
+	mouse_state().last_hover = CLOCK;
+	mouse_state().hover_ign = false;
 end
 
 --

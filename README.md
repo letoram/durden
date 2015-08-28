@@ -173,6 +173,7 @@ _files that might be of interest)_
         keybindings.lua  - active keybindings
         fglobal.lua      - global WM functions
         durden.lua       - main script, input routing and process management
+        display.lua      - display and multiple-workspace manager
         tiler.lua        - main tiling layout, workspace management etc.
         lbar.lua         - support script for textedit control
         bbar.lua         - binding bar, used for querying keybindings

@@ -56,11 +56,11 @@ function grab_shared_function(funname)
 end
 
 function dispatch_symbol(sym)
-	local ms = displays.main.selected;
+	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
 
 	if (ch == "!") then
-		launch_menu_path(displays.main, gf["global_actions"],
+		launch_menu_path(active_display(), gf["global_actions"],
 			string.sub(sym, 2));
 		return;
 	elseif (ch == "#") then
@@ -86,7 +86,7 @@ local testwnd_spawn = function(bar)
 			VRESW * 0.1, VRESH * 0.1);
 		show_image(img);
 
-		local wnd = displays.main:add_window(img, {scalemode = "stretch"});
+		local wnd = active_display():add_window(img, {scalemode = "stretch"});
 		if (bar) then
 			wnd:set_title("test window_" .. tostring(test_gc));
 			test_gc = test_gc + 1;
@@ -96,18 +96,18 @@ end
 
 gf["switch_wnd_bytag"] = function()
 	local tags = {};
-	for i,v in ipairs(displays.main.windows) do
+	for i,v in ipairs(active_display().windows) do
 		if (v.title_prefix and string.len(v.title_prefix) > 0) then
 			table.insert(tags, v.title_prefix);
 		end
 	end
 	if (#tags == 0) then
-		displays.main:message("no tagged windows found");
+		active_display():message("no tagged windows found");
 	end
-	local bar = displays.main:lbar(tiler_lbarforce(tags, function(cfstr)
-		for k,v in ipairs(displays.main.windows) do
+	local bar = active_display():lbar(tiler_lbarforce(tags, function(cfstr)
+		for k,v in ipairs(active_display().windows) do
 			if (v.title_prefix and v.title_prefix == cfstr) then
-				displays.main:switch_ws(v.space);
+				active_display():switch_ws(v.space);
 				v:select();
 				return;
 			end
@@ -117,16 +117,16 @@ end
 
 local function query_ws(fptr, label)
 	local names = {};
-	for k,v in pairs(displays.main.spaces) do
+	for k,v in pairs(active_display().spaces) do
 		if (v.label) then
 			table.insert(names, v.label);
 		end
 	end
 	if (#names == 0) then
-		displays.main:message("no labeled workspaces available");
+		active_display():message("no labeled workspaces available");
 	end
 
-	local bar = displays.main:lbar(tiler_lbarforce(names, function(cfstr)
+	local bar = active_display():lbar(tiler_lbarforce(names, function(cfstr)
 		fptr(cfstr);
 	end), {}, {label = "Find Workspace:", force_completion = true}
 	);
@@ -140,15 +140,15 @@ end
 
 gf["switch_ws_byname"] = function()
 	query_ws(function(k)
-		displays.main:switch_ws(k);
+		active_display():switch_ws(k);
 	end, "Find Workspace:"
 	);
 end
 
-gf["swap_left"] = function() displays.main:swap_left(); end
-gf["swap_up"] = function() displays.main:swap_up(); end
-gf["swap_down"] = function() displays.main:swap_down(); end
-gf["swap_right"] = function() displays.main:swap_right(); end
+gf["swap_left"] = function() active_display():swap_left(); end
+gf["swap_up"] = function() active_display():swap_up(); end
+gf["swap_down"] = function() active_display():swap_down(); end
+gf["swap_right"] = function() active_display():swap_right(); end
 
 gf["debug_testwnd_bar"] = function() testwnd_spawn(true); end
 gf["debug_testwnd_nobar"] = function() testwnd_spawn(); end
@@ -159,8 +159,8 @@ end
 
 gf["debug_random_alert"] = function()
 	if (DEBUGLEVEL > 0) then
-		local ind = math.random(1, #displays.main.windows);
-		displays.main.windows[ind]:alert();
+		local ind = math.random(1, #active_display().windows);
+		active_display().windows[ind]:alert();
 	end
 end
 
@@ -180,7 +180,7 @@ gf["rebind_basic"] = function()
 		if (ent == nil) then
 			return;
 		end
-		tiler_bbar(displays.main,
+		tiler_bbar(active_display(),
 			string.format("Bind %s, press current: %s or hold new to rebind.",
 				ent[1], SYSTEM_KEYS[ent[2]]), true, gconfig_get("bind_waittime"),
 				SYSTEM_KEYS[ent[2]], nil,
@@ -209,7 +209,7 @@ gf["bind_custom"] = function()
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
-	tiler_bbar(displays.main,
+	tiler_bbar(active_display(),
 		string.format("Press and hold the desired combination, %s to Abort",
 			SYSTEM_KEYS["cancel"]), false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
@@ -218,15 +218,15 @@ gf["bind_custom"] = function()
 					IN_CUSTOM_BIND = false;
 					local res = dispatch_custom(sym, path);
 					if (res ~= nil) then
-						displays.main:message(res .. " unbound");
+						active_display():message(res .. " unbound");
 					end
 				end);
-				displays.main:message("select function to bind to " .. sym, -1);
+				active_display():message("select function to bind to " .. sym, -1);
 				local ctx = gf["global_actions"]();
 				ctx.on_cancel = function()
 					launch_menu_hook(nil);
 					IN_CUSTOM_BIND = false;
-					displays.main:message(nil);
+					active_display():message(nil);
 				end;
 			end
 		end
@@ -236,17 +236,17 @@ end
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
 gf["rebind_meta"] = function()
 	local bwt = gconfig_get("bind_waittime");
-	tiler_bbar(displays.main,
+	tiler_bbar(active_display(),
 			string.format("Press and hold (Meta 1), %s to Abort",
 				SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
-				tiler_bbar(displays.main,
+				tiler_bbar(active_display(),
 					string.format("Press and hold (Meta 2), %s to Abort",
 					SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 					function(sym2, done)
 						if (done) then
-							displays.main:message(
+							active_display():message(
 								string.format("Meta 1,2 set to %s, %s", sym, sym2));
 							dispatch_system("meta_1", sym);
 							dispatch_system("meta_2", sym2);
@@ -264,15 +264,15 @@ end
 gf["query_launch"] = function()
 	local	targets = list_targets();
 	if (targets == nil or #targets == 0) then
-		displays.main:message("Database does not contain any targets");
+		active_display():message("Database does not contain any targets");
 	else
-		displays.main:lbar(tiler_lbarforce(targets, function(str)
+		active_display():lbar(tiler_lbarforce(targets, function(str)
 			local cfgs = target_configurations(str);
 			if (cfgs == nil or #cfgs == 0) then
 				return;
 			end
 			if (#cfgs > 1) then
-				displays.main:lbar(tiler_lbarforce(cfgs, function(cfstr)
+				active_display():lbar(tiler_lbarforce(cfgs, function(cfstr)
 					local vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
 					if (valid_vid(vid)) then
 						durden_launch(vid, cfstr, str);
@@ -286,7 +286,7 @@ gf["query_launch"] = function()
 end
 
 gf["rename_space"] = function()
-	displays.main:lbar(function(ctx, instr, done)
+	active_display():lbar(function(ctx, instr, done)
 			if (done) then
 				ctx.space:set_label(instr);
 				ctx.space.wm:update_statusbar();
@@ -294,7 +294,7 @@ gf["rename_space"] = function()
 			ctx.ulim = 16;
 			return {set = {}};
 		end,
-		{space = displays.main.spaces[displays.main.space_ind]},
+		{space = active_display().spaces[active_display().space_ind]},
 		{label = "Rename Space:"}
 	);
 end
@@ -334,7 +334,7 @@ gf["toggle_audio"] = function()
 end
 
 gf["save_space_shallow"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (not wspace) then
 		return;
 	end
@@ -342,9 +342,9 @@ gf["save_space_shallow"] = function()
 -- will have issue if someone labels workspace as a numeric index, we allow
 -- it but it is rather dumb (calling 1:2 and having a 2 doesn't help clarity)
 	local ktbl = {};
-	local prefix = "wspace_" .. tostring(displays.main.space_ind);
+	local prefix = "wspace_" .. tostring(active_display().space_ind);
 	if (wspace.label ~= nil) then
-		ktbl["wspace_" .. tostring(displays.main.space_ind) .. "_ref"] =
+		ktbl["wspace_" .. tostring(active_display().space_ind) .. "_ref"] =
 			wspace.label;
 		prefix = "wspace_" .. label;
 	end
@@ -368,19 +368,19 @@ gf["save_space_drop"] = function()
 end
 
 gf["mode_vertical"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		wspace.insert = "vertical";
 	end
 end
 gf["mode_horizontal"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		wspace.insert = "horizontal";
 	end
 end
 gf["tabtile"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		if (wspace.mode == "tab" or wspace.mode == "fullscreen") then
 			wspace:tile();
@@ -390,14 +390,14 @@ gf["tabtile"] = function()
 	end
 end
 gf["float"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		wspace:float();
 	end
 end
 
 gf["vtabtile"] = function()
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		if (wspace.mode == "vtab" or wspace.mode == "fullscreen") then
 			wspace:tile();
@@ -424,7 +424,7 @@ sf["step_right"] = function(wnd) wnd:next(); end
 sf["destroy"] = function(wnd) wnd:destroy(); end
 
 for i=1,10 do
-	gf["switch_ws" .. tostring(i)] = function() displays.main:switch_ws(i); end
+	gf["switch_ws" .. tostring(i)] = function() active_display():switch_ws(i); end
 	sf["assign_ws" .. tostring(i)] = function(wnd) wnd:assign_ws(i); end
-	gf["swap_ws" .. tostring(i)] = function() displays.main:swap_ws(i); end
+	gf["swap_ws" .. tostring(i)] = function() active_display():swap_ws(i); end
 end

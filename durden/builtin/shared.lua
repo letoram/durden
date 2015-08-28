@@ -33,7 +33,7 @@ local function shared_suspend(wnd)
 end
 
 local function gain_stepv(gainv, abs)
-	local wnd = displays.main.selected;
+	local wnd = active_display().selected;
 	if (not wnd or not wnd.source_audio) then
 		return;
 	end
@@ -68,7 +68,7 @@ local function run_input_label(wnd, v)
 end
 
 local function build_labelmenu()
-	local wnd = displays.main.selected;
+	local wnd = active_display().selected;
 	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
 		return;
 	end
@@ -89,7 +89,7 @@ local function build_labelmenu()
 end
 
 local function build_bindmenu(wide)
-	local wnd = displays.main.selected;
+	local wnd = active_display().selected;
 	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
 		return;
 	end
@@ -100,7 +100,7 @@ local function build_bindmenu(wide)
 ---			name = "target_input_" .. v[1],
 --			label = v[1],
 --			handler = function()
---				tiler_bbar(displays.main,
+--				tiler_bbar(active_display(),
 --					string.format("Bind: %s, hold desired combination.",
 --					);
 --			end
@@ -149,7 +149,7 @@ local input_menu = {
 		submenu = true,
 		force = true,
 		eval = function(ctx)
-			local sel = displays.main.selected;
+			local sel = active_display().selected;
 			return sel and sel.input_labels and #sel.input_labels > 0;
 		end,
 		handler = label_menu
@@ -194,7 +194,7 @@ local audio_menu = {
 };
 
 local function set_scalef(mode)
-	local wnd = displays.main.selected;
+	local wnd = active_display().selected;
 	if (wnd) then
 		wnd.scalemode = mode;
 		wnd.settings.scalemode = mode;
@@ -203,7 +203,7 @@ local function set_scalef(mode)
 end
 
 local function set_filterm(mode)
-	local wnd = displays.main.selected;
+	local wnd = active_display().selected;
 	if (mode and wnd) then
 		wnd.settings.filtermode = mode;
 		image_texfilter(wnd.canvas, mode);
@@ -284,7 +284,7 @@ local video_menu = {
 		hint = "(0..1)",
 		validator = gen_valid_num(0, 1),
 		handler = function(ctx, val)
-			local wnd = displays.main.selected;
+			local wnd = active_display().selected;
 			if (wnd) then
 				local opa = tonumber(val);
 				wnd.settings.opacity = opa;
@@ -303,7 +303,7 @@ local window_menu = {
 		kind = "value",
 		validator = function() return true; end,
 		handler = function(ctx, val)
-			local wnd = displays.main.selected;
+			local wnd = active_display().selected;
 			if (wnd) then
 				wnd:set_prefix(string.gsub(val, "\\", "\\\\"));
 			end
@@ -348,7 +348,7 @@ local shared_actions = {
 		handler = audio_menu,
 		force = true,
 		eval = function(ctx)
-			return displays.main.selected and displays.main.selected.source_audio
+			return active_display().selected and active_display().selected.source_audio
 		end
 	},
 	{
@@ -379,9 +379,9 @@ local shared_actions = {
 };
 
 local function query_tracetag()
-	local bar = tiler_lbar(displays.main, function(ctx,msg,done,set)
-		if (done and displays.main.selected) then
-			image_tracetag(displays.main.selected.canvas, msg);
+	local bar = tiler_lbar(active_display(), function(ctx,msg,done,set)
+		if (done and active_display().selected) then
+			image_tracetag(active_display().selected.canvas, msg);
 		end
 		return {};
 	end);
@@ -450,7 +450,7 @@ end
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
 local function show_shmenu(wnd)
-	wnd = wnd == nil and displays.main or wnd;
+	wnd = wnd == nil and active_display() or wnd;
 	if (wnd == nil) then
 		return;
 	end
