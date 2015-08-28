@@ -339,14 +339,14 @@ local function run_value(ctx)
 	);
 
 	if (ctx.set) then
-		return displays.main:lbar(function(ctx, instr, done, lastv)
+		return active_display():lbar(function(ctx, instr, done, lastv)
 			if (done) then
 				ctx.handler(ctx, instr);
 			end
 			return {set = table.i_subsel(ctx.set, instr)};
 		end, ctx, {label = hintstr, force_completion = true});
 	else
-		return displays.main:lbar(function(ctx, instr, done, lastv)
+		return active_display():lbar(function(ctx, instr, done, lastv)
 			if (done and ctx.validator(instr)) then
 				ctx.handler(ctx, instr);
 			end

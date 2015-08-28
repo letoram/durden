@@ -192,7 +192,7 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 		(meta_2_state == true and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
-		hook_handler(displays.main, keysym, iotbl, lutsym, metam);
+		hook_handler(active_display(), keysym, iotbl, lutsym, metam);
 		return true;
 	end
 

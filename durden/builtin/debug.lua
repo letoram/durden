@@ -129,9 +129,9 @@ local function wnd_input(wnd, sym, iotbl)
 end
 
 local function query_outf(ctx, wnd)
-	local bar = tiler_lbar(displays.main,
+	local bar = tiler_lbar(active_display(),
 	function(ctx, msg, done, set)
-		local wnd = displays.main.selected;
+		local wnd = active_display().selected;
 		if (done and wnd) then
 			if (wnd.out_file) then
 				wnd.out_file:close();
@@ -145,13 +145,13 @@ local function query_outf(ctx, wnd)
 end
 
 local function debugwnd_spawn()
-	if (displays.main.debug_console) then
+	if (active_display().debug_console) then
 		return;
 	end
 
 	local img = fill_surface(100, 100, 0, 0, 0);
 
-	local wnd = displays.main:add_window(img, {});
+	local wnd = active_display():add_window(img, {});
 	wnd.tick = function() end
 	wnd.target_event = target_event;
 	wnd.event_dispatch = event_dispatch;
@@ -196,14 +196,14 @@ local function debugwnd_spawn()
 	wnd.scalemode = "stretch";
 
 	table.insert(wnd.handlers.destroy, function()
-		 displays.main.debug_console = nil;
+		 active_display().debug_console = nil;
 		 if (wnd.out_file) then
 				wnd.out_file:close();
 		 end
 	end);
 	table.insert(wnd.handlers.resize, debugwnd_resize);
 	setmetatable(wnd, debug_metatbl);
-	displays.main.debug_console = wnd;
+	active_display().debug_console = wnd;
 end
 
 if (DEBUGLEVEL > 0) then

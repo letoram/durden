@@ -79,7 +79,7 @@ local reset_query = {
 };
 
 local function query_dump()
-	local bar = tiler_lbar(displays.main, function(ctx, msg, done, set)
+	local bar = tiler_lbar(active_display(), function(ctx, msg, done, set)
 		if (done) then
 			zap_resource("debug/" .. msg);
 			system_snapshot("debug/" .. msg);
@@ -236,22 +236,22 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_hover_delay",
+		name = "mouse_hide_delay",
 		kind = "value",
-		label = "Hover Delay",
+		label = "Autohide Delay",
 		force = true,
-		hint = function() return "10..80"; end,
+		hint = function() return "40..400"; end,
 		validator = function(val)
-			return gen_valid_num(0, 80)(val);
+			return gen_valid_num(0, 400)(val);
 		end,
 		initial = function()
-			return tostring(gconfig_get("mouse_hovertime"));
+			return tostring(gconfig_get("mouse_hidetime"));
 		end,
 		handler = function(ctx, val)
 			val = math.ceil(tonumber(val));
-			val = val < 10 and 10 or val;
-			gconfig_set("mouse_hovertime", val);
-			mouse_state().hover_ticks = val;
+			val = val < 40 and 40 or val;
+			gconfig_set("mouse_hidetime", val);
+			mouse_state().hide_base = val;
 		end
 	},
 	{
@@ -322,7 +322,7 @@ local workspace_layout_menu = {
 		kind = "action",
 		label = "Float",
 		handler = function()
-			local space = displays.main.spaces[displays.main.space_ind];
+			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:float() or nil;
 		end
 	},
@@ -331,7 +331,7 @@ local workspace_layout_menu = {
 		kind = "action",
 		label = "Tile",
 		handler = function()
-			local space = displays.main.spaces[displays.main.space_ind];
+			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:tile() or nil;
 		end
 	},
@@ -340,7 +340,7 @@ local workspace_layout_menu = {
 		kind = "action",
 		label = "Tabbed",
 		handler = function()
-			local space = displays.main.spaces[displays.main.space_ind];
+			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:tab() or nil;
 		end
 	},
@@ -349,14 +349,14 @@ local workspace_layout_menu = {
 		kind = "action",
 		label = "Tabbed Vertical",
 		handler = function()
-			local space = displays.main.spaces[displays.main.space_ind];
+			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:vtab() or nil;
 		end
 	}
 };
 
 local function load_bg(fn)
-	local space = displays.main.spaces[displays.main.space_ind];
+	local space = active_display().spaces[active_display().space_ind];
 	if (not space) then
 		return;
 	end
@@ -409,9 +409,9 @@ end
 
 local function swap_ws_menu()
 	local res = {};
-	local wspace = displays.main.spaces[displays.main.space_ind];
+	local wspace = active_display().spaces[active_display().space_ind];
 	for i=1,10 do
-		if (displays.main.space_ind ~= i and displays.main.spaces[i] ~= nil) then
+		if (active_display().space_ind ~= i and active_display().spaces[i] ~= nil) then
 			table.insert(res, {
 				name = "workspace_swap",
 				label = tostring(i),
@@ -430,7 +430,7 @@ local workspace_menu = {
 		name = "workspace_swap",
 		label = "Swap",
 		kind = "action",
-		eval = function() return displays.main:active_spaces() > 1; end,
+		eval = function() return active_display():active_spaces() > 1; end,
 		submenu = true,
 		force = true,
 		hint = "Swap:",
@@ -505,8 +505,8 @@ local durden_visual = {
 		handler = function(ctx, val)
 			local num = tonumber(val);
 			gconfig_set("bordert", tonumber(val));
-			displays.main.rebuild_border();
-			for k,v in pairs(displays.main.spaces) do
+			active_display().rebuild_border();
+			for k,v in pairs(active_display().spaces) do
 				v:resize();
 			end
 		end
@@ -520,8 +520,8 @@ local durden_visual = {
 		validator = gen_valid_num(0, 20),
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
-			displays.main.rebuild_border();
-			for k,v in pairs(displays.main.spaces) do
+			active_display().rebuild_border();
+			for k,v in pairs(active_display().spaces) do
 				v:resize();
 			end
 		end
@@ -596,7 +596,7 @@ local durden_menu = {
 local function imgwnd(fn)
 	load_image_asynch(fn, function(src, stat)
 		if (stat.kind == "loaded") then
-			local wnd = displays.main:add_window(src, {scalemode = "stretch"});
+			local wnd = active_display():add_window(src, {scalemode = "stretch"});
 			string.gsub(fn, "\\", "\\\\");
 			wnd:set_title("image:" .. fn);
 		elseif (valid_vid(src)) then
@@ -614,7 +614,7 @@ local function decwnd(fn)
 		if (status.kind == "terminated") then
 			delete_image(source);
 		elseif (status.kind == "connected") then
-			local wnd = displays.main:add_window(source);
+			local wnd = active_display():add_window(source);
 			wnd.external = source;
 			wnd:add_handler("resize", tile_changed);
 			target_updatehandler(source, dechnd);
@@ -728,13 +728,13 @@ local toplevel = {
 
 global_actions = function(trigger_function)
 	if (IN_CUSTOM_BIND) then
-		return launch_menu(displays.main, {
+		return launch_menu(active_display(), {
 			list = toplevel,
 			trigger = trigger_function,
 			show_invisible = true
 		}, true, "Bind:");
 	else
-		return launch_menu(displays.main, {list = toplevel,
+		return launch_menu(active_display(), {list = toplevel,
 			trigger = trigger_function}, true, "Action:");
 	end
 end
