@@ -121,8 +121,17 @@ function durden_adopt(vid, kind, title)
 end
 
 function spawn_terminal()
-	local vid = launch_avfeed(
-		"env=ARCAN_CONNPATH=" .. connection_path, "terminal");
+	local bc = gconfig_get("term_bgcol");
+	local fc = gconfig_get("term_fgcol");
+
+	local vid = launch_avfeed(string.format(
+		"cell_w=%d:cell_h=%d:font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
+		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:" ..
+		"env=ARCAN_CONNPATH=%s:env=NINJA_TURTLE=true",
+		gconfig_get("term_cellw"), gconfig_get("term_cellh"),
+		gconfig_get("term_font_hint"), gconfig_get("term_font"),
+		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
+		fc[1], fc[2],fc[3], "terminal"), "terminal");
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal");
 		def_handler(vid, {kind = "registered", segkind = "terminal"});
@@ -179,7 +188,7 @@ function def_handler(source, stat)
 			return;
 		end
 		wnd.actions = atbl.actions;
-		wnd.dispatch = merge_menu(shared_dispatch(), atbl.dispatch);
+		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.source_audio = stat.source_audio;
 	end
 end

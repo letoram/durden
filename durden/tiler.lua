@@ -1583,10 +1583,14 @@ local function tiler_switchws(wm, ind)
 
 	if (type(ind) ~= "number") then
 		for k,v in pairs(wm.spaces) do
-			if (v == ind) then
+			if (v.label == ind) then
 				ind = k;
 				break;
 			end
+		end
+-- no match
+		if (type(ind) ~= "number") then
+			return;
 		end
 	end
 
@@ -1594,6 +1598,7 @@ local function tiler_switchws(wm, ind)
 	if (ind == wm.space_ind) then
 		return;
 	end
+
 	local nd = wm.space_ind < ind;
 	local cur = wm.spaces[wm.space_ind];
 
