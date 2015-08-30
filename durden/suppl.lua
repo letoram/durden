@@ -299,6 +299,24 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 	return ctx;
 end
 
+function merge_dispatch(m1, m2)
+	local kt = {};
+	local res = {};
+	if (m1 == nil) then
+		return m2;
+	end
+	if (m2 == nil) then
+		return m1;
+	end
+	for k,v in pairs(m1) do
+		res[k] = v;
+	end
+	for k,v in pairs(m2) do
+		res[k] = v;
+	end
+	return res;
+end
+
 -- add m2 to m1, overwrite on collision
 function merge_menu(m1, m2)
 	local kt = {};

@@ -296,6 +296,33 @@ local video_menu = {
 -- good place to add advanced upscalers (xBR, CRT etc.)
 };
 
+local swap_menu = {
+	{
+		name = "window_swap_up",
+		label = "Up",
+		kind = "action",
+		handler = grab_global_function("swap_up")
+	},
+	{
+		name = "window_swap_down",
+		label = "Down",
+		kind = "action",
+		handler = grab_global_function("swap_down")
+	},
+	{
+		name = "window_swap_left",
+		label = "Left",
+		kind = "action",
+		handler = grab_global_function("swap_left")
+	},
+	{
+		name = "window_swap_right",
+		label = "Right",
+		kind = "action",
+		handler = grab_global_function("swap_right")
+	},
+};
+
 local window_menu = {
 	{
 		name = "window_prefix",
@@ -308,6 +335,13 @@ local window_menu = {
 				wnd:set_prefix(string.gsub(val, "\\", "\\\\"));
 			end
 		end
+	},
+	{
+		name = "window_swap",
+		label = "Swap",
+		kind = "action",
+		submenu = true,
+		handler = swap_menu
 	},
 	{
 		name = "window_reassign_byname",
