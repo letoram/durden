@@ -6,7 +6,8 @@
 -- how workspaces are created and mapped to various displays.
 --
 
-local displays = {};
+local displays = {
+};
 
 function durden_display_state(action, id)
 	if (displays[1].tiler.debug_console) then
@@ -44,12 +45,93 @@ function display_manager_init()
 	displays[1] = {
 		tiler = tiler_create(VRESW, VRESH, {});
 	};
+
+	displays.simple = gconfig_get("display_simple");
+	displays.main = 1;
+
+	if (not displays.simple) then
+		displays[1].rt = displays[1].tiler:set_rendertarget(true);
+		set_context_attachment(displays[1].rt);
+		mouse_querytarget(displays[1].rt);
+		show_image(displays[1].rt);
+	end
 end
 
+-- if we're in "simulated" multidisplay- mode, for development and
+-- testing, there's the need to dynamically add and remove to see that
+-- workspace migration works smoothly.
+local function redraw_simulate()
+	local ac = 0;
+	for i=1,#displays do
+		if (displays[i].orphan == false) then
+			ac = ac + 1;
+		end
+	end
+
+	if (ac == 0) then
+		for i=1,#displays do
+			hide_image(displays[i].rt);
+		end
+	else
+		local w = VRESW / ac;
+		local x = 0;
+		for i=1,#displays do
+			move_image(displays[i].rt, x, 0);
+			x = x + w;
+			resize_image(displays[i].rt, w, VRESH);
+			show_image(displays[i].rt);
+		end
+	end
+end
+
+function display_simulate_add(name, width, height)
+	local found;
+	for k,v in ipairs(displays) do
+		if (v.name == name) then
+			found = v;
+			break;
+		end
+	end
+
+	if (found) then
+		found.orphan = false;
+		show_image(found.rt);
+	else
+		local nd = {tiler = tiler_create(width, height, {})};
+		table.insert(displays, nd);
+		nd.rt = nd.tiler:set_rendertarget(true);
+-- in the real case, we'd switch to the last known resolution
+-- and then set the display to match the rendertarget
+	show_image(displays[displays.main].rt);
+	end
+
+	redraw_simulate();
+end
+
+function display_simulate_remove(name, width, height)
+end
+
+-- migrate the ownership of a single workspace to another display
+function display_migrate_ws(ws, display)
+	if (ws.wm == display) then
+		return;
+	end
+
+-- recursive detach/attach to all vids associated with the ws
+end
+
+-- the active displays is the rendertarget that will (initially) create new
+-- windows, though they can be migrated immediately afterwards. This is because
+-- both mouse_ implementation and new object attachment points are a global
+-- state.
 function active_display()
-	return displays[1].tiler;
+	return displays[displays.main].tiler;
 end
 
 function display_tick()
-	displays[1].tiler:tick();
+	for k,v in ipairs(displays) do
+		if (not v.orphan) then
+			v.tiler:tick();
+		end
+	end
 end

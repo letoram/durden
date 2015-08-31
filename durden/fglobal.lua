@@ -157,6 +157,15 @@ gf["debug_dump_state"] = function()
 	system_snapshot("state.dump");
 end
 
+gf["set_rt"] = function()
+	local rt = active_display():set_rendertarget(true);
+	image_texfilter(rt, FILTER_NONE);
+	local props = image_surface_properties(rt);
+	print(VRESW, VRESH, props.width, props.height);
+-- new windows will be attached here
+	show_image(rt);
+end
+
 gf["debug_random_alert"] = function()
 	if (DEBUGLEVEL > 0) then
 		local ind = math.random(1, #active_display().windows);

@@ -152,7 +152,7 @@ are being implemented, we have the following list:
 - [ ] Advanced Displays Support
   - [ ] Resolution Switching
   - [x] Synchronization Strategy Switching
-  - [ ] Offscreen Workspace Rendering
+  - [x] Offscreen Workspace Rendering
   - [ ] Home Workspace to Preferred Display
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
