@@ -695,10 +695,6 @@ local function create_workspace(wm, anim)
 		resize = workspace_resize,
 		destroy = workspace_destroy,
 
--- rendertargets impose a considerable cost, don't use it unless necessary
--- e.g. when doing multidisplay, streaming or sharing
-		get_rendertarget = workspace_rendertarget,
-
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
 		tile = function(ws) workspace_set(ws, "tile"); end,
@@ -1805,6 +1801,44 @@ local function tiler_rebuild_border()
 	end
 end
 
+-- recursively resolve the relation hierarchy and return a list
+-- of vids that are linked to a specific vid
+local function get_hier(vid)
+	local ht = {};
+
+	local level = function(hf, vid)
+		for i,v in ipairs(image_children(vid)) do
+			table.insert(ht, v);
+			hf(hf, v);
+		end
+	end
+
+	level(level, vid);
+	return ht;
+end
+
+local function tiler_rendertarget(wm, set)
+	if (set == nil or (wm.rtgt_id and set) or (not set and not wm.rtgt_id)) then
+		return wm.rtgt_id;
+	end
+
+	local list = get_hier(wm.anchor);
+	if (set == true) then
+		wm.rtgt_id = alloc_surface(wm.width, wm.height);
+		define_rendertarget(wm.rtgt_id, {null_surface(32, 32)});
+		for i,v in ipairs(list) do
+			rendertarget_attach(wm.rtgt_id, v, RENDERTARGET_DETACH);
+		end
+	else
+		for i,v in ipairs(list) do
+			rendertarget_attach(WORLDID, v, RENDERTARGET_DETACH);
+		end
+		delete_image(rt);
+		wm.rtgt_id = nil;
+	end
+	return wm.rtgt_id;
+end
+
 local function wm_countspaces(wm)
 	local r = 0;
 	for i=1,10 do
@@ -1874,6 +1908,7 @@ function tiler_create(width, height, opts)
 		swap_left = tiler_swapleft,
 		swap_right = tiler_swapright,
 		active_spaces = wm_countspaces,
+		set_rendertarget = tiler_rendertarget,
 		add_window = wnd_create,
 		find_window = tiler_find,
 		message = tiler_message,
@@ -1892,6 +1927,7 @@ function tiler_create(width, height, opts)
 	link_image(res.statusbar, res.order_anchor);
 	image_inherit_order(res.statusbar, true);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
+	link_image(res.order_anchor, res.anchor);
 
 	res.spaces[1] = create_workspace(res, true);
 	res:update_statusbar();

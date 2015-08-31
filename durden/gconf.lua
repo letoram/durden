@@ -17,6 +17,11 @@ local defaults = {
 	borderw = 1,
 	bordert = 0,
 
+-- MANUAL/REQURES RESTART: setting this to true possibly reduces latency,
+-- performance footprint etc. but prevents certain features like selective
+-- desktop sharing and multiple displays.
+	display_simple = false,
+
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
