@@ -222,6 +222,10 @@ function mouse_state()
 	return mstate;
 end
 
+function mouse_toxy(x, y, time)
+-- disable all event handlers and visibly move cursor to position
+end
+
 function mouse_destroy()
 	mouse_handlers = {};
 	mouse_handlers.click = {};
@@ -323,7 +327,6 @@ end
 -- these to relative before moving on
 --
 function mouse_absinput(x, y)
-
 	local arx = mstate.accel_x * (x - mstate.x);
 	local ary = mstate.accel_y * (y - mstate.y);
 	local rx = x - mstate.x;
@@ -502,6 +505,7 @@ function mouse_button_input(ind, active)
 		end
 	end
 
+	mstate.in_handler = true;
 	if (ind == 1 and active ~= mstate.btns[1]) then
 		lmbhandler(hists, active);
 	end
@@ -510,6 +514,7 @@ function mouse_button_input(ind, active)
 		rmbhandler(hists, active);
 	end
 
+	mstate.in_handler = false;
 	mstate.btns[ind] = active;
 end
 
@@ -541,6 +546,7 @@ function mouse_input(x, y, state, noinp)
 		return 0, 0;
 	end
 
+	mstate.in_handler = true;
 	if (noinp == nil or noinp == false) then
 		x, y = mouse_cursorupd(x, y);
 	else
@@ -576,6 +582,7 @@ function mouse_input(x, y, state, noinp)
 		if (state ~= nil) then
 			mbh(hists, state);
 		end
+		mstate.in_handler = false;
 		return;
 	end
 
@@ -621,10 +628,12 @@ function mouse_input(x, y, state, noinp)
 	end
 
 	if (state == nil) then
+		mstate.in_handler = false;
 		return;
 	end
 
 	mbh(hists, state);
+	mstate.in_handler = false;
 end
 
 mouse_motion = mouse_input;
@@ -794,6 +803,7 @@ function mouse_tick(val)
 		end
 	end
 
+	mstate.in_handler = true;
 	local hval = mstate.hover_ticks;
 -- "cooldown"
 --	if (CLOCK - mstate.last_hover < 200) then
@@ -822,6 +832,7 @@ function mouse_tick(val)
 	else
 		hover_reset = true;
 	end
+	mstate.in_handler = false;
 end
 
 function mouse_dblclickrate(newr)
