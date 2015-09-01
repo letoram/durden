@@ -259,8 +259,9 @@ local function wnd_select(wnd, source)
 	wnd.wm.selected = wnd;
 	wnd.space.selected = wnd;
 
-	mouse_state().hover_ign = true;
-	if (gconfig_get("mouse_remember_position")) then
+	ms = mouse_state();
+	ms.hover_ign = true;
+	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local props = image_surface_resolve_properties(wnd.canvas);
 		local px = 0.0;
 		local py = 0.0;
@@ -270,7 +271,7 @@ local function wnd_select(wnd, source)
 			py = wnd.mouse[2];
 		end
 		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
-	elseif (gconfig_get("mouse_focus_event") == "hover") then
+	elseif (gconfig_get("mouse_focus_event") == "hover" and not ms.in_handler) then
 		local props = image_surface_resolve_properties(wnd.canvas);
 		mouse_absinput(props.x + 0.5 * props.width, props.y + 0.5 * props.height);
 	end

@@ -20,7 +20,7 @@ local defaults = {
 -- MANUAL/REQURES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.
-	display_simple = false,
+	display_simple = true,
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
@@ -65,8 +65,8 @@ local defaults = {
 	term_cellh = 8,
 	term_font_hint = "mono", -- normal, none
 	term_font = "terminal.ttf",
-	term_bgcol = {0x00, 0x00, 0xff},
-	term_fgcol = {0x00, 0xff, 0x00},
+	term_bgcol = {0x00, 0x00, 0x00},
+	term_fgcol = {0xff, 0xff, 0xff},
 	term_opa = 1.0,
 
 -- input bar graphics
