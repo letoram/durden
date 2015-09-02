@@ -271,9 +271,6 @@ local function wnd_select(wnd, source)
 			py = wnd.mouse[2];
 		end
 		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
-	elseif (gconfig_get("mouse_focus_event") == "hover" and not ms.in_handler) then
-		local props = image_surface_resolve_properties(wnd.canvas);
-		mouse_absinput(props.x + 0.5 * props.width, props.y + 0.5 * props.height);
 	end
 	mouse_state().last_hover = CLOCK;
 	mouse_state().hover_ign = false;
@@ -655,25 +652,6 @@ local function workspace_set(space, mode)
 
 	space.mode = mode;
 	space:resize();
-end
-
--- could possibly support less intense versions with downscale
--- or lower rates, is rather context- dependent
-local function workspace_rendertarget(space, destroy)
-	if (destroy) then
-		if (valid_vid(space.rendertarget)) then
--- FIXME: detach windows
-		end
-		space.rendertarget = nil;
-		return;
-	end
-
-	if (not valid_vid(space.rendertarget)) then
-		space.rendertarget = alloc_surface(space.wm.width, space.wm.height);
-		define_rendertarget(space.rendertarget, {});
-	end
-
-	return space.rendertarget;
 end
 
 local function workspace_resize(space)
@@ -1063,6 +1041,7 @@ local function wnd_title(wnd, message)
 	end
 
 	link_image(message, wnd.titlebar);
+	image_tracetag(message, "wnd_titletext");
 	wnd.title_temp = message;
 	image_clip_on(message, CLIP_SHALLOW);
 	image_mask_set(message, MASK_UNPICKABLE);
@@ -1373,7 +1352,7 @@ local function wnd_create(wm, source, opts)
 		pad_bottom = bw,
 		width = wm.min_width,
 		height = wm.min_height,
-		border_w = gconfig_get("borderw");
+		border_w = gconfig_get("borderw"),
 		effective_w = 0,
 		effective_h = 0,
 		weight = 1.0,
@@ -1408,6 +1387,7 @@ local function wnd_create(wm, source, opts)
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");
 	image_tracetag(res.canvas, "wnd_canvas");
+	image_tracetag(res.titlebar, "wnd_titlebar");
 	res.wm = wm;
 
 -- initially, titlebar stays hidden
@@ -1524,6 +1504,7 @@ local function tiler_statusbar_update(wm, msg, state)
 				image_inherit_order(tile, true);
 				image_inherit_order(text, true);
 				link_image(tile, wm.statusbar);
+				image_tracetag(text, "tiler_sbar_tile");
 				space.label_id = tile;
 			end
 
@@ -1826,7 +1807,10 @@ local function tiler_rendertarget(wm, set)
 	local list = get_hier(wm.anchor);
 	if (set == true) then
 		wm.rtgt_id = alloc_surface(wm.width, wm.height);
-		define_rendertarget(wm.rtgt_id, {null_surface(32, 32)});
+		image_tracetag(wm.rtgt_id, "tiler_rt");
+		local pitem = null_surface(32, 32);
+		image_tracetag(pitem, "rendertarget_placeholder");
+		define_rendertarget(wm.rtgt_id, {pitem});
 		for i,v in ipairs(list) do
 			rendertarget_attach(wm.rtgt_id, v, RENDERTARGET_DETACH);
 		end
@@ -1921,8 +1905,10 @@ function tiler_create(width, height, opts)
 	res.height = height;
 	res.min_width = 32;
 	res.min_height = 32;
+
 	image_tracetag(res.anchor, "tiler_anchor");
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
+	image_tracetag(res.statusbar, "tiler_statusbar");
 
 	move_image(res.statusbar, 0, clh);
 	link_image(res.statusbar, res.order_anchor);

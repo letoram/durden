@@ -455,6 +455,18 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 		return;
 	end
 
+	local found = false;
+	for i,v in ipairs(ctx.list) do
+		if (v.eval == nil or v.eval()) then
+			found = true;
+			break;
+		end
+	end
+
+	if (not found) then
+		return;
+	end
+
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
 	opts.label = label;

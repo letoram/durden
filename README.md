@@ -148,11 +148,16 @@ are being implemented, we have the following list:
   - [ ] Streaming Text
   - [ ] Images
   - [ ] Videos
+- [ ] Security Measures
+  - [ ] Visual Privilege Indicator
+  - [ ] Toggle external listener support
+  - [ ] Limit subsurfaces per window
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
   - [ ] Resolution Switching
   - [x] Synchronization Strategy Switching
   - [x] Offscreen Workspace Rendering
+  - [ ] Migrate Workspaces Between Displays
   - [ ] Home Workspace to Preferred Display
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization

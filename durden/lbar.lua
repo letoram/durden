@@ -63,9 +63,12 @@ local function update_completion_set(wm, ctx, set)
 		image_surface_properties(ctx.text).width) or ctxw;
 
 	ctx.canchor = null_surface(wm.width, gconfig_get("lbar_sz"));
+	image_tracetag(ctx.canchor, "lbar_anchor");
+
 	move_image(ctx.canchor, step, 0);
 	if (not valid_vid(ctx.ccursor)) then
 		ctx.ccursor = color_surface(1, 1, unpack(gconfig_get("lbar_seltextbg")));
+		image_tracetag(ctx.ccursor, "lbar_cursor");
 	end
 
 	local ofs = 0;
@@ -96,6 +99,7 @@ local function update_completion_set(wm, ctx, set)
 		end
 
 		txt = render_text(txt);
+		image_tracetag(txt, "lbar_text" ..tostring(i));
 
 		local cw = image_surface_properties(txt).width;
 		link_image(ctx.canchor, ctx.text_anchor);
@@ -154,6 +158,7 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		end
 
 		ictx.text = render_text(inp_str(ictx));
+		image_tracetag(ictx.text, "lbar_inpstr");
 		show_image(ictx.text);
 		link_image(ictx.text, ictx.text_anchor);
 		image_inherit_order(ictx.text, true);
@@ -261,6 +266,7 @@ local function lbar_label(lbar, lbl)
 		return;
 	end
 
+	image_tracetag(lbar.labelid, "lbar_labelstr");
 	show_image(lbar.labelid);
 	link_image(lbar.labelid, lbar.text_anchor);
 	image_inherit_order(lbar.labelid, true);

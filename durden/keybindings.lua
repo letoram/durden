@@ -93,7 +93,7 @@ function dispatch_reset(save)
 	tbl["m1_i"] = "cycle_scalemode";
 
 	if (DEBUGLEVEL > 0) then
-		tbl["m1_m2_p"] = "dump_state";
+		tbl["m1_m2_p"] = "debug_dump_state";
 	end
 
 -- clear all existing and define new ones

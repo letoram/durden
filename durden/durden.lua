@@ -6,14 +6,6 @@
 -- code module covers basic I/O and event routing, and basic setup.
 --
 
-local connection_path = "durden";
-
--- we run a separate tiler instance for each display, dynamic plugging /
--- hotplugging events can be configured to destroy, or "background" the
--- associated tiler (and switch between foreground / background sets of tiled
--- workspaces).
-displays = {};
-
 --
 -- Every connection can get a set of additional commands and configurations
 -- based on what type it has. Supported ones are registered into this table.
@@ -60,6 +52,10 @@ function durden()
 	display_manager_init();
 	SYMTABLE = system_load("symtable.lua")();
 
+	if (gconfig_get("mouse_hardlock")) then
+		toggle_mouse_grab(MOUSE_GRABON);
+	end
+
 	if (gconfig_get("mouse_mode") == "native") then
 		mouse_setup_native(load_image("cursor/default.png"), 0, 0);
 	else
@@ -69,7 +65,10 @@ function durden()
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution
-	new_connection();
+	local cp = gconfig_get("extcon_path");
+	if (cp ~= nil and string.len(cp) > 0) then
+		new_connection();
+	end
 
 -- dropping this call means that the only input / output available is
 -- through keybindings/mice/joysticks
@@ -123,15 +122,18 @@ end
 function spawn_terminal()
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
+	local cp = gconfig_get("extcon_path");
 
-	local vid = launch_avfeed(string.format(
+	local lstr = string.format(
 		"cell_w=%d:cell_h=%d:font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
-		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:" ..
-		"env=ARCAN_CONNPATH=%s:env=NINJA_TURTLE=true",
+		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		gconfig_get("term_cellw"), gconfig_get("term_cellh"),
 		gconfig_get("term_font_hint"), gconfig_get("term_font"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
-		fc[1], fc[2],fc[3], "terminal"), "terminal");
+		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
+			("env=ARCAN_CONNPATH="..cp) or "");
+
+	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal");
 		def_handler(vid, {kind = "registered", segkind = "terminal"});
@@ -195,7 +197,7 @@ end
 
 function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
-		local vid = target_alloc(connection_path, new_connection);
+		local vid = target_alloc(gconfig_get("extcon_path"), new_connection);
 		image_tracetag(vid, "nonauth_connection");
 
 	elseif (status.kind == "resized") then
