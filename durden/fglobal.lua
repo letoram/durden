@@ -145,6 +145,8 @@ gf["switch_ws_byname"] = function()
 	);
 end
 
+gf["display_cycle"] = function() display_cycle_active(); end
+
 gf["swap_left"] = function() active_display():swap_left(); end
 gf["swap_up"] = function() active_display():swap_up(); end
 gf["swap_down"] = function() active_display():swap_down(); end
@@ -154,7 +156,8 @@ gf["debug_testwnd_bar"] = function() testwnd_spawn(true); end
 gf["debug_testwnd_nobar"] = function() testwnd_spawn(); end
 
 gf["debug_dump_state"] = function()
-	system_snapshot("state.dump");
+	local stm = benchmark_timestamp(0);
+	system_snapshot(string.format("debug/state.%d.dump", stm));
 end
 
 gf["debug_random_alert"] = function()

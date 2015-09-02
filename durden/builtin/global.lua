@@ -26,6 +26,32 @@ local function query_synch()
 	end
 end
 
+local dbg_dsp = {
+	{
+		name = "display_add_debug",
+		eval = function() return gconfig_get("display_simple") == false; end,
+		label = "Add Display",
+		kind = "value",
+		hint = "(name)",
+		validator = function() return true; end,
+		handler = function(ctx, val)
+			display_simulate_add(val,
+				200 + math.random(100), 200 + math.random(600));
+		end
+	},
+	{
+		name = "display_remove_debug",
+		eval = function() return gconfig_get("display_simple") == false; end,
+		label = "Remove Display",
+		kind = "value",
+		hint = "(name)",
+		validator = function() return true; end,
+		handler = function(ctx, val)
+			display_simulate_remove(val);
+		end
+	}
+};
+
 -- DPMS toggle (force-on, force-off, toggle) / all or individual
 -- ICC Profile (one, all)
 local display_menu = {
@@ -43,6 +69,22 @@ local display_menu = {
 		submenu = true,
 		force = true,
 		handler = function() return query_synch(); end
+	},
+	{
+		name = "display_cycle",
+		label = "Cycle Active",
+		kind = "action",
+		eval = function() return display_alive() > 1; end,
+		handler = grab_global_function("display_cycle")
+	},
+	{
+		name = "display_debug",
+		label = "Debug",
+		kind = "action",
+		eval = function() return DEBUGLEVEL > 0; end,
+		submenu = true,
+		force = true,
+		handler = dbg_dsp
 	},
 };
 

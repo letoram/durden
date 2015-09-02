@@ -17,10 +17,13 @@ local defaults = {
 	borderw = 1,
 	bordert = 0,
 
+-- set to empty or "" to disable
+	extcon_path = "durden",
+
 -- MANUAL/REQURES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.
-	display_simple = true,
+	display_simple = false,
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
@@ -35,13 +38,18 @@ local defaults = {
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
 	mouse_focus_event = "click", -- motion, hover
-	mouse_remember_position = true,
+	mouse_remember_position = false,
 	mouse_factor = 1.0,
 	mouse_autohide = false,
 	mouse_dblclick_step = 12,
 	mouse_hidetime = 40,
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
+
+-- used as a workaround for mouse-control issues when we cannot get
+-- relative samples etc. due to being in a windows mode with different
+-- scaling parameters.
+	mouse_hardlock = true,
 
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some
