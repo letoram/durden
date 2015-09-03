@@ -44,6 +44,8 @@ end
 function display_manager_init()
 	displays[1] = {
 		tiler = tiler_create(VRESW, VRESH, {});
+		w = VRESW,
+		h = VRESH
 	};
 
 	displays.simple = gconfig_get("display_simple");
@@ -97,8 +99,9 @@ local function redraw_simulate()
 			move_image(displays[i].rt, x, 0);
 			resize_image(displays[i].rt, w, VRESH - font_sz);
 			show_image(displays[i].rt);
-			local rstr = string.format("%s%d - %s",
+			local rstr = string.format("%s%d @ %d * %d- %s",
 				i == displays.main and "\\#00ff00" or "\\#ffffff", i,
+				displays[i].w, displays[i].h,
 				displays.name and displays.name or "no name"
 			);
 			local text = render_text(rstr);
@@ -126,6 +129,8 @@ function display_simulate_add(name, width, height)
 		set_context_attachment(WORLDID);
 		local nd = {tiler = tiler_create(width, height, {})};
 		table.insert(displays, nd);
+		nd.w = width;
+		nd.h = height;
 		nd.rt = nd.tiler:set_rendertarget(true);
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
@@ -166,6 +171,7 @@ function display_cycle_active()
 	displays.main = nd;
 	set_context_attachment(displays[displays.main].rt);
 	mouse_querytarget(displays[displays.main].rt);
+	redraw_simulate();
 end
 
 -- migrate the ownership of a single workspace to another display
