@@ -1721,7 +1721,7 @@ local function tiler_swapleft(wm, deep, resel)
 		local oldi = wnd.parent.children[li];
 		wnd_swap(wnd, oldi, deep);
 		if (resel) then oldi:select(); end
-	elseif (ind == 1) then
+	elseif (ind == 1 and wnd.parent.parent) then
 		local root_node = wnd.parent;
 		while (root_node.parent.parent) do
 			root_node = root_node.parent;
@@ -1747,7 +1747,7 @@ local function tiler_swapright(wm, deep, resel)
 		local oldi = wnd.parent.children[li];
 		wnd_swap(wnd, oldi, deep);
 		if (resel) then oldi:select(); end
-	elseif (ind == 1) then
+	elseif (ind == 1 and wnd.parent.parent) then
 		local root_node = wnd.parent;
 		while (root_node.parent.parent) do
 			root_node = root_node.parent;

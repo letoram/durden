@@ -695,6 +695,13 @@ local toplevel = {
 		handler = browse_internal
 	},
 	{
+		name = "launch",
+		label = "Launch",
+		kind = "action",
+		eval = function() return #(list_targets()) > 0; end,
+		handler = grab_global_function("query_launch")
+	},
+	{
 		name = "global_menu",
 		label = "Global Menu",
 		kind = "action",
