@@ -45,11 +45,13 @@ function display_manager_init()
 	displays[1] = {
 		tiler = tiler_create(VRESW, VRESH, {});
 		w = VRESW,
-		h = VRESH
+		h = VRESH,
+		name = "default"
 	};
 
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
+	displays[1].tiler.name = "default";
 
 	if (not displays.simple) then
 		displays[1].rt = displays[1].tiler:set_rendertarget(true);
@@ -102,7 +104,7 @@ local function redraw_simulate()
 			local rstr = string.format("%s%d @ %d * %d- %s",
 				i == displays.main and "\\#00ff00" or "\\#ffffff", i,
 				displays[i].w, displays[i].h,
-				displays.name and displays.name or "no name"
+				displays[i].name and displays[i].name or "no name"
 			);
 			local text = render_text(rstr);
 			show_image(text);
@@ -131,6 +133,8 @@ function display_simulate_add(name, width, height)
 		table.insert(displays, nd);
 		nd.w = width;
 		nd.h = height;
+		nd.name = name;
+		nd.tiler.name = name;
 		nd.rt = nd.tiler:set_rendertarget(true);
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
@@ -175,13 +179,22 @@ function display_cycle_active()
 end
 
 -- migrate the ownership of a single workspace to another display
-function display_migrate_ws(ws, display)
-	if (ws.wm == display) then
+function display_migrate_ws(disp, dstname)
+	local dsp2;
+	for i,v in ipairs(displays) do
+		if (v.name == dstname) then
+			dsp2 = v;
+			break;
+		end
+	end
+
+	if (not dsp2) then
 		return;
 	end
 
--- recursive detach/attach to all vids associated with the ws,
--- could probably be done by setting another target-rt
+	if (#disp.spaces[disp.space_ind].children > 0) then
+		disp.spaces[disp.space_ind]:migrate(dsp2.tiler);
+	end
 end
 
 -- the active displays is the rendertarget that will (initially) create new
@@ -192,14 +205,40 @@ function active_display()
 	return displays[displays.main].tiler;
 end
 
-function display_alive()
-	local rv = 1;
-	for k,v in ipairs(displays) do
-		if (not v.orphan) then
-			rv = rv + 1;
+function all_displays()
+	local i = 0;
+	local c = #displays;
+	return function()
+		i = i + 1;
+		return (i <= c) and displays[i] or nil;
+	end
+end
+
+function all_windows()
+	local tbl = {};
+	for i,v in ipairs(displays) do
+		for j,k in ipairs(v.tiler.windows) do
+			table.insert(tbl, k);
 		end
 	end
-	return rv;
+
+	local i = 0;
+	local c = #tbl;
+	return function()
+		i = i + 1;
+		return (i <= c) and tbl[i] or nil;
+	end
+end
+
+function displays_alive(filter)
+	local res = {};
+
+	for k,v in ipairs(displays) do
+		if (not v.orphan and (not filter or k ~= displays.main)) then
+			table.insert(res, v.name);
+		end
+	end
+	return res;
 end
 
 function display_tick()

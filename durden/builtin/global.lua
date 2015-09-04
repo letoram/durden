@@ -74,7 +74,7 @@ local display_menu = {
 		name = "display_cycle",
 		label = "Cycle Active",
 		kind = "action",
-		eval = function() return display_alive() > 1; end,
+		eval = function() return gconfig_get("display_simple") == false; end,
 		handler = grab_global_function("display_cycle")
 	},
 	{
@@ -528,6 +528,13 @@ local workspace_menu = {
 		label = "Find Tagged Window",
 		kind = "action",
 		handler = function() grab_global_function("switch_wnd_bytag")(); end
+	},
+	{
+		name = "workspace_migrate",
+		label = "Migrate Display",
+		kind = "action",
+		handler = grab_global_function("migrate_ws_bydspname"),
+		eval = function() return gconfig_get("display_simple") == false; end
 	}
 };
 

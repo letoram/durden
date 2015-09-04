@@ -109,6 +109,8 @@ local function build_shaders()
 end
 build_shaders();
 
+local create_workspace = function() end
+
 local function linearize(wnd)
 	local res = {};
 	local dive = function(wnd, df)
@@ -241,6 +243,22 @@ local function wnd_deselect(wnd)
 	run_event(wnd, "deselect");
 end
 
+-- recursively resolve the relation hierarchy and return a list
+-- of vids that are linked to a specific vid
+local function get_hier(vid)
+	local ht = {};
+
+	local level = function(hf, vid)
+		for i,v in ipairs(image_children(vid)) do
+			table.insert(ht, v);
+			hf(hf, v);
+		end
+	end
+
+	level(level, vid);
+	return ht;
+end
+
 local function wnd_select(wnd, source)
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
@@ -367,6 +385,85 @@ local function workspace_inactivate(space, noanim, negdir)
 	else
 		hide_image(space.anchor);
 	end
+end
+
+-- migrate window means:
+-- copy valuable properties, destroy then "add", including tiler.windows
+local function workspace_migrate(ws, newt)
+	local oldt = ws.wm;
+	if (oldt == display) then
+		return;
+	end
+
+-- find a free slot and locate the source slot
+	local dsti;
+	for i=1,10 do
+		if (newt.spaces[i] == nil or (
+			#newt.spaces[i].children == 0 and newt.spaces[i].label == nil)) then
+			dsti = i;
+			break;
+		end
+	end
+
+	local srci;
+	for i=1,10 do
+		if (oldt.spaces[i] == ws) then
+			srci = i;
+			break;
+		end
+	end
+
+	if (not dsti or not srci) then
+		return;
+	end
+
+-- add/remove from corresponding tilers, update status bars
+	workspace_inactivate(ws, true);
+	ws.wm = newt;
+	rendertarget_attach(newt.rtgt_id, ws.anchor, RENDERTARGET_DETACH);
+	link_image(ws.anchor, newt.anchor);
+
+	local wnd = linearize(ws);
+	for i,v in ipairs(wnd) do
+		v.wm = newt;
+		table.insert(newt.windows, v);
+		table.remove_match(oldt.windows, v);
+	end
+	oldt.spaces[srci] = create_workspace(oldt, false);
+
+-- switch rendertargets
+	local list = get_hier(ws.anchor);
+	for i,v in ipairs(list) do
+		rendertarget_attach(newt.rtgt_id, v, RENDERTARGET_DETACH);
+	end
+
+	if (dsti == newt.space_ind) then
+		workspace_activate(ws, true);
+		newt.selected = oldt.selected;
+	end
+
+	oldt.selected = nil;
+
+	order_image(oldt.order_anchor,
+		#oldt.windows * WND_RESERVED + 2 * WND_RESERVED);
+	order_image(newt.order_anchor,
+		#newt.windows * WND_RESERVED + 2 * WND_RESERVED);
+
+	newt.spaces[dsti] = ws;
+
+	local olddisp = active_display();
+	set_context_attachment(newt.rtgt_id);
+	ws:resize();
+	if (valid_vid(ws.label_id)) then
+		delete_image(ws.label_id);
+		mouse_droplistener(ws.tile_ml);
+		ws.label_id = nil;
+		print("removed label and listener");
+	end
+	newt:update_statusbar();
+
+	set_context_attachment(olddisp.rtgt_id);
+	oldt:update_statusbar();
 end
 
 -- undo / redo the effect that deselect will hide the active window
@@ -613,8 +710,8 @@ local function workspace_destroy(space)
 		space.children[1]:destroy();
 	end
 
-	if (valid_vid(space.rendertarget)) then
-		delete_image(space.rendertarget);
+	if (valid_vid(space.rtgt_id)) then
+		delete_image(space.rtgt_id);
 	end
 
 	if (space.label_id ~= nil) then
@@ -661,18 +758,21 @@ local function workspace_resize(space)
 end
 
 local function workspace_label(space, lbl)
-	delete_image(space.label_id);
-	space.label_id = nil;
+	if (valid_vid(space.label_id)) then
+		delete_image(space.label_id);
+		space.label_id = nil;
+	end
 	space.label = lbl;
 	space.wm:update_statusbar();
 end
 
-local function create_workspace(wm, anim)
+create_workspace = function(wm, anim)
 	local res = {
 		activate = workspace_activate,
 		inactivate = workspace_inactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
+		migrate = workspace_migrate,
 
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
@@ -1323,6 +1423,42 @@ local function wnd_addhandler(wnd, ev, fun)
 	table.insert(wnd.handlers[ev], fun);
 end
 
+local function wnd_migrate(wnd, tiler)
+	if (tiler == wnd.wm) then
+		return;
+	end
+
+-- select next in line
+	wnd:prev();
+	if (wnd.wm.selected == wnd) then
+		if (wnd.children[1] ~= nil) then
+			wnd.children[1]:select();
+		else
+			wnd.wm.selected = nil;
+		end
+	end
+
+-- reassign children to parent
+	for i,v in ipairs(wnd.children) do
+		table.insert(wnd.parent.children, v);
+	end
+	wnd.children = {};
+	for i,v in ipairs(get_hier(wnd)) do
+		rendertarget_attach(tiler.rtgt_id, v, RENDERTARGET_DETACH);
+	end
+	local ind = table.find_i(wnd.parent.children, wnd);
+	table.remove(wnd.parent.children, ind);
+
+-- change association with wm and relayout old one
+	table.remove_match(wnd.wm.windows, wnd);
+	wnd.wm:resize();
+	wnd.wm = tiler;
+
+-- employ relayouting hooks to currently active ws
+	tiler.spaces[tiler.space_ind]:reassign(wnd);
+	wnd:select();
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -1766,37 +1902,19 @@ end
 local function tiler_rebuild_border()
 	local bw = gconfig_get("borderw");
 	build_shaders();
-	for a,b in pairs(displays) do
-		for i,v in ipairs(b.windows) do
-			local old_bw = v.border_w;
-			v.pad_left = v.pad_left - old_bw + bw;
-			v.pad_right = v.pad_right - old_bw + bw;
-			v.pad_top = v.pad_top - old_bw + bw;
-			v.pad_bottom = v.pad_bottom - old_bw + bw;
-			v.border_w = bw;
-			if (v.space.mode == "tile" or v.space.mode == "float") then
-				move_image(v.titlebar, v.border_w, v.border_w);
-				resize_image(v.titlebar,
-				v.width - v.border_w * 2, gconfig_get("tbar_sz"));
-			end
+	for v in all_windows() do
+		local old_bw = v.border_w;
+		v.pad_left = v.pad_left - old_bw + bw;
+		v.pad_right = v.pad_right - old_bw + bw;
+		v.pad_top = v.pad_top - old_bw + bw;
+		v.pad_bottom = v.pad_bottom - old_bw + bw;
+		v.border_w = bw;
+		if (v.space.mode == "tile" or v.space.mode == "float") then
+			move_image(v.titlebar, v.border_w, v.border_w);
+			resize_image(v.titlebar,
+			v.width - v.border_w * 2, gconfig_get("tbar_sz"));
 		end
 	end
-end
-
--- recursively resolve the relation hierarchy and return a list
--- of vids that are linked to a specific vid
-local function get_hier(vid)
-	local ht = {};
-
-	local level = function(hf, vid)
-		for i,v in ipairs(image_children(vid)) do
-			table.insert(ht, v);
-			hf(hf, v);
-		end
-	end
-
-	level(level, vid);
-	return ht;
 end
 
 local function tiler_rendertarget(wm, set)
@@ -1821,6 +1939,7 @@ local function tiler_rendertarget(wm, set)
 		delete_image(rt);
 		wm.rtgt_id = nil;
 	end
+	image_texfilter(wm.rtgt_id, FILTER_NONE);
 	return wm.rtgt_id;
 end
 

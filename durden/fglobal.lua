@@ -145,6 +145,15 @@ gf["switch_ws_byname"] = function()
 	);
 end
 
+gf["migrate_ws_bydspname"] = function()
+	local dsp = displays_alive(true);
+	if (#dsp > 0) then
+		active_display():lbar(tiler_lbarforce(dsp, function(cfstr)
+			display_migrate_ws(active_display(), cfstr);
+		end));
+	end
+end
+
 gf["display_cycle"] = function() display_cycle_active(); end
 
 gf["swap_left"] = function() active_display():swap_left(); end
@@ -309,14 +318,11 @@ gf["mouse_sensitivity"] = function(val)
 end
 
 local function allgain(val)
-	for k,v in pairs(displays) do
-		for i,j in ipairs(v.windows) do
-			if (j.source_audio) then
-				audio_gain(j.source_audio,
-					val * (j.source_gain and j.source_gain or 1.0),
-			  	gconfig_get("gain_fade")
-				);
-			end
+	for wnd in all_windows() do
+		if (wnd.source_audio) then
+			audio_gain(wnd.source_audio,
+				val * (wnd.source_gain and wnd.source_gain or 1.0),
+		  	gconfig_get("gain_fade"));
 		end
 	end
 end
