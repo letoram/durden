@@ -102,29 +102,29 @@ are being implemented, we have the following list:
 - [ ] Screen-Rotate Trigger
 - [x] Resource Browser
 - [ ] IPC
-  -  [x] Basic Notification Bar Control
+  -  [x] Basic Notification Bar Control (i3status, ...)
+  -  [ ] Scripted UI control, external events
 - [ ] Input
   - [ ] Gaming Devices
     - [ ] Analog Calibration
-  - [x] Focus-Follows-Mouse
+  - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [x] Drag Reposition/Resize in Float
-  - [x] Mouse Scale Factors
-  - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Mouse-Hover Focus
-  - [ ] Mouse Follows Selection
+  - [x] Mouse Scale Factors
+  - [x] Mouse Follows Selection
+  - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
+  - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
-  - [ ] Per/Window Keyremapping
-  - [ ] Keyboard layout hotswapping
   - [ ] Lock-input-to-Window
-  - [ ] LED keybinding highlights (k70 etc. kbds)
+  - [ ] LED key-state highlights (k70 etc. kbds)
 - [ ] Internationalization
   - [ ] Menu Translations
   - [ ] Foreign IME
-  - [ ] Unicode Binding
-  - [ ] Swappable Layouts
+  - [ ] Keyboard layout hotswapping
   - [ ] Per-Keyboard Layout
+   - [ ] Custom Unicode Binding
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [ ] Cloning Windows
@@ -150,15 +150,16 @@ are being implemented, we have the following list:
   - [ ] Videos
 - [ ] Security Measures
   - [ ] Visual Privilege Indicator
-  - [ ] Toggle external listener support
+  - [ ] Toggle external connection on/off support
   - [ ] Limit subsurfaces per window
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
-  - [ ] Resolution Switching
+  - [ ] Display Resolution Switching
   - [x] Synchronization Strategy Switching
   - [x] Offscreen Workspace Rendering
-  - [ ] Migrate Workspaces Between Displays
+  - [x] Migrate Workspaces Between Displays
   - [ ] Home Workspace to Preferred Display
+  - [ ] Power Management Controls
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
   - [ ] Redshift Color Temperature

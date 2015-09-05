@@ -348,6 +348,13 @@ local window_menu = {
 		label = "Reassign",
 		kind = "action",
 		handler = grab_shared_function("reassign_wnd_bywsname");
+	},
+	{
+		name = "window_migrate_display",
+		label = "Migrate Display",
+		kind = "action",
+		handler = grab_shared_function("migrate_wnd_bydspname"),
+		eval = function() return gconfig_get("display_simple") == false; end
 	}
 };
 
