@@ -331,6 +331,12 @@ local input_menu = {
 		handler = grab_global_function("rebind_meta")
 	},
 	{
+		name = "input_bind_utf8",
+		kind = "action",
+		label = "Bind UTF-8",
+		handler = grab_global_function("bind_utf8")
+	},
+	{
 		name = "input_mouse_menu",
 		kind = "action",
 		label = "Mouse",

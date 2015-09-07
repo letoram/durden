@@ -9,6 +9,18 @@
 local displays = {
 };
 
+local function get_disp(name)
+	local found, foundi;
+	for k,v in ipairs(displays) do
+		if (v.name == name) then
+			found = v;
+			foundi = k;
+			break;
+		end
+	end
+	return found, foundi;
+end
+
 function durden_display_state(action, id)
 	if (displays[1].tiler.debug_console) then
 		displays[1].tiler.debug_console:system_event("display event: " .. action);
@@ -71,9 +83,9 @@ end
 function displays_each_wnd()
 end
 
--- if we're in "simulated" multidisplay- mode, for development and
--- testing, there's the need to dynamically add and remove to see that
--- workspace migration works smoothly.
+-- if we're in "simulated" multidisplay- mode, for development and testing,
+-- there's the need to dynamically add and remove to see that workspace
+-- migration works smoothly.
 local function redraw_simulate()
 	local ac = 0;
 	for i=1,#displays do
@@ -116,16 +128,11 @@ local function redraw_simulate()
 end
 
 function display_simulate_add(name, width, height)
-	local found;
-	for k,v in ipairs(displays) do
-		if (v.name == name) then
-			found = v;
-			break;
-		end
-	end
+	local found = get_disp(name);
 
 	if (found) then
 		found.orphan = false;
+		image_resize_storage(found.rt);
 		show_image(found.rt);
 	else
 		set_context_attachment(WORLDID);
@@ -145,24 +152,24 @@ function display_simulate_add(name, width, height)
 	redraw_simulate();
 end
 
+-- temp until we have real version
+function image_resize_storage(vid, w, h)
+end
+
 function display_simulate_remove(name)
-	local found, index;
-	for k,v in ipairs(displays) do
-		if (v.name == name) then
-			found = v;
-			index = k;
-			break;
-		end
-	end
+	local found, foundi = get_disp(name);
 
 	if (not found) then
 		warning("attempt remove unknown display");
 		return;
 	end
 
-	if (k == displays.main) then
+	if (foundi == displays.main) then
 		display_cycle_active(ws);
 	end
+
+	foundi.orphan = true;
+	image_resize_storage(foundi.rt, 32, 32);
 
 	redraw_simulate();
 end
