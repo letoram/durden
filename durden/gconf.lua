@@ -8,6 +8,7 @@
 -- here for the time being, will move with internationalization
 LBL_YES = "yes";
 LBL_NO = "no";
+LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
 
 local defaults = {
 	msg_timeout = 100,
@@ -20,7 +21,7 @@ local defaults = {
 -- set to empty or "" to disable
 	extcon_path = "durden",
 
--- MANUAL/REQURES RESTART: setting this to true possibly reduces latency,
+-- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.
 	display_simple = false,

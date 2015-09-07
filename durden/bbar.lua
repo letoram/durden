@@ -61,6 +61,19 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 	end
 end
 
+-- for the cases where we accept both a meta - key binding or a regular press,
+-- typically odd / weird cases like game devices
+local function bbar_input_keyorcombo(wm, sym, iotbl, lutsym, mstate)
+	if (sym == SYSTEM_KEYS["meta_1"] or sym == SYSTEM_KEYS["meta_2"]) then
+		return;
+	end
+
+-- unless we have meta, expand modifiers into lutsym and use that
+	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+	lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
+	bbar_input_key(wm, lutsym, iotbl, lutsym, mstate);
+end
+
 -- enforce meta + other key for bindings
 local function bbar_input_combo(wm, sym, iotbl, lutsym, mstate)
 	if (mstate) then
@@ -185,7 +198,8 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	end
 
 	iostatem_repeat(0, 0);
-	wm:set_input_lock(key and bbar_input_key or bbar_input_combo);
+	wm:set_input_lock(key == true and bbar_input_key or
+		((key == false or key == nil)) and bbar_input_combo or bbar_input_keyorcombo);
 	wm.input_ctx = ctx;
 	ctx:label(msg);
 	return ctx;

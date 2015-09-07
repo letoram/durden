@@ -217,13 +217,30 @@ end
 
 gf["drop_custom"] = dispatch_reset;
 
+gf["bind_utf8"] = function()
+	local bwt = gconfig_get("bind_waittime");
+	tiler_bbar(active_display(),
+		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				active_display():lbar(function(ctx, instr, done, lastv)
+					if (done) then
+						print("string:", instr);
+					end
+				end, ctx, {label = "specify byte-sequence (like 00 01 ff):"});
+			end
+		end
+	);
+end
+
 gf["bind_custom"] = function()
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
 	tiler_bbar(active_display(),
-		string.format("Press and hold the desired combination, %s to Abort",
-			SYSTEM_KEYS["cancel"]), false, bwt, nil, SYSTEM_KEYS["cancel"],
+		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
 				launch_menu_hook(function(path)
