@@ -127,6 +127,7 @@ are being implemented, we have the following list:
    - [ ] Custom Unicode Binding
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
+  - [x] Window Canvas to Workspace Background Image
   - [ ] Cloning Windows
   - [ ] State Transfers
   - [ ] Debugging Subwindows

@@ -215,6 +215,17 @@ gf["rebind_basic"] = function()
 	runsym(runsym);
 end
 
+sf["wnd_tobg"] = function(wnd)
+	local disp = active_display();
+	local space = disp.spaces[disp.space_ind];
+		if (valid_vid(space.background)) then
+		delete_image(space.background);
+	end
+	space.background = null_surface(space.wm.width, space.wm.height);
+	show_image(space.background);
+	image_sharestorage(wnd.canvas, space.background);
+end
+
 gf["drop_custom"] = dispatch_reset;
 
 gf["bind_utf8"] = function()
