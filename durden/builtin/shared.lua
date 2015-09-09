@@ -350,6 +350,12 @@ local window_menu = {
 		handler = grab_shared_function("reassign_wnd_bywsname");
 	},
 	{
+		name = "window_tobackground",
+		label = "Workspace-Background",
+		kind = "action",
+		handler = grab_shared_function("wnd_tobg");
+	},
+	{
 		name = "window_migrate_display",
 		label = "Migrate Display",
 		kind = "action",
