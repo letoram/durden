@@ -1255,36 +1255,44 @@ local function wnd_mousemotion(ctx, vid, x, y)
 	end
 end
 
+local function dist(x, y)
+	return math.sqrt(x * x + y * y);
+end
+
 -- returns: [ul, u, ur, r, lr, l, ll, l]
 local function wnd_borderpos(wnd)
 	local x, y = mouse_xy();
 	local props = image_surface_resolve_properties(wnd.anchor);
-	local hw = wnd.width * 0.5;
-	local hh = wnd.height * 0.5;
-	local dx = x - (props.x + hw);
-	local dy = y - (props.y + hh);
-	local cpd = math.sqrt(dx * dx + dy * dy);
-	local mcpd = math.sqrt(hw * hw + hh * hh);
 
--- we don't want perfect corners, just close enough
-	if (cpd / mcpd > 0.95) then
-		if (dx > 0 and dy > 0) then
-			return "dr";
-		elseif (dx > 0 and dy < 0) then
-			return "ur";
-		elseif (dx < 0 and dy > 0) then
-			return "dl";
-		else
-			return "ul";
-		end
+-- hi-clamp radius, select corner by distance (priority)
+	local cd_ul = dist(x-props.x, y-props.y);
+	local cd_ur = dist(props.x + props.width - x, y - props.y);
+	local cd_ll = dist(x-props.x, props.y + props.height - y);
+	local cd_lr = dist(props.x + props.width - x, props.y + props.height - y);
+
+	local lim = 16 < (0.5 * props.width) and 16 or (0.5 * props.width);
+	if (cd_ur < lim) then
+		return "ur";
+	elseif (cd_lr < lim) then
+		return "lr";
+	elseif (cd_ll < lim) then
+		return "ll";
+	elseif (cd_ul < lim) then
+		return "ul";
+	end
+
+	local dle = x-props.x;
+	local dre = props.x+props.width-x;
+	local due = y-props.y;
+	local dde = props.y+props.height-y;
+
+	local dx = dle < dre and dle or dre;
+	local dy = due < dde and due or dde;
+
+	if (dx < dy) then
+		return dle < dre and "l" or "r";
 	else
-		local k = (math.abs(dx) == 0 and 0.0001 or dx) /
-			(math.abs(dy) == 0 and 0.0001 or dy);
-		if (-hh <= k * hw and k * hw <= hh) then
-			return dy < 0 and "u" or "d";
-		else
-			return dx < 0 and "l" or "r";
-		end
+		return due < dde and "u" or "d";
 	end
 end
 
@@ -1319,9 +1327,9 @@ local dir_lut = {
 	 u = {"rz_up", {0, -1, 0, -1}},
 	ur = {"rz_diag_l", {1, -1, 0, -1}},
 	 r = {"rz_right", {1, 0, 0, 0}},
-	dr = {"rz_diag_r", {1, 1, 0, 0}},
+	lr = {"rz_diag_r", {1, 1, 0, 0}},
 	 d = {"rz_down", {0, 1, 0, 0}},
-	dl = {"rz_diag_l", {-1, 1, -1, 0}},
+	ll = {"rz_diag_l", {-1, 1, -1, 0}},
 	 l = {"rz_left", {-1, 0, -1, 0}}
 };
 
