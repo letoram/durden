@@ -188,16 +188,18 @@ function display_cycle_active()
 	redraw_simulate();
 end
 
--- migrate the ownership of a single workspace to another display
-function display_migrate_ws(disp, dstname)
-	local dsp2;
-	for i,v in ipairs(displays) do
-		if (v.name == dstname) then
-			dsp2 = v;
-			break;
-		end
+function display_migrate_wnd(wnd, dstname)
+	local dsp2 = get_disp(dstname);
+	if (not dsp2) then
+		return;
 	end
 
+	wnd:migrate(dsp2.tiler);
+end
+
+-- migrate the ownership of a single workspace to another display
+function display_migrate_ws(disp, dstname)
+	local dsp2 = get_disp(dstname);
 	if (not dsp2) then
 		return;
 	end

@@ -145,6 +145,15 @@ gf["switch_ws_byname"] = function()
 	);
 end
 
+sf["migrate_wnd_bydspname"] = function(wnd)
+	local dsp = displays_alive(true);
+	if (#dsp > 0) then
+		active_display():lbar(tiler_lbarforce(dsp, function(cfstr)
+			display_migrate_wnd(wnd, cfstr);
+		end));
+	end
+end
+
 gf["migrate_ws_bydspname"] = function()
 	local dsp = displays_alive(true);
 	if (#dsp > 0) then
