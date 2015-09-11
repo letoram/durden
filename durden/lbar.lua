@@ -4,17 +4,8 @@
 -- Description: lbar- is an input dialog- style bar intended for
 -- durden that supports some completion as well.
 
--- Since we have kerning and other fun properties to consider, the caret pos is
--- calculated by internally rendering a sliced substring to the proper
--- character offset and then counting pixels.
-local function clip_msg(msg, low, ulim)
-	local uc = string.utf8ralign(msg, ulim)
-	return string.gsub(string.sub(msg, low, uc), "\\", "\\\\");
-end
-
 local function inp_str(ictx, ul)
-	return gconfig_get("lbar_textstr") .. clip_msg(
-		ictx.inp.msg, ictx.inp.chofs, ictx.inp.chofs + (ul and ul or ictx.inp.ulim) );
+	return gconfig_get("lbar_textstr") .. ictx.inp.view_str();
 end
 
 local pending = nil;
@@ -138,7 +129,8 @@ local function update_caret(ictx)
 	if (pos == 0) then
 		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
 	else
-		local w, h = text_dimensions(inp_str(ictx, pos-1));
+		local msg = ictx.inp:caret_str();
+		local w, h = text_dimensions(gconfig_get("lbar_textstr") .. msg);
 		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
 	end
 end
@@ -224,20 +216,22 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 -- special handling, if the user hasn't typed anything, map caret manipulation
 -- to completion navigation as well)
-	if (ictx.inp) then
-		if (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and (
-			sym == ictx.inp.caret_left or sym == ictx.inp.caret_right)) then
-			ictx.csel = (sym==ictx.inp.caret_right) and (ictx.csel+1) or (ictx.csel-1);
-			update_completion_set(wm, ictx, ictx.set);
-			return;
-		end
-	end
+--	if (ictx.inp) then
+--		if (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and (
+--			sym == ictx.inp.caret_left or sym == ictx.inp.caret_right)) then
+--			ictx.csel = (sym==ictx.inp.caret_right) and (ictx.csel+1) or (ictx.csel-1);
+--			update_completion_set(wm, ictx, ictx.set);
+--			return;
+--		end
+--	end
 
 -- note, inp ulim can be used to force a sliding view window, not
 -- useful here but still implemented.
 	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
 		lbar_ih(wm, ictx, inp, sym, caret);
 	end);
+
+	ictx.ulim = 10;
 
 -- unfortunately the haphazard lbar design makes filtering / forced reverting
 -- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't

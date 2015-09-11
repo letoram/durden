@@ -97,6 +97,8 @@ local function redraw_simulate()
 	if (valid_vid(displays.txt_anchor)) then
 		delete_image(displays.txt_anchor);
 	end
+	displays.txt_anchor = null_surface(1,1);
+	show_image(displays.txt_anchor);
 
 	set_context_attachment(WORLDID);
 	local font_sz = gconfig_get("font_sz");
@@ -120,6 +122,7 @@ local function redraw_simulate()
 			);
 			local text = render_text(rstr);
 			show_image(text);
+			link_image(text, displays.txt_anchor);
 			move_image(text, x, VRESH - font_sz);
 			x = x + w;
 		end
