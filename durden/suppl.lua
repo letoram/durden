@@ -90,7 +90,6 @@ function string.utf8len(src, ofs)
 end
 
 function string.insert(src, msg, ofs, limit)
-	local xlofs = src:translateofs(ofs, 1);
 	if (limit == nil) then
 		limit = string.len(msg) + ofs;
 	end
@@ -106,8 +105,8 @@ function string.insert(src, msg, ofs, limit)
 		end
 	end
 
-	return string.sub(src, 1, xlofs - 1) .. msg ..
-		string.sub(src, xlofs, string.len(src)), string.len(msg);
+	return string.sub(src, 1, ofs - 1) .. msg ..
+		string.sub(src, ofs, string.len(src)), string.len(msg);
 end
 
 function string.delete_at(src, ofs)
@@ -150,6 +149,15 @@ function table.remove_match(tbl, match)
 	return nil;
 end
 
+function string.dump(msg)
+	local bt ={};
+	for i=1,string.len(msg) do
+		local ch = string.byte(msg, i);
+		bt[i] = ch;
+	end
+	print(table.concat(bt, ','));
+end
+
 function table.remove_vmatch(tbl, match)
 	if (tbl == nil) then
 		return;
@@ -187,6 +195,27 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
+local function u8valid(str)
+	local find = string.find;
+  local i, len = 1, #str
+  while i <= len do
+		if i == find(str, "[%z\1-\127]", i) then i = i + 1
+		elseif i == find(str, "[\194-\223][\123-\191]", i) then i = i + 2
+		elseif i == find(str,        "\224[\160-\191][\128-\191]", i)
+			or i == find(str, "[\225-\236][\128-\191][\128-\191]", i)
+ 			or i == find(str,        "\237[\128-\159][\128-\191]", i)
+			or i == find(str, "[\238-\239][\128-\191][\128-\191]", i) then i = i + 3
+		elseif i == find(str,        "\240[\144-\191][\128-\191][\128-\191]", i)
+			or i == find(str, "[\241-\243][\128-\191][\128-\191][\128-\191]", i)
+			or i == find(str,        "\244[\128-\143][\128-\191][\128-\191]", i) then i = i + 4
+    else
+      return false, i
+    end
+  end
+
+  return true
+end
+
 -- will return ctx (initialized if nil in the first call), to track state
 -- between calls iotbl matches the format from _input(iotbl) and sym should be
 -- the symbol table lookup. The redraw(ctx, caret_only) will be called when
@@ -196,7 +225,7 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		caretpos = 1,
 		limit = -1,
 		chofs = 1,
-		ulim = VRESW,
+		ulim = VRESW / gconfig_get("font_sz"),
 		msg = "",
 		undo = function(ctx)
 			if (ctx.oldmsg) then
@@ -207,12 +236,21 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		end,
 		caret_left   = SYSTEM_KEYS["caret_left"],
 		caret_right  = SYSTEM_KEYS["caret_right"],
-		caret_down   = SYSTEM_KEYS["caret_down"],
 		caret_home   = SYSTEM_KEYS["caret_home"],
 		caret_end    = SYSTEM_KEYS["caret_end"],
 		caret_delete = SYSTEM_KEYS["caret_delete"],
 		caret_erase  = SYSTEM_KEYS["caret_erase"]
 	} or ctx;
+
+	ctx.view_str = function()
+		local rofs = string.utf8ralign(ctx.msg, ctx.chofs + ctx.ulim);
+		local str = string.sub(ctx.msg, string.utf8ralign(ctx.msg, ctx.chofs), rofs-1);
+		return str;
+	end
+
+	ctx.caret_str = function()
+		return string.sub(ctx.msg, ctx.chofs, ctx.caretpos - 1);
+	end
 
 	local caretofs = function()
 		if (ctx.caretpos - ctx.chofs + 1 > ctx.ulim) then
@@ -241,7 +279,6 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 
 	elseif (sym == ctx.caret_left) then
 		ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
-
 		if (ctx.caretpos < ctx.chofs) then
 			ctx.chofs = ctx.chofs - ctx.ulim;
 			ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
@@ -288,14 +325,14 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 
 		ctx.oldmsg = ctx.msg;
 		ctx.oldpos = ctx.caretpos;
-		ctx.msg, nch = string.insert(ctx.msg,
-			keych, ctx.caretpos, ctx.nchars);
+		ctx.msg, nch = string.insert(ctx.msg, keych, ctx.caretpos, ctx.nchars);
 
 		ctx.caretpos = ctx.caretpos + nch;
 		caretofs();
 		redraw(ctx);
 	end
 
+	assert(u8valid(ctx.msg) == true);
 	return ctx;
 end
 
