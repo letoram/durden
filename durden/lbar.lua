@@ -25,7 +25,7 @@ local function update_completion_set(wm, ctx, set)
 	end
 
 -- track if set changes as we will need to reset
-	if (set ~= ctx.set) then
+	if (not ctx.set or #set ~= #ctx.set) then
 		ctx.cofs = 1;
 		ctx.csel = 1;
 	end
@@ -216,14 +216,23 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 -- special handling, if the user hasn't typed anything, map caret manipulation
 -- to completion navigation as well)
---	if (ictx.inp) then
---		if (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and (
---			sym == ictx.inp.caret_left or sym == ictx.inp.caret_right)) then
---			ictx.csel = (sym==ictx.inp.caret_right) and (ictx.csel+1) or (ictx.csel-1);
---			update_completion_set(wm, ictx, ictx.set);
---			return;
---		end
---	end
+	if (ictx.inp) then
+		local upd = false;
+		if (string.len(ictx.inp.msg) < ictx.inp.caretpos and
+			sym == ictx.inp.caret_right) then
+			ictx.csel = ictx.csel + 1;
+			upd = true;
+		elseif (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and
+			sym == ictx.inp.caret_left) then
+			ictx.csel = ictx.csel - 1;
+			upd = true;
+		end
+
+		if (upd) then
+			update_completion_set(wm, ictx, ictx.set);
+			return;
+		end
+	end
 
 -- note, inp ulim can be used to force a sliding view window, not
 -- useful here but still implemented.
