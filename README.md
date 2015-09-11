@@ -124,11 +124,12 @@ are being implemented, we have the following list:
   - [ ] Foreign IME
   - [ ] Keyboard layout hotswapping
   - [ ] Per-Keyboard Layout
-   - [ ] Custom Unicode Binding
+  - [ ] Custom Unicode Binding
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [x] Window Canvas to Workspace Background Image
   - [ ] Cloning Windows
+  - [x] Migrate Window Between Displays
   - [ ] State Transfers
   - [ ] Debugging Subwindows
   - [ ] Overlay Surfaces

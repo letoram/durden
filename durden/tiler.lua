@@ -986,8 +986,10 @@ local function wnd_prev(mw, level)
 	end
 end
 
-local function wnd_reassign(wnd, ind)
+local function wnd_reassign(wnd, ind, ninv)
 -- for reassign by name, resolve to index
+	local newspace = nil;
+
 	if (type(ind) == "string") then
 		for k,v in pairs(wnd.wm.spaces) do
 			if (v.label == ind) then
@@ -997,9 +999,12 @@ local function wnd_reassign(wnd, ind)
 		if (type(ind) == "string") then
 			return;
 		end
+		newspace = wnd.wm.spaces[ind];
+	elseif (type(ind) == "table") then
+		newspace = ind;
+	else
+		newspace = wnd.wm.spaces[ind];
 	end
-
-	local newspace = wnd.wm.spaces[ind];
 
 -- don't switch unless necessary
 	if (wnd.space == newspace or wnd.fullscreen) then
@@ -1064,7 +1069,9 @@ local function wnd_reassign(wnd, ind)
 	if (not(newspace.selected and newspace.selected.fullscreen)) then
 		newspace.selected = wnd;
 		newspace:resize();
-		newspace:inactivate(true);
+		if (not ninv) then
+			newspace:inactivate(true);
+		end
 	end
 
 	oldspace:resize();
@@ -1451,20 +1458,25 @@ local function wnd_migrate(wnd, tiler)
 		table.insert(wnd.parent.children, v);
 	end
 	wnd.children = {};
-	for i,v in ipairs(get_hier(wnd)) do
+	for i,v in ipairs(get_hier(wnd.anchor)) do
 		rendertarget_attach(tiler.rtgt_id, v, RENDERTARGET_DETACH);
 	end
+	rendertarget_attach(tiler.rtgt_id, wnd.anchor, RENDERTARGET_DETACH);
 	local ind = table.find_i(wnd.parent.children, wnd);
 	table.remove(wnd.parent.children, ind);
 
+	if (wnd.fullscreen) then
+		wnd.space:tile();
+	end
+
 -- change association with wm and relayout old one
+	local oldsp = wnd.space;
 	table.remove_match(wnd.wm.windows, wnd);
-	wnd.wm:resize();
 	wnd.wm = tiler;
 
 -- employ relayouting hooks to currently active ws
-	tiler.spaces[tiler.space_ind]:reassign(wnd);
-	wnd:select();
+	local dsp = tiler.spaces[tiler.space_ind];
+	wnd:assign_ws(dsp, true);
 end
 
 local function wnd_create(wm, source, opts)
@@ -1510,6 +1522,7 @@ local function wnd_create(wm, source, opts)
 		set_prefix = wnd_prefix,
 		add_handler = wnd_addhandler,
 		resize = wnd_resize,
+		migrate = wnd_migrate,
 		resize_effective = wnd_effective_resize,
 		select = wnd_select,
 		deselect = wnd_deselect,

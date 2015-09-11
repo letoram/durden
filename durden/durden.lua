@@ -111,7 +111,7 @@ function durden_launch(vid, title, prefix)
 	wnd:add_handler("resize", tile_changed);
 	show_image(vid);
 	wnd.dispatch = shared_dispatch();
-	target_updatehandler(vid, def_handler);
+	reg_window(wnd, vid);
 end
 
 -- recovery from crash is handled just like newly launched windows
@@ -142,8 +142,9 @@ function spawn_terminal()
 	end
 end
 
+local swm = {};
 function def_handler(source, stat)
-	local wnd = active_display():find_window(source);
+	local wnd = swm[source];
 	assert(wnd ~= nil);
 
 	if (DEBUGLEVEL > 0 and active_display().debug_console) then
@@ -194,6 +195,12 @@ function def_handler(source, stat)
 		wnd.source_audio = stat.source_audio;
 	end
 end
+-- switch handler, register on-destroy handler and a source-wnd map
+function reg_window(wnd, source)
+	swm[source] = wnd;
+	target_updatehandler(source, def_handler);
+	wnd:add_handler("destroy", function() swm[source] = nil; end);
+end
 
 function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
@@ -206,7 +213,7 @@ function new_connection(source, status)
 		wnd.external = source;
 		wnd:add_handler("resize", tile_changed);
 		wnd.dispatch = shared_dispatch();
-		target_updatehandler(source, def_handler);
+		reg_window(wnd, source);
 		tile_changed(wnd);
 	end
 end
