@@ -11,7 +11,7 @@
 -- based on what type it has. Supported ones are registered into this table.
 -- init, bindings, settings, commands
 --
-archtypes = {};
+archetypes = {};
 
 function durden()
 	system_load("mouse.lua")(); -- mouse gestures
@@ -44,7 +44,7 @@ function durden()
 			local tbl = system_load("atypes/" .. v, false);
 			tbl = tbl and tbl() or nil;
 			if (tbl and tbl.atype) then
-				archtypes[tbl.atype] = tbl;
+				archetypes[tbl.atype] = tbl;
 			end
 		end
 	end
@@ -107,10 +107,16 @@ end
 local function sel_input(wnd)
 	local cnt = 0;
 	SYMTABLE:translation_overlay(wnd.u8_translation);
+	iostatem_repeat(
+		wnd.kbd_period and wnd.kbd_period or
+		gconfig_get("kbd_period"), wnd.kbd_delay and wnd.kbd_delay or
+		gconfig_get("kbd_delay")
+	);
 end
 
 local function desel_input(wnd)
 	SYMTABLE:translation_overlay({});
+	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
 end
 
 function durden_launch(vid, title, prefix)
@@ -199,11 +205,16 @@ function def_handler(source, stat)
 -- this can come multiple times if the title of the window is changed,
 -- (whih happens a lot with some types)
 	elseif (stat.kind == "registered") then
-		local atbl = archtypes[stat.segkind];
+		local atbl = archetypes[stat.segkind];
 		if (atbl == nil or wnd.atype ~= nil) then
 			return;
 		end
 		wnd.actions = atbl.actions;
+		if (atbl.props) then
+			for k,v in pairs(atbl.props) do
+				wnd[k] = v;
+			end
+		end
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.source_audio = stat.source_audio;
 	end

@@ -145,9 +145,9 @@ local function gconfig_setup()
 		if (v) then
 			if (type(vl) == "number") then
 				defaults[k] = tonumber(v);
--- no packing format for tables, ignore for now, since its a trusted
--- context, we can use concat / split without much issue, although store_key
--- should really support deep table serialization
+-- no packing format for tables, ignore for now, since its a trusted context,
+-- we can use concat / split without much issue, although store_key should
+-- really support deep table serialization
 			elseif (type(vl) == "table") then
 				defaults[k] = defaults[k];
 			elseif (type(vl) == "boolean") then
