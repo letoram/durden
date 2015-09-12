@@ -51,6 +51,7 @@ function durden()
 
 	display_manager_init();
 	SYMTABLE = system_load("symtable.lua")();
+	SYMTABLE:load_translation();
 
 	if (gconfig_get("mouse_hardlock")) then
 		toggle_mouse_grab(MOUSE_GRABON);
@@ -103,12 +104,24 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 end
 
+local function sel_input(wnd)
+	local cnt = 0;
+	SYMTABLE:translation_overlay(wnd.u8_translation);
+end
+
+local function desel_input(wnd)
+	SYMTABLE:translation_overlay({});
+end
+
 function durden_launch(vid, title, prefix)
 	local wnd = active_display():add_window(vid);
 	wnd.external = vid;
+	wnd.u8_translation = {};
 	wnd:set_title(title and title or "?");
 	wnd:set_prefix(prefix);
 	wnd:add_handler("resize", tile_changed);
+	wnd:add_handler("select", sel_input);
+	wnd:add_handler("deselect", desel_input);
 	show_image(vid);
 	wnd.dispatch = shared_dispatch();
 	reg_window(wnd, vid);
@@ -275,7 +288,7 @@ function durden_input(iotbl, fromim)
 		end
 
 	elseif (iotbl.translated) then
-		local sym = SYMTABLE[ iotbl.keysym ];
+		local sym = SYMTABLE:patch(iotbl);
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, active_display().input_lock)) then
 			local sel = active_display().selected;
@@ -293,6 +306,7 @@ function durden_input(iotbl, fromim)
 end
 
 function durden_shutdown()
+	SYMTABLE:store_translation();
 	gconfig_shutdown();
 end
 

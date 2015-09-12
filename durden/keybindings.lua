@@ -101,7 +101,7 @@ function dispatch_reset(save)
 		local rst = {};
 		for i,v in ipairs(match_keys("custk_%")) do
 			local pos, stop = string.find(v, "=", 1);
-			local key = string.sub(v, 7, pos - 1);
+			local key = string.sub(v, 1, pos-1);
 			rst[key] = "";
 		end
 

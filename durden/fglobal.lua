@@ -237,21 +237,60 @@ end
 
 gf["drop_custom"] = dispatch_reset;
 
-gf["bind_utf8"] = function()
+local function str_to_u8(instr)
+-- drop spaces and make sure we have %2
+	instr = string.gsub(instr, " ", "");
+	local len = string.len(instr);
+	if (len % 2 ~= 0 or len > 8) then
+		return;
+	end
+
+	local s = "";
+	for i=1,len,2 do
+		local num = tonumber(string.sub(instr, i, i+1), 16);
+		if (not num) then
+			return nil;
+		end
+		s = s .. string.char(num);
+	end
+
+	return s;
+end
+
+local function bind_u8(hook)
 	local bwt = gconfig_get("bind_waittime");
+	local tbhook = function(sym, done)
+		if (done) then
+			active_display():lbar(
+			function(ctx, instr, done, lastv)
+				if (done) then
+					instr = str_to_u8(instr);
+					if (instr and utf8valid(instr)) then
+							hook(sym, instr);
+					else
+						active_display():message("invalid utf-8 sequence specified");
+					end
+				end
+			end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
+		end
+	end;
+
 	tiler_bbar(active_display(),
 		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
-		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
-		function(sym, done)
-			if (done) then
-				active_display():lbar(function(ctx, instr, done, lastv)
-					if (done) then
-						print("string:", instr);
-					end
-				end, ctx, {label = "specify byte-sequence (like 00 01 ff):"});
-			end
-		end
-	);
+		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"], tbhook);
+end
+
+gf["bind_utf8"] = function()
+	bind_u8(function(sym, str)
+		SYMTABLE:add_translation(sym, str);
+	end);
+end
+
+sf["bind_utf8"] = function(wnd)
+	bind_u8(function(sym, str)
+		wnd.u8_translation[sym] = str;
+		SYMTABLE:translation_overlay(wnd.u8_translation);
+	end);
 end
 
 gf["bind_custom"] = function()
@@ -320,15 +359,17 @@ gf["query_launch"] = function()
 			if (cfgs == nil or #cfgs == 0) then
 				return;
 			end
+			local vid;
 			if (#cfgs > 1) then
 				active_display():lbar(tiler_lbarforce(cfgs, function(cfstr)
-					local vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
-					if (valid_vid(vid)) then
-						durden_launch(vid, cfstr, str);
-					end
+					vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
 				end), {}, {label = str .. ", Config:", force_completion = true});
 			else
-				launch_target(str, cfg[1], LAUNCH_INTERNAL, def_handler);
+				vid = launch_target(str, cfgs[1], LAUNCH_INTERNAL, def_handler);
+			end
+
+			if (valid_vid(vid)) then
+				durden_launch(vid, cfstr, str);
 			end
 		end), {}, {label = "Target:", force_completion = true});
 	end

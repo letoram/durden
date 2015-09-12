@@ -124,7 +124,7 @@ are being implemented, we have the following list:
   - [ ] Foreign IME
   - [ ] Keyboard layout hotswapping
   - [ ] Per-Keyboard Layout
-  - [ ] Custom Unicode Binding
+  - [x] Custom Unicode Binding (global and per window)
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [x] Window Canvas to Workspace Background Image
