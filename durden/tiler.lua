@@ -1230,7 +1230,7 @@ local function wnd_mousepress(ctx, vid)
 	reorder_space(wnd.space);
 end
 
--- need to take into account that the surface may be scaled
+-- FIXME: need to take into account that the surface may be scaled
 local function wnd_mousemotion(ctx, vid, x, y)
 	local wnd = ctx.wnd;
 

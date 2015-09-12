@@ -140,6 +140,39 @@ local label_menu = {
 	}
 };
 
+local kbd_menu = {
+	{
+		name = "target_bind_utf8",
+		kind = "action",
+		label = "Bind UTF-8",
+		eval = function(ctx)
+			local sel = active_display().selected;
+			return (sel and sel.u8_translation) and true or false;
+		end,
+		handler = grab_shared_function("bind_utf8")
+	},
+	{
+		name = "target_keyboard_repeat",
+		label = "Repeat Period",
+		kind = "value",
+		initial = function() return tostring(0); end,
+		hint = "cps (0:disabled - 100)",
+		validator = gen_valid_num(0, 100);
+		handler = function()
+			warning("set repeat rate");
+		end
+	},
+	{
+		name = "target_keyboard_delay",
+		label = "Initial Delay",
+		kind = "value",
+		initial = function() return tostring(0); end,
+		hint = "ms (0:disable - 1000)",
+		handler = function()
+			warning("set repeat delay");
+		end
+	},
+};
 
 local input_menu = {
 	{
@@ -160,7 +193,7 @@ local input_menu = {
 		kind = "action",
 		submenu = true,
 		force = true,
-		handler = keyboard_menu
+		handler = kbd_menu
 	}
 };
 
@@ -385,6 +418,7 @@ local shared_actions = {
 		label = "Input",
 		submenu = true,
 		kind = "action",
+		force = true,
 		handler = input_menu
 	},
 	{
@@ -455,30 +489,6 @@ if (DEBUGLEVEL > 0) then
 		handler = debug_menu
 	});
 end
-
-local keyboard_menu = {
-	{
-		name = "target_keyboard_repeat",
-		label = "Repeat Period",
-		kind = "value",
-		initial = function() return tostring(0); end,
-		hint = "cps (0:disabled - 100)",
-		validator = gen_valid_num(0, 100);
-		handler = function()
-			warning("set repeat rate");
-		end
-	},
-	{
-		name = "target_keyboard_delay",
-		label = "Initial Delay",
-		kind = "value",
-		initial = function() return tostring(0); end,
-		hint = "ms (0:disable - 1000)",
-		handler = function()
-			warning("set repeat delay");
-		end
-	}
-};
 
 local sdisp = {
 	input_label = function(wnd, source, tbl)

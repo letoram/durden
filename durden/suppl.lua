@@ -195,25 +195,30 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
-local function u8valid(str)
-	local find = string.find;
+-- reformated PD snippet
+function utf8valid(str)
   local i, len = 1, #str
+	local find = string.find;
   while i <= len do
-		if i == find(str, "[%z\1-\127]", i) then i = i + 1
-		elseif i == find(str, "[\194-\223][\123-\191]", i) then i = i + 2
-		elseif i == find(str,        "\224[\160-\191][\128-\191]", i)
-			or i == find(str, "[\225-\236][\128-\191][\128-\191]", i)
- 			or i == find(str,        "\237[\128-\159][\128-\191]", i)
-			or i == find(str, "[\238-\239][\128-\191][\128-\191]", i) then i = i + 3
-		elseif i == find(str,        "\240[\144-\191][\128-\191][\128-\191]", i)
-			or i == find(str, "[\241-\243][\128-\191][\128-\191][\128-\191]", i)
-			or i == find(str,        "\244[\128-\143][\128-\191][\128-\191]", i) then i = i + 4
+		if (i == find(str, "[%z\1-\127]", i)) then
+			i = i + 1;
+		elseif (i == find(str, "[\194-\223][\123-\191]", i)) then
+			i = i + 2;
+		elseif (i == find(str, "\224[\160-\191][\128-\191]", i)
+			or (i == find(str, "[\225-\236][\128-\191][\128-\191]", i))
+ 			or (i == find(str, "\237[\128-\159][\128-\191]", i))
+			or (i == find(str, "[\238-\239][\128-\191][\128-\191]", i))) then
+			i = i + 3;
+		elseif (i == find(str, "\240[\144-\191][\128-\191][\128-\191]", i)
+			or (i == find(str, "[\241-\243][\128-\191][\128-\191][\128-\191]", i))
+			or (i == find(str, "\244[\128-\143][\128-\191][\128-\191]", i))) then
+			i = i + 4;
     else
-      return false, i
+      return false, i;
     end
   end
 
-  return true
+  return true;
 end
 
 -- will return ctx (initialized if nil in the first call), to track state
@@ -332,7 +337,7 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		redraw(ctx);
 	end
 
-	assert(u8valid(ctx.msg) == true);
+	assert(utf8valid(ctx.msg) == true);
 	return ctx;
 end
 

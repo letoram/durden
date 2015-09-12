@@ -1,9 +1,5 @@
---
--- No Copyright Claimed, Public Domain
---
-
--- Directly conversion of the SDL_keysym.h
-
+-- various symbol table conversions for handling underlying input
+-- layer deficiencies, customized remapping etc.
 local symtable = {};
  symtable[0] = "UNKNOWN";
  symtable["UNKNOWN"] = 0;
@@ -481,16 +477,84 @@ local symtable = {};
  tmptbl[271] = nil;
  tmptbl[272] = "=";
 
-	symtable.tochar = function(ind)
-		if (ind >= 32 and ind <= 122) then
-			return symtable[ind];
-		elseif (ind >= 256 and ind <= 265) then
-			return symtable[ (ind - 256) + 48 ];
-		elseif (ind >= 266 and ind <= 272) then
-			return tmptbl[ind];
-		else
-			return nil;
+symtable.tochar = function(ind)
+	if (ind >= 32 and ind <= 122) then
+		return symtable[ind];
+	elseif (ind >= 256 and ind <= 265) then
+		return symtable[ (ind - 256) + 48 ];
+	elseif (ind >= 266 and ind <= 272) then
+		return tmptbl[ind];
+	else
+		return nil;
+	end
+end
+
+symtable.u8lut = {};
+symtable.u8basic = {};
+
+-- apply utf8 translation, add generic
+symtable.patch = function(tbl, iotbl)
+	local sym = tbl[iotbl.keysym];
+
+	if (sym and iotbl.active) then
+		if (tbl.u8lut[sym]) then
+			iotbl.utf8 = tbl.u8lut[sym];
 		end
- end
+	else
+		iotbl.utf8 = "";
+	end
+
+	return sym;
+end
+
+-- for filling the utf8- field with customized bindings
+symtable.add_translation = function(tbl, combo, u8)
+	tbl.u8lut[combo] = u8;
+	tbl.u8basic[combo] = u8;
+end
+
+-- uses the utf8k_ind:key=value for escaping
+symtable.load_translation = function(tbl)
+	for i,v in ipairs(match_keys("utf8k_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		local npos, nstop = string.find(v, string.char(255), stop+1);
+
+		local key = string.sub(v, stop+1, npos-1);
+		local val = string.sub(v, nstop+1);
+		tbl:add_translation(key, val);
+	end
+end
+
+symtable.store_translation = function(tbl)
+-- drop current list
+	local rst = {};
+	for i,v in ipairs(match_keys("utf8k_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		local key = string.sub(v, 1, pos-1);
+		rst[key] = "";
+	end
+	store_key(rst);
+
+-- use numeric indices due to restrictions on key values and use the
+-- invalid 255 char as split
+	local ind = 1;
+	local out = {};
+	for k,v in pairs(tbl.u8basic) do
+		out["utf8k_" .. tostring(ind)] = k .. string.char(255) .. v;
+	end
+	store_key(out);
+end
+
+-- switch overlay (for multiple windows with different remapping)
+symtable.translation_overlay = function(tbl, combotbl)
+	tbl.u8lut = {};
+	for k,v in pairs(tbl.u8basic) do
+		tbl.u8lut[k] = v;
+	end
+
+	for k,v in pairs(combotbl) do
+		tbl.u8lut[k] = v;
+	end
+end
 
 return symtable;
