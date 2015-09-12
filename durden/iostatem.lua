@@ -38,7 +38,6 @@ end
 
 -- delay in ms, period in cps
 function iostatem_repeat(period, delay)
-	devstate.delay = 1;
 	if (period <= 0) then
 		devstate.period = 0;
 	else
@@ -76,6 +75,6 @@ function iostatem_tick()
 end
 
 function iostatem_init()
-	kbd_repeat(0, 0);
 	devstate.devices = {};
+	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
 end

@@ -25,5 +25,10 @@ skiptbl["Skip 4"] = 4;
 return {
 	atype = "game",
 	actions = {},
-	settings = {}
+
+-- override anything of the window defaults?
+	props = {
+		kbd_period = 0,
+		kbd_delay = 0
+	}
 };
