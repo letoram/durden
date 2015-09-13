@@ -1,12 +1,8 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: Durden is a simple tiling window manager for Arcan that
--- re-uses much of the same support scripts as the Senseye project. This
--- code module covers basic I/O and event routing, and basic setup.
---
+-- Description: Main setup for the Arcan/Durden desktop environment
 
---
 -- Every connection can get a set of additional commands and configurations
 -- based on what type it has. Supported ones are registered into this table.
 -- init, bindings, settings, commands
@@ -120,6 +116,9 @@ local function desel_input(wnd)
 end
 
 function durden_launch(vid, title, prefix)
+	if (not valid_vid(vid)) then
+		return;
+	end
 	local wnd = active_display():add_window(vid);
 	wnd.external = vid;
 	wnd.u8_translation = {};
@@ -182,7 +181,8 @@ function def_handler(source, stat)
 		end
 	end
 
-	if (stat.kind == "resized") then
+	if (stat.kind == "framestatus") then
+	elseif (stat.kind == "resized") then
 		wnd.space:resize();
 		wnd.source_audio = stat.source_audio;
 		audio_gain(stat.source_audio,
@@ -200,7 +200,6 @@ function def_handler(source, stat)
 -- if an lbar is active that requires this target window, that should be
 -- dropped as well to avoid a race
 		wnd:destroy();
-
 	elseif (stat.kind == "ident") then
 -- this can come multiple times if the title of the window is changed,
 -- (whih happens a lot with some types)
@@ -216,7 +215,12 @@ function def_handler(source, stat)
 			end
 		end
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
+		wnd.labels = atbl.labels and atbl.labels or {};
 		wnd.source_audio = stat.source_audio;
+	elseif (stat.kind == "segment_request") then
+-- eval based on requested subtype etc. if needed
+		local id = accept_target();
+		durden_launch(id, "subseg", "subseg");
 	end
 end
 -- switch handler, register on-destroy handler and a source-wnd map
@@ -230,15 +234,9 @@ function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
 		local vid = target_alloc(gconfig_get("extcon_path"), new_connection);
 		image_tracetag(vid, "nonauth_connection");
-
-	elseif (status.kind == "resized") then
-		resize_image(source, status.width, status.height);
-		local wnd = active_display():add_window(source);
-		wnd.external = source;
-		wnd:add_handler("resize", tile_changed);
-		wnd.dispatch = shared_dispatch();
-		reg_window(wnd, source);
-		tile_changed(wnd);
+		if (status) then
+			durden_launch(source, "external", "");
+		end
 	end
 end
 
@@ -299,21 +297,21 @@ function durden_input(iotbl, fromim)
 		end
 
 	elseif (iotbl.translated) then
-		local sym = SYMTABLE:patch(iotbl);
+		local sym, lutsym = SYMTABLE:patch(iotbl);
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
 		if (not dispatch_lookup(iotbl, sym, active_display().input_lock)) then
 			local sel = active_display().selected;
-			if (sel) then
+			if (not sel) then
+				return;
+			end
 			if (valid_vid(sel.external, TYPE_FRAMESERVER)) then
--- possible injection site for higher level inputs
+				iotbl.label = sel.labels[lutsym];
 				target_input(sel.external, iotbl);
 			elseif (sel.key_input) then
 				sel:key_input(sym, iotbl);
 			end
-			end
 		end
 	end
-
 end
 
 function durden_shutdown()

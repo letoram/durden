@@ -93,19 +93,24 @@ local function build_bindmenu(wide)
 	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
 		return;
 	end
-
+	local bwt = gconfig_get("bind_waittime");
 	local res = {};
---	for k,v in ipairs(wnd.input_labels) do
---		table.insert(res, {
----			name = "target_input_" .. v[1],
---			label = v[1],
---			handler = function()
---				tiler_bbar(active_display(),
---					string.format("Bind: %s, hold desired combination.",
---					);
---			end
---		});
---	end
+	for k,v in ipairs(wnd.input_labels) do
+		table.insert(res, {
+			name = "target_input_" .. v[1],
+			label = v[1],
+			kind = "action",
+			handler = function()
+				tiler_bbar(active_display(),
+					string.format("Bind: %s, hold desired combination.", v[1]),
+					"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
+					function(sym)
+						wnd.labels[sym] = v[1];
+					end
+				);
+			end
+		});
+	end
 
 	return res;
 end
@@ -127,7 +132,7 @@ local label_menu = {
 		hint = "Action:",
 		submenu = true,
 		force = true,
-		handler = function() build_bindmenu(true); end
+		handler = function() return build_bindmenu(true); end
 	},
 	{
 		name = "target_input_globalbind",
@@ -136,7 +141,7 @@ local label_menu = {
 		hint = "Action:",
 		submenu = true,
 		force = true,
-		handler = function() build_bindmenu(false); end
+		handler = function() return build_bindmenu(false); end
 	}
 };
 

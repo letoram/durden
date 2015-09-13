@@ -131,7 +131,7 @@ are being implemented, we have the following list:
   - [ ] Cloning Windows
   - [x] Migrate Window Between Displays
   - [ ] State Transfers
-  - [ ] Debugging Subwindows
+  - [x] Debugging Subwindows
   - [ ] Overlay Surfaces
   - [ ] Customized Titlebar
   - [ ] Customized Cursors, Cursorhints
