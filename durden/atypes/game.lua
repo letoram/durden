@@ -24,7 +24,18 @@ skiptbl["Skip 4"] = 4;
 
 return {
 	atype = "game",
-	actions = {},
+	actions = {
+	{
+		name = "gamewnd_reqdbg",
+		label = "Debug-Subwindow",
+		kind = "action",
+		handler = function(wnd)
+			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+				target_graphmode(wnd.external, 1);
+			end
+		end
+	},
+	},
 
 -- override anything of the window defaults?
 	props = {

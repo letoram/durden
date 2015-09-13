@@ -495,16 +495,22 @@ symtable.u8basic = {};
 -- apply utf8 translation, add generic
 symtable.patch = function(tbl, iotbl)
 	local sym = tbl[iotbl.keysym];
+	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
+-- two support layers at the moment, normal press or with modifiers.
+-- the missing one is diacretics (` + a -> á etc.)
 	if (sym and iotbl.active) then
 		if (tbl.u8lut[sym]) then
 			iotbl.utf8 = tbl.u8lut[sym];
+		elseif (tbl.u8lut[lutsym]) then
+			iotbl.utf8 = tbl.u8lut[lutsym];
 		end
 	else
 		iotbl.utf8 = "";
 	end
 
-	return sym;
+	return sym, lutsym;
 end
 
 -- for filling the utf8- field with customized bindings

@@ -1494,6 +1494,9 @@ local function wnd_create(wm, source, opts)
 		children = {},
 		relatives = {},
 		dispatch = {},
+-- matching between the symtable LUTSYMS and abstract
+-- labels that an external target may setup / define
+		labels = {},
 		handlers = {
 			destroy = {},
 			resize = {},

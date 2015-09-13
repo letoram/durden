@@ -130,13 +130,18 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
+function image_resize_storage(rt, w, h)
+	warning("image_resize_storage() bugged");
+end
+
 function display_simulate_add(name, width, height)
 	local found = get_disp(name);
 
+-- for each workspace, check if they are homed to the display
+-- being added, and, if space exists, migrate
 	if (found) then
 		found.orphan = false;
-		image_resize_storage(found.rt);
-		show_image(found.rt);
+		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
 		local nd = {tiler = tiler_create(width, height, {})};
@@ -155,10 +160,6 @@ function display_simulate_add(name, width, height)
 	redraw_simulate();
 end
 
--- temp until we have real version
-function image_resize_storage(vid, w, h)
-end
-
 function display_simulate_remove(name)
 	local found, foundi = get_disp(name);
 
@@ -171,8 +172,8 @@ function display_simulate_remove(name)
 		display_cycle_active(ws);
 	end
 
-	foundi.orphan = true;
-	image_resize_storage(foundi.rt, 32, 32);
+	found.orphan = true;
+	image_resize_storage(found.rt, 32, 32);
 
 	redraw_simulate();
 end
