@@ -70,9 +70,9 @@ local defaults = {
 -- built-in terminal defaults
 	term_rows = 80,
 	term_cols = 25,
-	term_cellw = 8,
-	term_cellh = 8,
-	term_font_hint = "mono", -- normal, none
+	term_cellw = 12,
+	term_cellh = 12,
+	term_font_hint = "none", -- normal, none
 	term_font = "terminal.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
 	term_fgcol = {0xff, 0xff, 0xff},

@@ -52,6 +52,28 @@ local dbg_dsp = {
 	}
 };
 
+local function query_dispmenu(ind)
+	local modes = video_displaymodes(ind);
+	if (modes and #modes > 0) then
+		local mtbl = {};
+		local got_dynamic = true;
+		for k,v in ipairs(modes) do
+			if (v.dynamic) then
+				got_dynamic = true;
+			else
+				table.insert(mtbl, {
+					name = "set_res_" .. tostring(k),
+					label = string.format("%d*%d, %d bits @%d Hz",
+						v.width, v.height, v.depth, v.refresh),
+					kind = "action",
+					handler = function() video_displaymodes(ind, v.modeid); end
+				});
+			end
+		end
+		return mtbl;
+	end
+end
+
 -- DPMS toggle (force-on, force-off, toggle) / all or individual
 -- ICC Profile (one, all)
 local display_menu = {
@@ -60,6 +82,13 @@ local display_menu = {
 		label = "Rescan",
 		kind = "action",
 		handler = function() video_displaymodes(); end
+	},
+	{
+		name = "display_list",
+		label = "Displays",
+		kind = "action",
+		submenu = true,
+		handler = function() return query_dispmenu(0); end
 	},
 	{
 		name = "synchronization_strategies",

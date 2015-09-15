@@ -30,11 +30,32 @@ function durden_display_state(action, id)
 -- to platform specific actions e.g. virtual terminal switching, assume
 -- keystate change between display resets.
 	if (action == "reset") then
+		warning("reset");
 		dispatch_meta_reset();
 		return;
 	end
 
 	if (action == "added") then
+		local ids = {};
+
+		for k,v in pairs(id) do
+			if (v.primary) then
+				print("primary is:", v.displayid);
+			end
+			if (not table.find_i(ids, v.displayid)) then
+				table.insert(ids, v.displayid);
+			end
+		end
+
+		for k,v in ipairs(ids) do
+			local data, hash = video_displaydescr(v);
+			if (data) then
+				print("hash is", hash);
+			else
+				print("no data on", v);
+			end
+		end
+
 		if (displays[id] == nil) then
 			displays[id] = {};
 -- find out if there is a known profile for this display, activate
@@ -42,6 +63,7 @@ function durden_display_state(action, id)
 -- correction profile, RGB tuning etc.
 		end
 	elseif (action == "removed") then
+		warning("removed " .. tostring(id));
 		if (displays[id] == nil) then
 			warning("lost unknown display: " .. tostring(id));
 			return;
