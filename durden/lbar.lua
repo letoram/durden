@@ -198,7 +198,7 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 			local base = ictx.inp.msg;
 
 			if (ictx.force_completion or string.len(base) == 0) then
-				if (ictx.set[ictx.csel]) then
+				if (ictx.set and ictx.set[ictx.csel]) then
 					base = type(ictx.set[ictx.csel]) == "table" and
 						ictx.set[ictx.csel][3] or ictx.set[ictx.csel];
 				end

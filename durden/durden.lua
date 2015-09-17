@@ -95,6 +95,10 @@ function durden()
 end
 
 local function tile_changed(wnd, neww, newh, efw, efh)
+	if (not neww or not newh) then
+		return;
+	end
+
 	if (neww > 0 and newh > 0) then
 		target_displayhint(wnd.external, neww, newh);
 	end
