@@ -495,6 +495,10 @@ symtable.u8basic = {};
 -- apply utf8 translation, add generic
 symtable.patch = function(tbl, iotbl)
 	local sym = tbl[iotbl.keysym];
+	if (not sym) then
+		return;
+	end
+
 	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
 	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
