@@ -160,7 +160,7 @@ are being implemented, we have the following list:
   - [x] Synchronization Strategy Switching
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
-  - [ ] Home Workspace to Preferred Display
+  - [x] Home Workspace to Preferred Display
   - [ ] Power Management Controls
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
