@@ -35,8 +35,9 @@ local dbg_dsp = {
 		hint = "(name)",
 		validator = function() return true; end,
 		handler = function(ctx, val)
-			display_simulate_add(val,
-				200 + math.random(100), 200 + math.random(600));
+			display_simulate();
+			display_add(val,
+				200 + math.random(100), 200 + math.random(600), true);
 		end
 	},
 	{
@@ -47,7 +48,7 @@ local dbg_dsp = {
 		hint = "(name)",
 		validator = function() return true; end,
 		handler = function(ctx, val)
-			display_simulate_remove(val);
+			display_remove(val, true);
 		end
 	}
 };

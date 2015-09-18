@@ -1,12 +1,14 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: Display manager takes care of tracking and responding
--- to changes in displays and provides an interface for controlling
--- how workspaces are created and mapped to various displays.
+-- Description: The display- set of functions tracks connected displays
+-- and respond to plug/unplug events. They are also responsible for the
+-- creation of tiler- window managers and manual or automatic migration
+-- between window managers and their corresponding display.
 --
 
 local displays = {
+	simulate_md = false
 };
 
 local function get_disp(name)
@@ -20,6 +22,21 @@ local function get_disp(name)
 	end
 	return found, foundi;
 end
+
+local function autohome_spaces(ndisp)
+	for disp in all_displays() do
+		local tiler = disp.tiler;
+		if (tiler and tiler ~= ndisp.tiler) then
+			for i=1,10 do
+				if (tiler.spaces[i] and tiler.spaces[i].home and
+					tiler.spaces[i].home == ndisp.name) then
+					tiler.spaces[i]:migrate(ndisp.tiler);
+				end
+			end
+		end
+	end
+end
+
 
 function durden_display_state(action, id)
 	if (displays[1].tiler.debug_console) then
@@ -39,9 +56,6 @@ function durden_display_state(action, id)
 		local ids = {};
 
 		for k,v in pairs(id) do
-			if (v.primary) then
-				print("primary is:", v.displayid);
-			end
 			if (not table.find_i(ids, v.displayid)) then
 				table.insert(ids, v.displayid);
 			end
@@ -95,20 +109,14 @@ function display_manager_init()
 	end
 end
 
-function display_each_ws(name_only)
-end
-
--- get the workspaces to only orphaned
-function displays_orphan_ws()
-end
-
-function displays_each_wnd()
-end
-
 -- if we're in "simulated" multidisplay- mode, for development and testing,
 -- there's the need to dynamically add and remove to see that workspace
 -- migration works smoothly.
 local function redraw_simulate()
+	if (not displays.simulate_md) then
+		return;
+	end
+
 	local ac = 0;
 	for i=1,#displays do
 		if (not displays[i].orphan) then
@@ -152,7 +160,7 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
-function display_simulate_add(name, width, height)
+function display_add(name, width, height)
 	local found = get_disp(name);
 
 -- for each workspace, check if they are homed to the display
@@ -172,9 +180,11 @@ function display_simulate_add(name, width, height)
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
 		show_image(nd.rt);
+		found = nd;
 		set_context_attachment(displays[displays.main].rt);
 	end
 
+	autohome_spaces(found);
 	redraw_simulate();
 end
 
@@ -184,7 +194,7 @@ local function find_free_display(disp)
 	for i,v in ipairs(displays) do
 		if (not v.orphan and v ~= disp) then
 			for j=1,10 do
-				if (v.empty_space(j)) then
+				if (v.tiler:empty_space(j)) then
 					return v;
 				end
 			end
@@ -195,16 +205,16 @@ end
 -- sweep all used workspaces of the display and find new parents
 local function autoadopt_display(disp)
 	for i=1,10 do
-		if (not disp.space_empty(i)) then
+		if (not disp.tiler:empty_space(i)) then
 			local ddisp = find_free_display(disp);
-			local space = disp.spaces[i];
-			space:migrate(ddisp);
+			local space = disp.tiler.spaces[i];
+			space:migrate(ddisp.tiler);
 			space.home = disp.name;
 		end
 	end
 end
 
-function display_simulate_remove(name)
+function display_remove(name)
 	local found, foundi = get_disp(name);
 
 	if (not found) then
@@ -212,21 +222,25 @@ function display_simulate_remove(name)
 		return;
 	end
 
-	if (foundi == displays.main) then
-		display_cycle_active(ws);
-	end
-
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
+	hide_image(found.rt);
 
--- sweep displays, check of one has enough free workspace slots,
--- migrate into first and flag which display the workspace is actually
--- homed to
 	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
 		found.orphan = false;
 	end
 
+	if (foundi == displays.main) then
+		display_cycle_active(ws);
+	end
+
 	redraw_simulate();
+end
+
+-- should only be used for debugging, disables normal multidisplay
+-- and adds simulated ones on the main rendertarget
+function display_simulate()
+	displays.simulate_md = true;
 end
 
 function display_cycle_active()
