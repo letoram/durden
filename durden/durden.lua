@@ -148,12 +148,14 @@ function spawn_terminal()
 
 	local lstr = string.format(
 		"cell_w=%d:cell_h=%d:font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
-		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
+		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		gconfig_get("term_cellw"), gconfig_get("term_cellh"),
 		gconfig_get("term_font_hint"), gconfig_get("term_font"),
+		gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
-			("env=ARCAN_CONNPATH="..cp) or "");
+			("env=ARCAN_CONNPATH="..cp) or ""
+	);
 
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then

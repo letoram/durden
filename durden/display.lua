@@ -152,10 +152,6 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
-function image_resize_storage(rt, w, h)
-	warning("image_resize_storage() bugged");
-end
-
 function display_simulate_add(name, width, height)
 	local found = get_disp(name);
 
@@ -182,6 +178,32 @@ function display_simulate_add(name, width, height)
 	redraw_simulate();
 end
 
+-- linear search all spaces in all displays except disp and
+-- return the first empty one that is found
+local function find_free_display(disp)
+	for i,v in ipairs(displays) do
+		if (not v.orphan and v ~= disp) then
+			for j=1,10 do
+				if (v.empty_space(j)) then
+					return v;
+				end
+			end
+		end
+	end
+end
+
+-- sweep all used workspaces of the display and find new parents
+local function autoadopt_display(disp)
+	for i=1,10 do
+		if (not disp.space_empty(i)) then
+			local ddisp = find_free_display(disp);
+			local space = disp.spaces[i];
+			space:migrate(ddisp);
+			space.home = disp.name;
+		end
+	end
+end
+
 function display_simulate_remove(name)
 	local found, foundi = get_disp(name);
 
@@ -196,6 +218,13 @@ function display_simulate_remove(name)
 
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
+
+-- sweep displays, check of one has enough free workspace slots,
+-- migrate into first and flag which display the workspace is actually
+-- homed to
+	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
+		found.orphan = false;
+	end
 
 	redraw_simulate();
 end

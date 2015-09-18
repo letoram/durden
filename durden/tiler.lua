@@ -766,6 +766,11 @@ local function workspace_label(space, lbl)
 	space.wm:update_statusbar();
 end
 
+local function workspace_empty(wm, i)
+	return (wm.spaces[i] == nil or
+		(#wm.spaces[i].children == 0 and wm.spaces[i].label == nil));
+end
+
 create_workspace = function(wm, anim)
 	local res = {
 		activate = workspace_activate,
@@ -797,6 +802,7 @@ create_workspace = function(wm, anim)
 	link_image(res.anchor, wm.anchor);
 	ent_count = ent_count + 1;
 	res.wm = wm;
+	workspace_set(res, gconfig_get("ws_default"));
 	res:activate(anim);
 	return res;
 end
@@ -958,7 +964,7 @@ local function wnd_prev(mw, level)
 		return;
 	end
 
-	local mwm = mw.wm.spaces[mw.wm.space_ind].mode;
+	local mwm = mw.space.mode;
 	if (level or mwm == "tab" or mwm == "vtab") then
 		if (mw.parent.select) then
 			mw.parent:select();
@@ -1998,6 +2004,7 @@ function tiler_create(width, height, opts)
 		order_anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
 			unpack(gconfig_get("sbar_bg"))),
+		empty_space = workspace_empty,
 
 -- pre-alloc these as they will be re-used a lot
 		border_color = fill_surface(1, 1,
