@@ -653,12 +653,46 @@ local durden_workspace = {
 		handler = function(ctx, val)
 			gconfig_set("ws_autodestroy", val == LBL_YES);
 		end
+	},
+	{
+		name = "durden_ws_defmode",
+		label = "Default Mode",
+		kind = "value",
+		set = {"tile", "tab", "vtab", "float"},
+		initial = function() return tostring(gconfig_get("ws_default")); end,
+		handler = function(ctx, val)
+			gconfig_set("ws_default", val);
+		end
+	},
+	{
+		name = "durden_ws_autoadopt",
+		label = "Autoadopt",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		eval = function() return gconfig_get("display_simple") == false; end,
+		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
+		handler = function(ctx, val)
+			gconfig_set("ws_autoadopt", val == LBL_YES);
+		end
 	}
 };
 
-local durden_menu = {
+local config_terminal = {
 	{
-		name = "durden_visual",
+		name = "terminal_font_sz",
+		label = "Font Size",
+		kind = "value",
+		validator = gen_valid_num(1, 100),
+		initial = function() return tostring(gconfig_get("term_font_sz")); end,
+		handler = function(ctx, val)
+			gconfig_set("term_font_sz", tonumber(val));
+		end
+	},
+};
+
+local config_menu = {
+	{
+		name = "config_visual",
 		label = "Visual",
 		kind = "action",
 		submenu = true,
@@ -667,13 +701,21 @@ local durden_menu = {
 		handler = durden_visual
 	},
 	{
-		name = "durden_workspace",
+		name = "config_workspaces",
 		label = "Workspaces",
 		kind = "action",
 		submenu = true,
 		force = true,
 		hint = "Config Workspaces:",
 		handler = durden_workspace
+	},
+	{
+		name = "config_terminal",
+		label = "Terminal",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = config_terminal
 	}
 };
 
@@ -786,7 +828,7 @@ local toplevel = {
 		submenu = true,
 		force = true,
 		hint = "settings:",
-		handler = durden_menu
+		handler = config_menu
 	},
 	{
 		name = "audio",

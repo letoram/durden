@@ -34,7 +34,8 @@ local defaults = {
 	ws_transition_in = "fade",
 	ws_transition_out = "fade",
 	ws_autodestroy = false,
-	ws_default = "tile",
+	ws_autoadopt = true,
+	ws_default = "float",
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
@@ -72,6 +73,7 @@ local defaults = {
 	term_cols = 25,
 	term_cellw = 12,
 	term_cellh = 12,
+	term_font_sz = 12,
 	term_font_hint = "none", -- normal, none
 	term_font = "terminal.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
