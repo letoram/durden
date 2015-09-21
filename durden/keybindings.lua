@@ -152,14 +152,16 @@ function dispatch_load()
 		local pos, stop = string.find(v, "=", 1);
 		local key = string.sub(v, 7, pos - 1);
 		local val = string.sub(v, stop + 1);
-		tbl[key] = "!" .. val;
+		if (val and string.len(val) > 0) then
+			tbl[key] = "!" .. val;
+		end
 	end
 end
 
 function dispatch_custom(key, val)
 	local old = tbl[key];
-	tbl[key] = "!" .. val;
-	store_key("custk_" .. key, val);
+	tbl[key] = val and ("!" .. val) or nil;
+	store_key("custk_" .. key, val and val or "");
 	return old;
 end
 

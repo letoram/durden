@@ -37,7 +37,6 @@ local function autohome_spaces(ndisp)
 	end
 end
 
-
 function durden_display_state(action, id)
 	if (displays[1].tiler.debug_console) then
 		displays[1].tiler.debug_console:system_event("display event: " .. action);

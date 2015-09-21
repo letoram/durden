@@ -321,6 +321,20 @@ gf["bind_custom"] = function()
 	);
 end
 
+gf["unbind_combo"] = function()
+	local bwt = gconfig_get("bind_waittime");
+	tiler_bbar(active_display(),
+		string.format(LBL_UNBIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				dispatch_custom(sym, nil);
+				SYMTABLE:add_translation(sym, nil);
+				dispatch_load();
+			end
+		end);
+end
+
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
 gf["rebind_meta"] = function()
 	local bwt = gconfig_get("bind_waittime");

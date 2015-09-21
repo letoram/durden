@@ -374,6 +374,12 @@ local input_menu = {
 		handler = grab_global_function("rebind_meta")
 	},
 	{
+		name = "input_unbind",
+		kind = "action",
+		label = "Unbind",
+		handler = grab_global_function("unbind_combo")
+	},
+	{
 		name = "input_bind_utf8",
 		kind = "action",
 		label = "Bind UTF-8",
