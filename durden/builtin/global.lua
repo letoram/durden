@@ -308,6 +308,19 @@ local mouse_menu = {
 		end
 	},
 	{
+		name = "mouse_hardlock",
+		kind = "value",
+		label = "Hard Lock",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("mouse_hardlock") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_hardlock", val == LBL_YES);
+			toggle_mouse_grab(val == LBL_YES and MOUSE_GRABON or MOUSE_GRABOFF);
+		end
+	},
+	{
 		name = "mouse_hide_delay",
 		kind = "value",
 		label = "Autohide Delay",
