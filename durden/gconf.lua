@@ -9,6 +9,7 @@
 LBL_YES = "yes";
 LBL_NO = "no";
 LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
+LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Abort";
 
 local defaults = {
 	msg_timeout = 100,
@@ -51,7 +52,7 @@ local defaults = {
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
 -- scaling parameters.
-	mouse_hardlock = true,
+	mouse_hardlock = false,
 
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some

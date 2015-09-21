@@ -555,6 +555,14 @@ symtable.store_translation = function(tbl)
 	store_key(out);
 end
 
+symtable.list_keymaps = function(tbl)
+-- glob + eval against input platform, return a list
+end
+
+symtable.load_keymap = function(tbl, km)
+-- load / switch active keymap
+end
+
 -- switch overlay (for multiple windows with different remapping)
 symtable.translation_overlay = function(tbl, combotbl)
 	tbl.u8lut = {};
