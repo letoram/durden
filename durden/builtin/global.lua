@@ -785,12 +785,110 @@ local function browse_internal()
 	browse_file({}, ffmts, SHARED_RESOURCE, nil);
 end
 
+local uriopen_menu = {
+};
+
+local function get_remstr(val)
+	local sp = string.split(val, "@");
+	if (sp == nil or #sp == 1) then
+		return "host=" .. val;
+	end
+
+	local base = "";
+	local cred = string.split(sp[1], ":");
+	if (cred and #cred == 2) then
+		base = string.format("user=%s:password=%s:", cred[1], cred[2]);
+	else
+		base = string.format("password=%s:", sp[1]);
+	end
+
+	local disp = string.split(sp[2], "+");
+	if (disp and #disp == 2 and tonumber(disp[2])) then
+		local num = tonumber(disp[2]);
+		base = string.format("%shost=%s:port=%d", base, disp[1], num);
+	else
+		base = string.format("%shost=%s", base, disp[1]);
+	end
+
+	return base;
+end
+
+local function run_uri(val, feedmode)
+	local vid = launch_avfeed(val, feedmode);
+	if (valid_vid(vid)) then
+		durden_launch(vid, "", feedmode);
+	end
+end
+
+if (string.match(FRAMESERVER_MODES, "remoting") ~= nil) then
+	table.insert(uriopen_menu, {
+		name = "uriopen_remote",
+		label = "Remote Desktop",
+		kind = "value",
+		hint = "(user:pass@host+port)",
+		validator = function() return true; end,
+		handler = function(ctx, val)
+			local vid = launch_avfeed(get_remstr(val), "remoting");
+			durden_launch(vid, "", "remoting");
+		end;
+	});
+end
+
+if (string.match(FRAMESERVER_MODES, "decode") ~= nil) then
+	table.insert(uriopen_menu, {
+		name = "uriopen_decode",
+		label = "Media URL",
+		kind = "value",
+		hint = "(protocol://user:pass@host:port)",
+		validator = function() return true; end,
+		handler = function(ctx, val)
+			run_uri(val, "decode");
+		end
+	});
+end
+
+if (string.match(FRAMESERVER_MODES, "avfeed") ~= nil) then
+	table.insert(uriopen_menu, {
+		name = "uriopen_avfeed",
+		label = "AV Feed",
+		kind = "action",
+		hint = "(m1_accept for args)",
+		handler = function(ctx, val)
+			local m1, m2 = dispatch_meta();
+			if (m1) then
+				query_args( function(argstr)
+				local vid = launch_avfeed(argstr, "avfeed");
+				durden_launch(vid, "", "avfeed");
+				end);
+			else
+				local vid = launch_avfeed("", "avfeed");
+				durden_launch(vid, "", "avfeed");
+			end
+		end
+	});
+end
+
+if (string.match(FRAMESERVER_MODES, "terminal") ~= nil) then
+	table.insert(uriopen_menu, {
+		name = "uriopen_terminal",
+		label = "Terminal",
+		kind = "action",
+		hint = "(m1_accept for args)",
+		handler = function(ctx, val)
+			warning("terminal");
+		end
+	});
+end
+
 local toplevel = {
 	{
 		name = "open",
 		label = "Open",
 		kind = "action",
-		handler = query_uriopen
+		submenu = true,
+		force = true,
+		eval = function() return #uriopen_menu; end,
+		handler = uriopen_menu
 	},
 	{
 		name = "browse",
