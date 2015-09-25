@@ -756,17 +756,10 @@ local function dechnd(source, status)
 end
 
 local function decwnd(fn)
-	launch_decode(fn, function(source, status)
-		if (status.kind == "terminated") then
-			delete_image(source);
-		elseif (status.kind == "connected") then
-			local wnd = active_display():add_window(source);
-			wnd.external = source;
-			wnd:add_handler("resize", tile_changed);
-			target_updatehandler(source, dechnd);
-			tile_changed(wnd);
-		end
-	end);
+	local vid = launch_decode(fn, function() end);
+	if (valid_vid(vid)) then
+		durden_launch(vid, fn, "decode");
+	end
 end
 
 local function browse_internal()
