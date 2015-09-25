@@ -16,6 +16,7 @@ local defaults = {
 	font_str = "\\ffonts/default.ttf,12",
 	font_sz = 12,
 	text_color = "\\#aaaaaa",
+	label_color = "\\#ffff00",
 	borderw = 1,
 	bordert = 0,
 
