@@ -238,8 +238,9 @@ end
 
 function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
-		local vid = target_alloc(gconfig_get("extcon_path"), new_connection);
-		image_tracetag(vid, "nonauth_connection");
+		INCOMING_ENDPOINT = target_alloc(
+			gconfig_get("extcon_path"), new_connection);
+		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
 		if (status) then
 			durden_launch(source, "external", "");
 		end
