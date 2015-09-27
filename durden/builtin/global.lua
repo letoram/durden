@@ -729,6 +729,26 @@ local durden_workspace = {
 	}
 };
 
+local durden_system = {
+	{
+		name = "system_connpath",
+		label = "Connection Path",
+		kind = "value",
+		validator = function(num) return true; end,
+		initial = function() local path = gconfig_get("extcon_path");
+			return path == "" and "[disabled]" or path;
+		end,
+		handler = function(ctx, val)
+			if (valid_vid(INCOMING_ENDPOINT)) then
+				delete_image(INCOMING_ENDPOINT);
+				INCOMING_ENDPOINT = nil;
+			end
+			gconfig_set("extcon_path", val);
+			new_connection();
+		end
+	}
+};
+
 local config_terminal = {
 	{
 		name = "terminal_font_sz",
@@ -760,6 +780,15 @@ local config_menu = {
 		force = true,
 		hint = "Config Workspaces:",
 		handler = durden_workspace
+	},
+	{
+		name = "config_system",
+		label = "System",
+		kind = "action",
+		submenu = true,
+		force = true,
+		hint = "Config System:",
+		handler = durden_system
 	},
 	{
 		name = "config_terminal",

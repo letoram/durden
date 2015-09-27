@@ -155,7 +155,7 @@ are being implemented, we have the following list:
   - [ ] Videos
 - [ ] Security Measures
   - [ ] Visual Privilege Indicator
-  - [ ] Toggle external connection on/off support
+  - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
