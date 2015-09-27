@@ -10,15 +10,20 @@ LBL_YES = "yes";
 LBL_NO = "no";
 LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
 LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Abort";
+LBL_METAGUARD = "Query Rebind in %d keypresses";
+LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b  in %.2f second, %s to Abort";
+LBL_METAGUARD_BASIC = "Rebind \\bbasic keys\\!b  in %.2f seconds, %s to Abort";
+LBL_METAGUARD_MENU = "Rebind \\bmenu\\!b  binding in %.2f seconds, %s to Abort";
 
 local defaults = {
 	msg_timeout = 100,
+	tbar_timeout = 200,
 	font_str = "\\ffonts/default.ttf,12",
 	font_sz = 12,
 	text_color = "\\#aaaaaa",
 	label_color = "\\#ffff00",
 	borderw = 1,
-	bordert = 0,
+	bordert = 1,
 
 -- set to empty or "" to disable
 	extcon_path = "durden",
@@ -37,7 +42,7 @@ local defaults = {
 	ws_transition_out = "fade",
 	ws_autodestroy = false,
 	ws_autoadopt = true,
-	ws_default = "float",
+	ws_default = "tile",
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating

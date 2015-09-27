@@ -158,9 +158,13 @@ function dispatch_load()
 	end
 end
 
-function dispatch_custom(key, val)
+function dispatch_custom(key, val, nomb)
 	local old = tbl[key];
-	tbl[key] = val and ("!" .. val) or nil;
+	if (nomb) then
+		tbl[key] = val;
+	else
+		tbl[key] = val and ("!" .. val) or nil;
+	end
 	store_key("custk_" .. key, val and val or "");
 	return old;
 end
