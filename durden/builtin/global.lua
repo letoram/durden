@@ -108,6 +108,38 @@ local display_menu = {
 		handler = grab_global_function("display_cycle")
 	},
 	{
+		name = "display_share",
+		label = "Share",
+		kind = "value",
+		hint = "Arguments (host=ip:port=5900:password=xxx)",
+		validator = function() return true; end,
+		eval = function()
+			return gconfig_get("display_simple") == false and
+				string.find(FRAMESERVER_MODES, "encode") ~= nil;
+		end,
+		handler = function(ctx, args)
+			display_share("protocol=vnc:" .. (args and args or ""), "");
+-- FIXME: meta_1 and query for individual values instead (host,
+-- password, samplerate etc. then just push as table to display_share
+		end
+	},
+	{
+		name = "display_record",
+		label = "Record",
+		kind = "value",
+		hint = "arguments",
+		validator = function() return true; end,
+		eval = function()
+			return gconfig_get("display_simple") == false and
+				string.find(FRAMESERVER_MODES, "encode") ~= nil;
+		end,
+		handler = function(ctx, args)
+			display_share("", args);
+-- FIXME: meta_1 and query for options instead (need a generic
+-- function for that really)
+		end
+	},
+	{
 		name = "display_debug",
 		label = "Debug",
 		kind = "action",

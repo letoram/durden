@@ -144,8 +144,10 @@ are being implemented, we have the following list:
   - [x] LL Origo Invert
   - [ ] Screenreader Support
 - [ ] Display Sharing
-  - [ ] Recording/Streaming
-  - [ ] VNC Server
+  - [ ] Recording/Streaming/Sharing
+    - [ ] Audio Control
+    - [ ] Secondary Audio Sources (microphone)
+  - [ ] Display / Window screenshot
 - [ ] Cut and Paste
   - [ ] Simple Text
   - [ ] Streaming Text
@@ -157,7 +159,7 @@ are being implemented, we have the following list:
   - [ ] Limit subsurfaces per window
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
-  - [ ] Display Resolution Switching
+  - [x] Display Resolution Switching
   - [x] Synchronization Strategy Switching
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays

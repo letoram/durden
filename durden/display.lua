@@ -274,6 +274,27 @@ function display_migrate_ws(disp, dstname)
 	end
 end
 
+function display_share(args, recfn)
+	local disp = displays[displays.main];
+	if (not valid_vid(disp.rt)) then
+		return;
+	end
+
+	if (disp.share_slot) then
+		delete_image(disp.share_slot);
+		disp.share_slot = nil;
+	else
+-- this one can't handle resolution switching and we ignore audio for the
+-- time being or we'd need to do a lot of attachment tracking
+		disp.share_slot = alloc_surface(disp.w, disp.h);
+		define_recordtarget(disp.share_slot,
+		recfn, args, {disp.rt}, {}, RENDERTARGET_NODETACH, RENDERTARGET_NOSCALE, 1,
+		function(src, status)
+		end
+		);
+	end
+end
+
 -- the active displays is the rendertarget that will (initially) create new
 -- windows, though they can be migrated immediately afterwards. This is because
 -- both mouse_ implementation and new object attachment points are a global
