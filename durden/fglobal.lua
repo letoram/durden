@@ -55,7 +55,7 @@ function grab_shared_function(funname)
 	return sf[funname];
 end
 
-function dispatch_symbol(sym)
+function dispatch_symbol(sym, arg)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
 
@@ -69,10 +69,10 @@ function dispatch_symbol(sym)
 
 	if (sf[sym]) then
 		if (ms) then
-			sf[sym](ms);
+			sf[sym](ms, arg);
 		end
 	elseif (gf[sym]) then
-		gf[sym]();
+		gf[sym](arg);
 	else
 		warning("keybinding issue, " .. sym .. " does not match any known function");
 	end
@@ -186,7 +186,7 @@ gf["debug_random_alert"] = function()
 end
 
 -- sweep the entire bindings table
-gf["rebind_basic"] = function()
+gf["rebind_basic"] = function(chain)
 	local tbl = {
 		{"Accept", "accept"},
 		{"Cancel", "cancel"},
@@ -199,6 +199,7 @@ gf["rebind_basic"] = function()
 	local runsym = function(self)
 		local ent = table.remove(tbl, 1);
 		if (ent == nil) then
+			if (chain and type(chain) == "function") then chain(); end
 			return;
 		end
 		tiler_bbar(active_display(),
@@ -293,7 +294,20 @@ sf["bind_utf8"] = function(wnd)
 	end);
 end
 
-gf["bind_custom"] = function()
+gf["bind_menu"] = function(sfun)
+	local bwt = gconfig_get("bind_waittime");
+	tiler_bbar(active_display(),
+		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		false, bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				dispatch_custom(sym, "global_actions", true);
+			end
+		end
+	);
+end
+
+gf["bind_custom"] = function(sfun)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
@@ -336,7 +350,7 @@ gf["unbind_combo"] = function()
 end
 
 -- a little messy, but covers binding single- keys for meta 1 and meta 2
-gf["rebind_meta"] = function()
+gf["rebind_meta"] = function(chain)
 	local bwt = gconfig_get("bind_waittime");
 	tiler_bbar(active_display(),
 			string.format("Press and hold (Meta 1), %s to Abort",
@@ -353,6 +367,7 @@ gf["rebind_meta"] = function()
 							dispatch_system("meta_1", sym);
 							dispatch_system("meta_2", sym2);
 							meta_guard_reset();
+							if (chain and type(chain) == "function") then chain(); end
 						end
 						if (sym2 == sym) then
 							return "Already bound to Meta 1";

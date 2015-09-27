@@ -127,43 +127,11 @@ local function set_progress(ctx, pct)
 	resize_image(ctx.progress, ctx.bar_w * pct, ctx.data_y * 2);
 end
 
---
--- msg: default prompt
--- key: if true, bind a single key, not a combination
--- time: number of ticks of continous press to accept (nil or 0 to disable)
--- ok: sym to bind last immediately (nil to disable)
--- cancel: sym to abort (call cb with nil, true), (nil to disable)
--- cb will be invoked with ((symbol or symstr), done) where done. Expected
--- to return (false) to abort, true if valid or an error string.
---
-function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
-	local lbsz = gconfig_get("lbar_sz") * 2;
+local function setup_vids(wm, ctx, lbsz, time)
 	local bar = color_surface(wm.width, lbsz, unpack(gconfig_get("lbar_bg")));
 	local progress = color_surface(1, lbsz, unpack(gconfig_get("lbar_caret_col")));
-
-	local ctx = {
-		clock_fwd = _G[APPLID .. "_clock_pulse"],
-		cb = cb,
-		cancel = cancel,
-		ok = ok,
-		clock_start = time,
-		bar = bar,
-		label = set_label,
-		data = set_data,
-		bar_w = wm.width,
-		progress = progress,
-		set_progress = set_progress,
-		message = msg,
-		iostate = iostatem_save(),
-		data_y = gconfig_get("lbar_sz")
-	};
-
-	local time = gconfig_get("transition");
-	if (valid_vid(PENDING_FADE)) then
-		delete_image(PENDING_FADE);
-		time = 0;
-	end
-	PENDING_FADE = nil;
+	ctx.bar = bar;
+	ctx.progress = progress;
 
 	image_tracetag(bar, "bar");
 	link_image(bar, wm.order_anchor);
@@ -181,6 +149,40 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 		move_image(bar, 0, math.floor(0.5*(wm.height-lbsz*2)));
 	else
 	end
+end
+
+--
+-- msg: default prompt
+-- key: if true, bind a single key, not a combination
+-- time: number of ticks of continous press to accept (nil or 0 to disable)
+-- ok: sym to bind last immediately (nil to disable)
+-- cancel: sym to abort (call cb with nil, true), (nil to disable)
+-- cb will be invoked with ((symbol or symstr), done) where done. Expected
+-- to return (false) to abort, true if valid or an error string.
+--
+function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
+	local ctx = {
+		clock_fwd = _G[APPLID .. "_clock_pulse"],
+		cb = cb,
+		cancel = cancel,
+		ok = ok,
+		clock_start = time,
+		bar = bar,
+		label = set_label,
+		data = set_data,
+		bar_w = wm.width,
+		progress = progress,
+		set_progress = set_progress,
+		message = msg,
+		iostate = iostatem_save(),
+		data_y = gconfig_get("lbar_sz")
+	};
+	if (valid_vid(PENDING_FADE)) then
+		delete_image(PENDING_FADE);
+		time = 0;
+	end
+	PENDING_FADE = nil;
+	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2, gconfig_get("transition"));
 
 -- intercept tick callback to implement the "hold then bind" approach
 -- for single keys.
@@ -203,4 +205,42 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	wm.input_ctx = ctx;
 	ctx:label(msg);
 	return ctx;
+end
+
+function tiler_tbar(wm, msg, timeout, action, cancel)
+	local ctx = {
+		clock_fwd = _G[APPLID .. "_clock_pulse"];
+		timeout = timeout,
+		message = msg,
+		progress = progress,
+		label = set_label,
+		bar_w = wm.width,
+		set_progress = set_progress,
+		iostate = iostatem_save(),
+		data_y = gconfig_get("lbar_sz")
+	};
+	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2, gconfig_get("transition"));
+	iostatem_repeat(0, 0);
+
+	_G[APPLID .. "_clock_pulse"] = function(a, b)
+		ctx.clock_fwd(a, b);
+		ctx.timeout = ctx.timeout - 1;
+		if (ctx.timeout == 0) then
+			drop_bbar(wm);
+			action();
+		else
+			ctx:set_progress(1.0 - ctx.timeout / timeout);
+			ctx:label(string.format(msg, ctx.timeout / CLOCKRATE, cancel));
+		end
+	end
+
+	wm:set_input_lock(function(wm, sym)
+		if (sym == cancel) then
+			drop_bbar(wm);
+		end
+	end);
+
+	wm.input_ctx = ctx;
+	ctx:set_progress(1.0);
+	ctx:label(string.format(msg, timeout / CLOCKRATE, cancel));
 end

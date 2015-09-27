@@ -19,12 +19,30 @@ end
 function meta_guard(s1, s2)
 	if (s1 or s2) then
 		mgc = 0;
+		active_display():message(nil);
 		meta_guard = function() return true; end
 	end
 
+	local bindcall = function(sym, lbl, nc)
+		tiler_tbar(active_display(), lbl, gconfig_get("tbar_timeout"),
+		function()
+			dispatch_symbol(sym, nc);
+		end, SYSTEM_KEYS["cancel"]);
+	end
+
 	mgc = mgc + 1;
+	active_display():message(string.format(LBL_METAGUARD, threshold - mgc), -1);
 	if (mgc > threshold) then
-		dispatch_symbol("rebind_meta");
+		bindcall("rebind_meta", LBL_METAGUARD_META,
+		function()
+		bindcall("rebind_basic", LBL_METAGUARD_BASIC,
+		function()
+		bindcall("bind_menu", LBL_METAGUARD_MENU,
+		function()
+		end
+		)end)
+		end);
+
 		mgc = 0;
 		return false;
 	end

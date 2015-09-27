@@ -140,7 +140,8 @@ are being implemented, we have the following list:
   - [ ] Popup Windows
   - [ ] Suspend/Resume Follows Focus
   - [ ] Font Hinting
-  - [ ] LL Origo Invert
+  - [ ] Block Alerts
+  - [x] LL Origo Invert
   - [ ] Screenreader Support
 - [ ] Display Sharing
   - [ ] Recording/Streaming
