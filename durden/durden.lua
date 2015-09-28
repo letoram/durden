@@ -169,7 +169,6 @@ end
 local swm = {};
 function def_handler(source, stat)
 	local wnd = swm[source];
-	assert(wnd ~= nil);
 
 	if (DEBUGLEVEL > 0 and active_display().debug_console) then
 		active_display().debug_console:target_event(wnd, source, stat);
