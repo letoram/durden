@@ -388,18 +388,21 @@ gf["query_launch"] = function()
 			if (cfgs == nil or #cfgs == 0) then
 				return;
 			end
-			local vid;
+
 			if (#cfgs > 1) then
 				active_display():lbar(tiler_lbarforce(cfgs, function(cfstr)
 					vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
+					if (valid_vid(vid)) then
+						durden_launch(vid, cfstr, str);
+					end
 				end), {}, {label = str .. ", Config:", force_completion = true});
 			else
 				vid = launch_target(str, cfgs[1], LAUNCH_INTERNAL, def_handler);
+				if (valid_vid(vid)) then
+					durden_launch(vid, cfstr, str);
+				end
 			end
 
-			if (valid_vid(vid)) then
-				durden_launch(vid, cfstr, str);
-			end
 		end), {}, {label = "Target:", force_completion = true});
 	end
 end

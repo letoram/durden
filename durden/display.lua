@@ -37,6 +37,35 @@ local function autohome_spaces(ndisp)
 	end
 end
 
+local function display_data(id)
+	local data, hash = video_displaydescr(id);
+	local model, serial;
+	if (not data) then
+		return;
+	end
+
+-- data should typically be EDID, if it is 128 bytes long we assume it is
+	if (string.len(data) == 128) then
+		for i,ofs in ipairs({54, 72, 90, 108}) do
+
+			if (string.byte(data, ofs+1) == 0x00 and
+			string.byte(data, ofs+2) == 0x00 and
+			string.byte(data, ofs+3) == 0x00) then
+				if (string.byte(data, ofs+4) == 0xff) then
+					serial = string.sub(data, ofs+5, ofs+5+12);
+				elseif (string.byte(data, ofs+4) == 0xfc) then
+						model = string.sub(data, ofs+5, ofs+5+12);
+				end
+			end
+
+		end
+	end
+
+	return model, serial;
+end
+
+local known_dispids = {};
+
 function durden_display_state(action, id)
 	if (displays[1].tiler.debug_console) then
 		displays[1].tiler.debug_console:system_event("display event: " .. action);
@@ -51,40 +80,35 @@ function durden_display_state(action, id)
 		return;
 	end
 
+	local model, serial = display_data(id);
+	local name = "unkn_" .. tostring(id);
+	if (model) then
+		name = model .. ":" .. serial;
+	end
+
 	if (action == "added") then
-		local ids = {};
+		known_dispids[id] = true;
+		map_video_display(WORLDID, id, HINT_NONE);
 
-		for k,v in pairs(id) do
-			if (not table.find_i(ids, v.displayid)) then
-				table.insert(ids, v.displayid);
-			end
+		local modes = video_displaymodes(id);
+
+		local dw = VRESW;
+		local dh = VRESH;
+		if (modes and modes[1].width > 0) then
+			dw = modes[1].width;
+			dh = modes[1].height;
 		end
 
-		for k,v in ipairs(ids) do
-			local data, hash = video_displaydescr(v);
-			if (data) then
-				print("hash is", hash);
-			else
-				print("no data on", v);
-			end
-		end
-
-		if (displays[id] == nil) then
-			displays[id] = {};
--- find out if there is a known profile for this display, activate
--- corresponding desired resolution, set mapping, create tiler, color
--- correction profile, RGB tuning etc.
+-- default display is treated differently
+		if (id == 0) then
+			map_video_display(displays[1].rt, 0, HINT_NONE);
+		else
+			local disp = display_add(name, dw, dh);
+			map_video_display(disp.rt, id, HINT_NONE);
 		end
 	elseif (action == "removed") then
-		warning("removed " .. tostring(id));
-		if (displays[id] == nil) then
-			warning("lost unknown display: " .. tostring(id));
-			return;
-		end
-
--- sweep workspaces and migrate back to previous display (and toggle
--- rendertarget output on/off), destroy tiler, save settings, if workspace slot
--- is occupied, add to "orphan-" list.
+		known_dispids[id] = nil;
+		display_remove(name);
 	end
 end
 
@@ -161,6 +185,8 @@ end
 
 function display_add(name, width, height)
 	local found = get_disp(name);
+	width = width < MAX_SURFACEW and width or MAX_SURFACEW;
+	height = height < MAX_SURFACEH and height or MAX_SURFACEH;
 
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
@@ -185,6 +211,7 @@ function display_add(name, width, height)
 
 	autohome_spaces(found);
 	redraw_simulate();
+	return found;
 end
 
 -- linear search all spaces in all displays except disp and

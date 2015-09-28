@@ -28,6 +28,13 @@ end
 
 local dbg_dsp = {
 	{
+		name = "display_dump",
+		eval = function() return gconfig_get("display_simple") == false; end,
+		label = "Dump",
+		kind = "action",
+		handler = function() display_manager_dump(); end
+	},
+	{
 		name = "display_add_debug",
 		eval = function() return gconfig_get("display_simple") == false; end,
 		label = "Add Display",
@@ -75,6 +82,10 @@ local function query_dispmenu(ind)
 	end
 end
 
+local function query_displays()
+
+end
+
 -- DPMS toggle (force-on, force-off, toggle) / all or individual
 -- ICC Profile (one, all)
 local display_menu = {
@@ -89,7 +100,7 @@ local display_menu = {
 		label = "Displays",
 		kind = "action",
 		submenu = true,
-		handler = function() return query_dispmenu(0); end
+		handler = function() return query_displays(); end
 	},
 	{
 		name = "synchronization_strategies",
