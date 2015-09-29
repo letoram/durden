@@ -82,8 +82,41 @@ local function query_dispmenu(ind)
 	end
 end
 
-local function query_displays()
+local function gen_disp_menu(disp)
+	return {
+		{
+		name = "disp_menu_" .. tostring(disp.name) .. "state",
+		eval = function() return disp.primary ~= true; end,
+		label = "Toggle On/Off",
+		kind = "action",
+		handler = function() warning("toggle display"); end
+		},
+		{
+		name = "disp_menu_" .. tostring(disp.name) .. "state",
+		label = "Resolution",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = function() return query_dispmenu(disp.id); end
+		}
+	};
+end
 
+local function query_displays()
+	local res = {};
+	for k,v in pairs(all_displays()) do
+		if (string.len(v.name) > 0) then
+			table.insert(res, {
+				name = "disp_menu_" .. tostring(k),
+				label = v.name,
+				kind = "action",
+				submenu = true,
+				force = true,
+				handler = function() return gen_disp_menu(v); end
+			});
+		end
+	end
+	return res;
 end
 
 -- DPMS toggle (force-on, force-off, toggle) / all or individual
@@ -100,6 +133,7 @@ local display_menu = {
 		label = "Displays",
 		kind = "action",
 		submenu = true,
+		force = true,
 		handler = function() return query_displays(); end
 	},
 	{

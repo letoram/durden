@@ -152,15 +152,19 @@ function spawn_terminal()
 	local cp = gconfig_get("extcon_path");
 
 	local lstr = string.format(
-		"cell_w=%d:cell_h=%d:font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
+		"font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
-		gconfig_get("term_cellw"), gconfig_get("term_cellh"),
 		gconfig_get("term_font_hint"), gconfig_get("term_font"),
 		gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
 			("env=ARCAN_CONNPATH="..cp) or ""
 	);
+
+	if (not gconfig_get("term_autosz")) then
+		lstr = lstr .. string.format(":cell_w=%d:cell_h=%d",
+			gconfig_get("term_cellw"), gconfig_get("term_cellh"));
+	end
 
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
@@ -236,7 +240,9 @@ end
 -- switch handler, register on-destroy handler and a source-wnd map
 function reg_window(wnd, source)
 	swm[source] = wnd;
-	target_updatehandler(source, def_handler);
+	if (valid_vid(source, TYPE_FRAMESERVER)) then
+		target_updatehandler(source, def_handler);
+	end
 	wnd:add_handler("destroy", function() swm[source] = nil; end);
 end
 

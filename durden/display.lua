@@ -24,7 +24,7 @@ local function get_disp(name)
 end
 
 local function autohome_spaces(ndisp)
-	for disp in all_displays() do
+	for i, disp in ipairs(displays) do
 		local tiler = disp.tiler;
 		if (tiler and tiler ~= ndisp.tiler) then
 			for i=1,10 do
@@ -61,7 +61,19 @@ local function display_data(id)
 		end
 	end
 
-	return model, serial;
+	local strip = function(s)
+		local outs = {};
+		local len = string.len(s);
+		for i=1,len do
+			local ch = string.sub(s, i, i);
+			if string.match(ch, '[a-zA-Z0-9]') then
+				table.insert(outs, ch);
+			end
+		end
+		return table.concat(outs, "");
+	end
+
+	return strip(model), strip(serial);
 end
 
 local known_dispids = {};
@@ -83,11 +95,10 @@ function durden_display_state(action, id)
 	local model, serial = display_data(id);
 	local name = "unkn_" .. tostring(id);
 	if (model) then
-		name = model .. ":" .. serial;
+		name = string.split(model, '\r')[1] .. ":" .. serial;
 	end
 
 	if (action == "added") then
-		known_dispids[id] = true;
 -- first mapping nonsens has previously made it easier
 -- getting EDID in some cases
 		map_video_display(WORLDID, id, HINT_NONE);
@@ -104,10 +115,16 @@ function durden_display_state(action, id)
 -- default display is treated differently
 		if (id == 0) then
 			map_video_display(displays[1].rt, 0, HINT_NONE);
+			known_dispids[1] = {
+				name = name, primary = true, display = displays[1], id = 0};
 		else
 			local disp = display_add(name, dw, dh);
 			map_video_display(disp.rt, id, HINT_NONE);
+			known_dispids[id+1] = {
+				name = name, primary = false, display = disp, id = id
+			};
 		end
+
 	elseif (action == "removed") then
 		print("lost ", id, name);
 		known_dispids[id] = nil;
@@ -334,12 +351,7 @@ function active_display()
 end
 
 function all_displays()
-	local i = 0;
-	local c = #displays;
-	return function()
-		i = i + 1;
-		return (i <= c) and displays[i] or nil;
-	end
+	return known_dispids;
 end
 
 function all_windows()
