@@ -67,13 +67,18 @@ function durden()
 		new_connection();
 	end
 
--- dropping this call means that the only input / output available is
--- through keybindings/mice/joysticks
-	control_channel = open_nonblock("durden_cmd");
-	if (control_channel == nil) then
-		warning("no control channel found, use: (mkfifo c durden/durden_cmd)");
-	else
-		warning("control channel active (durden_cmd)");
+-- unsetting these values will prevent all external communication that is not
+-- via the nonauth- connection or regular input devices
+	local sbar_fn = gconfig_get("status_path");
+	if (sbar_fn ~= nil and string.len(sbar_fn) > 0) then
+		zap_resource(sbar_fn);
+		STATUS_CHANNEL = open_nonblock(sbar_fn);
+	end
+
+	local cchan_fn = gconfig_get("control_path");
+	if (cchan_fn ~= nil and string.len(cchan_fn) > 0) then
+		zap_resource(cchan_fn);
+		CONTROL_CHANNEL = open_nonblock(cchan_fn);
 	end
 
 -- preload cursor states
@@ -249,18 +254,16 @@ end
 --
 -- text/line command protocol for doing status bar updates, etc.
 --
-function poll_control_channel()
-	local line = control_channel:read();
+function poll_status_channel()
+	local line = STATUS_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
 		return;
 	end
 
-	warning(line);
-
 	local cmd = string.split(line, ":");
 	cmd = cmd == nil and {} or cmd;
 
-	if (cmd[1] == "status") then
+	if (cmd[1] == "status_1") then
 -- escape control characters so we don't get nasty \f etc. commands
 		local msg = string.gsub(string.sub(line, 6), "\\", "\\\\");
 		local vid = render_text(
@@ -270,6 +273,18 @@ function poll_control_channel()
 		end
 	else
 		dispatch_symbol(cmd[1]);
+	end
+end
+
+function poll_control_channel()
+	local line = CONTROL_CHANNEL:read();
+	if (line == nil or string.len(line) == 0) then
+		return;
+	end
+
+-- hotplug event
+	if (line == "rescan_displays") then
+		video_displaymodes();
 	end
 end
 
@@ -339,7 +354,13 @@ function durden_clock_pulse()
 
 	mouse_tick(1);
 	display_tick();
-	if (CLOCK % 4 == 0 and control_channel ~= nil) then
-		poll_control_channel();
+	if (CLOCK % 4 == 0) then
+		if (STATUS_CHANNEL) then
+			poll_status_channel();
+		end
+
+		if (CONTROL_CHANNEL) then
+			poll_control_channel();
+		end
 	end
 end

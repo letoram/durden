@@ -27,6 +27,8 @@ local defaults = {
 
 -- set to empty or "" to disable
 	extcon_path = "durden",
+	status_path = "<durden_status",
+	control_path = "<durden_control",
 
 -- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective
@@ -63,7 +65,7 @@ local defaults = {
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some
 -- platforms
-	mouse_mode = "nonnative",
+	mouse_mode = "native",
 
 -- audio settings
 	global_gain = 1.0,
