@@ -88,6 +88,8 @@ function durden_display_state(action, id)
 
 	if (action == "added") then
 		known_dispids[id] = true;
+-- first mapping nonsens has previously made it easier
+-- getting EDID in some cases
 		map_video_display(WORLDID, id, HINT_NONE);
 
 		local modes = video_displaymodes(id);
@@ -107,6 +109,7 @@ function durden_display_state(action, id)
 			map_video_display(disp.rt, id, HINT_NONE);
 		end
 	elseif (action == "removed") then
+		print("lost ", id, name);
 		known_dispids[id] = nil;
 		display_remove(name);
 	end

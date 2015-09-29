@@ -56,16 +56,18 @@ The launch bar (default meta1+d) uses preconfigured execution profiles that are
 managed with a separate external tool as part of Arcan, called *arcan_db*,
 check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
 
-Statusbar
-====
-Durden looks for a named pipe (FIFO) in the APPLTEMP namespace (usually the
-same as the appl dir specified as last argument to arcan) with the name
-*durden\_cmd*. This pipe can be used to send external commands similar to
-navigating the menus, and to update the statusbar. For instance, using
-i3status:
+Statusbar / Command Channel
+==== By default, durden creates two named pipes (FIFO) in the APPLTEMP
+namespace (e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the
+specified appldir) with the name (durden\_status) and (durden\_control). These
+can be used to run remote controls and to update the statusbar. For instance,
+using i3status:
 
-    mkfifo ~/durden/durden_cmd
-    i3status | sed -e 's/^/status:/' > ~/durden/durden_cmd
+    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
+
+The current commands exposed over the control channel:
+
+    rescan_displays - used for hooking up with output display hotplug monitors
 
 Features and Status
 =====
@@ -76,6 +78,7 @@ are being implemented, we have the following list:
 - [ ] Workspace Management
   - [x] Naming/Renaming
   - [x] Searching Based On Name
+	- [ ] Saving/Restoring Properties (background, mode, name)
   - [ ] Saving/Restoring Layout
   - [ ] Hide Named Workspaces
 - [ ] Basic Window Management
