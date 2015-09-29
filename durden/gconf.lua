@@ -80,6 +80,7 @@ local defaults = {
 -- built-in terminal defaults
 	term_rows = 80,
 	term_cols = 25,
+	term_autosz = true, -- will ignore cellw / cellh and use font testrender
 	term_cellw = 12,
 	term_cellh = 12,
 	term_font_sz = 12,
