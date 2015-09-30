@@ -534,21 +534,7 @@ local function load_bg(fn)
 	if (not space) then
 		return;
 	end
-
-	load_image_asynch(fn, function(src, stat)
-		if (stat.kind == "loaded") then
-			if (valid_vid(space.background)) then
-				delete_image(space.background);
-			end
-			space.background = src;
-			space.background_name = fn;
-			resize_image(src, space.wm.width, space.wm.client_height);
-			link_image(src, space.anchor);
-			show_image(src);
-		else
-			delete_image(src);
-		end
-	end);
+	space:set_background(fn);
 end
 
 local save_ws = {
@@ -558,19 +544,19 @@ local save_ws = {
 		kind = "action",
 		handler = grab_global_function("save_space_shallow")
 	},
-	{
-		name = "workspace_save_deep",
-		label = "Complete",
-		kind = "action",
-		handler = grab_global_function("save_space_deep")
-	},
-	{
-		name = "workspace_save_drop",
-		label = "Drop",
-		kind = "action",
-		eval = function()	return true; end,
-		handler = grab_global_function("save_space_drop")
-	}
+--	{
+--		name = "workspace_save_deep",
+--		label = "Complete",
+--		kind = "action",
+--		handler = grab_global_function("save_space_deep")
+--	},
+--	{
+--		name = "workspace_save_drop",
+--		label = "Drop",
+--		kind = "action",
+--		eval = function()	return true; end,
+--		handler = grab_global_function("save_space_drop")
+--	}
 };
 
 local function set_ws_background()

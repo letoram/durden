@@ -195,6 +195,16 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
+function drop_keys(matchstr)
+	local rst = {};
+	for i,v in ipairs(match_keys(matchstr)) do
+		local pos, stop = string.find(v, "=", 1);
+		local key = string.sub(v, 1, pos-1);
+		rst[key] = "";
+	end
+	store_key(rst);
+end
+
 -- reformated PD snippet
 function utf8valid(str)
   local i, len = 1, #str
