@@ -87,7 +87,6 @@ function durden_display_state(action, id)
 -- to platform specific actions e.g. virtual terminal switching, assume
 -- keystate change between display resets.
 	if (action == "reset") then
-		warning("reset");
 		dispatch_meta_reset();
 		return;
 	end
@@ -215,7 +214,7 @@ function display_add(name, width, height)
 		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
-		local nd = {tiler = tiler_create(width, height, {})};
+		local nd = {tiler = tiler_create(width, height, {name = name})};
 		table.insert(displays, nd);
 		nd.w = width;
 		nd.h = height;
@@ -350,8 +349,36 @@ function active_display()
 	return displays[displays.main].tiler;
 end
 
-function all_displays()
+function all_displays(ref)
 	return known_dispids;
+end
+
+function all_displays_iter()
+	local tbl = {};
+	for i,v in ipairs(displays) do
+		table.insert(tbl, v.tiler);
+	end
+	local c = #tbl;
+	local i = 0;
+	return function()
+		i = i + 1;
+		return (i <= c) and tbl[i] or nil;
+	end
+end
+
+function all_spaces_iter()
+	local tbl = {};
+	for i,v in ipairs(displays) do
+		for k,l in pairs(v.tiler.spaces) do
+			table.insert(tbl, l);
+		end
+	end
+	local c = #tbl;
+	local i = 0;
+	return function()
+		i = i + 1;
+		return (i <= c) and tbl[i] or nil;
+	end
 end
 
 function all_windows()

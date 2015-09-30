@@ -116,6 +116,7 @@ local defaults = {
 -- sbar
 	sbar_sz = 16,
 	sbar_bg = {0x00, 0x00, 0x00},
+	sbar_alpha = 0.3,
 
 -- titlebar
   tbar_sz = 16,

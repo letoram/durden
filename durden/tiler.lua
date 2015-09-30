@@ -70,6 +70,16 @@ void main()
 }
 ]];
 
+-- uised for ignoring alpha to do inherit for visibility but not blendstate
+local sbar_shader = [[
+uniform sampler2D map_tu0;
+varying vec2 texco;
+void main()
+{
+	gl_FragColor = vec4(texture2D(map_tu0, texco).rgba);
+}
+]];
+
 local function build_shaders()
 	local bw = gconfig_get("borderw");
 	local bt = bw - gconfig_get("bordert");
@@ -106,6 +116,8 @@ local function build_shaders()
 	shader_uniform(a, "col_border", "fff", PERSIST,
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	shader_uniform(a, "border", "f", PERSIST, 1);
+
+	a = build_shader(nil, sbar_shader, "sbar_item");
 end
 build_shaders();
 
@@ -260,6 +272,12 @@ local function get_hier(vid)
 end
 
 local function wnd_select(wnd, source)
+	if (not wnd.wm) then
+		warning("select on broken window");
+		print(debug.traceback());
+		return;
+	end
+
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
 	end
@@ -445,9 +463,9 @@ local function workspace_migrate(ws, newt)
 	oldt.selected = nil;
 
 	order_image(oldt.order_anchor,
-		#oldt.windows * WND_RESERVED + 2 * WND_RESERVED);
+		2 + #oldt.windows * WND_RESERVED + 2 * WND_RESERVED);
 	order_image(newt.order_anchor,
-		#newt.windows * WND_RESERVED + 2 * WND_RESERVED);
+		2 + #newt.windows * WND_RESERVED + 2 * WND_RESERVED);
 
 	newt.spaces[dsti] = ws;
 
@@ -458,7 +476,6 @@ local function workspace_migrate(ws, newt)
 		delete_image(ws.label_id);
 		mouse_droplistener(ws.tile_ml);
 		ws.label_id = nil;
-		print("removed label and listener");
 	end
 	newt:update_statusbar();
 
@@ -755,6 +772,10 @@ local function workspace_resize(space)
 	if (space_handlers[space.mode]) then
 		space_handlers[space.mode](space, true);
 	end
+
+	if (valid_vid(space.background)) then
+		resize_image(space.background, space.wm.width, space.wm.height);
+	end
 end
 
 local function workspace_label(space, lbl)
@@ -771,6 +792,76 @@ local function workspace_empty(wm, i)
 		(#wm.spaces[i].children == 0 and wm.spaces[i].label == nil));
 end
 
+local function workspace_save(ws, shallow)
+
+	local ind;
+	for k,v in pairs(ws.wm.spaces) do
+		if (v == ws) then
+			ind = k;
+		end
+	end
+
+	assert(ind ~= nil);
+
+	local keys = {};
+	local prefix = string.format("wsk_%s_%d", ws.wm.name, ind);
+	keys[prefix .. "_mode"] = ws.mode;
+	keys[prefix .. "_insert"] = ws.insert;
+	if (ws.label) then
+		keys[prefix .."_label"] = ws.label;
+	end
+
+	if (ws.background_name) then
+		keys[prefix .. "_bg"] = ws.background_name;
+	end
+
+	drop_keys(prefix .. "%");
+	store_key(keys);
+
+	if (shallow) then
+		return;
+	end
+-- depth serialization and metastructure missing
+end
+
+local function workspace_background(ws, bgsrc)
+	local new_vid = function(src)
+		if (not valid_vid(ws.background)) then
+			ws.background = null_surface(ws.wm.width, ws.wm.height);
+		end
+		resize_image(ws.background, ws.wm.width, ws.wm.height);
+		link_image(ws.background, ws.anchor);
+		show_image(ws.background);
+		if (valid_vid(src)) then
+			image_sharestorage(src, ws.background);
+		end
+	end
+
+	if (bgsrc == nil) then
+		if (valid_vid(ws.background)) then
+			delete_image(ws.background);
+			ws.background = nil;
+			ws.background_name = nil;
+		end
+	elseif (type(bgsrc) == "string") then
+		local vid = load_image_asynch(bgsrc, function(src, stat)
+			if (stat.kind == "loaded") then
+			ws.background_name = bgsrc;
+			new_vid(src);
+			delete_image(src);
+		else
+			delete_image(src);
+		end
+	end);
+		new_vid(vid);
+	elseif (type(bgsrc) == "number" and valid_vid(bgsrc)) then
+		new_vid(bgsrc);
+		ws.background_name = nil;
+	else
+		warning("workspace_background - called with invalid. arg");
+	end
+end
+
 create_workspace = function(wm, anim)
 	local res = {
 		activate = workspace_activate,
@@ -778,6 +869,7 @@ create_workspace = function(wm, anim)
 		resize = workspace_resize,
 		destroy = workspace_destroy,
 		migrate = workspace_migrate,
+		save = workspace_save,
 
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
@@ -787,6 +879,7 @@ create_workspace = function(wm, anim)
 		float = function(ws) workspace_set(ws, "float"); end,
 
 		set_label = workspace_label,
+		set_background = workspace_background,
 
 -- can be used for clipping / transitions
 		anchor = null_surface(wm.width, wm.height),
@@ -1082,6 +1175,7 @@ local function wnd_reassign(wnd, ind, ninv)
 
 	oldspace:resize();
 	wnd.wm:update_statusbar();
+	wnd:select();
 end
 
 --
@@ -1619,7 +1713,7 @@ local function wnd_create(wm, source, opts)
 	end
 
 	order_image(res.wm.order_anchor,
-		#wm.windows * WND_RESERVED + 2 * WND_RESERVED);
+		2 + #wm.windows * WND_RESERVED + 2 * WND_RESERVED);
 	return res;
 end
 
@@ -1644,7 +1738,7 @@ local function tiler_statusbar_update(wm, msg, state)
 	local statush = gconfig_get("sbar_sz");
 	resize_image(wm.statusbar, wm.width, statush);
 	move_image(wm.statusbar, 0, wm.height - statush);
-	show_image(wm.statusbar);
+	blend_image(wm.statusbar, gconfig_get("sbar_alpha"));
 
 	local ofs = 0;
 	for i=1,10 do
@@ -1673,6 +1767,8 @@ local function tiler_statusbar_update(wm, msg, state)
 				image_inherit_order(text, true);
 				link_image(tile, wm.statusbar);
 				image_tracetag(text, "tiler_sbar_tile");
+				image_shader(text, "sbar_item");
+				image_shader(tile, "sbar_item");
 				space.label_id = tile;
 			end
 
@@ -1754,7 +1850,8 @@ local function tiler_switchws(wm, ind)
 		workspace_inactivate(cur, false, nd);
 	end
 
-	if (#cur.children == 0 and gconfig_get("ws_autodestroy")) then
+	if (#cur.children == 0 and gconfig_get("ws_autodestroy") and
+		ws.tag ) then
 		cur:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
@@ -1958,7 +2055,7 @@ local function tiler_rendertarget(wm, set)
 	if (set == true) then
 		wm.rtgt_id = alloc_surface(wm.width, wm.height);
 		image_tracetag(wm.rtgt_id, "tiler_rt");
-		local pitem = null_surface(32, 32);
+		local pitem = null_surface(32, 32); --workaround for rtgt restrction
 		image_tracetag(pitem, "rendertarget_placeholder");
 		define_rendertarget(wm.rtgt_id, {pitem});
 		for i,v in ipairs(list) do
@@ -1992,6 +2089,7 @@ local function tiler_input_lock(wm, dst)
 end
 
 function tiler_create(width, height, opts)
+	opts = opts == nil and {} or opts;
 	opts.font_sz = (opts.font_sz ~= nil) and opts.font_sz or 12;
 	opts.font = (opts.font ~= nil) and opts.font or "default.ttf";
 
@@ -2002,6 +2100,7 @@ function tiler_create(width, height, opts)
 -- null surfaces for clipping / moving / drawing
 		client_height = clh,
 		global_gain = 1.0,
+		name = opts.name and opts.name or "default",
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
@@ -2062,13 +2161,47 @@ function tiler_create(width, height, opts)
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
 	image_tracetag(res.statusbar, "tiler_statusbar");
 
+	order_image(res.order_anchor, 2);
 	move_image(res.statusbar, 0, clh);
 	link_image(res.statusbar, res.order_anchor);
 	image_inherit_order(res.statusbar, true);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
 
-	res.spaces[1] = create_workspace(res, true);
+-- unpack preset workspaces from saved keys
+	local mask = string.format("wsk_%s_%%", res.name);
+	local wstbl = {};
+	for i,v in ipairs(match_keys(mask)) do
+		local pos, stop = string.find(v, "=", 1);
+		local key = string.sub(v, 1, pos-1);
+		local ind, cmd = string.match(key, "(%d+)_(%a+)$");
+		if (ind ~= nil and cmd ~= nil) then
+			ind = tonumber(ind);
+			if (wstbl[ind] == nil) then wstbl[ind] = {}; end
+			local val = string.sub(v, pos+1);
+			wstbl[ind][cmd] = val;
+		end
+	end
+
+	for k,v in pairs(wstbl) do
+		res.spaces[k] = create_workspace(res, true);
+		for ind, val in pairs(v) do
+			if (ind == "mode") then
+				res.spaces[k].mode = val;
+			elseif (ind == "insert") then
+				res.spaces[k].insert = val;
+			elseif (ind == "bg") then
+				res.spaces[k]:set_background(val);
+			elseif (ind == "label") then
+				res.spaces[k]:set_label(val);
+			end
+		end
+	end
+
+-- always make sure we have a 'first one'
+	if (not res.spaces[1]) then
+		res.spaces[1] = create_workspace(res, true);
+	end
 	res:update_statusbar();
 
 	return res;

@@ -228,12 +228,7 @@ end
 sf["wnd_tobg"] = function(wnd)
 	local disp = active_display();
 	local space = disp.spaces[disp.space_ind];
-		if (valid_vid(space.background)) then
-		delete_image(space.background);
-	end
-	space.background = null_surface(space.wm.width, space.wm.height);
-	show_image(space.background);
-	image_sharestorage(wnd.canvas, space.background);
+	space:set_background(wnd.canvas);
 end
 
 gf["drop_custom"] = dispatch_reset;
@@ -458,23 +453,7 @@ gf["save_space_shallow"] = function()
 		return;
 	end
 
--- will have issue if someone labels workspace as a numeric index, we allow
--- it but it is rather dumb (calling 1:2 and having a 2 doesn't help clarity)
-	local ktbl = {};
-	local prefix = "wspace_" .. tostring(active_display().space_ind);
-	if (wspace.label ~= nil) then
-		ktbl["wspace_" .. tostring(active_display().space_ind) .. "_ref"] =
-			wspace.label;
-		prefix = "wspace_" .. label;
-	end
-
-	if (wspace.background_name) then
-		ktbl[prefix .. "_background"] = wspace.background_name;
-	end
-
-	ktbl[prefix .. "_mode"] = wspace.mode;
-	store_key(ktbl);
-	wspace.wm:message("shallow workspace information stored");
+	wspace:save(true);
 end
 
 gf["save_space_deep"] = function()
