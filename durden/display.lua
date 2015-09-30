@@ -125,7 +125,6 @@ function durden_display_state(action, id)
 		end
 
 	elseif (action == "removed") then
-		print("lost ", id, name);
 		known_dispids[id] = nil;
 		display_remove(name);
 	end
@@ -280,6 +279,19 @@ function display_remove(name)
 	end
 
 	redraw_simulate();
+end
+
+function display_ressw(id, mode)
+	local v = known_dispids[id+1];
+	print(id, v);
+	if (not v) then
+		warning("display_ressww(), invalid display reference");
+		return;
+	end
+
+	video_displaymodes(id, mode.modeid);
+	v.display.tiler:resize(mode.width, mode.height);
+	map_video_display(v.display.rt, id, HINT_FIT);
 end
 
 -- should only be used for debugging, disables normal multidisplay

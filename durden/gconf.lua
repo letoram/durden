@@ -65,7 +65,7 @@ local defaults = {
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some
 -- platforms
-	mouse_mode = "native",
+	mouse_mode = "nonnative",
 
 -- audio settings
 	global_gain = 1.0,

@@ -78,9 +78,8 @@ are being implemented, we have the following list:
 - [ ] Workspace Management
   - [x] Naming/Renaming
   - [x] Searching Based On Name
-	- [ ] Saving/Restoring Properties (background, mode, name)
+	- [x] Saving/Restoring Properties (background, mode, name)
   - [ ] Saving/Restoring Layout
-  - [ ] Hide Named Workspaces
 - [ ] Basic Window Management
   - [x] Reassign
   - [x] Named Reassign
@@ -104,9 +103,9 @@ are being implemented, we have the following list:
 - [x] Per Workspace Background Image
 - [ ] Screen-Rotate Trigger
 - [x] Resource Browser
-- [ ] IPC
+- [x] IPC
   -  [x] Basic Notification Bar Control (i3status, ...)
-  -  [ ] Scripted UI control, external events
+  -  [x] External Command Interface (limited at the moment)
 - [ ] Input
   - [ ] Gaming Devices
     - [ ] Analog Calibration
@@ -116,11 +115,11 @@ are being implemented, we have the following list:
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
+  - [ ] Mouse Lock to Window
   - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
-  - [ ] Lock-input-to-Window
   - [ ] LED key-state highlights (k70 etc. kbds)
 - [ ] Internationalization
   - [ ] Menu Translations
@@ -133,7 +132,7 @@ are being implemented, we have the following list:
   - [x] Window Canvas to Workspace Background Image
   - [ ] Cloning Windows
   - [x] Migrate Window Between Displays
-  - [ ] State Transfers
+  - [ ] Save State Transfers
   - [x] Debugging Subwindows
   - [ ] Overlay Surfaces
   - [ ] Customized Titlebar
@@ -146,6 +145,7 @@ are being implemented, we have the following list:
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Screenreader Support
+  - [ ] Window Configuration Save
 - [ ] Display Sharing
   - [ ] Recording/Streaming/Sharing
     - [ ] Audio Control
@@ -160,6 +160,7 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
+  - [ ] Notification on reaching VID limit threshold
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
   - [x] Display Resolution Switching
@@ -167,7 +168,7 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
-  - [ ] Power Management Controls
+  - [ ] Power Management Controls (+ auto-DPMS)
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
   - [ ] Redshift Color Temperature

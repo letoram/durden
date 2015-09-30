@@ -74,7 +74,7 @@ local function query_dispmenu(ind)
 					label = string.format("%d*%d, %d bits @%d Hz",
 						v.width, v.height, v.depth, v.refresh),
 					kind = "action",
-					handler = function() video_displaymodes(ind, v.modeid); end
+					handler = function() display_ressw(ind, v); end
 				});
 			end
 		end
@@ -534,7 +534,8 @@ local function load_bg(fn)
 	if (not space) then
 		return;
 	end
-	space:set_background(fn);
+	local m1, m2 = dispatch_meta();
+	space:set_background(fn, m1);
 end
 
 local save_ws = {

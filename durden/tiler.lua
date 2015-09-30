@@ -824,7 +824,7 @@ local function workspace_save(ws, shallow)
 -- depth serialization and metastructure missing
 end
 
-local function workspace_background(ws, bgsrc)
+local function workspace_background(ws, bgsrc, generalize)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(ws.wm.width, ws.wm.height);
@@ -849,6 +849,10 @@ local function workspace_background(ws, bgsrc)
 			ws.background_name = bgsrc;
 			new_vid(src);
 			delete_image(src);
+			if (generalize) then
+				ws.wm.background_name = bgsrc;
+				store_key(string.format("ws_%s_bg", ws.wm.name), bgsrc);
+			end
 		else
 			delete_image(src);
 		end
@@ -897,6 +901,9 @@ create_workspace = function(wm, anim)
 	res.wm = wm;
 	workspace_set(res, gconfig_get("ws_default"));
 	res:activate(anim);
+	if (wm.background_name) then
+		res:set_background(wm.background_name);
+	end
 	return res;
 end
 
@@ -1851,7 +1858,7 @@ local function tiler_switchws(wm, ind)
 	end
 
 	if (#cur.children == 0 and gconfig_get("ws_autodestroy") and
-		ws.tag ) then
+		(ws.label == nil or string.len(ws.label) == 0)) then
 		cur:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
@@ -2088,6 +2095,18 @@ local function tiler_input_lock(wm, dst)
 	wm.input_lock = dst;
 end
 
+local function tiler_resize(tiler, neww, newh)
+	tiler.width = neww;
+	tiler.height = newh;
+	if (valid_vid(tiler.rt)) then
+		image_resize_storage(tiler.rt, neww, newh);
+	end
+	for k,v in pairs(tiler.spaces) do
+		v:resize(neww, newh);
+	end
+	tiler:update_statusbar();
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 	opts.font_sz = (opts.font_sz ~= nil) and opts.font_sz or 12;
@@ -2148,6 +2167,7 @@ function tiler_create(width, height, opts)
 		add_window = wnd_create,
 		find_window = tiler_find,
 		message = tiler_message,
+		resize = tiler_resize,
 		update_statusbar = tiler_statusbar_update,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
@@ -2196,6 +2216,11 @@ function tiler_create(width, height, opts)
 				res.spaces[k]:set_label(val);
 			end
 		end
+	end
+
+	local v = get_key(string.format("ws_%s_bg", res.name));
+	if (v) then
+		res.background_name = load_image(v);
 	end
 
 -- always make sure we have a 'first one'
