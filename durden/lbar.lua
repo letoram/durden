@@ -8,7 +8,59 @@ local function inp_str(ictx, ul)
 	return gconfig_get("lbar_textstr") .. ictx.inp.view_str();
 end
 
-local pending = nil;
+local pending = {};
+
+local function update_caret(ictx)
+	local pos = ictx.inp.caretpos - ictx.inp.chofs;
+	if (pos == 0) then
+		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
+	else
+		local msg = ictx.inp:caret_str();
+		local w, h = text_dimensions(gconfig_get("lbar_textstr") .. msg);
+		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
+	end
+end
+
+local function accept_cancel(wm, accept)
+	for i,v in ipairs(pending) do mouse_droplistener(v); end
+	pending = {};
+
+	local ictx = wm.input_ctx;
+	local time = gconfig_get("lbar_transition");
+	blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
+	blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
+	if (time > 0) then
+		PENDING_FADE = ictx.anchor;
+		expire_image(ictx.anchor, time + 1);
+		tag_image_transform(ictx.anchor, MASK_OPACITY, function()
+			PENDING_FADE = nil;
+		end);
+	else
+		for k,v in ipairs(pending) do
+			mouse_droplistener(v);
+		end
+		pending = {};
+		delete_image(ictx.anchor);
+	end
+	if (wm.debug_console) then
+		wm.debug_console:system_event(string.format(
+			"lbar(%s) returned %s", sym, ictx.inp.msg));
+	end
+	iostatem_restore(ictx.iostate);
+	wm.input_ctx = nil;
+	wm:set_input_lock();
+	if (accept) then
+		local base = ictx.inp.msg;
+
+		if (ictx.force_completion or string.len(base) == 0) then
+			if (ictx.set and ictx.set[ictx.csel]) then
+				base = type(ictx.set[ictx.csel]) == "table" and
+					ictx.set[ictx.csel][3] or ictx.set[ictx.csel];
+			end
+		end
+		ictx.get_cb(ictx.cb_ctx, base, true, ictx.set);
+	end
+end
 
 -- Build chain of single selectable strings, move and resize the marker to each
 -- of them, chain their positions to an anchor so they are easy to delete, and
@@ -16,10 +68,13 @@ local pending = nil;
 -- ignore scrolling and tracking details.
 --
 -- Set can contain the set of strings or a table of [colstr, selcolstr, text]
---
 local function update_completion_set(wm, ctx, set)
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
+		for i,v in ipairs(pending) do
+			mouse_droplistener(v);
+		end
+		pending = {};
 		ctx.canchor = nil;
 		ctx.citems = nil;
 	end
@@ -39,7 +94,7 @@ local function update_completion_set(wm, ctx, set)
 
 -- limitation with this solution is that we can't wrap around negative
 -- without forward stepping through due to variability in text length
-	ctx.csel = ctx.csel <= 0 and 1 or ctx.csel;
+	ctx.csel = ctx.csel <= 0 and ctx.clim or ctx.csel;
 
 -- wrap around if needed
 	if (ctx.csel > #set) then
@@ -63,24 +118,26 @@ local function update_completion_set(wm, ctx, set)
 	end
 
 	local ofs = 0;
+	local maxi = #set;
 
+	ctx.clim = #set;
 	for i=ctx.cofs,#set do
-		local txt;
+		local str;
 		if (type(set[i]) == "table") then
-			txt = set[i][i == ctx.csel and 2 or 1] .. set[i][3];
+			str = set[i][i == ctx.csel and 2 or 1] .. set[i][3];
 		else
 			if (i == ctx.csel) then
-				txt = gconfig_get("lbar_seltextstr") .. set[i];
+				str = gconfig_get("lbar_seltextstr") .. set[i];
 			else
-				txt = gconfig_get("lbar_textstr") .. set[i];
+				str = gconfig_get("lbar_textstr") .. set[i];
 			end
 		end
 
-		local w, h = text_dimensions(txt);
+		local w, h = text_dimensions(str);
 		local exit = false;
 
 		if (ofs + w > ctxw - 10) then
-			txt = "...";
+			str = "...";
 			if (i == ctx.csel) then
 				ctx.clastc = i - ctx.cofs;
 				ctx.cofs = ctx.csel;
@@ -89,9 +146,8 @@ local function update_completion_set(wm, ctx, set)
 			exit = true;
 		end
 
-		txt = render_text(txt);
+		local txt = render_text(str);
 		image_tracetag(txt, "lbar_text" ..tostring(i));
-
 		local cw = image_surface_properties(txt).width;
 		link_image(ctx.canchor, ctx.text_anchor);
 		link_image(txt, ctx.canchor);
@@ -103,6 +159,24 @@ local function update_completion_set(wm, ctx, set)
 		order_image(ctx.ccursor, 1);
 		image_clip_on(txt, CLIP_SHALLOW);
 
+-- allow (but sneer!) mouse for selection and activation
+		local mh = {
+			name = "lbar_labelsel",
+			own = function(ctx, vid) return vid == txt; end,
+			motion = function(mctx)
+				ctx.csel = i;
+				resize_image(ctx.ccursor, cw, gconfig_get("lbar_sz"));
+				move_image(ctx.ccursor, mctx.mofs, 0);
+			end,
+			click = function()
+				accept_cancel(wm, true);
+			end,
+-- need copies of these into returned context for motion handler
+			mofs = ofs
+		};
+
+		mouse_addlistener(mh, {"motion", "click"});
+		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
 		local carety = math.floor(0.5*(
@@ -117,22 +191,12 @@ local function update_completion_set(wm, ctx, set)
 		ofs = ofs + cw + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
+			ctx.clim = i-1;
 			break;
 		end
 	end
 
 	local txanchor = 0;
-end
-
-local function update_caret(ictx)
-	local pos = ictx.inp.caretpos - ictx.inp.chofs;
-	if (pos == 0) then
-		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
-	else
-		local msg = ictx.inp:caret_str();
-		local w, h = text_dimensions(gconfig_get("lbar_textstr") .. msg);
-		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
-	end
 end
 
 local function lbar_ih(wm, ictx, inp, sym, caret)
@@ -175,37 +239,7 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	end
 
 	if (sym == ictx.cancel or sym == ictx.accept) then
-		local time = gconfig_get("lbar_transition");
-		blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
-		blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
-		if (time > 0) then
-			PENDING_FADE = ictx.anchor;
-			expire_image(ictx.anchor, time + 1);
-			tag_image_transform(ictx.anchor, MASK_OPACITY, function()
-				PENDING_FADE = nil;
-			end);
-		else
-			delete_image(ictx.anchor);
-		end
-		if (wm.debug_console) then
-			wm.debug_console:system_event(string.format(
-				"lbar(%s) returned %s", sym, ictx.inp.msg));
-		end
-		iostatem_restore(ictx.iostate);
-		wm.input_ctx = nil;
-		wm:set_input_lock();
-		if (sym == ictx.accept) then
-			local base = ictx.inp.msg;
-
-			if (ictx.force_completion or string.len(base) == 0) then
-				if (ictx.set and ictx.set[ictx.csel]) then
-					base = type(ictx.set[ictx.csel]) == "table" and
-						ictx.set[ictx.csel][3] or ictx.set[ictx.csel];
-				end
-			end
-			ictx.get_cb(ictx.cb_ctx, base, true, ictx.set);
-		end
-		return;
+		return accept_cancel(wm, sym == ictx.accept);
 	end
 
 	if ((sym == ictx.step_n or sym == ictx.step_p)) then
@@ -313,7 +347,6 @@ end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
-
 	local time = gconfig_get("lbar_transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
@@ -322,6 +355,14 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	PENDING_FADE = nil;
 
 	local bg = color_surface(wm.width, wm.height, 0, 0, 0);
+	local ph = {
+		name = "bg_cancel",
+		own = function(ctx, vid) return vid == bg; end,
+		click = function() accept_cancel(wm, false); end
+		};
+	mouse_addlistener(ph, {"click"});
+	table.insert(pending, ph);
+
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
 	link_image(bg, wm.order_anchor);

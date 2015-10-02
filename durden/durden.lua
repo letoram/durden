@@ -305,7 +305,7 @@ function durden_input(iotbl, fromim)
 		local it = iostatem_input(iotbl);
 		if (it) then
 			for k,v in ipairs(it) do
-			durden_input(v, true);
+				durden_input(v, true);
 			end
 		end
 	end
