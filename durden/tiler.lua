@@ -359,7 +359,7 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
-local function workspace_activate(space, noanim, negdir)
+local function workspace_activate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_in");
 
@@ -374,19 +374,35 @@ local function workspace_activate(space, noanim, negdir)
 			show_image(space.anchor);
 		elseif (method == "fade") then
 			move_image(space.anchor, 0, 0);
+-- stay at level zero for a little while so not to fight with crossfade
 			blend_image(space.anchor, 0.0, 0.5 * time);
 			blend_image(space.anchor, 1.0, 0.5 * time);
 		else
 			warning("broken method set for ws_transition_in: " ..method);
 		end
+-- slightly more complicated, we don't want transitions if the background is the
+-- same between different workspaces as it is visually more distracting
+		local bg = space.background;
+		if (bg) then
+			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
+				blend_image(bg, 1.0, 0.4 * time);
+				image_mask_set(bg, MASK_POSITION);
+				image_mask_set(bg, MASK_OPACITY);
+			else
+				show_image(bg);
+				image_mask_clear(bg, MASK_POSITION);
+				image_mask_clear(bg, MASK_OPACITY);
+			end
+		end
 	else
 		show_image(space.anchor);
+		if (space.background) then show_image(space.background); end
 	end
 
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
-local function workspace_inactivate(space, noanim, negdir)
+local function workspace_inactivate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_out");
 
@@ -400,8 +416,21 @@ local function workspace_inactivate(space, noanim, negdir)
 		else
 			warning("broken method set for ws_transition_out: "..method);
 		end
+		local bg = space.background;
+		if (bg) then
+			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
+				blend_image(bg, 0.0, 0.4 * time);
+				image_mask_set(bg, MASK_POSITION);
+				image_mask_set(bg, MASK_OPACITY);
+			else
+				hide_image(bg);
+				image_mask_clear(bg, MASK_POSITION);
+				image_mask_clear(bg, MASK_OPACITY);
+			end
+		end
 	else
 		hide_image(space.anchor);
+		if (space.background) then hide_image(space.background); end
 	end
 end
 
@@ -900,10 +929,10 @@ create_workspace = function(wm, anim)
 	ent_count = ent_count + 1;
 	res.wm = wm;
 	workspace_set(res, gconfig_get("ws_default"));
-	res:activate(anim);
 	if (wm.background_name) then
 		res:set_background(wm.background_name);
 	end
+	res:activate(anim);
 	return res;
 end
 
@@ -1741,6 +1770,38 @@ local function tiler_find(wm, source)
 	return nil;
 end
 
+local function gen_status_tile(wm, lbl, min_sz, ofs)
+	local text = render_text(lbl);
+	local props = image_surface_properties(text);
+
+	if (props.width < min_sz) then
+		move_image(text, math.ceil(0.5*(min_sz - props.width)), 3);
+	else
+		move_image(text, 2, 3);
+	end
+
+	local tilew = (props.width+4) > min_sz and (props.width+4) or min_sz;
+	local tile = fill_surface(tilew, min_sz, 255, 255, 255);
+	link_image(text, tile);
+	show_image({text, tile});
+	image_mask_set(text, MASK_UNPICKABLE);
+	image_inherit_order(tile, true);
+	image_inherit_order(text, true);
+	link_image(tile, wm.statusbar);
+	image_tracetag(text, "tiler_sbar_tile");
+	image_shader(text, "sbar_item");
+	image_shader(tile, "sbar_item");
+
+	move_image(tile, ofs, 0);
+	ofs = ofs + tilew + 1;
+	return tile, ofs;
+end
+
+-- statusbar is divided into three areas:
+-- first,  [state-tile]
+-- second, [workspace-tiles]
+-- third,  message [cropped to fill]
+-- fourth, statusbar
 local function tiler_statusbar_update(wm, msg, state)
 	local statush = gconfig_get("sbar_sz");
 	resize_image(wm.statusbar, wm.width, statush);
@@ -1748,35 +1809,20 @@ local function tiler_statusbar_update(wm, msg, state)
 	blend_image(wm.statusbar, gconfig_get("sbar_alpha"));
 
 	local ofs = 0;
+-- first, if it is enabled, update the indicator with a short or
+-- long descriptor, i.e. mode or modech or sort
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
 			local space = wm.spaces[i];
-
--- no pre-rendered label? render and associate with tile
 			if (space.label_id == nil) then
-				local text = render_text(string.format("%s%s %d%s",
+				local text = string.format("%s%s %d%s",
 					gconfig_get("font_str"), gconfig_get("text_color"), i,
 					space.label ~= nil and (":" .. gconfig_get("label_color") .. " " ..
-					space.label) or "")
-				);
-				local props = image_surface_properties(text);
-				if (not space.label) then
-					move_image(text, math.ceil(0.5*(statush - props.width)), 3);
-				else
-					move_image(text, 2, 3);
-				end
-				local tilew = (props.width+4) > statush and (props.width+4) or statush;
-				local tile = fill_surface(tilew, statush, 255, 255, 255);
-				link_image(text, tile);
-				show_image({text, tile});
-				image_mask_set(text, MASK_UNPICKABLE);
-				image_inherit_order(tile, true);
-				image_inherit_order(text, true);
-				link_image(tile, wm.statusbar);
-				image_tracetag(text, "tiler_sbar_tile");
-				image_shader(text, "sbar_item");
-				image_shader(tile, "sbar_item");
-				space.label_id = tile;
+					space.label) or "");
+				space.label_id, ofs = gen_status_tile(wm, text, statush, ofs);
+				print(space.label_id, ofs);
+			else
+				ofs = ofs + image_surface_properties(space.label_id).width + 1;
 			end
 
 			image_shader(space.label_id,
@@ -1793,13 +1839,10 @@ local function tiler_statusbar_update(wm, msg, state)
 				name = "tile_ml_" .. tostring(i)
 			};
 			mouse_addlistener(space.tile_ml, {"click", "rclick"});
-
--- tiles can have variable width
-			local props = image_surface_properties(space.label_id);
-			move_image(space.label_id, ofs, 0);
-			ofs = ofs + props.width + 1;
 		end
 	end
+
+--	mouse_dumphandlers();
 
 -- add msg in statusbar "slot", protect against overflow into ws list
 	if (msg ~= nil) then
@@ -1849,20 +1892,23 @@ local function tiler_switchws(wm, ind)
 	end
 
 	local nd = wm.space_ind < ind;
-	local cur = wm.spaces[wm.space_ind];
+	local cursp = wm.spaces[wm.space_ind];
+	local nextsp = wm.spaces[ind];
 
-	if (cur.switch_hook) then
-		cur:switch_hook(false, nd);
+	if (cursp.switch_hook) then
+		cursp:switch_hook(false, nd);
 	else
-		workspace_inactivate(cur, false, nd);
+		workspace_inactivate(cursp, false, nd, nextsp and nextsp.background or nil);
 	end
 
-	if (#cur.children == 0 and gconfig_get("ws_autodestroy") and
-		(ws.label == nil or string.len(ws.label) == 0)) then
-		cur:destroy();
+-- policy, don't autodelete if the user has made some kind of customization
+	if (#cursp.children == 0 and gconfig_get("ws_autodestroy") and
+		(cursp.label == nil or string.len(cursp.label) == 0 ) and
+		cursp.background_name == nil) then
+		cursp:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
-		cur.selected = cw;
+		cursp.selected = cw;
 	end
 
 	if (wm.spaces[ind] == nil) then
@@ -1875,7 +1921,7 @@ local function tiler_switchws(wm, ind)
 	if (wm.spaces[ind].switch_hook) then
 		wm.spaces[ind]:switch_hook(true, not nd);
 	else
-		workspace_activate(wm.spaces[ind], false, not nd);
+		workspace_activate(wm.spaces[ind], false, not nd, cursp.background);
 	end
 
 	if (wm.spaces[ind].selected) then
