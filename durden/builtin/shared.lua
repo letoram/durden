@@ -179,6 +179,21 @@ local kbd_menu = {
 	},
 };
 
+local mouse_menu = {
+	{
+		name = "target_mouse_lock",
+		label = "Toggle Lock",
+		kind = "action",
+		handler = function(wnd)
+			if (wnd.lock_mouse) then
+				wnd.lock_mouse = nil;
+			else
+				wnd.lock_mouse = true;
+			end
+		end
+	}
+};
+
 local input_menu = {
 	{
 		name = "target_input_labels",
@@ -199,6 +214,14 @@ local input_menu = {
 		submenu = true,
 		force = true,
 		handler = kbd_menu
+	},
+	{
+		name = "target_input_mouse",
+		label = "Mouse",
+		kind = "action",
+		submenu = true,
+		force = true,
+		handler = mouse_menu
 	}
 };
 
