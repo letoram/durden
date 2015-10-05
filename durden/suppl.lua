@@ -417,10 +417,10 @@ local function run_value(ctx)
 		end, ctx, {label = hintstr, force_completion = true});
 	else
 		return active_display():lbar(function(ctx, instr, done, lastv)
-			if (done and ctx.validator(instr)) then
+			if (done and (ctx.validator == nil or ctx.validator(instr))) then
 				ctx.handler(ctx, instr);
 			end
-		return ctx.validator(instr);
+		return ctx.validator == nil or ctx.validator(instr);
 	end, ctx, {label = hintstr});
 	end
 end

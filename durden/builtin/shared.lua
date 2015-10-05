@@ -179,17 +179,48 @@ local kbd_menu = {
 	},
 };
 
+local function mouse_lockfun(x, y, rx, ry, wnd)
+	print("forward input to target:", x, y, rx, ry, wnd);
+end
+
 local mouse_menu = {
 	{
 		name = "target_mouse_lock",
-		label = "Toggle Lock",
-		kind = "action",
-		handler = function(wnd)
-			if (wnd.lock_mouse) then
-				wnd.lock_mouse = nil;
+		label = "Mouse Lock",
+		kind = "value",
+		set = {"Disabled", "Constrain", "Center"},
+		initial = function()
+			local wnd = active_display().selected;
+			return wnd.mouse_lock and wnd.mouse_lock or "Disabled";
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			if (val == "Disabled") then
+				wnd.mouse_lock = nil;
+				mouse_lockto(nil, nil);
 			else
-				wnd.lock_mouse = true;
+				wnd.mouse_lock = val;
+				mouse_lockto(wnd.canvas, mouse_lockfun, val == "Center", wnd);
 			end
+		end
+	},
+	{
+		name = "target_mouse_cursor",
+		label = "Cursor Mode",
+		kind = "value",
+		set = {"default", "hidden"},
+		initial = function()
+			local wnd = active_display().selected;
+			return wnd.cursor ==
+				"hidden" and "hidden" or "default";
+		end,
+		handler = function(ctx, val)
+			if (val == "hidden") then
+				mouse_hide();
+			else
+				mouse_show();
+			end
+			active_display().selected.cursor = val;
 		end
 	}
 };

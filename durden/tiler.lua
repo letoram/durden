@@ -278,6 +278,16 @@ local function wnd_select(wnd, source)
 		return;
 	end
 
+-- may be used to reactivate locking after a lbar or similar action
+-- has been performed.
+	if (wnd.wm.selected == wnd) then
+		if (wnd.mouse_lock) then
+			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
+				wnd.mouse_lock or nil);
+		end
+		return;
+	end
+
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
 	end
@@ -297,8 +307,9 @@ local function wnd_select(wnd, source)
 
 	ms = mouse_state();
 	ms.hover_ign = true;
+	local mouse_moved = false;
+	local props = image_surface_resolve_properties(wnd.canvas);
 	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
-		local props = image_surface_resolve_properties(wnd.canvas);
 		local px = 0.0;
 		local py = 0.0;
 
@@ -307,9 +318,15 @@ local function wnd_select(wnd, source)
 			py = wnd.mouse[2];
 		end
 		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
+		mouse_moved = true;
 	end
 	mouse_state().last_hover = CLOCK;
 	mouse_state().hover_ign = false;
+
+	if (wnd.mouse_lock) then
+		mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
+				wnd.mouse_lock or nil);
+	end
 end
 
 --
@@ -1309,20 +1326,20 @@ local function convert_mouse_xy(wnd, x, y)
 	local aprop = image_surface_resolve_properties(wnd.canvas);
 	local lx = x - aprop.x;
 	local ly = y - aprop.y;
-	res[1] = 0;
+	res[1] = math.ceil(lx * (aprop.width / sprop.width) - 0.5);
 	res[2] = 0;
-	res[3] = math.ceil(lx * (aprop.width / sprop.width) - 0.5);
-	res[4] = math.ceil(ly * (aprop.height / sprop.height) - 0.5);
+	res[3] = math.ceil(ly * (aprop.height / sprop.height) - 0.5);
+	res[4] = 0;
 
 	if (wnd.last_ms) then
-		res[1] = wnd.last_ms[1] - res[3];
-		res[2] = wnd.last_ms[2] - res[4];
+		res[2] = wnd.last_ms[1] - res[1];
+		res[4] = wnd.last_ms[2] - res[3];
 	else
 		wnd.last_ms = {};
 	end
 
-	wnd.last_ms[1] = res[3];
-	wnd.last_ms[2] = res[4];
+	wnd.last_ms[1] = res[1];
+	wnd.last_ms[2] = res[3];
 	return res;
 end
 
@@ -1367,7 +1384,7 @@ local function wnd_mousepress(ctx, vid)
 end
 
 -- FIXME: need to take into account that the surface may be scaled
-local function wnd_mousemotion(ctx, vid, x, y)
+local function wnd_mousemotion(ctx, vid, x, y, relx, rely)
 	local wnd = ctx.wnd;
 
 	if (vid == wnd.canvas and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
@@ -1512,7 +1529,7 @@ local function wnd_mouseover(ctx, vid)
 	end
 
 	if (vid == ctx.wnd.canvas) then
--- if we have a custom cursor defined, switch to that one
+		mouse_switch_cursor(ctx.wnd.cursor);
 	end
 end
 
