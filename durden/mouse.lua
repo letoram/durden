@@ -95,6 +95,7 @@ local mstate = {
 	x_ofs        = 0,
 	y_ofs        = 0,
 	last_hover   = 0,
+	dev = 0,
 	x = 0,
 	y = 0,
 	min_x = 0,
@@ -107,6 +108,47 @@ local mstate = {
 
 local cursors = {
 };
+
+local function lock_constrain()
+-- locking to surface is slightly odd in that we still need to return
+-- valid relative motion which may or may not come from a relative source
+-- and still handle constraints e.g. warp/clamp
+	if (mstate.lockvid) then
+		local props = image_surface_resolve_properties(mstate.lockvid);
+		local ul_x = props.x;
+		local ul_y = props.y;
+		local lr_x = props.x + props.width;
+		local lr_y = props.y + props.height;
+
+		if (mstate.warp) then
+			local cpx = math.floor(props.x + 0.5 * props.width);
+			local cpy = math.floor(props.y + 0.5 * props.height);
+			input_samplebase(mstate.dev, cpx, cpy);
+		else
+			mstate.x = mstate.x < ul_x and ul_x or mstate.x;
+			mstate.y = mstate.y < ul_y and ul_y or mstate.y;
+			mstate.x = mstate.x > lr_x and lr_x or mstate.x;
+			mstate.y = mstate.y > lr_y and lr_y or mstate.y;
+		end
+
+-- when we always get absolute coordinates even with relative motion,
+-- we need to track the spill and offset..
+	local nx = mstate.x;
+	local ny = mstate.y;
+		mstate.rel_x = (mstate.rel_x + mstate.x) < ul_x
+			and (mstate.x - ul_x) or mstate.rel_x;
+		mstate.rel_x = mstate.rel_x + mstate.x > lr_x
+			and lr_x - mstate.x or mstate.rel_x;
+		mstate.rel_y = mstate.rel_y + mstate.y < ul_y
+			and mstate.y - ul_y or mstate.rel_y;
+		mstate.rel_y = mstate.rel_y + mstate.y > lr_y
+			and lr_y - mstate.y or mstate.rel_y;
+
+-- resolve properties is expensive so return the values in the hope that they
+-- might be re-usable by some other part
+		return ul_x, ul_y, lr_x, lr_y;
+	end
+end
 
 local function mouse_cursorupd(x, y)
 	x = x * mstate.accel_x;
@@ -124,13 +166,18 @@ local function mouse_cursorupd(x, y)
 	mstate.y = mstate.y > VRESH and VRESH-1 or mstate.y;
 	mstate.hide_count = mstate.hide_base;
 
+	local relx = mstate.x - lmx;
+	local rely = mstate.y - lmy;
+
+	lock_constrain();
 	if (mstate.native) then
 		move_cursor(mstate.x, mstate.y);
 	else
 		move_image(mstate.cursor, mstate.x + mstate.x_ofs,
 			mstate.y + mstate.y_ofs);
 	end
-	return (mstate.x - lmx), (mstate.y - lmy);
+
+	return relx, rely;
 end
 
 -- global event handlers for things like switching cursor on press
@@ -327,16 +374,19 @@ end
 -- these to relative before moving on
 --
 function mouse_absinput(x, y)
-	local arx = mstate.accel_x * (x - mstate.x);
-	local ary = mstate.accel_y * (y - mstate.y);
 	local rx = x - mstate.x;
 	local ry = y - mstate.y;
+	local arx = mstate.accel_x * rx;
+	local ary = mstate.accel_y * ry;
 
 	mstate.rel_x = arx;
 	mstate.rel_y = ary;
 
 	mstate.x = x + (arx - rx);
 	mstate.y = y + (ary - ry);
+
+-- also need to constrain the relative coordinates when we clamp
+	local ulx, uly, lrx, lry = lock_constrain();
 
 	if (mstate.native) then
 		move_cursor(mstate.x, mstate.y);
@@ -345,7 +395,23 @@ function mouse_absinput(x, y)
 			mstate.y + mstate.y_ofs);
 	end
 
-	mouse_input(x, y, nil, true);
+	mouse_input(mstate.x, mstate.y, nil, true);
+end
+
+--
+-- ignore all mouse motion and possibly forward to specificed
+-- funtion. will reset when valid_vid(vid) fails.
+--
+function mouse_lockto(vid, fun, warp, state)
+	local olv = mstate.lockvid;
+	local olf = mstate.lockfun;
+
+	mstate.lockvid = vid;
+	mstate.lockfun = fun;
+	mstate.lockstate = state;
+	mstate.warp = warp ~= nil and warp or false;
+
+	return olv, olf;
 end
 
 function mouse_xy()
@@ -473,6 +539,26 @@ local function lmbhandler(hists, press)
 	end
 end
 
+local function mouse_lockh(relx, rely)
+	local x, y = mouse_xy();
+-- safeguard from deletions that don't clean up after themselves
+	if (not valid_vid(mstate.lockvid)) then
+		mouse_lockto();
+	elseif (mstate.lockfun) then
+		mstate.lockfun(relx, rely, rx, ry, mstate.lockstate);
+	end
+end
+
+local function mouse_btnlock(ind, active)
+	local x, y = mouse_xy();
+	if (not valid_vid(mstate.lockvid)) then
+		mouse_lockto(nil, nil);
+		if (mstate.lockfun) then
+			mstate.lockfun(x, y, 0, 0, ind, active);
+		end
+	end
+end
+
 --
 -- we kept mouse_input that supported both motion and
 -- button update at once for backwards compatibility.
@@ -480,6 +566,10 @@ end
 function mouse_button_input(ind, active)
 	if (ind < 1 or ind > #mstate.btns) then
 		return;
+	end
+
+	if (mstate.lockvid) then
+		return mouse_btnlock(ind, active);
 	end
 
 	local hists = mouse_pickfun(
@@ -546,13 +636,18 @@ function mouse_input(x, y, state, noinp)
 		return 0, 0;
 	end
 
-	mstate.in_handler = true;
 	if (noinp == nil or noinp == false) then
 		x, y = mouse_cursorupd(x, y);
 	else
 		x = mstate.rel_x;
 		y = mstate.rel_y;
 	end
+
+	if (mstate.lockvid) then
+		return mouse_lockh(x, y);
+	end
+
+	mstate.in_handler = true;
 	mstate.hover_count = 0;
 
 	if (not mstate.hover_ign and #mstate.hover_track > 0) then
@@ -724,13 +819,14 @@ function mouse_add_cursor(label, img, hs_x, hs_y)
 end
 
 function mouse_switch_cursor(label)
-	if (label == nil or cursors[label] == nil) then
+	if (label == nil) then
 		label = "default";
 	end
 
 	if (label == mstate.active_label) then
 		return;
 	end
+	mstate.active_label = label;
 
 	if (cursors[label] == nil) then
 		if (mstate.native) then
@@ -742,7 +838,6 @@ function mouse_switch_cursor(label)
 	end
 
 	local ct = cursors[label];
-	mstate.active_label = label;
 
 	if (mstate.native) then
 		cursor_setstorage(ct.vid);
