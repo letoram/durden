@@ -1853,8 +1853,8 @@ local function tiler_statusbar_update(wm, msg, state)
 					space.label ~= nil and (":" .. gconfig_get("label_color") .. " " ..
 					space.label) or "");
 				space.label_id, ofs = gen_status_tile(wm, text, statush, ofs);
-				print(space.label_id, ofs);
 			else
+				move_image(space.label_id, ofs, 0);
 				ofs = ofs + image_surface_properties(space.label_id).width + 1;
 			end
 
