@@ -18,7 +18,8 @@ function durden()
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
-	system_load("display.lua")();
+	system_load("display.lua")(); -- multidisplay management
+	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global
@@ -139,6 +140,7 @@ function durden_launch(vid, title, prefix)
 	show_image(vid);
 	wnd.dispatch = shared_dispatch();
 	reg_window(wnd, vid);
+	shader_setup(wnd, wnd.shkey and wnd.shkey or "noalpha");
 end
 
 -- recovery from crash is handled just like newly launched windows

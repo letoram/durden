@@ -37,9 +37,10 @@ return {
 	},
 	},
 
--- override anything of the window defaults?
 	props = {
 		kbd_period = 0,
-		kbd_delay = 0
+		kbd_delay = 0,
+		scalemode = "aspect",
+		filtermode = FILTER_NONE,
 	}
 };

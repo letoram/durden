@@ -98,6 +98,7 @@ are being implemented, we have the following list:
   - [x] Window Translucency
   - [ ] Window Alpha Channel Behavior Control
   - [x] Off-Screen Window Alert
+  - [ ] Centered canvas in overdimensioned windows
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Per Workspace Background Image

@@ -385,6 +385,18 @@ local video_menu = {
 			end
 		end
 	},
+	{
+		name = "target_shader",
+		label = "Shader",
+		kind = "value",
+		set = shader_list(),
+		handler = function(ctx, val)
+			local key = shader_getkey(val);
+			if (key ~= nil) then
+				shader_setup(active_display().selected, key);
+			end
+		end
+	}
 -- good place to add advanced upscalers (xBR, CRT etc.)
 };
 
