@@ -99,6 +99,7 @@ are being implemented, we have the following list:
   - [ ] Window Alpha Channel Behavior Control
   - [x] Off-Screen Window Alert
   - [ ] Centered canvas in overdimensioned windows
+  - [ ] Mappable statusbar buttons in float mode
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Per Workspace Background Image
@@ -161,7 +162,7 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
-  - [ ] Notification on reaching VID limit threshold
+  - [ ] Notification on reaching VID limit threshold and suspend external/ subsegs
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
   - [x] Display Resolution Switching

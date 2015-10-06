@@ -1324,16 +1324,19 @@ local function convert_mouse_xy(wnd, x, y)
 	local res = {};
 	local sprop = image_storage_properties(wnd.external);
 	local aprop = image_surface_resolve_properties(wnd.canvas);
-	local lx = x - aprop.x;
-	local ly = y - aprop.y;
-	res[1] = math.ceil(lx * (aprop.width / sprop.width) - 0.5);
+	local sfx = sprop.width / aprop.width;
+	local sfy = sprop.height / aprop.height;
+	local lx = sfx * (x - aprop.x);
+	local ly = sfy * (y - aprop.y);
+
+	Res[1] = lx;
 	res[2] = 0;
-	res[3] = math.ceil(ly * (aprop.height / sprop.height) - 0.5);
+	res[3] = ly;
 	res[4] = 0;
 
 	if (wnd.last_ms) then
-		res[2] = wnd.last_ms[1] - res[1];
-		res[4] = wnd.last_ms[2] - res[3];
+		res[2] = (wnd.last_ms[1] - res[1]);
+		res[4] = (wnd.last_ms[2] - res[3]);
 	else
 		wnd.last_ms = {};
 	end
@@ -1346,7 +1349,14 @@ end
 local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 	if (vid == ctx.wnd.canvas and
 		valid_vid(ctx.wnd.external, TYPE_FRAMESERVER)) then
-		local iotbl = {
+
+		if (ctx.wnd.wm.debug_console) then
+			ctx.wnd.wm.debug_console:system_event(
+				string.format("button(%d, %d, %s, %d, %d)",
+				vid, ind, pressed and "true" or "false", x, y));
+		end
+
+	local iotbl = {
 			kind = "digital",
 			source = "mouse",
 			active = pressed,
@@ -1403,6 +1413,12 @@ local function wnd_mousemotion(ctx, vid, x, y, relx, rely)
 		wnd.last_ms.clock = CLOCK;
 		if (wnd.input_tag) then
 			iotbl = wnd.input_tag(iotbl);
+		end
+
+		if (wnd.wm.debug_console) then
+			wnd.wm.debug_console:system_event(
+				string.format("mouse(%d, %d, %d,%d) to target",
+				mv[1], mv[2], mv[3], mv[4]));
 		end
 		target_input(wnd.external, iotbl);
 		iotbl.subid = 1;
