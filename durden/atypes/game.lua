@@ -40,7 +40,11 @@ return {
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
+<<<<<<< Updated upstream
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
+=======
+		rate_unlimited = true,
+>>>>>>> Stashed changes
 	}
 };

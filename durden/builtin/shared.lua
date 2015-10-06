@@ -57,6 +57,7 @@ local function run_input_label(wnd, v)
 	local iotbl = {
 		kind = "digital",
 		label = v[1],
+		translated = true,
 		active = true,
 		devid = 8,
 		subid = 8
