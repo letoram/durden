@@ -1329,7 +1329,7 @@ local function convert_mouse_xy(wnd, x, y)
 	local lx = sfx * (x - aprop.x);
 	local ly = sfy * (y - aprop.y);
 
-	Res[1] = lx;
+	res[1] = lx;
 	res[2] = 0;
 	res[3] = ly;
 	res[4] = 0;
