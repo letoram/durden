@@ -100,6 +100,7 @@ are being implemented, we have the following list:
   - [x] Off-Screen Window Alert
   - [ ] Centered canvas in overdimensioned windows
   - [ ] Mappable statusbar buttons in float mode
+  - [ ] Mouse launch-bar
 - [x] Configurable Border Width/Gaps
 - [x] Global and Window- specific audio controls
 - [x] Per Workspace Background Image
@@ -140,6 +141,7 @@ are being implemented, we have the following list:
   - [ ] Customized Titlebar
   - [ ] Customized Cursors, Cursorhints
   - [ ] Customized Border
+  - [ ] Icon to Tray
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
   - [ ] Suspend/Resume Follows Focus
