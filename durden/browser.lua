@@ -54,20 +54,21 @@ local function browse_cb(ctx, instr, done, lastv)
 		for i=1,#ctx.paths[path] do
 			local elem = ctx.paths[path][i];
 			local ign;
-		 	ign, ctx.paths[path][elem] = resource(elem, ctx.namespace);
+		 	ign, ctx.paths[path][elem] = resource(path .. "/" .. elem, ctx.namespace);
 		end
 	end
 
 -- sweep through and color code accordingly, filter matches
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
-	local res = #ctx.path > ctx.minlen and {".."} or {};
+	local res = (string.len(instr) > 0 or instr == "." or instr == "..")
+		and {".."} or {};
+
 	for i,v in ipairs(ctx.paths[path]) do
-		if (ctx.paths[path][v] == "directory") then
-			table.insert(res, {mlbl, msellbl, v});
-		else
-		if (string.sub(v,1,string.len(instr)) == instr
-			and match_ext(v, ctx.fltext)) then
+		if (string.sub(v,1,string.len(instr)) == instr) then
+			if (ctx.paths[path][v] == "directory") then
+				table.insert(res, {mlbl, msellbl, v});
+			elseif (match_ext(v, ctx.fltext)) then
 				table.insert(res, v);
 			end
 		end
