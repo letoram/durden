@@ -230,6 +230,7 @@ function def_handler(source, stat)
 				wnd[k] = v;
 			end
 		end
+-- FIXME: Not working
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.labels = atbl.labels and atbl.labels or {};
 		wnd.source_audio = stat.source_audio;
