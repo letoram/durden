@@ -20,19 +20,23 @@ void main(){
 --
 -- simple bar spectogram, adapted from guycooks reference at shadertoy
 --
-local frag_spectrogram = [[
+local frag_spect = [[
 uniform sampler2D map_tu0;
 uniform float obj_opacity;
-varying vec2 teco;
+varying vec2 texco;
 
-float h2rgb(float){
+#define bars 32.0
+#define bar_sz (1.0 / bars)
+#define bar_gap (0.1 * bar_sz)
+
+float h2rgb(float h){
 	if (h < 0.0)
 		h += 1.0;
 	if (h < 0.16667)
 		return 0.1 + 4.8 * h;
 	if (h < 0.5)
 		return 0.9;
-	if *h < 0.66669)
+	if (h < 0.66669)
 		return 0.1 + 4.8 * (0.6667 - h);
 	return 0.1;
 }
@@ -74,7 +78,7 @@ shdrtbl["noalpha"] = {
 
 shdrtbl["fft_spectogram"] = {
 	name = "spectogram",
-	shid = build_shader(nil, spectogram, "spectogram"),
+	shid = build_shader(nil, frag_spect, "spectogram"),
 	fft = true,
 	hidden = true
 };

@@ -26,8 +26,14 @@ local function target_event(self, wnd, src, tbl)
 		self:add_event(TARGET_EVGRP, string.format(
 			"[%s] label: %s", wnd.name, tbl.labelhint));
 	else
+		local fields = {};
+		for k,v in pairs(tbl) do
+			if (k ~= "kind") then
+				table.insert(fields, string.format("%s(%s)", k, tostring(v)));
+			end
+		end
 		self:add_event(TARGET_EVGRP, string.format(
-		"[%s] kind: %s", wnd.name, tbl.kind));
+		"[%s] kind: %s [%s]", wnd.name, tbl.kind, table.concat(fields, ',')));
 	end
 end
 

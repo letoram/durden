@@ -20,7 +20,6 @@ skiptbl["Skip 4"] = 4;
 -- target_framemode(vid, skipval, align, preaudio, jitterstep, jitterxfer)
 -- target_postfilter(hue, sat, contrast[1], bright, gamma, sharp[2],
 -- fast-forward (val)
--- input (lock / unlock)
 
 return {
 	atype = "game",
@@ -40,11 +39,8 @@ return {
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
-<<<<<<< Updated upstream
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
-=======
 		rate_unlimited = true,
->>>>>>> Stashed changes
 	}
 };
