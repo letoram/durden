@@ -4,5 +4,9 @@
 --
 return {
 	atype = "remoting",
-	actions = {},
+	actions = {
+		scalemode = "aspect",
+		filtermode = FILTER_NONE,
+		rate_unlimited = true
+	},
 };

@@ -19,8 +19,9 @@ end
 function meta_guard(s1, s2)
 	if (s1 or s2) then
 		mgc = 0;
-		active_display():message(nil);
+		active_display():message();
 		meta_guard = function() return true; end
+		return true;
 	end
 
 	local bindcall = function(sym, lbl, nc)
@@ -31,7 +32,6 @@ function meta_guard(s1, s2)
 	end
 
 	mgc = mgc + 1;
-	active_display():message(string.format(LBL_METAGUARD, threshold - mgc), -1);
 	if (mgc > threshold) then
 		bindcall("rebind_meta", LBL_METAGUARD_META,
 		function()
@@ -44,7 +44,10 @@ function meta_guard(s1, s2)
 		end);
 
 		mgc = 0;
+		active_display():message();
 		return false;
+	else
+		active_display():message(string.format(LBL_METAGUARD, threshold - mgc), -1);
 	end
 
 	return true;

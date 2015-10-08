@@ -98,6 +98,16 @@ function durden()
 -- load saved keybindings
 	dispatch_load();
 	iostatem_init();
+
+-- hook some API functions for debugging purposes
+	if (DEBUGLEVEL > 0) then
+		local oti = target_input;
+		target_input = function(dst, tbl)
+			if (active_display().debug_console) then
+				active_display().debug_console:add_input(tbl, dst);
+			end
+		end
+	end
 end
 
 local function tile_changed(wnd, neww, newh, efw, efh)
@@ -230,7 +240,6 @@ function def_handler(source, stat)
 				wnd[k] = v;
 			end
 		end
--- FIXME: Not working
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.labels = atbl.labels and atbl.labels or {};
 		wnd.source_audio = stat.source_audio;
@@ -278,7 +287,7 @@ function poll_status_channel()
 		local vid = render_text(
 			string.format("%s \\#ffffff %s", gconfig_get("font_str"), msg));
 		if (valid_vid(vid)) then
-			active_display():update_statusbar(vid);
+			active_display():update_statusbar({}, vid);
 		end
 	else
 		dispatch_symbol(cmd[1]);
@@ -300,8 +309,8 @@ end
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl, fromim)
-	if (DEBUGLEVEL > 0 and active_display().debug_console) then
-		active_display().debug_console:add_input(iotbl, fromim);
+	if (DEBUGLEVEL > 2 and active_display().debug_console) then
+		active_display().debug_console:add_input(iotbl);
 	end
 
 	if (not fromim) then

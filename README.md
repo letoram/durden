@@ -1,18 +1,20 @@
 About
 =====
 
-Durden is a tiling desktop environment for Arcan, thus it requires a working
-arcan installation, optionally set-up with compatible launch targets etc.  See
-the [Arcan](http://github.com/letoram/arcan) repository and wiki for those
-details.
+Durden is a free (3-clause BSD) desktop environment for Arcan, thus it requires
+a working arcan installation, optionally set-up with compatible launch targets
+etc.  See the [Arcan](http://github.com/letoram/arcan) repository and wiki for
+those details.
 
-Durden serves like a testing and development ground for refining the Arcan Lua
-API, much like [AWB](http://github.com/letoram/awb) and
-[Gridle](http://github.com/letoram/gridle) but will remain as a supported 'real'
-desktop environment, rather than proof of concepts.
+For a complete list of features and estimated state, see the _Features and
+Status_ section below.
 
-For a complete list of features and estimated state, see the _Features and Status_
-section below.
+Authors and Contact
+=====
+Development is discussed on the IRC channel #arcan on the Freenode network
+(chat.freenode.org)
+
+2015+, Björn Ståhl
 
 Starting / Configuring
 =====
@@ -57,11 +59,13 @@ managed with a separate external tool as part of Arcan, called *arcan_db*,
 check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
 
 Statusbar / Command Channel
-==== By default, durden creates two named pipes (FIFO) in the APPLTEMP
-namespace (e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the
-specified appldir) with the name (durden\_status) and (durden\_control). These
-can be used to run remote controls and to update the statusbar. For instance,
-using i3status:
+====
+
+By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
+(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
+appldir) with the name (durden\_status) and (durden\_control). These can be
+used to run remote controls and to update the statusbar. For instance, using
+i3status:
 
     i3status | sed -e 's/^/status:/' > ~/durden/durden\_
 
@@ -100,11 +104,10 @@ are being implemented, we have the following list:
   - [x] Off-Screen Window Alert
   - [ ] Centered canvas in overdimensioned windows
   - [ ] Mappable statusbar buttons in float mode
-  - [ ] Mouse launch-bar
-- [x] Configurable Border Width/Gaps
-- [x] Global and Window- specific audio controls
-- [x] Per Workspace Background Image
+  - [x] Configurable Border Width/Gaps
+  - [x] Per Workspace Background Image
 - [ ] Screen-Rotate Trigger
+- [x] Global and Window- specific audio controls
 - [x] Resource Browser
 - [x] IPC
   -  [x] Basic Notification Bar Control (i3status, ...)
@@ -119,6 +122,7 @@ are being implemented, we have the following list:
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
   - [ ] Mouse Lock to Window
+  - [ ] Mouse Button Remapping
   - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
@@ -160,7 +164,8 @@ are being implemented, we have the following list:
   - [ ] Streaming Text
   - [ ] Images
   - [ ] Videos
-- [ ] Security Measures
+  - [ ] Drag N' Drop
+- [ ] Security and Stability Measures
   - [ ] Visual Privilege Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window

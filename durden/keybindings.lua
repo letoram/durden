@@ -38,14 +38,9 @@ local tbl = {};
 function dispatch_reset(save)
 	tbl = {};
 	tbl["m1_RETURN"] = "spawn_terminal";
-	tbl["m1_m2_DELETE"] = "exit";
-
-	tbl["m1_p"] = "debug_testwnd_bar";
-	tbl["m1_o"] = "debug_testwnd_nobar";
-
+	tbl["m1_d"] = "query_launch";
 	tbl["m1_g"] = "global_actions";
 	tbl["m1_t"] = "target_actions";
-	tbl["m1_m2_t"] = "target_settings";
 	tbl["m1_RIGHT"] = "step_right";
 	tbl["m1_UP"] = "step_up";
 	tbl["m1_LEFT"] = "step_left";
@@ -65,7 +60,6 @@ function dispatch_reset(save)
 	tbl["m1_e"] = "tabtile";
 	tbl["m1_r"] = "vtabtile";
 	tbl["m1_m2_f"] = "float";
-	tbl["m1_TAB"] = "context_popup";
 	tbl["m1_m"] = "mergecollapse";
 	tbl["m1_1"] = "switch_ws1";
 	tbl["m1_2"] = "switch_ws2";
@@ -88,9 +82,7 @@ function dispatch_reset(save)
 	tbl["m1_m2_8"] = "assign_ws8";
 	tbl["m1_m2_9"] = "assign_ws9";
 	tbl["m1_m2_10"] = "assign_ws10";
-	tbl["m1_l"] = "lock_input";
-	tbl["m1_d"] = "query_launch";
-	tbl["m1_i"] = "cycle_scalemode";
+	tbl["m1_p"] = "debug_testwnd_bar";
 
 	if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";

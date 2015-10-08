@@ -42,11 +42,13 @@ local function event_dispatch(wnd, tgt, kind, tbl)
 		"[%s] <= %s", kind, tgt.name));
 end
 
-local function add_input(wnd, iotbl, resolve)
+local function add_input(wnd, iotbl, target)
 	if (iotbl.kind == "digital") then
 		if (iotbl.translated) then
 			wnd:add_event(INPUT_EVGRP, string.format(
-			"keyboard %s: dev:sub=%d:%d mod=%s, sym: %s=%s, scancode=%d, utf8=%s",
+			"target: %s, keyboard %s: dev:sub=%d:%d mod=%s, " ..
+			"sym: %s=%s, scancode=%d, utf8=%s",
+				target ~= nil and tostring(target) or "none",
 				iotbl.active and "press" or "release", iotbl.devid, iotbl.subid,
 				table.concat(decode_modifiers(iotbl.modifiers), "+"),
 				iotbl.keysym and iotbl.keysym or "none",
@@ -55,16 +57,27 @@ local function add_input(wnd, iotbl, resolve)
 			);
 		else
 			wnd:add_event(INPUT_EVGRP, string.format(
-				"digital %s: dev:sub=%d:%d", iotbl.active and "press" or "release",
+				"target: %s, digital %s: dev:sub=%d:%d",
+				target ~= nil and tostring(target) or "none",
+				iotbl.active and "press" or "release",
 				iotbl.devid, iotbl.subid
 			));
 		end
 	elseif (iotbl.kind == "analog") then
-		-- samples
+		wnd:add_event(INPUT_EVGRP, string.format(
+		"target: %s, analog(%d:%d), sv[%s]",
+			target ~= nil and tostring(target) or "none",
+			iotbl.devid, iotbl.subid,
+			table.concat(iotbl.samples, ",")
+		));
+
 	elseif (iotbl.kind == "touch") then
 		wnd:add_event(INPUT_EVGRP, string.format(
-			"touch: dev:sub=%d:%d, @x,y=%d,%d pressure=%d size=%d",
-			iotbl.devid, iotbl.subid, iotbl.x, iotbl.y, iotbl.pressure, iotbl.size));
+			"target: %s, touch:(%d:%d), @x,y=%d,%d pressure=%d size=%d",
+			target ~= nil and tostring(target) or "none",
+			iotbl.devid, iotbl.subid, iotbl.x, iotbl.y,
+			iotbl.pressure, iotbl.size)
+		);
 	end
 end
 
