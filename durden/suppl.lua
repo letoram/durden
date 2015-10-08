@@ -413,7 +413,11 @@ local function run_value(ctx)
 			if (done) then
 				ctx.handler(ctx, instr);
 			end
-			return {set = table.i_subsel(ctx.set, instr)};
+			local dset = ctx.set;
+			if (type(ctx.set) == "function") then
+				dset = ctx.set();
+			end
+			return {set = table.i_subsel(dset, instr)};
 		end, ctx, {label = hintstr, force_completion = true});
 	else
 		return active_display():lbar(function(ctx, instr, done, lastv)
@@ -497,6 +501,10 @@ function gen_valid_num(lb, ub)
 	end
 end
 
+function gen_valid_float(lb, ub)
+	return gen_valid_num(lb, ub);
+end
+
 --
 -- ctx is expected to contain:
 --  list [# of {name, label, kind, validator, handler}]
@@ -526,6 +534,21 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 
 	local bar = wm:lbar(lbar_fun, ctx, opts);
 	return bar;
+end
+
+-- part and convert terminal escape sequences for coloring to valid
+-- string output for render_text
+function esc_to_fontstr(msg)
+
+-- 1. look for 0x1b, 0x5b
+-- scan for m
+-- split by ;
+-- covert numbers (0 to \!b\!i   1 to \b   \4
+-- and lut for colors etc.
+--
+-- truecolor: \x1b[38;5;R;G;Bm  (38 fg, 48 bg)
+--
+
 end
 
 -- set a temporary hook that will override menu navigation

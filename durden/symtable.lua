@@ -517,6 +517,21 @@ symtable.patch = function(tbl, iotbl)
 	return sym, lutsym;
 end
 
+-- used for tracking repeat etc. where we don't want meta keys to
+-- trigger repeated input
+local metak = {
+	LALT = true,
+	RALT = true,
+	LCTRL = true,
+	RCTRL = true,
+	LSHIFT = true,
+	RSHIFT = true
+};
+
+symtable.is_modifier = function(symtable, iotbl)
+	return metak[symtable[iotbl.keysym]] ~= nil;
+end
+
 -- for filling the utf8- field with customized bindings
 symtable.add_translation = function(tbl, combo, u8)
 	tbl.u8lut[combo] = u8;

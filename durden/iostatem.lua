@@ -26,7 +26,7 @@ end
 -- just feed this function, will cache state as necessary
 function iostatem_input(iotbl)
 	if (iotbl.translated) then
-		if (not iotbl.active) then
+		if (not iotbl.active or SYMTABLE:is_modifier(iotbl)) then
 			devstate.iotbl = nil;
 			return;
 		end

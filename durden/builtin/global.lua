@@ -792,6 +792,43 @@ local config_terminal = {
 			gconfig_set("term_font_sz", tonumber(val));
 		end
 	},
+	{
+		name = "terminal_bgalpha",
+		label = "Background Alpha",
+		kind = "value",
+		hint = "(0..1)",
+		validator = gen_valid_float(0, 1),
+		initial = function() return tostring(gconfig_get("term_opa")); end,
+		handler = function(ctx, val)
+			gconfig_set("term_opa", tonumber(val));
+		end
+	},
+	{
+		name = "terminal_hinting",
+		label = "Font Hinting",
+		kind = "value",
+		set = {"light", "mono", "none"},
+		initial = function() return gconfig_get("term_font_hint"); end,
+		handler = function(ctx, val)
+			gconfig_set("term_hint", tonumber(val));
+		end
+	},
+-- should replace with "font browser"
+	{
+		name = "terminal_font",
+		label = "Font Name",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			table.insert(set, "BUILTIN");
+			return set;
+		end,
+		initial = function() return gconfig_get("term_font"); end,
+		handler = function(ctx, val)
+			gconfig_set("term_font", val == "BUILTIN" and "" or val);
+		end
+	}
 };
 
 local config_menu = {

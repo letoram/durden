@@ -49,6 +49,9 @@ vec3 i2c(float i)
 
 void main()
 {
+	if (obj_opacity < 0.01)
+		discard;
+
 	vec2 uv = vec2(1.0 - texco.s, 1.0 - texco.t);
 	float start = floor(uv.x * bars) / bars;
 

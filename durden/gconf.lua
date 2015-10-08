@@ -84,7 +84,7 @@ local defaults = {
 	term_cellw = 12,
 	term_cellh = 12,
 	term_font_sz = 12,
-	term_font_hint = "none", -- normal, none
+	term_font_hint = "none",
 	term_font = "terminal.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
 	term_fgcol = {0xff, 0xff, 0xff},
@@ -116,6 +116,7 @@ local defaults = {
 -- sbar
 	sbar_sz = 16,
 	sbar_bg = {0x00, 0x00, 0x00},
+	sbar_textstr = "\\ffonts/default.ttf,12\\#00ff00 ",
 	sbar_alpha = 0.3,
 
 -- titlebar
@@ -136,6 +137,9 @@ local defaults = {
 	tcol_inactive_border = {0x10, 0x10, 0x10},
 	tcol_alert = {0xff, 0x8c, 0x00},
 	tcol_alert_border = {0xff, 0xff, 0xff},
+	pretile_border = {0x88, 0x00, 0x00},
+	pretile_bg = {0x44, 0x00, 0x00},
+	pretiletext_color = "\\#ffffff ",
 };
 
 function gconfig_set(key, val)
