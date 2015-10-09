@@ -223,7 +223,23 @@ local mouse_menu = {
 			end
 			active_display().selected.cursor = val;
 		end
-	}
+	},
+	{
+		name = "target_mouse_rlimit",
+		label = "Rate Limit",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return active_display().selected.rate_unlimited and LBL_NO or LBL_YES;
+		end,
+		handler = function(ctx, val)
+			if (val == LBL_YES) then
+				active_display().selected.rate_unlimited = false;
+			else
+				active_display().selected.rate_unlimited = true;
+			end
+		end
+	},
 };
 
 local input_menu = {

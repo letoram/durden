@@ -397,9 +397,9 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 	end
 end
 
-local function tile_update(wm)
+local function tile_upd(wm)
 	local space = wm.spaces[wm.space_ind];
-	local im = space.insert == "horiz" and "horiz" or "vert";
+	local im = space.insert == "horizontal" and "horiz" or "vert";
 
 	wm:update_statusbar({
 		space.mode .. (space.mode == "tile" and (":" .. im) or "")
@@ -1504,8 +1504,12 @@ local function convert_mouse_xy(wnd, x, y)
 end
 
 local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
-	if (vid == ctx.wnd.canvas and
-		valid_vid(ctx.wnd.external, TYPE_FRAMESERVER)) then
+	local wnd = ctx.wnd;
+
+	if (not (vid == wnd.canvas and
+		valid_vid(wnd.external, TYPE_FRAMESERVER))) then
+		return;
+	end
 
 	local iotbl = {
 			kind = "digital",
@@ -1513,12 +1517,22 @@ local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 			active = pressed,
 			devid = 0,
 			subid = ind
-		};
-		if (ctx.wnd.input_tag) then
-			iotbl = ctx.wnd.input_tag(iotbl);
+	};
+
+-- if we rate limit, now we need to flush to the outgoing
+-- event queue in order for clicks to appear at the right
+-- position.
+	if (not wnd.rate_unlimited) then
+		local wndq = EVENT_SYNCH[wnd.canvas];
+		if (wndq and wndq.pending and #wndq.pending > 0) then
+			table.insert(wndq.queue, wndq.pending[1]);
+			table.insert(wndq.queue, wndq.pending[2]);
+			table.insert(wndq.queue, iotbl);
+			wndq.pending = nil;
 		end
-		target_input(ctx.wnd.external, iotbl);
 	end
+
+	target_input(wnd.external, iotbl);
 end
 
 local function wnd_mouseclick(ctx, vid)
@@ -1556,23 +1570,30 @@ local function wnd_mousemotion(ctx, vid, x, y, relx, rely)
 			subid = 0,
 			samples = {mv[1], mv[2]}
 		};
--- rate-limit mouse event propagation to a pair/tick unless toggled
-		if (not wnd.rate_unlimited and wnd.last_ms.clock == CLOCK) then
-			return;
-		end
-		wnd.last_ms.clock = CLOCK;
-		if (wnd.input_tag) then
-			iotbl = wnd.input_tag(iotbl);
-		end
+		local iotbl2 = {
+			kind = "analog",
+			source = "mouse",
+			devid = 0,
+			subid = 1,
+			samples = {mv[3], mv[4]}
+		};
 
-		target_input(wnd.external, iotbl);
-		iotbl.subid = 1;
-		iotbl.samples[1] = mv[3];
-		iotbl.samples[2] = mv[4];
-		if (wnd.input_tag) then
-			iotbl = wnd.input_tag(iotbl);
+-- with rate limited mouse events (those 2khz gaming mice that likes
+-- to saturate things even when not needed), we accumulate relative samples
+		if (not wnd.rate_unlimited) then
+			local ep = EVENT_SYNCH[wnd.canvas].pending;
+			if (EVENT_SYNCH[wnd.canvas].pending) then
+				ep[1].samples[1] = mv[1];
+				ep[1].samples[2] = ep[1].samples[2] + mv[2];
+				ep[2].samples[1] = mv[3];
+				ep[2].samples[2] = ep[2].samples[2] + mv[4];
+			else
+				EVENT_SYNCH[wnd.canvas].pending = {iotbl, iotbl2};
+			end
+		else
+			target_input(wnd.external, iotbl);
+			target_input(wnd.external, iotbl2);
 		end
-		target_input(wnd.external, iotbl);
 	end
 end
 
@@ -2001,7 +2022,7 @@ local function tiler_switchws(wm, ind)
 	end
 
 	wm.space_ind = ind;
-	tile_update(wm);
+	tile_upd(wm);
 
 	if (wm.spaces[ind].switch_hook) then
 		wm.spaces[ind]:switch_hook(true, not nd);
@@ -2041,7 +2062,7 @@ local function tiler_swapws(wm, ind2)
 		wm.spaces[ind2].label_id = nil;
 	end
 
-	tile_update(wm);
+	tile_upd(wm);
 end
 
 local function wnd_swap(w1, w2, deep)
@@ -2248,7 +2269,7 @@ local function tiler_resize(tiler, neww, newh)
 	for k,v in pairs(tiler.spaces) do
 		v:resize(neww, newh);
 	end
-	tile_update(tiler);
+	tile_upd(tiler);
 end
 
 function tiler_create(width, height, opts)
@@ -2312,6 +2333,7 @@ function tiler_create(width, height, opts)
 		find_window = tiler_find,
 		message = tiler_message,
 		resize = tiler_resize,
+		tile_update = tile_upd,
 		update_statusbar = tiler_statusbar_update,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
@@ -2371,7 +2393,7 @@ function tiler_create(width, height, opts)
 	if (not res.spaces[1]) then
 		res.spaces[1] = create_workspace(res, true);
 	end
-	tile_update(res);
+	tile_upd(res);
 
 	return res;
 end
