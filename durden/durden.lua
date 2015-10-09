@@ -106,6 +106,7 @@ function durden()
 			if (active_display().debug_console) then
 				active_display().debug_console:add_input(tbl, dst);
 			end
+			oti(dst, tbl);
 		end
 	end
 end
@@ -164,7 +165,7 @@ function spawn_terminal()
 	local cp = gconfig_get("extcon_path");
 
 	local lstr = string.format(
-		"font_hint=%s:font=[ARCAN_APPLPATH]/fonts/%s:"..
+		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		gconfig_get("term_font_hint"), gconfig_get("term_font"),
 		gconfig_get("term_font_sz"),
