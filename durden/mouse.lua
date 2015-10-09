@@ -324,6 +324,7 @@ function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 	mstate.cursor = null_surface(1, 1);
 	image_mask_set(mstate.cursor, MASK_UNPICKABLE);
 	mouse_add_cursor("default", cvid, 0, 0);
+	mstate.rt = rt;
 	mouse_switch_cursor();
 
 	if (not hidden) then
@@ -943,6 +944,13 @@ function mouse_querytarget(rt)
 		rt = WORLDID;
 	end
 
+	local props = image_surface_properties(rt);
+	if (mstate.native) then
+	else
+		rendertarget_attach(rt, mstate.cursor, RENDERTARGET_DETACH);
+	end
+	mstate.max_x = props.width;
+	mstate.max_y = props.height;
 	mstate.rt = rt;
 end
 

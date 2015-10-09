@@ -9,6 +9,10 @@
 --
 archetypes = {};
 
+-- used to track input events that should be aligned to clock ticks
+-- for rate-limit and timing purposes
+EVENT_SYNCH = {};
+
 function durden()
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
@@ -46,7 +50,6 @@ function durden()
 		end
 	end
 
-	display_manager_init();
 	SYMTABLE = system_load("symtable.lua")();
 	SYMTABLE:load_translation();
 
@@ -60,6 +63,7 @@ function durden()
 -- 65535 is special in that it will never be returned as 'max current image order'
 		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
 	end
+	display_manager_init();
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution
@@ -226,6 +230,7 @@ function def_handler(source, stat)
 	elseif (stat.kind == "terminated") then
 -- if an lbar is active that requires this target window, that should be
 -- dropped as well to avoid a race
+		EVENT_SYNCH[wnd.canvas] = nil;
 		wnd:destroy();
 	elseif (stat.kind == "ident") then
 -- this can come multiple times if the title of the window is changed,
@@ -256,6 +261,10 @@ function reg_window(wnd, source)
 	if (valid_vid(source, TYPE_FRAMESERVER)) then
 		target_updatehandler(source, def_handler);
 	end
+	EVENT_SYNCH[wnd.canvas] = {
+		queue = {},
+		target = source
+	};
 	wnd:add_handler("destroy", function() swm[source] = nil; end);
 end
 
@@ -357,6 +366,24 @@ end
 function durden_shutdown()
 	SYMTABLE:store_translation();
 	gconfig_shutdown();
+end
+
+local function flush_pending()
+	for k,v in pairs(EVENT_SYNCH) do
+		if (valid_vid(v.target)) then
+			if (v.queue) then
+				for i,j in ipairs(v.queue) do
+					target_input(v.target, j);
+				end
+				v.queue = {};
+			end
+			if (v.pending and #v.pending > 0) then
+				for i,j in ipairs(v.pending) do
+					target_input(v.target, j);
+				end
+			end
+		end
+	end
 end
 
 function durden_clock_pulse()
