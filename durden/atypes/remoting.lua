@@ -7,6 +7,6 @@ return {
 	actions = {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
-		rate_unlimited = true
+		rate_unlimited = false
 	},
 };
