@@ -240,6 +240,8 @@ function def_handler(source, stat)
 		if (atbl == nil or wnd.atype ~= nil) then
 			return;
 		end
+
+-- project / overlay archetype specific toggles and settings
 		wnd.actions = atbl.actions;
 		if (atbl.props) then
 			for k,v in pairs(atbl.props) do
@@ -249,6 +251,21 @@ function def_handler(source, stat)
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.labels = atbl.labels and atbl.labels or {};
 		wnd.source_audio = stat.source_audio;
+
+-- specify default shader by properties (e.g. no-alpha, fft) or explicit name
+		if (atbl.default_shader) then
+			local key;
+			if (type(atbl.default_shader) == "table") then
+				local lst = shader_list(atbl.default_shader);
+				key = lst[1];
+			else
+				key = shader_getkey(atbl.default_shader);
+			end
+			if (key) then
+				shader_setup(wnd, key);
+			end
+		end
+
 	elseif (stat.kind == "segment_request") then
 -- eval based on requested subtype etc. if needed
 		local id = accept_target();
@@ -398,6 +415,7 @@ function durden_clock_pulse()
 --		print(current_context_usage());
 --	end
 
+	flush_pending();
 	mouse_tick(1);
 	display_tick();
 	if (CLOCK % 4 == 0) then

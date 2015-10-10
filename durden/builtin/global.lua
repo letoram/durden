@@ -250,6 +250,14 @@ local debug_menu = {
 		label = "Console",
 		kind = "action",
 		handler = grab_global_function("debug_debugwnd")
+	},
+	{
+		name = "debug_stall",
+		label = "Frameserver Debugstall",
+		kind = "value",
+		eval = function() return frameserver_debugstall ~= nil; end,
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx,val) frameserver_debugstall(tonumber(val)); end
 	}
 };
 

@@ -1524,12 +1524,12 @@ local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 -- position.
 	if (not wnd.rate_unlimited) then
 		local wndq = EVENT_SYNCH[wnd.canvas];
-		if (wndq and wndq.pending and #wndq.pending > 0) then
+		if (wndq and (wndq.pending and #wndq.pending > 0)) then
 			table.insert(wndq.queue, wndq.pending[1]);
 			table.insert(wndq.queue, wndq.pending[2]);
 			table.insert(wndq.queue, iotbl);
-			wndq.pending = nil;
 		end
+		return;
 	end
 
 	target_input(wnd.external, iotbl);
