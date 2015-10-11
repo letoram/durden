@@ -243,6 +243,10 @@ local function wnd_deselect(wnd)
 		hide_image(wnd.anchor);
 	end
 
+	if (wnd.wm.selected == wnd) then
+		wnd.wm.selected = nil;
+	end
+
 	image_shader(wnd.border, "border_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 	image_sharestorage(wnd.wm.tbar_color, wnd.titlebar);
@@ -722,6 +726,8 @@ end
 
 local function drop_fullscreen(space, swap)
 	workspace_activate(space, true);
+	show_image(space.wm.statusbar);
+
 	if (not space.selected) then
 		return;
 	end
@@ -814,7 +820,9 @@ local function set_tab(space)
 	end
 
 	if (space.selected) then
-		space.selected:select();
+		local wnd = space.selected;
+		wnd:deselect();
+		wnd:select();
 	end
 end
 
@@ -852,7 +860,9 @@ local function set_vtab(space)
 	end
 
 	if (space.selected) then
-		space.selected:select();
+		local wnd = space.selected;
+		wnd:deselect();
+		wnd:select();
 	end
 end
 
@@ -861,6 +871,7 @@ local function set_fullscreen(space)
 		return;
 	end
 	local dw = space.selected;
+	show_image(space.wm.statusbar);
 
 -- hide all images + statusbar
 	hide_image(dw.wm.statusbar);
@@ -1385,7 +1396,6 @@ local function wnd_reassign(wnd, ind, ninv)
 
 	oldspace:resize();
 	wnd.wm:update_statusbar();
-	wnd:select();
 end
 
 --
