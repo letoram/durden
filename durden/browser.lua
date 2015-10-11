@@ -61,8 +61,7 @@ local function browse_cb(ctx, instr, done, lastv)
 -- sweep through and color code accordingly, filter matches
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
-	local res = (string.len(instr) > 0 or instr == "." or instr == "..")
-		and {".."} or {};
+	local res = {};
 
 	for i,v in ipairs(ctx.paths[path]) do
 		if (string.sub(v,1,string.len(instr)) == instr) then
@@ -73,6 +72,8 @@ local function browse_cb(ctx, instr, done, lastv)
 			end
 		end
 	end
+
+	table.insert(res, "..");
 	return {set = res, valid = false};
 end
 
