@@ -38,6 +38,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 	if (ctx.ok and sym == ctx.ok and ctx.psym) then
 		drop_bbar(wm);
 		ctx.cb(ctx.psym, true);
+		return;
 	end
 
 	if (iotbl.active) then
@@ -119,7 +120,9 @@ end
 
 local function set_progress(ctx, pct)
 	if (0 == pct) then
-		hide_image(ctx.progress);
+		if (valid_vid(ctx.progress)) then
+			hide_image(ctx.progress);
+		end
 		return;
 	end
 
