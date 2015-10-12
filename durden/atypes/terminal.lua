@@ -11,6 +11,8 @@ local res = {
 };
 
 res.labels["LEFT"] = "LEFT";
+res.labels["UP"] = "UP";
+res.labels["DOWN"] = "DOWN";
 res.labels["RIGHT"] = "RIGHT";
 res.labels["ctrl_t"] = "SIGINFO";
 res.labels["ctrl_m"] = "MUTE";
