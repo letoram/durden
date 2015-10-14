@@ -871,7 +871,6 @@ local function set_fullscreen(space)
 		return;
 	end
 	local dw = space.selected;
-	show_image(space.wm.statusbar);
 
 -- hide all images + statusbar
 	hide_image(dw.wm.statusbar);
@@ -1902,6 +1901,8 @@ local function wnd_create(wm, source, opts)
 	image_tracetag(res.canvas, "wnd_canvas");
 	image_tracetag(res.titlebar, "wnd_titlebar");
 	res.wm = wm;
+
+	image_mask_set(res.anchor, MASK_UNPICKABLE);
 
 -- initially, titlebar stays hidden
 	link_image(res.titlebar, res.anchor);

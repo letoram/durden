@@ -182,16 +182,16 @@ end
 
 -- global event handlers for things like switching cursor on press
 mstate.lmb_global_press = function()
-		mstate.y_ofs = 2;
-		mstate.x_ofs = 2;
-		mouse_cursorupd(0, 0);
-	end
+	mstate.y_ofs = 2;
+	mstate.x_ofs = 2;
+	mouse_cursorupd(0, 0);
+end
 
 mstate.lmb_global_release = function()
-		mstate.x_ofs = 0;
-		mstate.y_ofs = 0;
-		mouse_cursorupd(0, 0);
-	end
+	mstate.x_ofs = 0;
+	mstate.y_ofs = 0;
+	mouse_cursorupd(0, 0);
+end
 
 -- this can be overridden to cache previous queries
 mouse_pickfun = pick_items;

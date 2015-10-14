@@ -160,10 +160,12 @@ are being implemented, we have the following list:
     - [ ] Secondary Audio Sources (microphone)
   - [ ] Display / Window screenshot
 - [ ] Cut and Paste
-  - [ ] Simple Text
+  - [x] Clipboard Management (local/global + history)
+  - [x] Simple Text
   - [ ] Streaming Text
   - [ ] Images
   - [ ] Videos
+  - [ ] Audio
   - [ ] Drag N' Drop
 - [ ] Security and Stability Measures
   - [ ] Visual Privilege Indicator
