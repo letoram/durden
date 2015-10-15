@@ -302,8 +302,12 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 	local statush = gconfig_get("sbar_sz");
 	resize_image(wm.statusbar, wm.width, statush);
 	move_image(wm.statusbar, 0, wm.height - statush);
-	blend_image(wm.statusbar, gconfig_get("sbar_alpha"));
 
+	if(wm.spaces[wm.space_ind].mode == "fullscreen") then
+		hide_image(wm.statusbar);
+	else
+		blend_image(wm.statusbar, gconfig_get("sbar_alpha"));
+	end
 	local ofs = 0;
 
 -- pretiles for various status indicators, if we mark the set for update:
