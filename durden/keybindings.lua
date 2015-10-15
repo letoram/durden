@@ -61,6 +61,10 @@ function dispatch_reset(save)
 	tbl["m1_r"] = "vtabtile";
 	tbl["m1_m2_f"] = "float";
 	tbl["m1_m"] = "mergecollapse";
+	tbl["m2_LEFT"] = "move_nx";
+	tbl["m2_RIGHT"] = "move_px";
+	tbl["m2_UP"] = "move_ny";
+	tbl["m2_DOWN"] = "move_py";
 	tbl["m1_1"] = "switch_ws1";
 	tbl["m1_2"] = "switch_ws2";
 	tbl["m1_3"] = "switch_ws3";
