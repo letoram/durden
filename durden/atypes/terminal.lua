@@ -10,6 +10,9 @@ local res = {
 	atype = "terminal"
 };
 
+-- should set a custom "nocrop" shader here that uses cropping mode for
+-- shrink operations and pad-with-background-color for grow when visible
+-- size deviates from storage size.
 res.labels["LEFT"] = "LEFT";
 res.labels["UP"] = "UP";
 res.labels["DOWN"] = "DOWN";

@@ -524,6 +524,18 @@ sf["shrink_h"] = function(wnd) wnd:grow(-0.05, 0); end
 sf["step_up"] = function(wnd) wnd:prev(1); end
 sf["step_down"] = function(wnd) wnd:next(1); end
 sf["step_left"] = function(wnd)	wnd:prev(); end
+sf["move_nx"] = function(wnd)
+	wnd:move(-1*(gconfig_get("float_tile_sz")[1]), 0, true);
+end
+sf["move_px"] = function(wnd)
+	wnd:move(gconfig_get("float_tile_sz")[1], 0, true);
+end
+sf["move_ny"] = function(wnd)
+	wnd:move(0, -1*(gconfig_get("float_tile_sz")[1]), true);
+end
+sf["move_py"] = function(wnd)
+	wnd:move(0, gconfig_get("float_tile_sz")[1], true);
+end
 sf["step_right"] = function(wnd) wnd:next(); end
 sf["destroy"] = function(wnd) wnd:destroy(); end
 

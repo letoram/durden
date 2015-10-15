@@ -57,6 +57,9 @@ local defaults = {
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
 
+-- used for keyboard- move step size in float mode
+	float_tile_sz = {16, 16},
+
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
 -- scaling parameters.

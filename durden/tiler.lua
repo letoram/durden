@@ -1401,6 +1401,30 @@ local function wnd_reassign(wnd, ind, ninv)
 	wnd.wm:update_statusbar();
 end
 
+local function wnd_move(wnd, dx, dy, align)
+	if (wnd.space.mode ~= "float") then
+		return;
+	end
+
+	if (align) then
+		local pos = image_surface_properties(wnd.anchor);
+		pos.x = pos.x + dx;
+		pos.y = pos.y + dy;
+		if (dx ~= 0) then
+			pos.x = pos.x + (dx + -1 * dx) * math.fmod(pos.x, math.abs(dx));
+		end
+		if (dy ~= 0) then
+			pos.y = pos.y + (dy + -1 * dy) * math.fmod(pos.y, math.abs(dy));
+		end
+		pos.x = pos.x < 0 and 0 or pos.x;
+		pos.y = pos.y < 0 and 0 or pos.y;
+
+		move_image(wnd.anchor, pos.x, pos.y);
+	else
+		nudge_image(wnd.anchor, dx, dy);
+	end
+end
+
 --
 -- re-adjust each window weight, they are not allowed to go down to negative
 -- range and the last cell will always pad to fit
@@ -1889,6 +1913,7 @@ local function wnd_create(wm, source, opts)
 		merge = wnd_merge,
 		collapse = wnd_collapse,
 		prev = wnd_prev,
+		move =wnd_move,
 		grow = wnd_grow,
 		name = "wnd_" .. tostring(ent_count),
 -- user defined, for storing / restoring
