@@ -2091,6 +2091,7 @@ local function wnd_swap(w1, w2, deep)
 		w1.weight = w2.weight;
 		w1.vweight = w2.vweight;
 		w2.weight = wg1;
+		w2.vweight = wg1v;
 	end
 -- 2. parent->children entries
 	local wp1 = w1.parent;
