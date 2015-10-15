@@ -24,6 +24,7 @@ function durden()
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("display.lua")(); -- multidisplay management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
+	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global
@@ -192,6 +193,16 @@ function spawn_terminal()
 	end
 end
 
+function clipboard_event(wnd, source, status)
+	if (status.kind == "terminated") then
+		delete_image(source);
+		wnd.clipboard = nil;
+	elseif (status.kind == "message") then
+-- got clipboard message, if it is multipart, buffer up to a threshold (?)
+		CLIPBOARD:add(source, status.message, status.multipart);
+	end
+end
+
 local swm = {};
 function def_handler(source, stat)
 	local wnd = swm[source];
@@ -268,8 +279,21 @@ function def_handler(source, stat)
 
 	elseif (stat.kind == "segment_request") then
 -- eval based on requested subtype etc. if needed
-		local id = accept_target();
-		durden_launch(id, "subseg", "subseg");
+		if (stat.segkind == "clipboard") then
+			if (wnd.clipboard ~= nil) then
+				delete_image(wnd.clipboard);
+			end
+			wnd.clipboard = accept_target();
+			target_updatehandler(wnd.clipboard,
+				function(source, status)
+					clipboard_event(wnd, source, status)
+				end
+			);
+-- should set an autodelete handler for this one
+		else
+			local id = accept_target();
+			durden_launch(id, stat.segkind, stat.segkind);
+		end
 	end
 end
 -- switch handler, register on-destroy handler and a source-wnd map
@@ -282,7 +306,11 @@ function reg_window(wnd, source)
 		queue = {},
 		target = source
 	};
-	wnd:add_handler("destroy", function() swm[source] = nil; end);
+	wnd:add_handler("destroy",
+	function()
+		swm[source] = nil;
+		CLIPBOARD:lost(source);
+	end);
 end
 
 function new_connection(source, status)
