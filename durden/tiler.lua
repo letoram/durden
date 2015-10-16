@@ -1565,8 +1565,9 @@ local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 			table.insert(wndq.queue, wndq.pending[1]);
 			table.insert(wndq.queue, wndq.pending[2]);
 			table.insert(wndq.queue, iotbl);
+			wndq.pending = nil;
+			return;
 		end
-		return;
 	end
 
 	target_input(wnd.external, iotbl);
@@ -1619,7 +1620,7 @@ local function wnd_mousemotion(ctx, vid, x, y, relx, rely)
 -- to saturate things even when not needed), we accumulate relative samples
 		if (not wnd.rate_unlimited) then
 			local ep = EVENT_SYNCH[wnd.canvas].pending;
-			if (EVENT_SYNCH[wnd.canvas].pending) then
+			if (ep) then
 				ep[1].samples[1] = mv[1];
 				ep[1].samples[2] = ep[1].samples[2] + mv[2];
 				ep[2].samples[1] = mv[3];

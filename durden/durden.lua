@@ -426,6 +426,7 @@ local function flush_pending()
 				for i,j in ipairs(v.pending) do
 					target_input(v.target, j);
 				end
+				v.pending = nil;
 			end
 		end
 	end
