@@ -4,7 +4,8 @@
 --
 return {
 	atype = "multimedia",
-	actions = {},
+	actions = {
+	},
 	dispatch = {
 -- special case, FFT packed in video stream and unpacked by shader,
 		streaminfo = function(wnd, source, tbl)

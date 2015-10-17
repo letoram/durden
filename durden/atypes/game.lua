@@ -36,6 +36,8 @@ return {
 	},
 	},
 
+-- props witll be projected upon the window during setup (unless there
+-- are overridden defaults)
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,

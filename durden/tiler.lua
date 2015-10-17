@@ -1180,6 +1180,12 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	end
 
 	resize_image(src, outw, outh);
+	if (wnd.autocrop) then
+		crop_image(src, outw, outh);
+	end
+	if (wnd.filtermode) then
+		image_texfilter(src, wnd.filtermode);
+	end
 	return outw, outh;
 end
 
@@ -1227,8 +1233,6 @@ local function wnd_resize(wnd, neww, newh, force)
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
 
--- good spot to add post-processing filters and upscalers
-
 	if (wnd.centered) then
 		move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
 			math.floor(0.5*(newh - wnd.effective_h)));
@@ -1243,9 +1247,13 @@ local function wnd_next(mw, level)
 	end
 
 -- we use three states; true, false or nil.
-	local mwm = mw.wm.spaces[mw.wm.space_ind].mode;
-	if ((mwm == "tab" or mwm == "vtab") and level == nil) then
-		level = true;
+	local mwm = mw.space.mode;
+	if (mwm == "tab" or mwm == "vtab" or mwm == "float") then
+		local lst = linearize(mw.space);
+		local ind = table.find_i(lst, mw);
+		ind = ind == #lst and 1 or ind + 1;
+		lst[ind]:select();
+		return;
 	end
 
 	if (level) then
@@ -1282,6 +1290,14 @@ local function wnd_prev(mw, level)
 	end
 
 	local mwm = mw.space.mode;
+	if (mwm == "tab" or mwm == "vtab" or mwm == "float") then
+		local lst = linearize(mw.space);
+		local ind = table.find_i(lst, mw);
+		ind = ind == 1 and #lst or ind - 1;
+		lst[ind]:select();
+		return;
+	end
+
 	if (level or mwm == "tab" or mwm == "vtab") then
 		if (mw.parent.select) then
 			mw.parent:select();

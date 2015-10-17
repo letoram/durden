@@ -276,7 +276,9 @@ function def_handler(source, stat)
 				shader_setup(wnd, key);
 			end
 		end
-
+		if (atbl.init) then
+			atbl:init(wnd, source);
+		end
 	elseif (stat.kind == "segment_request") then
 -- eval based on requested subtype etc. if needed
 		if (stat.segkind == "clipboard") then
