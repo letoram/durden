@@ -5,9 +5,17 @@
 
 local res = {
 	dispatch = {},
+-- actions are exposed as target- menu
 	actions = {},
+-- labels is mapping between known symbol and string to forward
 	labels = {},
-	atype = "terminal"
+	default_shader = "nostretch",
+	atype = "terminal",
+	props = {
+		scalemode = "stretch",
+		autocrop = true,
+		filtermode = FILTER_NONE
+	}
 };
 
 -- should set a custom "nocrop" shader here that uses cropping mode for
