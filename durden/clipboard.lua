@@ -6,7 +6,6 @@
 -- little stopping us from using more advanced input and output formats.
 --
 local function clipboard_add(ctx, source, message, multipart)
-	print(message, multipart);
 	if (multipart) then
 		if (ctx.mpt[source] == nil) then
 			ctx.mpt[source] = {};

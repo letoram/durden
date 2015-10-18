@@ -74,6 +74,21 @@ void main()
 }
 ]];
 
+local frag_clamp = [[
+uniform sampler2D map_tu0;
+uniform float obj_opacity;
+varying vec2 texco;
+
+void main()
+{
+	vec3 col = texture2D(map_tu0, texco).rgb;
+	if (texco.s > 1.0 || texco.t > 1.0)
+		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity);
+	else
+		gl_FragColor = vec4(col.r, col.g, col.b, obj_opacity);
+}
+]];
+
 shdrtbl["noalpha"] = {
 	name = "No Alpha",
 	shid = build_shader(nil, frag_noalpha, "noalpha")
@@ -83,6 +98,13 @@ shdrtbl["fft_spectogram"] = {
 	name = "spectogram",
 	shid = build_shader(nil, frag_spect, "spectogram"),
 	fft = true,
+	hidden = true
+};
+
+
+shdrtbl["clamp_black"] = {
+	name = "clamp_crop",
+	shid = build_shader(nil, frag_clamp, "clamp_crop"),
 	hidden = true
 };
 

@@ -13,7 +13,7 @@ archetypes = {};
 -- for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
-function durden()
+function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
 	system_load("suppl.lua")(); -- convenience functions
@@ -113,6 +113,14 @@ function durden()
 			end
 			oti(dst, tbl);
 		end
+	end
+
+-- just used for quick documentation work
+	if (argv[1] == "dump_menus") then
+		for k,v in ipairs(get_menu_tree(get_global_menu())) do
+			print(v);
+		end
+		return shutdown();
 	end
 end
 
@@ -259,6 +267,7 @@ function def_handler(source, stat)
 				wnd[k] = v;
 			end
 		end
+		wnd.bindings = atbl.bindings;
 		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 		wnd.labels = atbl.labels and atbl.labels or {};
 		wnd.source_audio = stat.source_audio;
@@ -400,7 +409,11 @@ function durden_input(iotbl, fromim)
 			if (not sel) then
 				return;
 			end
-			if (valid_vid(sel.external, TYPE_FRAMESERVER)) then
+
+			if (sel.bindings and sel.bindings[sym]) then
+				sel.bindings[sym](sel);
+
+			elseif (valid_vid(sel.external, TYPE_FRAMESERVER)) then
 				iotbl.label = sel.labels[lutsym];
 				target_input(sel.external, iotbl);
 			elseif (sel.key_input) then
@@ -434,7 +447,7 @@ local function flush_pending()
 	end
 end
 
-function durden_clock_pulse()
+function durden_clock_pulse(n)
 	local tt = iostatem_tick();
 	if (tt) then
 		for k,v in ipairs(tt) do

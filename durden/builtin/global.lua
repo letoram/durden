@@ -1108,6 +1108,10 @@ local toplevel = {
 	},
 };
 
+function get_global_menu()
+	return toplevel;
+end
+
 global_actions = function(trigger_function)
 	if (IN_CUSTOM_BIND) then
 		return launch_menu(active_display(), {
