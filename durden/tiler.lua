@@ -397,10 +397,9 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		end
 
 		show_image(wm.statusbar_msg);
+		image_inherit_order(wm.statusbar_msg, true);
 		link_image(wm.statusbar_msg, wm.statusbar);
 		image_shader(wm.statusbar_msg, "sbar_item");
-		image_inherit_order(msg, true);
-		order_image(wm.statusbar_msg, 2);
 		move_image(wm.statusbar_msg, ofs, 1);
 	end
 end
@@ -1181,7 +1180,9 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	resize_image(src, outw, outh);
 	if (wnd.autocrop) then
-		crop_image(src, outw, outh);
+		local ip = image_storage_properties(src);
+		image_set_txcos_default(src);
+		image_scale_txcos(src, outw / ip.width, outh / ip.height);
 	end
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
@@ -2409,6 +2410,7 @@ function tiler_create(width, height, opts)
 	move_image(res.statusbar, 0, clh);
 	link_image(res.statusbar, res.order_anchor);
 	image_inherit_order(res.statusbar, true);
+	order_image(res.statusbar, 1);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
 

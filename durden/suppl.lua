@@ -558,6 +558,29 @@ function launch_menu_hook(fun)
 	path = nil;
 end
 
+function get_menu_tree(menu)
+	local res = {};
+
+	local recfun = function(fun, mnu, pref)
+		if (not mnu) then
+			return;
+		end
+
+		for k,v in ipairs(mnu) do
+			table.insert(res, pref .. v.name);
+			if (v.submenu) then
+				fun(fun,
+					type(v.handler) == "function" and v.handler() or
+					v.handler, pref .. v.name .. "/"
+				);
+			end
+		end
+	end
+
+	recfun(recfun, menu, "/");
+	return res;
+end
+
 --
 -- navigate a tree of submenus to reach a specific function without performing
 -- the visual / input triggers needed, used to provide the same interface for

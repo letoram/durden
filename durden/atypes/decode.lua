@@ -2,10 +2,11 @@
 -- Decode archetype, settings and menus specific for decode- frameserver
 -- session (e.g. stream selection, language, subtitle overlays)
 --
-return {
+local rtbl = {
 	atype = "multimedia",
 	actions = {
 	},
+	bindings = {},
 	dispatch = {
 -- special case, FFT packed in video stream and unpacked by shader,
 		streaminfo = function(wnd, source, tbl)
@@ -26,3 +27,21 @@ return {
 		filtermode = FILTER_BILINEAR
 	},
 };
+
+rtbl.bindings["LEFT"] = function(wnd)
+	target_seek(wnd.external, -10);
+end
+
+rtbl.bindings["UP"] = function(wnd)
+	target_seek(wnd.external, 100);
+end
+
+rtbl.bindings["RIGHT"] = function(wnd)
+	target_seek(wnd.external, 10);
+end
+
+rtbl.bindings["DOWN"] = function(wnd)
+	target_seek(wnd.externa, -100);
+end
+
+return rtbl;
