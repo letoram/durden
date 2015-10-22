@@ -306,7 +306,7 @@ gf["bind_menu"] = function(sfun)
 	);
 end
 
-gf["bind_custom"] = function(sfun)
+gf["bind_custom"] = function(sfun, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
@@ -317,13 +317,13 @@ gf["bind_custom"] = function(sfun)
 			if (done) then
 				launch_menu_hook(function(path)
 					IN_CUSTOM_BIND = false;
-					local res = dispatch_custom(sym, path);
+					local res = dispatch_custom(sym, path, wnd, m1);
 					if (res ~= nil) then
 						active_display():message(res .. " unbound");
 					end
 				end);
 				active_display():message("select function to bind to " .. sym, -1);
-				local ctx = gf["global_actions"]();
+				local ctx = gf[wnd == nil and "global_actions" or "shared_actions"]();
 				ctx.on_cancel = function()
 					launch_menu_hook(nil);
 					IN_CUSTOM_BIND = false;
@@ -332,6 +332,10 @@ gf["bind_custom"] = function(sfun)
 			end
 		end
 	);
+end
+
+sf["bind_custom"] = function(wnd)
+	gf["bind_custom"](nil, wnd, dispatch_meta);
 end
 
 gf["unbind_combo"] = function()

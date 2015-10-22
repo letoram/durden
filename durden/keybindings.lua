@@ -35,6 +35,10 @@ SYSTEM_KEYS = {
 -- dynamic options, i.e. setting values etc.)
 local tbl = {};
 
+-- table and save management is managed here, but manual invokation from
+-- normal input event handler
+local stbl = {};
+
 function dispatch_reset(save)
 	tbl = {};
 	tbl["m1_RETURN"] = "spawn_terminal";
@@ -154,7 +158,7 @@ function dispatch_load()
 	end
 end
 
-function dispatch_custom(key, val, nomb)
+function dispatch_custom(key, val, nomb, wnd, global)
 	local old = tbl[key];
 	if (nomb) then
 		tbl[key] = val;

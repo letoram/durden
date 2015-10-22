@@ -6,7 +6,6 @@
 -- Every connection can get a set of additional commands and configurations
 -- based on what type it has. Supported ones are registered into this table.
 -- init, bindings, settings, commands
---
 archetypes = {};
 
 -- used to track input events that should be aligned to clock ticks
@@ -413,11 +412,12 @@ function durden_input(iotbl, fromim)
 			if (sel.bindings and sel.bindings[sym]) then
 				sel.bindings[sym](sel);
 
+			elseif (sel.key_input) then
+				sel:key_input(sym, iotbl);
+
 			elseif (valid_vid(sel.external, TYPE_FRAMESERVER)) then
 				iotbl.label = sel.labels[lutsym];
 				target_input(sel.external, iotbl);
-			elseif (sel.key_input) then
-				sel:key_input(sym, iotbl);
 			end
 		end
 	end
