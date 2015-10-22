@@ -407,10 +407,17 @@ function mouse_lockto(vid, fun, warp, state)
 	local olv = mstate.lockvid;
 	local olf = mstate.lockfun;
 
-	mstate.lockvid = vid;
-	mstate.lockfun = fun;
-	mstate.lockstate = state;
-	mstate.warp = warp ~= nil and warp or false;
+	if (valid_vid(vid)) then
+		mstate.lockvid = vid;
+		mstate.lockfun = fun;
+		mstate.lockstate = state;
+		mstate.warp = warp ~= nil and warp or false;
+	else
+		mstate.lockvid = nil;
+		mstate.lockfun = nil;
+		mstate.lockstate = nil;
+		mstate.warp = false;
+	end
 
 	return olv, olf;
 end
@@ -827,6 +834,7 @@ function mouse_switch_cursor(label)
 	if (label == mstate.active_label) then
 		return;
 	end
+
 	mstate.active_label = label;
 
 	if (cursors[label] == nil) then

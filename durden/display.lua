@@ -283,7 +283,6 @@ end
 
 function display_ressw(id, mode)
 	local v = known_dispids[id+1];
-	print(id, v);
 	if (not v) then
 		warning("display_ressww(), invalid display reference");
 		return;

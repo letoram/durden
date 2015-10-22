@@ -181,7 +181,7 @@ local kbd_menu = {
 };
 
 local function mouse_lockfun(x, y, rx, ry, wnd)
-	print("forward input to target:", x, y, rx, ry, wnd);
+--	print("forward input to target:", x, y, rx, ry, wnd);
 end
 
 local mouse_menu = {
@@ -262,6 +262,13 @@ local input_menu = {
 		submenu = true,
 		force = true,
 		handler = kbd_menu
+	},
+	{
+		name = "target_input_bindcustom",
+		label = "Bind Custom",
+		kind = "action",
+		handler = grab_shared_function("bind_custom")
+		eval = function() return false; end -- incomplete
 	},
 	{
 		name = "target_input_mouse",

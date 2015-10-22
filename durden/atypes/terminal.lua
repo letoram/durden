@@ -24,8 +24,10 @@ local res = {
 res.labels["LEFT"] = "LEFT";
 res.labels["UP"] = "UP";
 res.labels["DOWN"] = "DOWN";
-res.labels["RIGHT"] = "RIGHT";
-res.labels["ctrl_t"] = "SIGINFO";
-res.labels["ctrl_m"] = "MUTE";
+res.labels["RIGHT"] = "RIGHT"
+res.labels["lshift_UP"] = "PAGE_UP";
+res.labels["lshift_DOWN"] = "PAGE_DOWN";
+res.labels["lctrl_t"] = "SIGINFO";
+res.labels["lctrl_m"] = "MUTE";
 
 return res;

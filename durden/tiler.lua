@@ -197,6 +197,14 @@ local function wnd_destroy(wnd)
 	end
 	table.remove_match(wnd.relatives, wnd);
 
+	if (wm.selected == wnd) then
+		wm.selected = nil;
+		local mx, my = mouse_xy();
+		if (image_hit(wnd.canvas, mx, my) and wnd.cursor == "hidden") then
+			mouse_show();
+		end
+	end
+
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
 	table.remove_match(wnd.parent.children, wnd);
@@ -209,10 +217,6 @@ local function wnd_destroy(wnd)
 		if (wm.spaces[i] and wm.spaces[i].previous == wnd) then
 			wm.spaces[i].previous = nil;
 		end
-	end
-
-	if (wm.selected == wnd) then
-		wm.selected = nil;
 	end
 
 -- in tabbed mode, titlebar is not linked to the anchor and
@@ -245,6 +249,10 @@ local function wnd_deselect(wnd)
 
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
+	end
+
+	if (wnd.mouse_lock) then
+		mouse_lockto(BADID);
 	end
 
 	image_shader(wnd.border, "border_inact");
@@ -1773,13 +1781,19 @@ local function wnd_mouseover(ctx, vid)
 		end
 	end
 
-	if (vid == ctx.wnd.canvas) then
-		mouse_switch_cursor(ctx.wnd.cursor);
+	if (vid == wnd.canvas) then
+		mouse_switch_cursor(wnd.cursor);
+		if (wnd.cursor == "hidden") then
+			mouse_hide();
+		end
 	end
 end
 
 local function wnd_mouseout(ctx, vid)
 	mouse_switch_cursor("default");
+	if (ctx.wnd.canvas == vid and ctx.wnd.cursor == "hidden") then
+		mouse_show();
+	end
 end
 
 seqn = 1;
