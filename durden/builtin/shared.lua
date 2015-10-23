@@ -267,7 +267,7 @@ local input_menu = {
 		name = "target_input_bindcustom",
 		label = "Bind Custom",
 		kind = "action",
-		handler = grab_shared_function("bind_custom")
+		handler = grab_shared_function("bind_custom"),
 		eval = function() return false; end -- incomplete
 	},
 	{
