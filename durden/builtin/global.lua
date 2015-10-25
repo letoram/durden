@@ -223,7 +223,7 @@ local reset_query = {
 		label = "Yes",
 		kind = "action",
 		dangerous = true,
-		handler = function() system_collapse(APPLID); end
+		handler = function() system_collapse(); end
 	},
 };
 
