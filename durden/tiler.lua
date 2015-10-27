@@ -2425,6 +2425,7 @@ function tiler_create(width, height, opts)
 	link_image(res.statusbar, res.order_anchor);
 	image_inherit_order(res.statusbar, true);
 	order_image(res.statusbar, 1);
+	image_mask_set(res.statusbar, MASK_UNPICKABLE);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
 
