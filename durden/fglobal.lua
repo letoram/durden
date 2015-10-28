@@ -449,6 +449,22 @@ gf["gain_stepv"] = function(val)
 	allgain(gv);
 end
 
+-- separate toggle, we don't care about previously set gain value
+sf["toggle_audio"] = function(wnd)
+	if (not wnd or not wnd.source_audio) then
+		return;
+	end
+
+	if (wnd.muted) then
+		audio_gain(wnd.source_audio, gconfig_get("global_gain") *
+			(wnd.source_gain and wnd.source_gain or 1.0), gconfig_get("gain_fade"));
+		wnd.muted = nil;
+	else
+		audio_gain(wnd.source_audio, 0.0, gconfig_get("gain_fade"));
+		wnd.muted = true;
+	end
+end
+
 gf["toggle_audio"] = function()
 	local new_state = not gconfig_get("global_mute");
 	allgain(new_state and 0.0 or gconfig_get("global_gain"));
