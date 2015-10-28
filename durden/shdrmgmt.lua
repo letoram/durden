@@ -74,6 +74,7 @@ void main()
 }
 ]];
 
+-- works with autocrop
 local frag_clamp = [[
 uniform sampler2D map_tu0;
 uniform float obj_opacity;
@@ -81,11 +82,12 @@ varying vec2 texco;
 
 void main()
 {
-	vec3 col = texture2D(map_tu0, texco);
+	vec4 col = texture2D(map_tu0, texco);
 	if (texco.s > 1.0 || texco.t > 1.0)
-		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity * col.a);
+		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity);
 	else
-		gl_FragColor = vec4(col.r, col.g, col.b, obj_opacity * col.a);
+		gl_FragColor = vec4(
+			col.r, col.g, col.b, obj_opacity * col.a);
 }
 ]];
 
@@ -100,7 +102,6 @@ shdrtbl["fft_spectogram"] = {
 	fft = true,
 	hidden = true
 };
-
 
 shdrtbl["clamp_black"] = {
 	name = "clamp_crop",
