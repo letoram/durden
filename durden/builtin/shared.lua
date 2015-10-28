@@ -285,7 +285,7 @@ local audio_menu = {
 		name = "target_audio",
 		label = "Toggle On/Off",
 		kind = "action",
-		handler = toggle_audio
+		handler = grab_shared_function("toggle_audio")
 	},
 	{
 		name = "gain_add10",
