@@ -164,6 +164,7 @@ function durden_launch(vid, title, prefix)
 	wnd.dispatch = shared_dispatch();
 	reg_window(wnd, vid);
 	shader_setup(wnd, wnd.shkey and wnd.shkey or "noalpha");
+	return wnd;
 end
 
 -- recovery from crash is handled just like newly launched windows
@@ -193,8 +194,9 @@ function spawn_terminal()
 
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
-		durden_launch(vid, "", "terminal");
+		local wnd = durden_launch(vid, "", "terminal");
 		def_handler(vid, {kind = "registered", segkind = "terminal"});
+		wnd.space:resize();
 	else
 		active_display():message( "Builtin- terminal support broken" );
 	end

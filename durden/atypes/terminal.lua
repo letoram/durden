@@ -9,7 +9,7 @@ local res = {
 	actions = {},
 -- labels is mapping between known symbol and string to forward
 	labels = {},
-	default_shader = "clamp_black",
+	default_shader = "clamp_crop",
 	atype = "terminal",
 	props = {
 		scalemode = "stretch",

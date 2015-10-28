@@ -83,8 +83,8 @@ are being implemented, we have the following list:
   - [x] Naming/Renaming
   - [x] Searching Based On Name
 	- [x] Saving/Restoring Properties (background, mode, name)
-  - [ ] Saving/Restoring Layout
-- [ ] Basic Window Management
+  - [ ] Saving/Restoring Layout (positions, weights)
+- [x] Basic Window Management
   - [x] Reassign
   - [x] Named Reassign
   - [x] Merge/Split
@@ -102,11 +102,11 @@ are being implemented, we have the following list:
   - [x] Window Translucency
   - [ ] Window Alpha Channel Behavior Control
   - [x] Off-Screen Window Alert
-  - [ ] Centered canvas in overdimensioned windows
+  - [ ] Centered canvas in overdimensioned windows (tiled, fullscreen)
   - [ ] Mappable statusbar buttons in float mode
   - [x] Configurable Border Width/Gaps
   - [x] Per Workspace Background Image
-- [ ] Screen-Rotate Trigger
+- [ ] Screen-Rotate Trigger to re-layout
 - [x] Global and Window- specific audio controls
 - [x] Resource Browser
 - [x] IPC
@@ -121,7 +121,7 @@ are being implemented, we have the following list:
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
-  - [ ] Mouse Lock to Window
+  - [x] Mouse Lock to Window
   - [ ] Mouse Button Remapping
   - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
@@ -145,6 +145,7 @@ are being implemented, we have the following list:
   - [ ] Customized Titlebar
   - [ ] Customized Cursors, Cursorhints
   - [ ] Customized Border
+  - [ ] Content position indicator (scrollbar)
   - [ ] Icon to Tray
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
@@ -171,7 +172,8 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
-  - [ ] Notification on reaching VID limit threshold and suspend external/ subsegs
+  - [ ] Notification on reaching VID limit threshold
+        and suspend external/ subsegs temporarily
 - [x] Basic Crash Recovery/Reset/Reload
 - [ ] Advanced Displays Support
   - [x] Display Resolution Switching
