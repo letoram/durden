@@ -198,8 +198,15 @@ function spawn_terminal()
 end
 
 local swm = {};
--- recovery from crash is handled just like newly launched windows
+-- recovery from crash is handled just like newly launched windows, one
+-- big caveat though, these are attached to WORLDID but in the multidisplay
+-- setup we have another attachment.
 function durden_adopt(vid, kind, title, parent)
+	local ap = display_attachment();
+	if (ap ~= nil) then
+		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
+	end
+
 	if (valid_vid(parent)) then
 		if (kind == "clipboard") then
 			if (swm[parent] ~= nil) then
