@@ -150,6 +150,14 @@ function display_manager_init()
 	end
 end
 
+function display_attachment()
+	if (displays.simple) then
+		return nil;
+	else
+		return displays[1].rt;
+	end
+end
+
 -- if we're in "simulated" multidisplay- mode, for development and testing,
 -- there's the need to dynamically add and remove to see that workspace
 -- migration works smoothly.
