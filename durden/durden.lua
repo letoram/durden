@@ -167,11 +167,6 @@ function durden_launch(vid, title, prefix)
 	return wnd;
 end
 
--- recovery from crash is handled just like newly launched windows
-function durden_adopt(vid, kind, title)
-	durden_launch(vid, title);
-end
-
 function spawn_terminal()
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
@@ -202,17 +197,39 @@ function spawn_terminal()
 	end
 end
 
+local swm = {};
+-- recovery from crash is handled just like newly launched windows
+function durden_adopt(vid, kind, title, parent)
+	if (valid_vid(parent)) then
+		if (kind == "clipboard") then
+			if (swm[parent] ~= nil) then
+				swm[parent].clipboard = vid;
+				target_updatehandler(vid, function(source, status)
+					clipboard_event(swm[parent], source, status);
+				end);
+			else
+				delete_image(vid);
+			end
+		else
+			durden_launch(vid, title);
+		end
+	else
+		durden_launch(vid, title);
+	end
+end
+
 function clipboard_event(wnd, source, status)
 	if (status.kind == "terminated") then
 		delete_image(source);
-		wnd.clipboard = nil;
+		if (wnd) then
+			wnd.clipboard = nil;
+		end
 	elseif (status.kind == "message") then
 -- got clipboard message, if it is multipart, buffer up to a threshold (?)
 		CLIPBOARD:add(source, status.message, status.multipart);
 	end
 end
 
-local swm = {};
 function def_handler(source, stat)
 	local wnd = swm[source];
 
