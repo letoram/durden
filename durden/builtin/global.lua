@@ -251,6 +251,13 @@ local debug_menu = {
 		kind = "action",
 		handler = grab_global_function("debug_debugwnd")
 	},
+-- for testing fallback application handover
+	{
+		name = "debug_broken",
+		label = "Broken Call (Crash)",
+		kind = "action",
+		handler = function() does_not_exist(); end
+	},
 	{
 		name = "debug_stall",
 		label = "Frameserver Debugstall",
@@ -439,6 +446,35 @@ local mouse_menu = {
 	},
 };
 
+local keyb_menu = {
+	{
+		name = "keyboard_repeat",
+		label = "Repeat Period",
+		kind = "value",
+		initial = function() return tostring(gconfig_get("kbd_period")); end,
+		hint = "cps (0:disabled - 100)",
+		validator = gen_valid_num(0, 100);
+		handler = function(ctx, val)
+			val = tonumber(val);
+			gconfig_set("kbd_period", val);
+			iostatem_repeat(val, nil);
+		end
+	},
+	{
+		name = "keyboard_delay",
+		label = "Initial Delay",
+		kind = "value",
+		initial = function() return tostring(gconfig_get("kbd_delay")); end,
+		hint = "ms (0:disable - 1000)",
+		handler = function(ctx, val)
+			val = tonumber(val);
+			gconfig_set("kbd_delay", val);
+			iostatem_repeat(nil, val);
+		end
+	}
+-- missing: keymap management
+};
+
 local input_menu = {
 	{
 		name = "input_rebind_basic",
@@ -469,6 +505,14 @@ local input_menu = {
 		kind = "action",
 		label = "Bind UTF-8",
 		handler = grab_global_function("bind_utf8")
+	},
+	{
+		name = "input_keyboard_menu",
+		kind = "action",
+		label = "Keyboard",
+		submenu = true,
+		force = true,
+		handler = keyb_menu
 	},
 	{
 		name = "input_mouse_menu",
