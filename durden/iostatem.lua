@@ -38,14 +38,18 @@ end
 
 -- delay in ms, period in cps
 function iostatem_repeat(period, delay)
-	if (period <= 0) then
-		devstate.period = 0;
-	else
-		devstate.period = math.ceil(period / CLOCKRATE);
+	if (period ~= nil) then
+		if (period <= 0) then
+			devstate.period = 0;
+		else
+			devstate.period = math.ceil(period / CLOCKRATE);
+		end
 	end
 
-	devstate.delay = delay < 0 and 1 or math.ceil(delay / (1000 / CLOCKRATE));
-	devstate.counter = devstate.delay;
+	if (delay ~= nil) then
+		devstate.delay = delay < 0 and 1 or math.ceil(delay / (1000 / CLOCKRATE));
+		devstate.counter = devstate.delay;
+	end
 end
 
 -- returns a table of iotbls, process with ipairs and forward to
@@ -71,7 +75,7 @@ function iostatem_tick()
 		end
 	end
 
--- scan devstate.devies
+-- scan devstate.devices
 end
 
 function iostatem_init()

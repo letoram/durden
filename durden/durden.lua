@@ -391,9 +391,17 @@ function poll_control_channel()
 		return;
 	end
 
+	local elem = string.split(line, ":");
+
 -- hotplug event
-	if (line == "rescan_displays") then
+	if (elem[1] == "rescan_displays") then
 		video_displaymodes();
+
+	elseif (elem[1] == "screenshot") then
+		local rt = active_display(true);
+		if (valid_vid(rt) and elem[2]) then
+			save_screenshot(elem[2], FORMAT_PNG, rt);
+		end
 	end
 end
 

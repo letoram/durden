@@ -159,7 +159,7 @@ are being implemented, we have the following list:
   - [ ] Recording/Streaming/Sharing
     - [ ] Audio Control
     - [ ] Secondary Audio Sources (microphone)
-  - [ ] Display / Window screenshot
+  - [x] Display screenshot (through command channel)
 - [ ] Cut and Paste
   - [x] Clipboard Management (local/global + history)
   - [x] Simple Text

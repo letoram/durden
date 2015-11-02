@@ -364,8 +364,12 @@ end
 -- windows, though they can be migrated immediately afterwards. This is because
 -- both mouse_ implementation and new object attachment points are a global
 -- state.
-function active_display()
-	return displays[displays.main].tiler;
+function active_display(rt)
+	if (rt) then
+		return displays[displays.main].rt;
+	else
+		return displays[displays.main].tiler;
+	end
 end
 
 function all_displays(ref)
