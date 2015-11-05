@@ -306,7 +306,7 @@ gf["bind_menu"] = function(sfun)
 	);
 end
 
-gf["bind_custom"] = function(sfun, wnd, m1, m2)
+gf["bind_custom"] = function(sfun, lbl, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
@@ -316,6 +316,7 @@ gf["bind_custom"] = function(sfun, wnd, m1, m2)
 		function(sym, done)
 			if (done) then
 				launch_menu_hook(function(path)
+					warning("dropping custom");
 					IN_CUSTOM_BIND = false;
 					local res = dispatch_custom(sym, path, wnd, m1);
 					if (res ~= nil) then
@@ -323,8 +324,14 @@ gf["bind_custom"] = function(sfun, wnd, m1, m2)
 					end
 				end);
 				active_display():message("select function to bind to " .. sym, -1);
-				local ctx = gf[wnd == nil and "global_actions" or "shared_actions"]();
+				local ctx;
+				if (wnd == nil) then
+					ctx = gf["global_actions"]();
+				else
+					ctx = sf["target_actions"](wnd);
+				end
 				ctx.on_cancel = function()
+					warning("on cancel");
 					launch_menu_hook(nil);
 					IN_CUSTOM_BIND = false;
 					active_display():message(nil);
@@ -334,7 +341,7 @@ gf["bind_custom"] = function(sfun, wnd, m1, m2)
 	);
 end
 
-sf["bind_custom"] = function(wnd)
+sf["bind_custom"] = function(ctx, wnd)
 	gf["bind_custom"](nil, wnd, dispatch_meta);
 end
 

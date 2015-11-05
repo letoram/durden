@@ -717,7 +717,6 @@ end
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
 local function show_shmenu(wnd)
-	wnd = wnd == nil and active_display() or wnd;
 	if (wnd == nil) then
 		return;
 	end
@@ -727,7 +726,7 @@ local function show_shmenu(wnd)
 		handler = wnd
 	};
 
-	launch_menu(wnd.wm, ctx, true, "Action:");
+	return launch_menu(active_display(), ctx, true, "Action:");
 end
 
 register_shared("target_actions", show_shmenu);
