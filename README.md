@@ -99,6 +99,7 @@ are being implemented, we have the following list:
   - [ ] Mouse Cursor Event Flash
   - [ ] Font Customization
   - [ ] Color Customization
+  - [x] Per Window canvas shader control
   - [x] Window Translucency
   - [ ] Window Alpha Channel Behavior Control
   - [x] Off-Screen Window Alert
@@ -122,7 +123,8 @@ are being implemented, we have the following list:
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
   - [x] Mouse Lock to Window
-  - [ ] Mouse Button Remapping
+  - [ ] Mouse Button Reordering
+  - [ ] Meta + Mouse Button Binding
   - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
@@ -163,7 +165,11 @@ are being implemented, we have the following list:
 - [ ] Cut and Paste
   - [x] Clipboard Management (local/global + history)
   - [x] Simple Text
+  - [ ] Paste text Reencoded
+    - [ ] Base64 enc/dec
+    - [ ] Shell escaped
   - [ ] Streaming Text
+  - [ ] Text Hash to Color on Copy (show in paste menu)
   - [ ] Images
   - [ ] Videos
   - [ ] Audio
@@ -190,6 +196,27 @@ are being implemented, we have the following list:
 Bear in mind that a lot of these features are primarily mapping to what arcan
 already supports an the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
+
+Extensions
+=====
+The above featureset mostly covers what would be useful from a tiling DE
+perspective, but given the relative minimal effort in adding features that
+would allow mimicking other DEs -- some extension scripts and support is
+planned but not currently implemented (likely to be drop:able into a
+plugins folder that globbed / scanned on load with some minimal hook api).
+
+### start button, popup, control panel
+traverse the window / target menus and convert to a popup- / settings
+style layout
+
+### widgets
+widgets, allow arcan lwa connections with a custom ID to be attached to
+fixed- size dock slots and have them auto-launch on startup and a config-
+key for finding in the normal target database.
+
+### desktop icons / shortcuts
+for float layouts, allow local icons and shortcuts to be added, similarly
+to how it already works in AWB.
 
 Repository
 =====
