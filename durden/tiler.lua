@@ -1949,7 +1949,12 @@ local function wnd_create(wm, source, opts)
 		grow = wnd_grow,
 		name = "wnd_" .. tostring(ent_count),
 -- user defined, for storing / restoring
-		settings = {}
+		settings = {},
+-- Explicit whitelist of allowed segment kinds (clipboard handled separately)
+-- expected to be indexed by segkind (string) and map to a table that has one
+-- function (register(srctbl)). This must call accept_target and will only be
+-- invoked from the context of a segment_request
+		allowed_subseg = {}
 	};
 
 	if (wm.debug_console) then
@@ -2029,6 +2034,7 @@ local function wnd_create(wm, source, opts)
 
 	order_image(res.wm.order_anchor,
 		2 + #wm.windows * WND_RESERVED + 2 * WND_RESERVED);
+
 	return res;
 end
 

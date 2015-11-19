@@ -39,7 +39,8 @@ end
 
 local function display_data(id)
 	local data, hash = video_displaydescr(id);
-	local model, serial;
+	local model = "unknown";
+	local serial = "unknown";
 	if (not data) then
 		return;
 	end
@@ -79,6 +80,10 @@ end
 local known_dispids = {};
 
 function durden_display_state(action, id)
+	if (displays.simple) then
+		return;
+	end
+
 	if (displays[1].tiler.debug_console) then
 		displays[1].tiler.debug_console:system_event("display event: " .. action);
 	end
