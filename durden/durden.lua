@@ -3,11 +3,6 @@
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main setup for the Arcan/Durden desktop environment
 
--- Every connection can get a set of additional commands and configurations
--- based on what type it has. Supported ones are registered into this table.
--- init, bindings, settings, commands
-archetypes = {};
-
 -- used to track input events that should be aligned to clock ticks
 -- for rate-limit and timing purposes
 EVENT_SYNCH = {};
@@ -22,6 +17,7 @@ function durden(argv)
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("display.lua")(); -- multidisplay management
+	system_load("extevh.lua")(); -- handlers for external events
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 
@@ -36,18 +32,6 @@ function durden(argv)
 		warning("arcan reported no available translation capable devices "
 			.. "(keyboard), cannot continue without one.\n");
 		return shutdown("", EXIT_FAILURE);
-	end
-
--- load custom special subwindow handlers
-	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);
-	if (res ~= nil) then
-		for k,v in ipairs(res) do
-			local tbl = system_load("atypes/" .. v, false);
-			tbl = tbl and tbl() or nil;
-			if (tbl and tbl.atype) then
-				archetypes[tbl.atype] = tbl;
-			end
-		end
 	end
 
 	SYMTABLE = system_load("symtable.lua")();
@@ -162,7 +146,18 @@ function durden_launch(vid, title, prefix)
 	wnd:add_handler("deselect", desel_input);
 	show_image(vid);
 	wnd.dispatch = shared_dispatch();
-	reg_window(wnd, vid);
+
+	extevh_register_window(vid, wnd);
+	EVENT_SYNCH[wnd.canvas] = {
+		queue = {},
+		target = vid
+	};
+	wnd:add_handler("destroy",
+	function()
+		extevh_unregister_window(vid);
+		CLIPBOARD:lost(vid);
+	end);
+
 	shader_setup(wnd, wnd.shkey and wnd.shkey or "noalpha");
 	return wnd;
 end
@@ -190,14 +185,13 @@ function spawn_terminal()
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
 		local wnd = durden_launch(vid, "", "terminal");
-		def_handler(vid, {kind = "registered", segkind = "terminal"});
+		extevh_default(vid, {kind = "registered", segkind = "terminal"});
 		wnd.space:resize();
 	else
 		active_display():message( "Builtin- terminal support broken" );
 	end
 end
 
-local swm = {};
 -- recovery from crash is handled just like newly launched windows, one
 -- big caveat though, these are attached to WORLDID but in the multidisplay
 -- setup we have another attachment.
@@ -223,130 +217,6 @@ function durden_adopt(vid, kind, title, parent)
 	else
 		durden_launch(vid, title);
 	end
-end
-
-function clipboard_event(wnd, source, status)
-	if (status.kind == "terminated") then
-		delete_image(source);
-		if (wnd) then
-			wnd.clipboard = nil;
-		end
-	elseif (status.kind == "message") then
--- got clipboard message, if it is multipart, buffer up to a threshold (?)
-		CLIPBOARD:add(source, status.message, status.multipart);
-	end
-end
-
-function def_handler(source, stat)
-	local wnd = swm[source];
-
-	if (DEBUGLEVEL > 0 and active_display().debug_console) then
-		active_display().debug_console:target_event(wnd, source, stat);
-	end
-
--- registered subtype handler may say that this event should not
--- propagate to the default implementation (below)
-	if (wnd.dispatch[stat.kind]) then
-		if (DEBUGLEVEL > 0 and active_display().debug_console) then
-			active_display().debug_console:event_dispatch(wnd, stat.kind, stat);
-		end
-
-		if (wnd.dispatch[stat.kind](wnd, source, stat)) then
-			return;
-		end
-	end
-
-	if (stat.kind == "framestatus") then
-	elseif (stat.kind == "resized") then
-		wnd.space:resize();
-		wnd.source_audio = stat.source_audio;
-		audio_gain(stat.source_audio,
-			gconfig_get("global_mute") and 0.0 or (gconfig_get("global_gain") *
-			(wnd.source_gain and wnd.source_gain or 1.0))
-		);
-		if (wnd.space.mode == "float") then
-			wnd:resize_effective(stat.width, stat.height);
-		end
-		image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
-	elseif (stat.kind == "message") then
-		wnd:set_message(stat.v, gconfig_get("msg_timeout"));
-
-	elseif (stat.kind == "terminated") then
--- if an lbar is active that requires this target window, that should be
--- dropped as well to avoid a race
-		EVENT_SYNCH[wnd.canvas] = nil;
-		wnd:destroy();
-	elseif (stat.kind == "ident") then
--- this can come multiple times if the title of the window is changed,
--- (whih happens a lot with some types)
-	elseif (stat.kind == "registered") then
-		local atbl = archetypes[stat.segkind];
-		if (atbl == nil or wnd.atype ~= nil) then
-			return;
-		end
-
--- project / overlay archetype specific toggles and settings
-		wnd.actions = atbl.actions;
-		if (atbl.props) then
-			for k,v in pairs(atbl.props) do
-				wnd[k] = v;
-			end
-		end
-		wnd.bindings = atbl.bindings;
-		wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
-		wnd.labels = atbl.labels and atbl.labels or {};
-		wnd.source_audio = stat.source_audio;
-
--- specify default shader by properties (e.g. no-alpha, fft) or explicit name
-		if (atbl.default_shader) then
-			local key;
-			if (type(atbl.default_shader) == "table") then
-				local lst = shader_list(atbl.default_shader);
-				key = lst[1];
-			else
-				key = shader_getkey(atbl.default_shader);
-			end
-			if (key) then
-				shader_setup(wnd, key);
-			end
-		end
-		if (atbl.init) then
-			atbl:init(wnd, source);
-		end
-	elseif (stat.kind == "segment_request") then
--- eval based on requested subtype etc. if needed
-		if (stat.segkind == "clipboard") then
-			if (wnd.clipboard ~= nil) then
-				delete_image(wnd.clipboard);
-			end
-			wnd.clipboard = accept_target();
-			target_updatehandler(wnd.clipboard,
-				function(source, status)
-					clipboard_event(wnd, source, status)
-				end
-			);
--- should set an autodelete handler for this one
-		else
-			local id = accept_target();
-			durden_launch(id, stat.segkind, stat.segkind);
-		end
-	end
-end
--- switch handler, register on-destroy handler and a source-wnd map
-function reg_window(wnd, source)
-	swm[source] = wnd;
-	if (valid_vid(source, TYPE_FRAMESERVER)) then
-		target_updatehandler(source, def_handler);
-	end
-	EVENT_SYNCH[wnd.canvas] = {
-		queue = {},
-		target = source
-	};
-	wnd:add_handler("destroy",
-	function()
-		swm[source] = nil;
-		CLIPBOARD:lost(source);
-	end);
 end
 
 function new_connection(source, status)
