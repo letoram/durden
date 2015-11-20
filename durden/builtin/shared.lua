@@ -268,7 +268,6 @@ local input_menu = {
 		label = "Bind Custom",
 		kind = "action",
 		handler = grab_shared_function("bind_custom"),
-		eval = function() return false; end -- incomplete
 	},
 	{
 		name = "target_input_mouse",
@@ -344,12 +343,6 @@ local filtermodes = {
 		label = "Bilinear",
 		kind = "action",
 		handler = function() set_filterm(FILTER_BILINEAR); end
-	},
-	{
-		name = "target_filter_trilinear",
-		label = "Trilinear",
-		kind = "action",
-		handler = function() set_filterm(FILTER_TRILINEAR); end
 	}
 };
 
@@ -717,6 +710,8 @@ end
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
 local function show_shmenu(wnd)
+	wnd = wnd and wnd or active_display().selected;
+
 	if (wnd == nil) then
 		return;
 	end

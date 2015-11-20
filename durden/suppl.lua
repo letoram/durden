@@ -588,13 +588,18 @@ end
 --
 function launch_menu_path(wm, gfunc, pathdescr)
 	local elems = string.split(pathdescr, "/");
-	local cl = ctx;
+	local cl = nil;
 	local old_launch = launch_menu;
+
 	launch_menu = function(wm, ctx, fcomp, label)
 		cl = ctx;
 	end
 
 	gfunc();
+	if (cl == nil) then
+		launch_menu = old_launch;
+		return;
+	end
 
 	for i,v in ipairs(elems) do
 		local found = false;

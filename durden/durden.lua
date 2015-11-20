@@ -3,8 +3,8 @@
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main setup for the Arcan/Durden desktop environment
 
--- used to track input events that should be aligned to clock ticks
--- for rate-limit and timing purposes
+-- Global used to track input events that should be aligned to clock
+-- tick for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
 function durden(argv)
@@ -50,14 +50,14 @@ function durden(argv)
 	display_manager_init();
 
 -- this opens up the 'durden' external listening point, removing it means
--- only user-input controlled execution
+-- only user-input controlled execution through configured database and open/browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0) then
 		new_connection();
 	end
 
 -- unsetting these values will prevent all external communication that is not
--- via the nonauth- connection or regular input devices
+-- using the nonauth- connection or regular input devices
 	local sbar_fn = gconfig_get("status_path");
 	if (sbar_fn ~= nil and string.len(sbar_fn) > 0) then
 		zap_resource(sbar_fn);
@@ -80,9 +80,6 @@ function durden(argv)
 	mouse_add_cursor("rz_right", load_image("cursor/rz_right.png"), 0, 0); -- 13, 5);
 	mouse_add_cursor("rz_up", load_image("cursor/rz_up.png"), 0, 0); -- 5, 0);
 
-	register_global("spawn_terminal", spawn_terminal);
-	register_global("launch_bar", query_launch);
-
 -- load saved keybindings
 	dispatch_load();
 	iostatem_init();
@@ -98,7 +95,8 @@ function durden(argv)
 		end
 	end
 
--- just used for quick documentation work
+-- just used for quick documentation work, traverses the menu tree and writes
+-- to stdout, does not yet handle shared or archetype- specific menus
 	if (argv[1] == "dump_menus") then
 		for k,v in ipairs(get_menu_tree(get_global_menu())) do
 			print(v);
@@ -107,6 +105,9 @@ function durden(argv)
 	end
 end
 
+-- need these event handlers here since it ties together modules that should
+-- be separated code-wise, as we want tiler- and other modules to be reusable
+-- in less complex projects
 local function tile_changed(wnd, neww, newh, efw, efh)
 	if (not neww or not newh) then
 		return;
@@ -117,6 +118,9 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 end
 
+-- there is a ton of "per window" input state when it comes to everything from
+-- active translation tables, to diacretic traversals, to repeat-rate and
+-- active analog/digital devices.
 local function sel_input(wnd)
 	local cnt = 0;
 	SYMTABLE:translation_overlay(wnd.u8_translation);
@@ -137,59 +141,32 @@ function durden_launch(vid, title, prefix)
 		return;
 	end
 	local wnd = active_display():add_window(vid);
-	wnd.external = vid;
+
+-- local keybinding->utf8 overrides, we map this to SYMTABLE
 	wnd.u8_translation = {};
+
+-- window aesthetics
 	wnd:set_title(title and title or "?");
 	wnd:set_prefix(prefix);
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);
-	show_image(vid);
-	wnd.dispatch = shared_dispatch();
-
-	extevh_register_window(vid, wnd);
-	EVENT_SYNCH[wnd.canvas] = {
-		queue = {},
-		target = vid
-	};
-	wnd:add_handler("destroy",
-	function()
-		extevh_unregister_window(vid);
-		CLIPBOARD:lost(vid);
-	end);
-
 	shader_setup(wnd, wnd.shkey and wnd.shkey or "noalpha");
+	show_image(vid);
+
+-- may use this function to launch / create some internal window that don't
+-- need all the external dispatch stuff, so make sure
+	if (valid_vid(vid, TYPE_FRAMESERVER)) then
+		wnd.dispatch = shared_dispatch();
+		wnd.external = vid;
+		extevh_register_window(vid, wnd);
+		EVENT_SYNCH[wnd.canvas] = {
+			queue = {},
+			target = vid
+		};
+	end
+
 	return wnd;
-end
-
-function spawn_terminal()
-	local bc = gconfig_get("term_bgcol");
-	local fc = gconfig_get("term_fgcol");
-	local cp = gconfig_get("extcon_path");
-
-	local lstr = string.format(
-		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:"..
-		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
-		gconfig_get("term_font_hint"), gconfig_get("term_font"),
-		gconfig_get("term_font_sz"),
-		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
-		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
-			("env=ARCAN_CONNPATH="..cp) or ""
-	);
-
-	if (not gconfig_get("term_autosz")) then
-		lstr = lstr .. string.format(":cell_w=%d:cell_h=%d",
-			gconfig_get("term_cellw"), gconfig_get("term_cellh"));
-	end
-
-	local vid = launch_avfeed(lstr, "terminal");
-	if (valid_vid(vid)) then
-		local wnd = durden_launch(vid, "", "terminal");
-		extevh_default(vid, {kind = "registered", segkind = "terminal"});
-		wnd.space:resize();
-	else
-		active_display():message( "Builtin- terminal support broken" );
-	end
 end
 
 -- recovery from crash is handled just like newly launched windows, one
@@ -219,6 +196,7 @@ function durden_adopt(vid, kind, title, parent)
 	end
 end
 
+-- global scope here as we refer to it in builtin/global.lua
 function new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
 		INCOMING_ENDPOINT = target_alloc(
@@ -232,6 +210,7 @@ end
 
 --
 -- text/line command protocol for doing status bar updates, etc.
+-- as this grows, move into its own separate module.
 --
 function poll_status_channel()
 	local line = STATUS_CHANNEL:read();
@@ -306,23 +285,22 @@ function durden_input(iotbl, fromim)
 
 	elseif (iotbl.translated) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
+		local sel = active_display().selected;
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
-		if (not dispatch_lookup(iotbl, sym, active_display().input_lock)) then
-			local sel = active_display().selected;
-			if (not sel) then
-				return;
-			end
+		local ok, lutsym = dispatch_lookup(iotbl, sym , active_display().input_lock);
+		if (ok or not sel) then
+			return;
+		end
 
-			if (sel.bindings and sel.bindings[sym]) then
-				sel.bindings[sym](sel);
+		if (sel.bindings and sel.bindings[sym]) then
+			sel.bindings[sym](sel);
 
-			elseif (sel.key_input) then
-				sel:key_input(sym, iotbl);
+		elseif (sel.key_input) then
+			sel:key_input(sym, iotbl);
 
-			elseif (valid_vid(sel.external, TYPE_FRAMESERVER)) then
-				iotbl.label = sel.labels[lutsym];
-				target_input(sel.external, iotbl);
-			end
+		elseif (valid_vid(sel.external, TYPE_FRAMESERVER)) then
+			iotbl.label = sel.labels[lutsym];
+			target_input(sel.external, iotbl);
 		end
 	end
 end
@@ -330,6 +308,12 @@ end
 function durden_shutdown()
 	SYMTABLE:store_translation();
 	gconfig_shutdown();
+	if (STATUS_CHANNEL) then
+		zap_resource(gconfig_get("status_path"));
+	end
+	if (CONTROL_CHANNEL) then
+		zap_resource(gconfig_get("control_path"));
+	end
 end
 
 local function flush_pending()
@@ -366,6 +350,8 @@ function durden_clock_pulse(n)
 	flush_pending();
 	mouse_tick(1);
 	display_tick();
+
+-- don't do this too often, no reason to..
 	if (CLOCK % 4 == 0) then
 		if (STATUS_CHANNEL) then
 			poll_status_channel();
