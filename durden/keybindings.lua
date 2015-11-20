@@ -148,24 +148,40 @@ function dispatch_load()
 		end
 	end
 
-	for i,v in ipairs(match_keys("custk_%")) do
-		local pos, stop = string.find(v, "=", 1);
-		local key = string.sub(v, 7, pos - 1);
-		local val = string.sub(v, stop + 1);
+	local get_kv = function(str)
+		local pos, stop = string.find(str, "=", 1);
+		local key = string.sub(str, 7, pos - 1);
+		local val = string.sub(str, stop + 1);
+		return key, val;
+	end
+
+-- custom bindings, global shared
+	for i,v in ipairs(match_keys("custg_%")) do
+		local key, val = get_kv(v);
 		if (val and string.len(val) > 0) then
 			tbl[key] = "!" .. val;
+		end
+	end
+
+-- custom bindings, window shared
+	for i,v in ipairs(match_keys("custs_%")) do
+		local key, val = get_kv(v);
+		if (val and string.len(val) > 0) then
+			tbl[key] = "#" .. val;
 		end
 	end
 end
 
 function dispatch_custom(key, val, nomb, wnd, global)
 	local old = tbl[key];
+	local pref = wnd and "custs_" or "custg_";
+
 	if (nomb) then
 		tbl[key] = val;
 	else
-		tbl[key] = val and ("!" .. val) or nil;
+		tbl[key] = val and ((wnd and "#" or "!") .. val) or nil;
 	end
-	store_key("custk_" .. key, val and val or "");
+	store_key(pref .. key, val and val or "");
 	return old;
 end
 
@@ -199,19 +215,19 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 
 	if (hook_handler) then
 		hook_handler(active_display(), keysym, iotbl, lutsym, metam);
-		return true;
+		return true, lutsym;
 	end
 
 	if (metam or not meta_guard(meta_1_state, meta_2_state)) then
-		return true;
+		return true, lutsym;
 	end
 
 	if (tbl[lutsym]) then
 		if (iotbl.active) then
 			dispatch_symbol(tbl[lutsym]);
 		end
-		return true;
+		return true, lutsym;
 	end
 
-	return false;
+	return false, lutsym;
 end

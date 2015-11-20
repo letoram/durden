@@ -1055,6 +1055,36 @@ if (string.match(FRAMESERVER_MODES, "terminal") ~= nil) then
 	});
 end
 
+function spawn_terminal()
+	local bc = gconfig_get("term_bgcol");
+	local fc = gconfig_get("term_fgcol");
+	local cp = gconfig_get("extcon_path");
+
+	local lstr = string.format(
+		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:"..
+		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
+		gconfig_get("term_font_hint"), gconfig_get("term_font"),
+		gconfig_get("term_font_sz"),
+		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
+		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
+			("env=ARCAN_CONNPATH="..cp) or ""
+	);
+
+	if (not gconfig_get("term_autosz")) then
+		lstr = lstr .. string.format(":cell_w=%d:cell_h=%d",
+			gconfig_get("term_cellw"), gconfig_get("term_cellh"));
+	end
+
+	local vid = launch_avfeed(lstr, "terminal");
+	if (valid_vid(vid)) then
+		local wnd = durden_launch(vid, "", "terminal");
+		extevh_default(vid, {kind = "registered", segkind = "terminal"});
+		wnd.space:resize();
+	else
+		active_display():message( "Builtin- terminal support broken" );
+	end
+end
+
 local toplevel = {
 	{
 		name = "open",
@@ -1170,6 +1200,7 @@ global_actions = function(trigger_function)
 end
 
 register_global("global_actions", global_actions);
+register_global("spawn_terminal", spawn_terminal);
 
 -- audio
 register_global("audio_mute_all", audio_mute);

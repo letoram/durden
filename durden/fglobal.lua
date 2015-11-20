@@ -64,7 +64,9 @@ function dispatch_symbol(sym, arg)
 			string.sub(sym, 2));
 		return;
 	elseif (ch == "#") then
--- run menu command on window- specific menu
+		launch_menu_path(active_display(), sf["target_actions"],
+			string.sub(sym, 2));
+		return;
 	end
 
 	if (sf[sym]) then
@@ -306,17 +308,18 @@ gf["bind_menu"] = function(sfun)
 	);
 end
 
-gf["bind_custom"] = function(sfun, lbl, wnd, m1, m2)
+-- ignore: sfun, lbl, cctx
+gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
+	print("bind_custom, wnd:", wnd, debug.traceback());
 	tiler_bbar(active_display(),
 		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
 				launch_menu_hook(function(path)
-					warning("dropping custom");
 					IN_CUSTOM_BIND = false;
 					local res = dispatch_custom(sym, path, wnd, m1);
 					if (res ~= nil) then
@@ -331,7 +334,6 @@ gf["bind_custom"] = function(sfun, lbl, wnd, m1, m2)
 					ctx = sf["target_actions"](wnd);
 				end
 				ctx.on_cancel = function()
-					warning("on cancel");
 					launch_menu_hook(nil);
 					IN_CUSTOM_BIND = false;
 					active_display():message(nil);
@@ -342,7 +344,7 @@ gf["bind_custom"] = function(sfun, lbl, wnd, m1, m2)
 end
 
 sf["bind_custom"] = function(ctx, wnd)
-	gf["bind_custom"](nil, wnd, dispatch_meta);
+	gf["bind_custom"](nil, "lbl", {}, wnd, dispatch_meta);
 end
 
 gf["unbind_combo"] = function()

@@ -159,17 +159,23 @@ function(wnd, source, stat)
 				clipboard_event(wnd, source, status)
 			end
 		);
--- should set an autodelete handler for this one
 	else
 -- handle other subsegment types
 	end
 end
 
 function extevh_register_window(source, wnd)
-	swm[source] = wnd;
-	if (valid_vid(source, TYPE_FRAMESERVER)) then
-		target_updatehandler(source, extevh_default);
+	if (not valid_vid(source, TYPE_FRAMESERVER)) then
+		return;
 	end
+	swm[source] = wnd;
+
+	target_updatehandler(source, extevh_default);
+	wnd:add_handler("destroy",
+	function()
+		extevh_unregister_window(source);
+		CLIPBOARD:lost(source);
+	end);
 end
 
 function extevh_unregister_window(source)
@@ -182,6 +188,9 @@ end
 
 function extevh_default(source, stat)
 	local wnd = swm[source];
+	if (not wnd) then
+		return;
+	end
 
 	if (DEBUGLEVEL > 0 and active_display().debug_console) then
 		active_display().debug_console:target_event(wnd, source, stat);
