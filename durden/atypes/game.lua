@@ -14,7 +14,6 @@ skiptbl["Skip 3"] = 3;
 skiptbl["Skip 4"] = 4;
 
 -- map coreopt
--- toggle debug-graph subwindow
 -- preaudio
 -- framealign
 -- target_framemode(vid, skipval, align, preaudio, jitterstep, jitterxfer)
@@ -30,7 +29,8 @@ return {
 		kind = "action",
 		handler = function(wnd)
 			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-				target_graphmode(wnd.external, 1);
+				local vid = target_alloc(wnd.external, function() end, "debug");
+				durden_launch(vid, "game:debug", "");
 			end
 		end
 	},
