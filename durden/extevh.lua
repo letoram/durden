@@ -29,7 +29,7 @@ local function load_archetypes()
 end
 load_archetypes();
 
-local function build_default_regh(wnd)
+local function default_reqh(wnd, source, ev)
 	local normal = {"lightweight arcan",
 		"multimedia", "game", "vm", "application", "remoting", "browser"};
 
@@ -42,22 +42,29 @@ local function build_default_regh(wnd)
 		"accessibility"
 	};
 
-	wnd.register = function(wnd, source, ev, default_handler)
-		if (blacklist[ev.segkind]) then
-			return;
-		end
+	if (blacklist[ev.segkind]) then
+		return;
+	end
 
-		if (normal[ev.segkind]) then
-			target_accept(source, default_handler);
-		end
-
-		if (ev.segkind == "titlebar") then
-		elseif (ev.segkind == "cursor") then
-		elseif (ev.segkidn == "icon") then
-		end
-
+	if (normal[ev.segkind]) then
+		target_accept(source, default_handler);
 		target_updatehandler(source, default_handler);
+	end
 
+	if (ev.segkind == "titlebar") then
+		if (valid_vid(wnd.titlebar_id)) then
+			delete_image(wnd.titlebar_id);
+		end
+		wnd.titlebar_id = accept_target();
+		target_updatehandler(wnd.titlebar_id, function() end);
+		link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
+		image_sharestorage(wnd.titlebar_id, wnd.titlebar);
+		return;
+	elseif (ev.segkind == "cursor") then
+-- reject cursor for now as well
+
+	elseif (ev.segkind == "icon") then
+-- reject for now, can later be used for status icon and for hint
 	end
 end
 
@@ -160,7 +167,7 @@ function(wnd, source, stat)
 			end
 		);
 	else
--- handle other subsegment types
+		default_reqh(wnd, source, stat);
 	end
 end
 

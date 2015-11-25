@@ -1,10 +1,12 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: Tiler comprise the main tiling window management,
--- event routing, key interpretation and other hooks. It returns
--- a single creation function (tiler_create(W, H)) that returns the
--- usual table of functions and members in pseudo-OO style.
+-- Description: Tiler comprise the main tiling window management, event
+-- routing, key interpretation and other hooks. It returns a single creation
+-- function (tiler_create(W, H)) that returns the usual table of functions and
+-- members in pseudo-OO style. Ideally this module should be as free from
+-- dependencies to other files as possible to allow the creation of small
+-- minimalistic tiling desktop environments.
 --
 
 -- number of Z values reserved for each window
@@ -80,6 +82,15 @@ void main()
 }
 ]];
 
+local tbar_inact_shader = [[
+uniform sampler2D map_tu0;
+varying vec2 texco;
+void main()
+{
+	gl_FragColor = vec4(vec3(0.5, 0.5, 0.5) * texture2D(map_tu0, texco).rgb, 1.0);
+}
+]];
+
 local function build_shaders()
 	local bw = gconfig_get("borderw");
 	local bt = bw - gconfig_get("bordert");
@@ -126,6 +137,8 @@ local function build_shaders()
 	shader_uniform(a, "col_border", "fff", PERSIST,
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	shader_uniform(a, "border", "f", PERSIST, 1);
+
+	a = build_shader(nil, tbar_inact_shader, "tbar_inact");
 end
 build_shaders();
 
@@ -256,8 +269,8 @@ local function wnd_deselect(wnd)
 	end
 
 	image_shader(wnd.border, "border_inact");
+	image_shader(wnd.titlebar, "tbar_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
-	image_sharestorage(wnd.wm.tbar_color, wnd.titlebar);
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
@@ -469,8 +482,8 @@ local function wnd_select(wnd, source)
 	end
 
 	image_shader(wnd.border, "border_act");
+	image_shader(wnd.titlebar, "DEFAULT");
 	image_sharestorage(wnd.wm.active_border_color, wnd.border);
-	image_sharestorage(wnd.wm.active_tbar_color, wnd.titlebar);
 	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
 	wnd.wm.selected = wnd;
@@ -2107,6 +2120,10 @@ local function tiler_switchws(wm, ind)
 	else
 		workspace_activate(wm.spaces[ind], false, not nd, cursp.background);
 	end
+
+-- safeguard against broken state
+	wm.spaces[ind].selected = wm.spaces[ind].selected and
+		wm.spaces[ind].selected or wm.spaces[ind].children[1];
 
 	if (wm.spaces[ind].selected) then
 		wnd_select(wm.spaces[ind].selected);
