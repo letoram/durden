@@ -101,7 +101,7 @@ are being implemented, we have the following list:
   - [ ] Color Customization
   - [x] Per Window canvas shader control
   - [x] Window Translucency
-  - [ ] Window Alpha Channel Behavior Control
+  - [x] Window Alpha Channel Behavior Control (using shader)
   - [x] Off-Screen Window Alert
   - [ ] Centered canvas in overdimensioned windows (tiled, fullscreen)
   - [ ] Mappable statusbar buttons in float mode
@@ -136,22 +136,27 @@ are being implemented, we have the following list:
   - [ ] Keyboard layout hotswapping
   - [ ] Per-Keyboard Layout
   - [x] Custom Unicode Binding (global and per window)
+- [ ] State Management
+  - [ ] Dynamic state change support
+  - [ ] State transfer between windows
+
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [x] Window Canvas to Workspace Background Image
   - [ ] Cloning Windows
   - [x] Migrate Window Between Displays
-  - [ ] Save State Transfers
   - [x] Debugging Subwindows
   - [ ] Overlay Surfaces
-  - [ ] Customized Titlebar
-  - [ ] Customized Cursors, Cursorhints
-  - [ ] Customized Border
+  - [x] Customized Titlebar
+  - [x] Customized Cursors, Cursorhints
+  - [x] Customized Border
   - [ ] Content position indicator (scrollbar)
   - [ ] Icon to Tray
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
-  - [ ] Suspend/Resume Follows Focus
+  - [ ] Auto Suspend/Resume
+    - [ ] Follow Focus
+    - [ ] Follow Workspace
   - [ ] Font Hinting
   - [ ] Block Alerts
   - [x] LL Origo Invert
@@ -165,6 +170,7 @@ are being implemented, we have the following list:
 - [ ] Cut and Paste
   - [x] Clipboard Management (local/global + history)
   - [x] Simple Text
+  - [ ] URL Catcher
   - [ ] Paste text Reencoded
     - [ ] Base64 enc/dec
     - [ ] Shell escaped
@@ -197,6 +203,14 @@ Bear in mind that a lot of these features are primarily mapping to what arcan
 already supports an the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
 
+Performance
+=====
+For lower power devices where multi-screen setups isn't needed,
+modify gconf.lua (or the corresponding database- fields if it has already
+been created and updated with all the keys) to disable 'display\_simple'.
+
+While somewhat buggy, one might also want to try out mouse\_mode = "native".
+
 Extensions
 =====
 The above featureset mostly covers what would be useful from a tiling DE
@@ -214,6 +228,11 @@ widgets, allow arcan lwa connections with a custom ID to be attached to
 fixed- size dock slots and have them auto-launch on startup and a config-
 key for finding in the normal target database.
 
+### content preview in browser
+extending lbar to support dynamic asynch- content loading for associating
+preview content with bar navigation. This could be simple things like unicode-
+helper for utf-8 bind or more advanced like thumbnails
+
 ### desktop icons / shortcuts
 for float layouts, allow local icons and shortcuts to be added, similarly
 to how it already works in AWB.
@@ -225,8 +244,14 @@ _files that might be of interest)_
 
     durden/
         gconf.lua        - configuration management (default visuals and sizes)
-        keybindings.lua  - active keybindings
+        clipboard.lua    - clipboard management
+				keybindings.lua  - active keybindings
         fglobal.lua      - global WM functions
+				mouse.lua        - mouse gesture support
+				shdrmgmt.lua     - shader loading and setup
+				symtable.lua     - keyboard layout and input translation
+        iostatem.lua     - per window input state machine tracking
+				extevh.lua       - default frameserver event handlers
         durden.lua       - main script, input routing and process management
         display.lua      - display and multiple-workspace manager
         tiler.lua        - main tiling layout, workspace management etc.
@@ -238,11 +263,9 @@ _files that might be of interest)_
     durden/atypes/* - menus and settings for specific client subtypes
     durden/builtin/ - global menus and settings, target base menus and settings
 
-    res/
-        (mostly cherry-picked from the arcan codebase)
-        shared resources, fonts, support scripts for UI features and window
-        management (for workspaces that are configured to have "normal" window
-        management for compatiblity reasons with multi-window programs).
+We don't keep any necessary assets in the resource path as that should be
+accessible to the browser (one could essentially set it to / or whatever
+filesystem mount-point one wants).
 
 Flow
 ====

@@ -358,7 +358,7 @@ function mouse_setup_native(resimg, hs_x, hs_y)
 	delete_image(resimg);
 
 	mouse_add_cursor("default", tmp, hs_x, hs_y);
-	mouse_switch_cursor("default");
+	mouse_switch_cursor();
 
 	mstate.x = math.floor(mstate.max_x * 0.5);
 	mstate.y = math.floor(mstate.max_y * 0.5);
@@ -366,6 +366,7 @@ function mouse_setup_native(resimg, hs_x, hs_y)
 	mouse_pickfun = cached_pick;
 
 	resize_cursor(props.width, props.height);
+	mstate.size = {props.width, props.height};
 
 	mouse_cursorupd(0, 0);
 end
@@ -826,6 +827,30 @@ function mouse_add_cursor(label, img, hs_x, hs_y)
 	};
 end
 
+-- assumed: .vid(valid), .hotspot_x, .hotspot_y
+function mouse_custom_cursor(ct)
+	if (mstate.native) then
+		cursor_setstorage(ct.vid);
+		resize_cursor(ct.width, ct.height);
+		mstate.size = {ct.width, ct.height};
+	else
+		image_sharestorage(ct.vid, mstate.cursor);
+		resize_image(mstate.cursor, ct.width, ct.height);
+		mstate.size = {ct.width, ct.height};
+	end
+
+	local hsdx = mstate.hotspot_x - ct.hotspot_x;
+	local hsdy = mstate.hotspot_y - ct.hotspot_y;
+
+-- offset current position (as that might've triggered the event that
+-- incited the caller to switch cursor by the change in label
+
+	mstate.x = mstate.x + hsdx;
+	mstate.y = mstate.y + hsdy;
+	mstate.hotspot_x = ct.hotspot_x;
+	mstate.hotspot_y = ct.hotspot_y;
+end
+
 function mouse_switch_cursor(label)
 	if (label == nil) then
 		label = "default";
@@ -847,25 +872,7 @@ function mouse_switch_cursor(label)
 	end
 
 	local ct = cursors[label];
-
-	if (mstate.native) then
-		cursor_setstorage(ct.vid);
-		resize_cursor(ct.width, ct.height);
-	else
-		image_sharestorage(ct.vid, mstate.cursor);
-		resize_image(mstate.cursor, ct.width, ct.height);
-	end
-
-	local hsdx = mstate.hotspot_x - ct.hotspot_x;
-	local hsdy = mstate.hotspot_y - ct.hotspot_y;
-
--- offset current position (as that might've triggered the event that
--- incited the caller to switch cursor by the change in label
-
-	mstate.x = mstate.x + hsdx;
-	mstate.y = mstate.y + hsdy;
-	mstate.hotspot_x = ct.hotspot_x;
-	mstate.hotspot_y = ct.hotspot_y;
+	mouse_custom_cursor(ct);
 end
 
 function mouse_hide()

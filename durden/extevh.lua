@@ -29,6 +29,11 @@ local function load_archetypes()
 end
 load_archetypes();
 
+local function cursor_handler(wnd, source, status)
+-- for cursor layer, we reuse some events to indicate hotspot
+-- and implement local warping..
+end
+
 local function default_reqh(wnd, source, ev)
 	local normal = {"lightweight arcan",
 		"multimedia", "game", "vm", "application", "remoting", "browser"};
@@ -36,7 +41,6 @@ local function default_reqh(wnd, source, ev)
 -- we have a different default handler for these or else we could have
 -- wnd_subseg->req[icon] icon_subseg->req[icon] etc.
 
-	local unique = {"titlebar", "cursor", "icon"};
 	local blacklist = {
 		"hmd-l", "sensor", "hmd-r", "hmd-sbs-lr", "encoder",
 		"accessibility"
@@ -49,6 +53,7 @@ local function default_reqh(wnd, source, ev)
 	if (normal[ev.segkind]) then
 		target_accept(source, default_handler);
 		target_updatehandler(source, default_handler);
+		return;
 	end
 
 	if (ev.segkind == "titlebar") then
@@ -61,8 +66,21 @@ local function default_reqh(wnd, source, ev)
 		image_sharestorage(wnd.titlebar_id, wnd.titlebar);
 		return;
 	elseif (ev.segkind == "cursor") then
--- reject cursor for now as well
-
+		if (valid_vid(wnd.cursor_id)) then
+			delete_image(wnd.cursor_id);
+		end
+		local sz = mouse_state().size;
+		wnd.cursor_id = accept_target(sz.width, sz.height);
+		target_updatehandler(wnd.cursor_id, function(a, b)
+			cursor_handler(wnd, a, b);
+		end);
+		if (wnd.wm.selected == wnd) then
+			mouse_custom_cursor({
+				vid = wnd.cursor_id, hotspot_x = 0, hotspot_y = 0
+			});
+		end
+		link_image(wnd.cursor_id, wnd.anchor);
+		return;
 	elseif (ev.segkind == "icon") then
 -- reject for now, can later be used for status icon and for hint
 	end
