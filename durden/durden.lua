@@ -155,7 +155,7 @@ function durden_launch(vid, title, prefix)
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);
-	shader_setup(wnd, wnd.shkey and wnd.shkey or "noalpha");
+	shader_setup(wnd, wnd.shkey and wnd.shkey or "DEFAULT");
 	show_image(vid);
 
 -- may use this function to launch / create some internal window that don't

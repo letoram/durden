@@ -9,4 +9,7 @@ return {
 		filtermode = FILTER_NONE,
 		rate_unlimited = false
 	},
+	props = {
+		shkey = "noalpha"
+	}
 };
