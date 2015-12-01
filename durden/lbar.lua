@@ -121,19 +121,19 @@ local function update_completion_set(wm, ctx, set)
 	local maxi = #set;
 
 	ctx.clim = #set;
+
 	for i=ctx.cofs,#set do
+		local msgs = {};
 		local str;
 		if (type(set[i]) == "table") then
 			str = set[i][i == ctx.csel and 2 or 1] .. set[i][3];
 		else
-			if (i == ctx.csel) then
-				str = gconfig_get("lbar_seltextstr") .. set[i];
-			else
-				str = gconfig_get("lbar_textstr") .. set[i];
-			end
+			table.insert(msgs, i == ctx.csel and
+				gconfig_get("lbar_seltextstr") or gconfig_get("lbar_textstr"));
+			table.insert(msgs, set[i]);
 		end
 
-		local w, h = text_dimensions(str);
+		local w, h = text_dimensions(msgs);
 		local exit = false;
 
 		if (ofs + w > ctxw - 10) then
@@ -146,7 +146,7 @@ local function update_completion_set(wm, ctx, set)
 			exit = true;
 		end
 
-		local txt = render_text(str);
+		local txt = render_text(#msgs > 0 and msgs or (str and str or ""));
 		image_tracetag(txt, "lbar_text" ..tostring(i));
 		local cw = image_surface_properties(txt).width;
 		link_image(ctx.canchor, ctx.text_anchor);
@@ -210,17 +210,17 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		end
 
 		if (valid_vid(ictx.text)) then
-			delete_image(ictx.text);
+			ictx.text = render_text(ictx.text, inp_str(ictx));
+		else
+			ictx.text = render_text(inp_str(ictx));
+			image_tracetag(ictx.text, "lbar_inpstr");
+			show_image(ictx.text);
+			link_image(ictx.text, ictx.text_anchor);
+			image_inherit_order(ictx.text, true);
+			move_image(ictx.text, ictx.textofs, math.floor(0.5*(
+				gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
 		end
-
-		ictx.text = render_text(inp_str(ictx));
-		image_tracetag(ictx.text, "lbar_inpstr");
-		show_image(ictx.text);
-		link_image(ictx.text, ictx.text_anchor);
-		image_inherit_order(ictx.text, true);
-		move_image(ictx.text, ictx.textofs, math.floor(0.5*(
-			gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
-	end
+		end
 
 	update_caret(ictx);
 end

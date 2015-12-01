@@ -138,6 +138,7 @@ end
 local function desel_input(wnd)
 	SYMTABLE:translation_overlay({});
 	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
+	mouse_switch_cursor("default");
 end
 
 function durden_launch(vid, title, prefix)
@@ -224,12 +225,11 @@ function poll_status_channel()
 
 	local cmd = string.split(line, ":");
 	cmd = cmd == nil and {} or cmd;
+	local fmt = string.format("%s \\#ffffff", gconfig_get("font_str"));
 
 	if (cmd[1] == "status_1") then
 -- escape control characters so we don't get nasty \f etc. commands
-		local msg = string.gsub(string.sub(line, 6), "\\", "\\\\");
-		local vid = render_text(
-			string.format("%s \\#ffffff %s", gconfig_get("font_str"), msg));
+		local vid = render_text({fmt, msg});
 		if (valid_vid(vid)) then
 			active_display():update_statusbar({}, vid);
 		end
