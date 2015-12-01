@@ -446,6 +446,15 @@ local mouse_menu = {
 	},
 };
 
+local function list_keymaps()
+	local km = SYMTABLE:list_keymaps();
+	local kmm = {};
+	for k,v in ipairs(km) do
+		table.
+	end
+	return kmm;
+end
+
 local keyb_menu = {
 	{
 		name = "keyboard_repeat",
@@ -471,6 +480,14 @@ local keyb_menu = {
 			gconfig_set("kbd_delay", val);
 			iostatem_repeat(nil, val);
 		end
+	},
+	{
+		name = "global_keymap",
+		label = "Keymaps",
+		kind = "action",
+		label = "Keymap",
+		submenu = true,
+		handler = list_keymaps
 	}
 -- missing: keymap management
 };

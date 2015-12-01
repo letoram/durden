@@ -119,6 +119,7 @@ are being implemented, we have the following list:
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [x] Drag Reposition/Resize in Float
+  - [x] Double-Click Titlebar Maximize-Restore in Float
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
@@ -231,7 +232,8 @@ key for finding in the normal target database.
 ### content preview in browser
 extending lbar to support dynamic asynch- content loading for associating
 preview content with bar navigation. This could be simple things like unicode-
-helper for utf-8 bind or more advanced like thumbnails
+helper for utf-8 bind or more advanced like thumbnails of images and silent
+prelaunch for videos.
 
 ### desktop icons / shortcuts
 for float layouts, allow local icons and shortcuts to be added, similarly

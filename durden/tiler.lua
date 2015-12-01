@@ -406,22 +406,21 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 
 -- add msg in statusbar "slot", protect against overflow into ws list
 	if (msg ~= nil) then
+		local text = {gconfig_get("sbar_textstr"), msg};
 		if (valid_vid(wm.statusbar_msg)) then
-			delete_image(wm.statusbar_msg);
+			render_text(wm.statusbar_msg, text);
+		else
+			wm.statusbar_msg = render_text(text);
+			show_image(wm.statusbar_msg);
+			image_inherit_order(wm.statusbar_msg, true);
+			link_image(wm.statusbar_msg, wm.statusbar);
+			image_shader(wm.statusbar_msg, "sbar_item");
+			move_image(wm.statusbar_msg, ofs, 1);
 		end
-
-		wm.statusbar_msg = render_text(string.format("%s %s",
-			gconfig_get("sbar_textstr"), msg));
 
 		if (timeout and timeout > 0 and valid_vid(wm.statusbar_msg)) then
 			expire_image(wm.statusbar_msg, timeout);
 		end
-
-		show_image(wm.statusbar_msg);
-		image_inherit_order(wm.statusbar_msg, true);
-		link_image(wm.statusbar_msg, wm.statusbar);
-		image_shader(wm.statusbar_msg, "sbar_item");
-		move_image(wm.statusbar_msg, ofs, 1);
 	end
 end
 
@@ -1505,12 +1504,11 @@ local function wnd_title(wnd, message)
 	end
 
 	if (type(message) == "string") then
-		wnd.title_text = string.gsub(message, "\\", "\\\\");
-		message = render_text(string.format("%s %s %s",
-			gconfig_get("tbar_textstr"),
+		wnd.title_text = message;
+		message = render_text({gconfig_get("tbar_textstr"),
 			wnd.title_prefix and (wnd.title_prefix .. ": ") or "",
-			wnd.title_text
-		));
+			"", wnd.title_text}
+		);
 	end
 
 	if (not valid_vid(message)) then
@@ -1612,10 +1610,31 @@ local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 end
 
 local function wnd_mouseclick(ctx, vid)
-	local wnd = ctx.wnd;
 	if (wnd.wm.selected ~= ctx.wnd and
 		gconfig_get("mouse_focus_event") == "click") then
-		wnd:select();
+		ctx.wnd:select();
+	end
+end
+
+local function wnd_mousedblclick(ctx, vid)
+-- will get click before dblclick so focus is no problem
+	local wnd = ctx.wnd;
+	if (wnd.space.mode == "float") then
+		if (wnd.float_dim) then
+			move_image(wnd.anchor, wnd.float_dim.x, wnd.float_dim.y);
+			wnd:resize(wnd.float_dim.w, wnd.float_dim.h);
+			wnd.float_dim = nil;
+		else
+			local cur = {};
+			local props = image_surface_resolve_properties(wnd.anchor);
+			cur.x = props.x;
+			cur.y = props.y;
+			cur.w = wnd.width;
+			cur.h = wnd.height;
+			wnd.float_dim = cur;
+			wnd:resize(wnd.wm.width, wnd.wm.height);
+			move_image(wnd.anchor, 0, 0);
+		end
 	end
 end
 
@@ -1745,6 +1764,7 @@ local function wnd_mousedrag(ctx, vid, dx, dy)
 		dy = (wnd.height + dy < wnd.wm.min_height) and 0 or dy;
 		wnd:resize(wnd.width + dx, wnd.height + dy);
 		nudge_image(wnd.anchor, dx * ctx.mask[3], dy * ctx.mask[4]);
+		wnd.float_dim = nil;
 	end
 end
 
@@ -1816,6 +1836,7 @@ local function add_mousehandler(wnd)
 		button = wnd_mousebutton,
 		press = wnd_mousepress,
 		click = wnd_mouseclick,
+		dblclick = wnd_mousedblclick,
 		hover = wnd_mousehover,
 		motion = wnd_mousemotion,
 		drag = wnd_mousedrag,
@@ -1829,7 +1850,8 @@ local function add_mousehandler(wnd)
 	mh.wnd = wnd;
 	mouse_addlistener(mh, {
 		"button", "hover","motion",
-		"press","drop","drag","over","out"
+		"press","drop", "dblclick",
+		"drag","over","out"
 	});
 end
 
