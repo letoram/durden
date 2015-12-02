@@ -722,7 +722,7 @@ local workspace_menu = {
 	},
 	{
 		name = "workspace_wnd",
-		label = "Find Tagged Window",
+		label = "Tagged Window",
 		kind = "action",
 		handler = function() grab_global_function("switch_wnd_bytag")(); end
 	},
@@ -731,7 +731,9 @@ local workspace_menu = {
 		label = "Migrate Display",
 		kind = "action",
 		handler = grab_global_function("migrate_ws_bydspname"),
-		eval = function() return gconfig_get("display_simple") == false; end
+		eval = function()
+			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
+		end
 	}
 };
 

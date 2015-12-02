@@ -60,7 +60,8 @@ local function default_reqh(wnd, source, ev)
 		if (valid_vid(wnd.titlebar_id)) then
 			delete_image(wnd.titlebar_id);
 		end
-		wnd.titlebar_id = accept_target();
+		local props = image_surface_properties(wnd.titlebar);
+		wnd.titlebar_id = accept_target(props.width, props.height);
 		target_updatehandler(wnd.titlebar_id, function() end);
 		link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
 		image_sharestorage(wnd.titlebar_id, wnd.titlebar);
@@ -70,13 +71,15 @@ local function default_reqh(wnd, source, ev)
 			delete_image(wnd.cursor_id);
 		end
 		local sz = mouse_state().size;
-		wnd.cursor_id = accept_target(sz.width, sz.height);
+		wnd.cursor_id = accept_target(sz[1], sz[2]);
 		target_updatehandler(wnd.cursor_id, function(a, b)
 			cursor_handler(wnd, a, b);
 		end);
 		if (wnd.wm.selected == wnd) then
 			mouse_custom_cursor({
-				vid = wnd.cursor_id, hotspot_x = 0, hotspot_y = 0
+				vid = wnd.cursor_id,
+				width = sz[1], height = sz[2],
+				hotspot_x = 0, hotspot_y = 0
 			});
 		end
 		link_image(wnd.cursor_id, wnd.anchor);
@@ -102,6 +105,23 @@ local defhtbl = {};
 
 defhtbl["framestatus"] =
 function(wnd, source, stat)
+-- don't do any state / performance tracking right now
+end
+
+defhtbl["alert"] =
+function(wnd, source, stat)
+-- FIXME: need multipart concatenation of message
+end
+
+defhtbl["cursorhint"] =
+function(wnd, source, stat)
+-- FIXME: set mouse custom cursor state for window
+end
+
+defhtbl["viewport"] =
+function(wnd, source, stat)
+-- need different behavior for popup here (invisible, parent, ...),
+-- FIXME:	wnd:custom_border(ev->viewport.border);
 end
 
 defhtbl["resized"] =
@@ -120,17 +140,19 @@ end
 
 defhtbl["message"] =
 function(wnd, source, stat)
+-- FIXME: no multipart concatenation
 	wnd:set_message(stat.v, gconfig_get("msg_timeout"));
 end
 
 defhtbl["ident"] =
 function(wnd, source, stat)
--- update window title unless custom titlebar?
+-- FIXME: update window title unless custom titlebar?
 end
 
 defhtbl["terminated"] =
 function(wnd, source, stat)
 	EVENT_SYNCH[wnd.canvas] = nil;
+-- FIXME: drop lbar if we are navigating a shared menu at the moment
 	wnd:destroy();
 end
 
@@ -171,12 +193,69 @@ function(wnd, source, stat)
 	end
 end
 
+--  stateinf is used in the builtin/shared
+defhtbl["state_size"] =
+function(wnd, source, stat)
+	wnd.stateinf = {size = stat.state_size, typeid = stat};
+end
+
+-- simple key / preset-val store of options that could persist between
+-- execution runs (if we have a way to identify target, so primary for when we
+-- can trust ident or, better, store in target/config slots.
+defhtbl["coreopt"] =
+function(wnd, source, stat)
+	if (not wnd.coreopt) then
+		wnd.coreopt = {};
+	end
+
+	local dtbl = wnd.coreopt[stat.slot];
+	if (not dtbl) then
+		dtbl = {
+			values = {}
+		};
+		wnd.coreopt[stat.slot] = dtbl;
+	end
+
+	if (string.len(stat.argument) == 0) then
+		return;
+	end
+
+	if (stat.type == "key") then
+		dtbl.key = stat.argument;
+	elseif (stat.type == "description") then
+		dtbl.description = stat.argument;
+	elseif (stat.type == "value") then
+-- ARBITRARY LIMIT
+		if (#dtbl.values < 64) then
+			table.insert(dtbl.values, stat.argument);
+		end
+	elseif (stat.type == "current") then
+		dtbl.current = stat.argument;
+	end
+end
+
+-- support timer implementation (some reasonable limit), we rely on internal
+-- autoclock handling for non-dynamic / periodic
+defhtbl["clock"] =
+function(wnd, source, stat)
+	if (not stat.once) then
+		return;
+	end
+	-- FIXME:
+	-- value, id; add to window timer and tick handler will work with it
+end
+
+defhtbl["content_state"] =
+function(wnd, source, stat)
+-- FIXME: map to window scroll-bars (rel_x, rel_y, x_size, y_size)
+end
+
 defhtbl["segment_request"] =
 function(wnd, source, stat)
 -- eval based on requested subtype etc. if needed
 	if (stat.segkind == "clipboard") then
 		if (wnd.clipboard ~= nil) then
-			delete_image(wnd.clipboard);
+			delete_image(wnd.clipboard)
 		end
 		wnd.clipboard = accept_target();
 		target_updatehandler(wnd.clipboard,

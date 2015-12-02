@@ -183,6 +183,11 @@ local function wnd_destroy(wnd)
 		wm.debug_console:system_event("lost " .. wnd.name);
 	end
 
+	if (wm.selected == wnd) then
+		wnd:deselect();
+		local mx, my = mouse_xy();
+	end
+
 	if (wnd.fullscreen) then
 		wnd.space:tile();
 	end
@@ -200,24 +205,24 @@ local function wnd_destroy(wnd)
 		wnd:prev();
 	end
 
--- re-assign to parent
+-- but that doesn't always succeed (edge-case, last window)
+	if (wnd.wm.selected == wnd) then
+		wnd.wm.selected = nil;
+		if (wnd.space.selected == wnd) then
+		wnd.space.selected = nil;
+		end
+	end
+
+-- re-assign all children to parent
 	for i,v in ipairs(wnd.children) do
 		table.insert(wnd.parent.children, v);
 		v.parent = wnd.parent;
 	end
 
+-- now we can run destroy hooks
 	run_event(wnd, "destroy");
 	for i,v in ipairs(wnd.relatives) do
 		run_event(v, "lost_relative", wnd);
-	end
-	table.remove_match(wnd.relatives, wnd);
-
-	if (wm.selected == wnd) then
-		wm.selected = nil;
-		local mx, my = mouse_xy();
-		if (image_hit(wnd.canvas, mx, my) and wnd.cursor == "hidden") then
-			mouse_show();
-		end
 	end
 
 -- drop references, cascade delete from anchor
@@ -270,13 +275,17 @@ local function wnd_deselect(wnd)
 		mouse_lockto(BADID);
 	end
 
+	local x, y = mouse_xy();
+	if (image_hit(wnd.canvas, x, y) and wnd.cursor == "hidden") then
+		mouse_show();
+	end
+
 	image_shader(wnd.border, "border_inact");
 	image_shader(wnd.titlebar, "tbar_inact");
 	image_sharestorage(wnd.wm.border_color, wnd.border);
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
-		local x, y = mouse_xy();
 		local props = image_surface_resolve_properties(wnd.canvas);
 		if (x >= props.x and y >= props.y and
 			x <= props.x + props.width and y <= props.y + props.height) then
@@ -2093,10 +2102,12 @@ local function tiler_find(wm, source)
 end
 
 local function tiler_switchws(wm, ind)
-
 	if (type(ind) ~= "number") then
 		for k,v in pairs(wm.spaces) do
-			if (v.label == ind) then
+			if (type(ind) == "table" and v == ind) then
+				ind = k;
+				break;
+			elseif (type(ind) == "string" and v.label == ind) then
 				ind = k;
 				break;
 			end

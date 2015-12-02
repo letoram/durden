@@ -588,7 +588,7 @@ end
 
 -- can be quite slow with many keymaps so want to cache results,
 -- and prefer load_keymap call instead if the desired one is already
--- known
+-- known.
 local symtable_cache = {};
 
 local function tryload(km)

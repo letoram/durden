@@ -88,15 +88,8 @@ local testwnd_spawn = function(bar)
 			VRESW * 0.1, VRESH * 0.1);
 		show_image(img);
 
-		local wnd = active_display():add_window(img, {scalemode = "stretch"});
-		wnd.last_float = {
-			width = 128; height = 128;
-			x = math.random(VRESW-128); y = math.random(VRESH-128);
-		};
-		if (bar) then
-			wnd:set_title("test window_" .. tostring(test_gc));
-			test_gc = test_gc + 1;
-		end
+		durden_launch(img, "test_window_" .. tostring(test_gc));
+		test_gc = test_gc + 1;
 	end
 end
 

@@ -114,7 +114,10 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 
 	if (neww > 0 and newh > 0) then
-		target_displayhint(wnd.external, neww, newh);
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			target_displayhint(wnd.external, neww, newh);
+		end
+
 		if (valid_vid(wnd.titlebar_id)) then
 			target_displayhint(wnd.titlebar_id,
 				wnd.width - wnd.border_w * 2, gconfig_get("tbar_sz"));
