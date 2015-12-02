@@ -185,10 +185,11 @@ function durden_adopt(vid, kind, title, parent)
 
 	if (valid_vid(parent)) then
 		if (kind == "clipboard") then
-			if (swm[parent] ~= nil) then
-				swm[parent].clipboard = vid;
+			local wnd = extevh_get_window(parent);
+			if (wnd ~= nil) then
+				wnd.clipboard = vid;
 				target_updatehandler(vid, function(source, status)
-					clipboard_event(swm[parent], source, status);
+					extevh_clipboard(wnd, source, status);
 				end);
 			else
 				delete_image(vid);

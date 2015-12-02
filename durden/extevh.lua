@@ -86,7 +86,7 @@ local function default_reqh(wnd, source, ev)
 	end
 end
 
-local function clipboard_event(wnd, source, status)
+function extevh_clipboard(wnd, source, status)
 	if (status.kind == "terminated") then
 		delete_image(source);
 		if (wnd) then
@@ -181,7 +181,7 @@ function(wnd, source, stat)
 		wnd.clipboard = accept_target();
 		target_updatehandler(wnd.clipboard,
 			function(source, status)
-				clipboard_event(wnd, source, status)
+				extevh_clipboard(wnd, source, status)
 			end
 		);
 	else

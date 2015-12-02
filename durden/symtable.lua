@@ -1,5 +1,10 @@
 -- various symbol table conversions for handling underlying input
 -- layer deficiencies, customized remapping etc.
+
+-- modify to use other namespace
+local SYMTABLE_DOMAIN = APPL_RESOURCE;
+
+-- for legacy reasons, we provide an sdl compatible symtable
 local symtable = {};
  symtable[0] = "UNKNOWN";
  symtable["UNKNOWN"] = 0;
@@ -492,23 +497,34 @@ end
 symtable.u8lut = {};
 symtable.u8basic = {};
 
--- apply utf8 translation, add generic
 symtable.patch = function(tbl, iotbl)
+	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+
+-- apply utf8 translation and modify supplied utf8 with keymap
+	if (tbl.keymap) then
+		local m = tbl.keymap.map;
+		if (iotbl.modifiers == 0) then
+			iotbl.utf8 = m["plain"] ~= nil and m["plain"][iotbl.subid] or ""
+		else
+			iotbl.utf8 = m[mods] ~= nil and m[mods][iotbl.subid] or ""
+		end
+		print("keymap:", mods, iotbl.utf8, iotbl.subid, string.len(iotbl.utf8));
+	end
+
+-- other symbols are described relative to the internal sdl symbols
 	local sym = tbl[iotbl.keysym];
 	if (not sym) then
 		return;
 	end
 
-	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
 	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
 -- two support layers at the moment, normal press or with modifiers.
--- the missing one is diacretics (` + a -> á etc.)
 	if (sym and iotbl.active) then
-		if (tbl.u8lut[sym]) then
-			iotbl.utf8 = tbl.u8lut[sym];
-		elseif (tbl.u8lut[lutsym]) then
+		if (tbl.u8lut[lutsym]) then
 			iotbl.utf8 = tbl.u8lut[lutsym];
+		elseif (tbl.u8lut[sym]) then
+			iotbl.utf8 = tbl.u8lut[sym];
 		end
 	else
 		iotbl.utf8 = "";
@@ -570,12 +586,60 @@ symtable.store_translation = function(tbl)
 	store_key(out);
 end
 
+-- can be quite slow with many keymaps so want to cache results,
+-- and prefer load_keymap call instead if the desired one is already
+-- known
+local symtable_cache = {};
+
+local function tryload(km)
+	local res = system_load("keymaps/" .. km, false)();
+	if (res and type(res) == "table" and res.platform_flt and res.name
+		and string.len(res.name) > 0) then
+		symtable_cache[km] = res;
+		res.valid = res:platform_flt(API_ENGINE_BUILD);
+		return res.valid and res or nil;
+	end
+end
+
 symtable.list_keymaps = function(tbl)
--- glob + eval against input platform, return a list
+	local list = glob_resource("keymaps/*.lua", SYMTABLE_DOMAIN);
+	local res = {};
+
+	if (list and #list > 0) then
+		for k,v in ipairs(list) do
+			local map = tryload(v);
+			if (map) then
+				table.insert(res, map.name);
+			end
+		end
+	end
+
+	table.sort(res);
+	return res;
 end
 
 symtable.load_keymap = function(tbl, km)
--- load / switch active keymap
+	if (resource("keymaps/" .. km, SYMTABLE_DOMAIN)) then
+		local res = tryload(km);
+		if (tryload(km)) then
+			symtable.keymap = res;
+			return true;
+		end
+	end
+
+	for k,v in pairs(symtable_cache) do
+		if (v.name == km) then
+			symtable.keymap = v;
+			return true;
+		end
+	end
+
+	return false;
+end
+
+symtable.reset = function(tbl)
+	tbl.keymap = nil;
+	tbl.u8basic = {};
 end
 
 -- switch overlay (for multiple windows with different remapping)
