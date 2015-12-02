@@ -481,7 +481,9 @@ local window_menu = {
 		label = "Migrate Display",
 		kind = "action",
 		handler = grab_shared_function("migrate_wnd_bydspname"),
-		eval = function() return gconfig_get("display_simple") == false; end
+		eval = function()
+			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
+		end
 	}
 };
 
@@ -588,6 +590,70 @@ local clipboard_menu = {
 	}
 };
 
+local state_menu = {
+	{
+		name = "state_load",
+		label = "Restore",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return false;
+-- eval namespaces for matching state-id
+-- tostring(active_display().selected.stateinf)
+		end
+	},
+};
+
+local function set_temporary(wnd, slot, val)
+	print("set_temporary", wnd, slot, val);
+end
+
+local function list_values(wnd, ind, optslot, trigfun)
+	local res = {};
+	for k,v in ipairs(optslot.values) do
+		table.insert(res, {
+			handler = function()
+				trigfun(wnd, ind, optslot, v);
+			end,
+			name = "coreopt_val_" .. v,
+			kind = "action"
+		});
+	end
+	return res;
+end
+
+local function list_coreopts(wnd, trigfun)
+	local res = {};
+	for k,v in ipairs(wnd.coreopt) do
+		if (#v.values > 0 and v.description) then
+			table.insert(res, {
+				name = "coreopt_" .. v.description,
+				kind = "action",
+				submenu = true,
+				handler = function()
+					return list_values(wnd, k, v, trigfun);
+				end
+			});
+		end
+	end
+	return res;
+end
+
+local opts_menu = {
+	{
+		name = "coreopt_set",
+		label = "Set",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return active_display().selected.coreopt ~= nil;
+		end,
+		handler = function()
+			list_coreopts(active_display().selected, set_temporary);
+		end
+	},
+};
+
 -- Will be presented in order, not sorted. Make sure they come in order
 -- useful:safe -> uncommon:dangerous to reduce the change of some quick
 -- mispress doing something damaging
@@ -611,6 +677,18 @@ local shared_actions = {
 		kind = "action",
 		force = true,
 		handler = input_menu
+	},
+	{
+		name = "shared_state",
+		label = "State",
+		submenu = true,
+		kind = "ation",
+		force = true,
+		handler = state_menu,
+		eval = function()
+			local wnd = active_display().selected;
+			return wnd.stateinf ~= nil;
+		end
 	},
 	{
 		name = "shared_clipboard",
