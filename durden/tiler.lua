@@ -85,9 +85,11 @@ void main()
 local tbar_inact_shader = [[
 uniform sampler2D map_tu0;
 varying vec2 texco;
+uniform float obj_opacity;
 void main()
 {
-	gl_FragColor = vec4(vec3(0.5, 0.5, 0.5) * texture2D(map_tu0, texco).rgb, 1.0);
+	gl_FragColor = vec4(vec3(0.5, 0.5, 0.5) *
+		texture2D(map_tu0, texco).rgb, obj_opacity);
 }
 ]];
 

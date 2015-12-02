@@ -450,7 +450,12 @@ local function list_keymaps()
 	local km = SYMTABLE:list_keymaps();
 	local kmm = {};
 	for k,v in ipairs(km) do
-		table.
+		table.insert(kmm, {
+			name = "keymap_" .. tostring(k),
+			kind = "action",
+			label = v,
+			handler = function() SYMTABLE:load_keymap(v); end
+		});
 	end
 	return kmm;
 end
@@ -482,14 +487,18 @@ local keyb_menu = {
 		end
 	},
 	{
-		name = "global_keymap",
-		label = "Keymaps",
+		name = "keyboard_maps",
+		label = "Map",
 		kind = "action",
-		label = "Keymap",
 		submenu = true,
 		handler = list_keymaps
+	},
+	{
+		name = "keyboard_reset",
+		label = "Reset",
+		kind = "action",
+		handler = function() SYMTABLE:reset(); end
 	}
--- missing: keymap management
 };
 
 local input_menu = {
