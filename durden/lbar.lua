@@ -59,6 +59,10 @@ local function accept_cancel(wm, accept)
 			end
 		end
 		ictx.get_cb(ictx.cb_ctx, base, true, ictx.set);
+	else
+		if (ictx.on_cancel) then
+			ictx:on_cancel();
+		end
 	end
 end
 
