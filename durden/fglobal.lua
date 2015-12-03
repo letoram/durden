@@ -306,7 +306,6 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
-	print("bind_custom, wnd:", wnd, debug.traceback());
 	tiler_bbar(active_display(),
 		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
