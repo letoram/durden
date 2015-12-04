@@ -13,7 +13,6 @@ skiptbl["Skip 2"] = 2;
 skiptbl["Skip 3"] = 3;
 skiptbl["Skip 4"] = 4;
 
--- map coreopt
 -- preaudio
 -- framealign
 -- target_framemode(vid, skipval, align, preaudio, jitterstep, jitterxfer)
@@ -27,6 +26,7 @@ return {
 		name = "gamewnd_reqdbg",
 		label = "Debug-Subwindow",
 		kind = "action",
+		eval = function() return DEBUGLEVEL > 0; end,
 		handler = function(wnd)
 			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 				local vid = target_alloc(wnd.external, function() end, "debug");
