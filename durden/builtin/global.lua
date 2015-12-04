@@ -880,6 +880,8 @@ local config_terminal = {
 		validator = gen_valid_float(0, 1),
 		initial = function() return tostring(gconfig_get("term_opa")); end,
 		handler = function(ctx, val)
+			local k, v = shader_getkey("clamp_crop");
+			shader_uniform(v.shid, "crop_opa", "f", PERSIST, tonumber(val));
 			gconfig_set("term_opa", tonumber(val));
 		end
 	},
@@ -945,6 +947,9 @@ local config_menu = {
 		kind = "action",
 		submenu = true,
 		force = true,
+		eval = function()
+			return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+		end,
 		handler = config_terminal
 	}
 };
@@ -988,8 +993,12 @@ local function browse_internal()
 	browse_file({}, ffmts, SHARED_RESOURCE, nil);
 end
 
-local uriopen_menu = {
-};
+local function run_uri(val, feedmode)
+	local vid = launch_avfeed(val, feedmode);
+	if (valid_vid(vid)) then
+		durden_launch(vid, "", feedmode);
+	end
+end
 
 local function get_remstr(val)
 	local sp = string.split(val, "@");
@@ -1014,73 +1023,6 @@ local function get_remstr(val)
 	end
 
 	return base;
-end
-
-local function run_uri(val, feedmode)
-	local vid = launch_avfeed(val, feedmode);
-	if (valid_vid(vid)) then
-		durden_launch(vid, "", feedmode);
-	end
-end
-
-if (string.match(FRAMESERVER_MODES, "remoting") ~= nil) then
-	table.insert(uriopen_menu, {
-		name = "uriopen_remote",
-		label = "Remote Desktop",
-		kind = "value",
-		hint = "(user:pass@host+port)",
-		validator = function() return true; end,
-		handler = function(ctx, val)
-			local vid = launch_avfeed(get_remstr(val), "remoting");
-			durden_launch(vid, "", "remoting");
-		end;
-	});
-end
-
-if (string.match(FRAMESERVER_MODES, "decode") ~= nil) then
-	table.insert(uriopen_menu, {
-		name = "uriopen_decode",
-		label = "Media URL",
-		kind = "value",
-		hint = "(protocol://user:pass@host:port)",
-		validator = function() return true; end,
-		handler = function(ctx, val)
-			run_uri(val, "decode");
-		end
-	});
-end
-
-if (string.match(FRAMESERVER_MODES, "avfeed") ~= nil) then
-	table.insert(uriopen_menu, {
-		name = "uriopen_avfeed",
-		label = "AV Feed",
-		kind = "action",
-		hint = "(m1_accept for args)",
-		handler = function(ctx, val)
-			local m1, m2 = dispatch_meta();
-			if (m1) then
-				query_args( function(argstr)
-				local vid = launch_avfeed(argstr, "avfeed");
-				durden_launch(vid, "", "avfeed");
-				end);
-			else
-				local vid = launch_avfeed("", "avfeed");
-				durden_launch(vid, "", "avfeed");
-			end
-		end
-	});
-end
-
-if (string.match(FRAMESERVER_MODES, "terminal") ~= nil) then
-	table.insert(uriopen_menu, {
-		name = "uriopen_terminal",
-		label = "Terminal",
-		kind = "action",
-		hint = "(m1_accept for args)",
-		handler = function(ctx, val)
-			warning("terminal");
-		end
-	});
 end
 
 function spawn_terminal()
@@ -1112,6 +1054,67 @@ function spawn_terminal()
 		active_display():message( "Builtin- terminal support broken" );
 	end
 end
+
+local uriopen_menu = {
+{
+	name = "uriopen_terminal",
+	label = "Terminal",
+	kind = "action",
+	hint = "(m1_accept for args)",
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+	end,
+	handler = spawn_terminal
+},
+{
+	name = "uriopen_remote",
+	label = "Remote Desktop",
+	kind = "value",
+	hint = "(user:pass@host+port)",
+	validator = function() return true; end,
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
+	end,
+	handler = function(ctx, val)
+		local vid = launch_avfeed(get_remstr(val), "remoting");
+		durden_launch(vid, "", "remoting");
+	end;
+},
+{
+	name = "uriopen_decode",
+	label = "Media URL",
+	kind = "value",
+	hint = "(protocol://user:pass@host:port)",
+	validator = function() return true; end,
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "decode") ~= nil;
+	end,
+	handler = function(ctx, val)
+		run_uri(val, "decode");
+	end
+},
+{
+	name = "uriopen_avfeed",
+	label = "AV Feed",
+	kind = "action",
+	hint = "(m1_accept for args)",
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "avfeed") ~= nil;
+	end,
+	handler = function(ctx, val)
+		local m1, m2 = dispatch_meta();
+		if (m1) then
+			query_args( function(argstr)
+			local vid = launch_avfeed(argstr, "avfeed");
+			durden_launch(vid, "", "avfeed");
+			end);
+		else
+			local vid = launch_avfeed("", "avfeed");
+			durden_launch(vid, "", "avfeed");
+		end
+	end
+}
+};
 
 local toplevel = {
 	{

@@ -78,13 +78,14 @@ void main()
 local frag_clamp = [[
 uniform sampler2D map_tu0;
 uniform float obj_opacity;
+uniform float crop_opa;
 varying vec2 texco;
 
 void main()
 {
 	vec4 col = texture2D(map_tu0, texco);
 	if (texco.s > 1.0 || texco.t > 1.0)
-		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity);
+		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity * crop_opa);
 	else
 		gl_FragColor = vec4(
 			col.r, col.g, col.b, obj_opacity * col.a);
@@ -109,6 +110,10 @@ shdrtbl["clamp_black"] = {
 	hidden = true
 };
 
+-- need better management for global config of shader tunables..
+shader_uniform(shdrtbl["clamp_black"].shid, "crop_opa",
+	"f", PERSIST, gconfig_get("term_opa"));
+
 function shader_setup(wnd, name)
 	if (shdrtbl[name] == nil) then
 		return;
@@ -119,7 +124,7 @@ end
 function shader_getkey(name)
 	for k,v in pairs(shdrtbl) do
 		if (v.name == name) then
-			return k;
+			return k, v;
 		end
 	end
 end

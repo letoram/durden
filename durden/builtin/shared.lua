@@ -79,7 +79,7 @@ local function build_labelmenu()
 		table.insert(res, {
 			name = "input_" .. v[1],
 			label = v[1],
-			vref = v,
+			kind = "action",
 			handler = function()
 				run_input_label(wnd, v);
 			end

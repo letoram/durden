@@ -508,7 +508,6 @@ symtable.patch = function(tbl, iotbl)
 		else
 			iotbl.utf8 = m[mods] ~= nil and m[mods][iotbl.subid] or ""
 		end
-		print("keymap:", mods, iotbl.utf8, iotbl.subid, string.len(iotbl.utf8));
 	end
 
 -- other symbols are described relative to the internal sdl symbols

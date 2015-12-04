@@ -51,7 +51,6 @@ local function accept_cancel(wm, accept)
 	wm:set_input_lock();
 	if (accept) then
 		local base = ictx.inp.msg;
-
 		if (ictx.force_completion or string.len(base) == 0) then
 			if (ictx.set and ictx.set[ictx.csel]) then
 				base = type(ictx.set[ictx.csel]) == "table" and
@@ -73,6 +72,10 @@ end
 --
 -- Set can contain the set of strings or a table of [colstr, selcolstr, text]
 local function update_completion_set(wm, ctx, set)
+	if (not set) then
+		return;
+	end
+
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
 		for i,v in ipairs(pending) do
@@ -199,8 +202,6 @@ local function update_completion_set(wm, ctx, set)
 			break;
 		end
 	end
-
-	local txanchor = 0;
 end
 
 local function lbar_ih(wm, ictx, inp, sym, caret)
