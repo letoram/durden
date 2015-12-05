@@ -24,7 +24,7 @@ return {
 	actions = {
 	{
 		name = "gamewnd_reqdbg",
-		label = "Debug-Subwindow",
+		label = "Debug-stats",
 		kind = "action",
 		eval = function() return DEBUGLEVEL > 0; end,
 		handler = function(wnd)

@@ -320,7 +320,7 @@ end
 local function set_filterm(mode)
 	local wnd = active_display().selected;
 	if (mode and wnd) then
-		wnd.settings.filtermode = mode;
+		wnd.filtermode = mode;
 		image_texfilter(wnd.canvas, mode);
 	end
 end
