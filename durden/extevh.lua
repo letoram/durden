@@ -170,10 +170,12 @@ function(wnd, source, stat)
 			wnd[k] = v;
 		end
 	end
+
 	wnd.bindings = atbl.bindings;
 	wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 	wnd.labels = atbl.labels and atbl.labels or {};
 	wnd.source_audio = stat.source_audio;
+	wnd.atype = atbl.atype;
 
 -- specify default shader by properties (e.g. no-alpha, fft) or explicit name
 	if (atbl.default_shader) then

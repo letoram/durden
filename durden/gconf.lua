@@ -145,11 +145,25 @@ local defaults = {
 	pretiletext_color = "\\#ffffff ",
 };
 
+local listeners = {};
+function gconfig_listen(key, id, fun)
+	if (listeners[key] == nil) then
+		listeners[key] = {};
+	end
+	listeners[key][id] = fun;
+end
+
 function gconfig_set(key, val)
 if (type(val) ~= type(defaults[key])) then
 		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",
 			type(val), type(defaults[key]), key));
 		return;
+	end
+
+	if (listeners[key]) then
+		for k,v in pairs(listeners[key]) do
+			v(key, val);
+		end
 	end
 
 	defaults[key] = val;

@@ -880,8 +880,6 @@ local config_terminal = {
 		validator = gen_valid_float(0, 1),
 		initial = function() return tostring(gconfig_get("term_opa")); end,
 		handler = function(ctx, val)
-			local k, v = shader_getkey("clamp_crop");
-			shader_uniform(v.shid, "crop_opa", "f", PERSIST, tonumber(val));
 			gconfig_set("term_opa", tonumber(val));
 		end
 	},
