@@ -787,12 +787,15 @@ end
 -- the handler maneuver is to make sure that the callback that is triggered
 -- matches the format in gfunc/shared so that we can reuse both for scripting
 -- and for menu navigation.
-local function show_shmenu(wnd)
+local show_shmenu;
+show_shmenu = function(wnd)
 	wnd = wnd and wnd or active_display().selected;
 
 	if (wnd == nil) then
 		return;
 	end
+
+	LAST_ACTIVE_MENU = show_shmenu;
 
 	local ctx = {
 		list = merge_menu(wnd.no_shared and {} or shared_actions, wnd.actions),
