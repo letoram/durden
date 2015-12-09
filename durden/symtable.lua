@@ -499,6 +499,7 @@ symtable.u8basic = {};
 
 symtable.patch = function(tbl, iotbl)
 	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+	iotbl.old_utf8 = iotbl.utf8;
 
 -- apply utf8 translation and modify supplied utf8 with keymap
 	if (tbl.keymap) then

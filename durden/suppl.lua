@@ -533,6 +533,17 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	ctx.wm = wm;
 
 	local bar = wm:lbar(lbar_fun, ctx, opts);
+	if (not bar.on_cancel) then
+		bar.on_cancel = function()
+			local m1, m2 = dispatch_meta();
+			if (m1) then
+				local last = string.split(path, "/");
+				path = "";
+				local lpath = table.concat(last, '/', 1, #last-1);
+				launch_menu_path(wm, LAST_ACTIVE_MENU, lpath);
+			end
+		end
+	end
 	return bar;
 end
 
@@ -587,6 +598,15 @@ end
 -- keybinding as for setup. gfunc should be a menu spawning function.
 --
 function launch_menu_path(wm, gfunc, pathdescr)
+	if (not pathdescr or string.len(pathdescr) == 0) then
+		gfunc();
+		return;
+	end
+
+	if (string.sub(pathdescr, 1, 1) == "/") then
+		launch_menu_path(wm, gfunc, string.sub(pathdescr, 2));
+		return;
+	end
 	local elems = string.split(pathdescr, "/");
 	local cl = nil;
 	local old_launch = launch_menu;
@@ -610,6 +630,7 @@ function launch_menu_path(wm, gfunc, pathdescr)
 				break;
 			end
 		end
+
 		if (not found) then
 			warning(string.format(
 				"run_menu_path(%s) failed at index %d", pathdescr, i));

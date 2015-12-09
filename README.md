@@ -16,6 +16,12 @@ Development is discussed on the IRC channel #arcan on the Freenode network
 
 2015+, Björn Ståhl
 
+Licensing
+=====
+Durden is Licensed in the 3-clause BSD format that can be found in the
+licensing file. The included terminal font, Hack-Bold is (c) Chris Simpkins
+and licensed under the Apache-2.0 license.
+
 Starting / Configuring
 =====
 

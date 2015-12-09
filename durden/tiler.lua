@@ -1630,7 +1630,7 @@ end
 local function wnd_mousedblclick(ctx, vid)
 -- will get click before dblclick so focus is no problem
 	local wnd = ctx.wnd;
-	if (wnd.space.mode == "float") then
+	if (wnd.space.mode == "float" and wnd.titlebar == vid) then
 		if (wnd.float_dim) then
 			move_image(wnd.anchor, wnd.float_dim.x, wnd.float_dim.y);
 			wnd:resize(wnd.float_dim.w, wnd.float_dim.h);

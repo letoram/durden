@@ -491,6 +491,7 @@ local keyb_menu = {
 		label = "Map",
 		kind = "action",
 		submenu = true,
+		eval = function() return #(SYMTABLE:list_keymaps()) > 0; end,
 		handler = list_keymaps
 	},
 	{
@@ -1215,7 +1216,10 @@ function get_global_menu()
 	return toplevel;
 end
 
+local global_actions = nil;
 global_actions = function(trigger_function)
+	LAST_ACTIVE_MENU = global_actions;
+
 	if (IN_CUSTOM_BIND) then
 		return launch_menu(active_display(), {
 			list = toplevel,
