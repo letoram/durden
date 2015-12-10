@@ -401,9 +401,11 @@ gf["query_launch"] = function()
 					end
 				end), {}, {label = str .. ", Config:", force_completion = true});
 			else
+-- FIXME: load coreopts from serialization target and add here
 				vid = launch_target(str, cfgs[1], LAUNCH_INTERNAL, def_handler);
 				if (valid_vid(vid)) then
-					durden_launch(vid, cfstr, str);
+					local wnd = durden_launch(vid, cfstr, str);
+					wnd.config_tgt = {str, cfstr};
 				end
 			end
 

@@ -9,7 +9,7 @@ return {
 		filtermode = FILTER_NONE,
 		rate_unlimited = false
 	},
+	default_shader = "noalpha",
 	props = {
-		shkey = "noalpha"
 	}
 };

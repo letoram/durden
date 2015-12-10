@@ -152,7 +152,14 @@ end
 defhtbl["terminated"] =
 function(wnd, source, stat)
 	EVENT_SYNCH[wnd.canvas] = nil;
--- FIXME: drop lbar if we are navigating a shared menu at the moment
+
+-- if the target menu is active on the same window that is being
+-- destroyed, cancel it so we don't risk a tiny race
+	local ictx = active_display().input_ctx;
+	if (active_display().selected == wnd and ictx and ictx.destroy and
+		LAST_ACTIVE_MENU == grab_shared_function("target_actions")) then
+		ictx:destroy();
+	end
 	wnd:destroy();
 end
 
@@ -170,6 +177,13 @@ function(wnd, source, stat)
 			wnd[k] = v;
 		end
 	end
+
+-- can either be table [tgt, cfg] or [guid]
+	if (not wnd.config_tgt and stat.guid > 0) then
+		wnd.config_tgt = stat.guid;
+	end
+
+	print(wnd.config_tgt);
 
 	wnd.bindings = atbl.bindings;
 	wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
@@ -190,9 +204,12 @@ function(wnd, source, stat)
 			shader_setup(wnd, key);
 		end
 	end
+
 	if (atbl.init) then
 		atbl:init(wnd, source);
 	end
+
+	wnd:load_config(wnd.config_tgt);
 end
 
 --  stateinf is used in the builtin/shared

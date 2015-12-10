@@ -1075,6 +1075,7 @@ local function workspace_background(ws, bgsrc, generalize)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(ws.wm.width, ws.wm.height);
+			image_shader(ws.background, shader_getkey("noalpha"));
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
@@ -1937,6 +1938,19 @@ local function wnd_migrate(wnd, tiler)
 	wnd:assign_ws(dsp, true);
 end
 
+local function wnd_loadcfg(wnd)
+	if (not wnd.config_tgt) then
+		return;
+	end
+
+	if (type(config_tgt) == "table") then
+-- use, opttgt, optarg arguments for keylist
+	end
+
+-- grab config_tgt and generate prefix string
+-- sweep the known default domans (i.e. labels, position, ...)
+end
+
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 
@@ -1975,6 +1989,7 @@ local function wnd_create(wm, source, opts)
 		weight = 1.0,
 		vweight = 1.0,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
+		load_config = wnd_loadcfg,
 		alert = wnd_alert,
 		assign_ws = wnd_reassign,
 		destroy = wnd_destroy,
