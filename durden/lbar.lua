@@ -350,6 +350,10 @@ function tiler_lbarforce(tbl, cb)
 	end
 end
 
+local function lbar_destroy(bar)
+	accept_cancel(active_display(), false);
+end
+
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 	local time = gconfig_get("lbar_transition");
@@ -376,8 +380,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	image_inherit_order(bg, true);
 	image_mask_clear(bar, MASK_OPACITY);
 
--- when navigating menus the bar is created and destroyed rapidly, a
--- global timer on des
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
 
@@ -409,6 +411,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		get_cb = completion,
 		cb_ctx = comp_ctx,
 		ch_sz = lbar_textsz,
+		destroy = lbar_destroy,
 		cofs = 1,
 		csel = 1,
 		textofs = 0,

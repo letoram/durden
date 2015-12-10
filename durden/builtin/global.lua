@@ -1047,7 +1047,8 @@ function spawn_terminal()
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
 		local wnd = durden_launch(vid, "", "terminal");
-		extevh_default(vid, {kind = "registered", segkind = "terminal"});
+		extevh_default(vid, {
+			kind = "registered", segkind = "terminal", title = "", guid = 1});
 		wnd.space:resize();
 	else
 		active_display():message( "Builtin- terminal support broken" );
