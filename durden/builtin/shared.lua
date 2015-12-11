@@ -518,12 +518,23 @@ local function clipboard_paste_local()
 	pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 end
 
+local function shorten(s)
+	if (s == nil or string.len(s) == 0) then
+		return "";
+	end
+
+	local r = string.gsub(
+		string.gsub(s, " ", ""), "\n", ""
+	);
+	return r and r or "";
+end
+
 local function clipboard_histgen(wnd, lst)
 	local res = {};
 	for k, v in ipairs(lst) do
 		table.insert(res, {
 			name = "clipboard_lhist_" .. tostring(k),
-			label = string.format("%d:%s", k, string.sub(v, 1, 10)),
+			label = string.format("%d:%s", k, string.sub(shorten(v), 1, 20)),
 			kind = "action",
 			handler = function()
 				local m1, m2 = dispatch_meta();

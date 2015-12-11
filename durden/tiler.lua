@@ -1943,6 +1943,13 @@ local function wnd_loadcfg(wnd)
 		return;
 	end
 
+-- check for:
+-- shader, scalemode, tag, last known workspace tag,
+-- float position, float size, last known state, local
+-- clipboard contents:
+--
+--
+
 	if (type(config_tgt) == "table") then
 -- use, opttgt, optarg arguments for keylist
 	end
