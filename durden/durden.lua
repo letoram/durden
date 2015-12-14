@@ -13,12 +13,12 @@ function durden(argv)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("bbar.lua")(); -- input binding
 	system_load("keybindings.lua")(); -- static key configuration
+	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
-	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 
 -- functions exposed to user through menus, binding and scripting

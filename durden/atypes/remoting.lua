@@ -4,12 +4,10 @@
 --
 return {
 	atype = "remoting",
-	actions = {
+	props= {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
 		rate_unlimited = false
 	},
 	default_shader = "noalpha",
-	props = {
-	}
 };

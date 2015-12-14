@@ -30,19 +30,27 @@ local rtbl = {
 };
 
 rtbl.bindings["LEFT"] = function(wnd)
-	target_seek(wnd.external, -10);
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_seek(wnd.external, -10);
+	end
 end
 
 rtbl.bindings["UP"] = function(wnd)
-	target_seek(wnd.external, 100);
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_seek(wnd.external, 100);
+	end
 end
 
 rtbl.bindings["RIGHT"] = function(wnd)
-	target_seek(wnd.external, 10);
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_seek(wnd.external, 10);
+	end
 end
 
 rtbl.bindings["DOWN"] = function(wnd)
-	target_seek(wnd.externa, -100);
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_seek(wnd.external, -100);
+	end
 end
 
 return rtbl;

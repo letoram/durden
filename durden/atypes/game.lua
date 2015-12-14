@@ -36,6 +36,7 @@ local retrosub = {
 
 return {
 	atype = "game",
+	default_shader = "noalpha",
 	actions = {
 	{
 	name = "gamewnd_retro",
