@@ -101,6 +101,9 @@ are being implemented, we have the following list:
   - [x] Animated Transitions (fade, move)
   - [x] Dim-Layer on Menus
   - [x] Configurable Bar Positioning
+  - [ ] Tray/Statusbar movable to target/global menu
+  - [ ] Ws- switch time based on diff. in content brightness
+  - [ ] Workspace color sample points mapped to external LEDs
   - [x] Workspace Event Notification
   - [ ] Mouse Cursor Event Flash
   - [ ] Font Customization
@@ -140,13 +143,12 @@ are being implemented, we have the following list:
 - [ ] Internationalization
   - [ ] Menu Translations
   - [ ] Foreign IME
-  - [ ] Keyboard layout hotswapping
+  - [x] Keyboard layout hotswapping
   - [ ] Per-Keyboard Layout
   - [x] Custom Unicode Binding (global and per window)
 - [ ] State Management
   - [ ] Dynamic state change support
   - [ ] State transfer between windows
-
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
   - [x] Window Canvas to Workspace Background Image
@@ -158,7 +160,7 @@ are being implemented, we have the following list:
   - [x] Customized Cursors, Cursorhints
   - [x] Customized Border
   - [ ] Content position indicator (scrollbar)
-  - [ ] Icon to Tray
+  - [ ] Icon to "Tray"
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
   - [ ] Auto Suspend/Resume
@@ -200,6 +202,7 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
+  - [ ] Respect display DPI and use mm as size measurements
   - [ ] Power Management Controls (+ auto-DPMS)
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
@@ -207,7 +210,7 @@ are being implemented, we have the following list:
   - [ ] Advanced scaling effects (xBR, ...)
 
 Bear in mind that a lot of these features are primarily mapping to what arcan
-already supports an the remaining job is the user interface mapping rather than
+already supports and the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
 
 Performance
@@ -231,9 +234,10 @@ traverse the window / target menus and convert to a popup- / settings
 style layout
 
 ### widgets
-widgets, allow arcan lwa connections with a custom ID to be attached to
+widgets, allow arcan lwa connections with a custom GUID to be attached to
 fixed- size dock slots and have them auto-launch on startup and a config-
-key for finding in the normal target database.
+key for finding in the normal target database. Work like the little dockapps
+in WindowMaker.
 
 ### content preview in browser
 extending lbar to support dynamic asynch- content loading for associating

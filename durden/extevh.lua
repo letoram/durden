@@ -183,8 +183,6 @@ function(wnd, source, stat)
 		wnd.config_tgt = stat.guid;
 	end
 
-	print(wnd.config_tgt);
-
 	wnd.bindings = atbl.bindings;
 	wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 	wnd.labels = atbl.labels and atbl.labels or {};

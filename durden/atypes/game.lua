@@ -19,23 +19,32 @@ skiptbl["Skip 4"] = 4;
 -- target_postfilter(hue, sat, contrast[1], bright, gamma, sharp[2],
 -- fast-forward (val)
 
+local retrosub = {
+	{
+	name = "gamewnd_reqdbg",
+	label = "Debug-stats",
+	kind = "action",
+	eval = function() return DEBUGLEVEL > 0; end,
+	handler = function(wnd)
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			local vid = target_alloc(wnd.external, function() end, "debug");
+			durden_launch(vid, "game:debug", "");
+		end
+	end
+	}
+};
+
 return {
 	atype = "game",
 	actions = {
 	{
-		name = "gamewnd_reqdbg",
-		label = "Debug-stats",
-		kind = "action",
-		eval = function() return DEBUGLEVEL > 0; end,
-		handler = function(wnd)
-			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-				local vid = target_alloc(wnd.external, function() end, "debug");
-				durden_launch(vid, "game:debug", "");
-			end
-		end
+	name = "gamewnd_retro",
+	label = "Game",
+	kind = "action",
+	submenu = true,
+	handler = retrosub
+	}
 	},
-	},
-
 -- props witll be projected upon the window during setup (unless there
 -- are overridden defaults)
 	props = {
@@ -44,5 +53,7 @@ return {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
-	}
+		clipboard_block = true
+	},
+	default_shader = "noalpha"
 };
