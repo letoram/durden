@@ -5,6 +5,26 @@
 -- in place, later iterations will maintain multiple shader languages,
 -- format descriptor parsing, chaining and loading.
 
+-- Usual workaround for the fantastic GLES2 / GL21 precision specification
+-- incompatibility.
+local old_build = build_shader;
+function build_shader(vertex, fragment, label)
+	fragment = [[
+		#ifdef GL_ES
+			#ifdef GL_FRAGMENT_PRECISION_HIGH
+				precision highp float;
+			#else
+				precision mediump float;
+			#endif
+		#else
+			#define lowp
+			#define mediump
+			#define highp
+		#endif
+	]] .. fragment;
+	return old_build(vertex, fragment, label);
+end
+
 local shdrtbl = {};
 local frag_noalpha = [[
 uniform sampler2D map_tu0;
