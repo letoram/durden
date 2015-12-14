@@ -4,6 +4,10 @@
 -- project)
 
 function string.split(instr, delim)
+	if (not instr) then
+		return {};
+	end
+
 	local res = {};
 	local strt = 1;
 	local delim_pos, delim_stp = string.find(instr, delim, strt);
