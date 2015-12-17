@@ -94,7 +94,7 @@ function dispatch_reset(save)
 
 -- there is also input_ignore_on and input_ignore_off, these are
 -- not exposed as menus
-tbl["m1_m2_SYSREQ"] = "input_ignore_toggle";
+tbl["m1_m2_SYSREQ"] = "input_lock_toggle";
 
 if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";
@@ -122,18 +122,6 @@ system_load("meta_guard.lua")();
 -- through this one as it is used to map track meta_ key state.
 local meta_1_state = false;
 local meta_2_state = false;
-
-function dispatch_meta(meta1, meta2)
-	if (meta1) then
-		SYSTEM_KEYS["meta_1"] = meta1;
-		store_key("sysk_meta_1", meta1);
-	end
-
-	if (meta2) then
-		SYSTEM_KEYS["meta_2"] = meta2;
-		store_key("sysk_meta_2", meta2);
-	end
-end
 
 function dispatch_system(key, val)
 	if (SYSTEM_KEYS[key] ~= nil) then

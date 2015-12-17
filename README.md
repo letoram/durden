@@ -78,6 +78,10 @@ i3status:
 The current commands exposed over the control channel:
 
     rescan_displays - used for hooking up with output display hotplug monitors
+    input_lock_on - disable input processing (except for input_lock bindings)
+    input_lock_off - these can be used for cooperatively handle multiple arcan
+                     instances with a low-level input platform fighting both
+                     interpreting input.
 
 Features and Status
 =====

@@ -11,8 +11,8 @@ local debug_metatbl = {
 local TARGET_EVGRP = 1;
 local TARGET_DISPGRP = 2;
 local INPUT_EVGRP = 3;
-local INPUT_SYMGRP = 4;
-local SYSTEM_GRP = 5;
+local SYSTEM_GRP = 4;
+local SYMBOL_GRP = 5;
 
 local function debugwnd_resize(wnd, w, h)
 	wnd:refresh();
@@ -85,6 +85,10 @@ local function add_sevent(wnd, msg)
 	wnd:add_event(SYSTEM_GRP, msg);
 end
 
+local function add_symbol(wnd, msg)
+	wnd:add_event(SYMBOL_GRP, msg);
+end
+
 local function refresh(wnd)
 	if (valid_vid(wnd.history)) then
 		delete_image(wnd.history);
@@ -97,14 +101,19 @@ local function refresh(wnd)
 			gconfig_get("font_str"),
 			table.concat(wnd.events[wnd.gind].ent, [[\n\r]], ec - nr + 1, ec)
 		);
-		wnd.history = render_text(str);
+
 		if (valid_vid(wnd.history)) then
-			show_image(wnd.history);
-			link_image(wnd.history, wnd.canvas);
-			image_clip_on(wnd.history, CLIP_SHALLOW);
-			image_mask_set(wnd.history, MASK_UNPICKABLE);
-			image_inherit_order(wnd.history, true);
-			order_image(wnd.history, 1);
+			render_text(wnd.history, str);
+		else
+			wnd.history = render_text(str);
+			if (valid_vid(wnd.history)) then
+				show_image(wnd.history);
+				link_image(wnd.history, wnd.canvas);
+				image_clip_on(wnd.history, CLIP_SHALLOW);
+				image_mask_set(wnd.history, MASK_UNPICKABLE);
+				image_inherit_order(wnd.history, true);
+				order_image(wnd.history, 1);
+			end
 		end
 	else
 		wnd.history = nil;
@@ -168,7 +177,8 @@ local function debugwnd_spawn()
 		return;
 	end
 
-	local img = fill_surface(100, 100, 0, 0, 0);
+	local img = fill_surface(100, 100, 0, 0, 0, 100, 100);
+	show_image(img);
 
 	local wnd = active_display():add_window(img, {});
 	wnd.tick = function() end
@@ -176,7 +186,16 @@ local function debugwnd_spawn()
 	wnd.event_dispatch = event_dispatch;
 	wnd.system_event = add_sevent;
 	wnd.add_input = add_input;
+	wnd.add_symbol = add_symbol;
+	wnd.key_input = wnd_input;
+	wnd.add_event = add_event;
+	wnd.refresh = refresh;
+	wnd:add_handler("destroy", wnd_destroy);
+	wnd:set_title("Debug Console");
+	wnd.no_shared = true;
+	wnd.scalemode = "stretch";
 	wnd.gind = 3;
+
 	wnd.events = {};
 	wnd.events[TARGET_EVGRP] = {
 		tag = "target-event handler",
@@ -190,12 +209,12 @@ local function debugwnd_spawn()
 		tag = "input-event handler",
 		ent= {}
 	};
-	wnd.events[INPUT_SYMGRP] = {
-		tag = "symbol dispatch",
-		ent= {}
-	};
 	wnd.events[SYSTEM_GRP] = {
 		tag = "system events",
+		ent = {}
+	};
+	wnd.events[SYMBOL_GRP] = {
+		tag = "symbol bindings",
 		ent = {}
 	};
 	wnd.actions = {
@@ -206,13 +225,6 @@ local function debugwnd_spawn()
 			kind = "action"
 		}
 	};
-	wnd.key_input = wnd_input;
-	wnd.add_event = add_event;
-	wnd.refresh = refresh;
-	wnd:add_handler("destroy", wnd_destroy);
-	wnd:set_title("Debug Console");
-	wnd.no_shared = true;
-	wnd.scalemode = "stretch";
 
 	table.insert(wnd.handlers.destroy, function()
 		 active_display().debug_console = nil;
@@ -223,6 +235,7 @@ local function debugwnd_spawn()
 	table.insert(wnd.handlers.resize, debugwnd_resize);
 	setmetatable(wnd, debug_metatbl);
 	active_display().debug_console = wnd;
+	wnd:refresh();
 end
 
 if (DEBUGLEVEL > 0) then
