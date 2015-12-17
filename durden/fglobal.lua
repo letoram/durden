@@ -32,6 +32,10 @@ function register_global(funname, funptr)
 end
 
 function register_shared(funname, funptr)
+	if (gf[funname] ~= nil) then
+		warning("collision with existing global function for " .. funname);
+	end
+
 	if (sf[funname] ~= nil) then
 		warning("attempt to override pre-existing shared function:" .. funname);
 		if (DEBUGLEVEL > 0) then
@@ -532,6 +536,38 @@ gf["vtabtile"] = function()
 			wspace:vtab();
 		end
 	end
+end
+
+-- reduced version of durden input that only uses dispatch_lookup to
+-- figure out of we are running a symbol that maps to input_lock_* functions
+local ign_input = function(iotbl)
+	if (iotbl.translated) then
+		local sym, lutsym = SYMTABLE:patch(iotbl);
+		dispatch_lookup(iotbl, sym, function(wm, sym, tiobl, lutsym, meta, bound)
+			if (bound and (bound == "input_lock_toggle"
+				or bound == "input_lock_off")) then
+					gf[bound]();
+			end
+		end);
+	end
+end
+
+gf["input_lock_toggle"] = function()
+	if (IGNORE_INPUT) then
+		IGNORE_INPUT = nil;
+	else
+	end
+	active_display():message("Ignore input set to: " + tostring(IGNORE_INPUT));
+end
+
+gf["input_lock_on"] = function()
+	IGNORE_INPUT = ign_input;
+	active_display():message("Ignore input enabled");
+end
+
+gf["input_lock_off"] = function()
+	IGNORE_INPUT = nil;
+	active_display():message("Ignore input disabled");
 end
 
 sf["fullscreen"] = function(wnd)

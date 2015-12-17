@@ -102,6 +102,12 @@ function durden(argv)
 			print(v);
 		end
 		return shutdown();
+
+-- for one or more parallel instances sharing input devices, it helps if
+-- we can start in a locked state and then use toggle keybinding (if only 2)
+-- or command_channel to switch
+	elseif (argv[1] == "input_lock") then
+		dispatch_symbol("input_lock_on");
 	end
 end
 
@@ -115,7 +121,12 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 
 	if (neww > 0 and newh > 0) then
 		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			target_displayhint(wnd.external, neww, newh);
+			local props = image_storage_properties(wnd.external);
+			if (not wnd.sz_delta or
+				(math.abs(props.width - neww) > wnd.sz_delta.width or
+			   math.abs(props.height - newh) > wnd.sz_delta.height)) then
+				target_displayhint(wnd.external, neww, newh);
+			end
 		end
 
 		if (valid_vid(wnd.titlebar_id)) then
@@ -242,6 +253,12 @@ function poll_status_channel()
 	end
 end
 
+local allowed_global = {
+	input_lock_on = true,
+	input_lock_off = true,
+	input_lock_toggle = true
+};
+
 function poll_control_channel()
 	local line = CONTROL_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
@@ -259,12 +276,19 @@ function poll_control_channel()
 		if (valid_vid(rt) and elem[2]) then
 			save_screenshot(elem[2], FORMAT_PNG, rt);
 		end
+
+	elseif (allowed_global[elem[1]]) then
+		dispatch_symbol(elem[1]);
 	end
 end
 
 local mid_c = 0;
 local mid_v = {0, 0};
 function durden_input(iotbl, fromim)
+	if (IGNORE_INPUT) then
+		return IGNORE_INPUT(iotbl);
+	end
+
 	if (DEBUGLEVEL > 2 and active_display().debug_console) then
 		active_display().debug_console:add_input(iotbl);
 	end
@@ -278,8 +302,8 @@ function durden_input(iotbl, fromim)
 		end
 	end
 
-	if (iotbl.source == "mouse") then
-		if (iotbl.kind == "digital") then
+	if (iotbl.mouse) then
+		if (iotbl.digital) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		else
 			mid_v[iotbl.subid+1] = iotbl.samples[1];
@@ -295,7 +319,7 @@ function durden_input(iotbl, fromim)
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 		local sel = active_display().selected;
 -- all input and symbol lookup paths go through this routine (in fglobal.lua)
-		local ok, lutsym = dispatch_lookup(iotbl, sym , active_display().input_lock);
+		local ok, lutsym = dispatch_lookup(iotbl, sym, active_display().input_lock);
 		if (ok or not sel) then
 			return;
 		end
