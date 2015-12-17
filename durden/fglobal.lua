@@ -59,9 +59,13 @@ function grab_shared_function(funname)
 	return sf[funname];
 end
 
-function dispatch_symbol(sym, arg)
+function dispatch_symbol(sym, arg, src)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
+
+	if (DEBUGLEVEL > 2 and active_display().debug_console) then
+		active_display().debug_console:add_symbol(sym);
+	end
 
 	if (ch == "!") then
 		launch_menu_path(active_display(), gf["global_actions"],
@@ -541,9 +545,10 @@ end
 -- reduced version of durden input that only uses dispatch_lookup to
 -- figure out of we are running a symbol that maps to input_lock_* functions
 local ign_input = function(iotbl)
-	if (iotbl.translated) then
+	if (iotbl.active and iotbl.translated) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 		dispatch_lookup(iotbl, sym, function(wm, sym, tiobl, lutsym, meta, bound)
+			if (meta) then return; end
 			if (bound and (bound == "input_lock_toggle"
 				or bound == "input_lock_off")) then
 					gf[bound]();
@@ -554,19 +559,26 @@ end
 
 gf["input_lock_toggle"] = function()
 	if (IGNORE_INPUT) then
-		IGNORE_INPUT = nil;
+		gf["input_lock_off"]();
 	else
+		gf["input_lock_on"]();
 	end
-	active_display():message("Ignore input set to: " + tostring(IGNORE_INPUT));
 end
 
+local iostate;
 gf["input_lock_on"] = function()
 	IGNORE_INPUT = ign_input;
+	iostate = iostatem_save();
+	iostatem_repeat(0, 0);
 	active_display():message("Ignore input enabled");
 end
 
 gf["input_lock_off"] = function()
 	IGNORE_INPUT = nil;
+	if (iostate) then
+		iostatem_restore(iostate);
+		iostate = nil;
+	end
 	active_display():message("Ignore input disabled");
 end
 
