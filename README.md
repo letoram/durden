@@ -125,8 +125,10 @@ are being implemented, we have the following list:
 - [ ] Input
   - [ ] Gaming Devices
     - [ ] Analog Calibration
+    - [ ] Autofire
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
+  - [ ] Keyboard repeat rampup over time (reset on release)
   - [x] Drag Reposition/Resize in Float
   - [x] Double-Click Titlebar Maximize-Restore in Float
   - [x] Mouse-Hover Focus

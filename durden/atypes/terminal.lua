@@ -4,7 +4,15 @@
 --
 
 local res = {
-	dispatch = {},
+	dispatch = {
+
+-- add a sub- protocol for communicating cell dimensions, this is
+-- used to cut down on resize calls (as they are ** expensive in
+-- terminal land).
+		message = function(wnd, source, tbl)
+			print("parse terminal font size from tbl", tbl.message);
+		end
+	},
 -- actions are exposed as target- menu
 	actions = {},
 -- labels is mapping between known symbol and string to forward

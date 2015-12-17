@@ -92,7 +92,11 @@ function dispatch_reset(save)
 	tbl["m1_m2_10"] = "assign_ws10";
 	tbl["m1_p"] = "debug_testwnd_bar";
 
-	if (DEBUGLEVEL > 0) then
+-- there is also input_ignore_on and input_ignore_off, these are
+-- not exposed as menus
+tbl["m1_m2_SYSREQ"] = "input_ignore_toggle";
+
+if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";
 	end
 
@@ -214,7 +218,7 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 		(meta_2_state == true and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
-		hook_handler(active_display(), keysym, iotbl, lutsym, metam);
+		hook_handler(active_display(), keysym, iotbl, lutsym, metam, tbl[lutsym]);
 		return true, lutsym;
 	end
 
