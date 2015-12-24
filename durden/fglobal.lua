@@ -579,6 +579,7 @@ gf["input_lock_off"] = function()
 		iostatem_restore(iostate);
 		iostate = nil;
 	end
+	dispatch_meta_reset();
 	active_display():message("Ignore input disabled");
 end
 

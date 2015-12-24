@@ -5,7 +5,6 @@
 -- and their respective subsegments. Handles registering new windows,
 -- hinting default sizes, update timers etc.
 
-
 -- Every connection can get a set of additional commands and configurations
 -- based on what type it has. Supported ones are registered into this table.
 -- init, bindings, settings, commands
@@ -309,7 +308,9 @@ end
 
 function extevh_default(source, stat)
 	local wnd = swm[source];
+
 	if (not wnd) then
+		warning("event on missing window");
 		return;
 	end
 
