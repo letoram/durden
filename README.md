@@ -145,11 +145,13 @@ are being implemented, we have the following list:
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
+  - [ ] Global forwards (specify binding to send to window regardless of focus)
   - [ ] LED key-state highlights (k70 etc. kbds)
 - [ ] Internationalization
   - [ ] Menu Translations
   - [ ] Foreign IME
   - [x] Keyboard layout hotswapping
+  - [ ] Per-Window keyboard layout override
   - [ ] Per-Keyboard Layout
   - [x] Custom Unicode Binding (global and per window)
 - [ ] State Management
@@ -189,6 +191,8 @@ are being implemented, we have the following list:
   - [ ] Paste text Reencoded
     - [ ] Base64 enc/dec
     - [ ] Shell escaped
+    - [ ] Drop (pre+post or all) linefeeds
+  - [ ] Persistant pasteboard
   - [ ] Streaming Text
   - [ ] Text Hash to Color on Copy (show in paste menu)
   - [ ] Images

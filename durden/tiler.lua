@@ -325,6 +325,31 @@ local function gen_status_tile(wm, lbl, min_sz, ofs)
 	return tile, ofs;
 end
 
+local function output_mouse_devent(btl, wnd)
+	btl.kind = "digital";
+	btl.source = "mouse";
+
+-- rate limit is used to align input event storms (likely to cause visual
+-- changes that need synchronization) with the logic ticks (where the engine
+-- is typically not processing rendering), and to provent the horrible
+-- spikes etc. that can come with high-samplerate.
+	if (not wnd.rate_unlimited) then
+		local wndq = EVENT_SYNCH[wnd.external];
+		if (wndq and (wndq.pending and #wndq.pending > 0)) then
+			table.insert(wndq.queue, wndq.pending[1]);
+			table.insert(wndq.queue, wndq.pending[2]);
+			table.insert(wndq.queue, btl);
+			wndq.pending = nil;
+			return;
+		end
+	end
+
+	if (btl == nil) then
+		print(debug.traceback());
+	end
+	target_input(wnd.external, btl);
+end
+
 -- statusbar is divided into three areas:
 -- first,  [pre-tiles]
 -- second, [workspace-tiles]
@@ -1590,42 +1615,35 @@ end
 
 local function wnd_mousebutton(ctx, vid, ind, pressed, x, y)
 	local wnd = ctx.wnd;
+	if (wnd.wm.selected ~= wnd) then
+		return;
+	end
 
 	if (not (vid == wnd.canvas and
 		valid_vid(wnd.external, TYPE_FRAMESERVER))) then
 		return;
 	end
 
-	local iotbl = {
-			kind = "digital",
-			source = "mouse",
-			active = pressed,
-			devid = 0,
-			subid = ind
-	};
-
--- if we rate limit, now we need to flush to the outgoing
--- event queue in order for clicks to appear at the right
--- position.
-	if (not wnd.rate_unlimited) then
-		local wndq = EVENT_SYNCH[wnd.canvas];
-		if (wndq and (wndq.pending and #wndq.pending > 0)) then
-			table.insert(wndq.queue, wndq.pending[1]);
-			table.insert(wndq.queue, wndq.pending[2]);
-			table.insert(wndq.queue, iotbl);
-			wndq.pending = nil;
-			return;
-		end
-	end
-
-	target_input(wnd.external, iotbl);
+	output_mouse_devent({
+		active = pressed, devid = 0, subid = ind}, wnd);
 end
 
 local function wnd_mouseclick(ctx, vid)
-	if (wnd.wm.selected ~= ctx.wnd and
+	local wnd = ctx.wnd;
+
+	if (wnd.wm.selected ~= wnd and
 		gconfig_get("mouse_focus_event") == "click") then
 		ctx.wnd:select();
+		return;
 	end
+
+	if (not (vid == wnd.canvas and
+		valid_vid(wnd.external, TYPE_FRAMESERVER))) then
+		return;
+	end
+
+	output_mouse_devent({
+		active = true, devid = 0, subid = 0, gesture = true, label = "click"}, wnd);
 end
 
 local function wnd_mousedblclick(ctx, vid)
@@ -1647,13 +1665,20 @@ local function wnd_mousedblclick(ctx, vid)
 			wnd:resize(wnd.wm.width, wnd.wm.height);
 			move_image(wnd.anchor, 0, 0);
 		end
+	elseif (wnd.canvas == vid and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		output_mouse_devent({
+			active = true, devid = 0, subid = 0, label = "dblclick", gesture = true
+		}, wnd);
 	end
 end
 
 local function wnd_mousepress(ctx, vid)
 	local wnd = ctx.wnd;
-	if (wnd ~= wnd.wm.selected) then
-		wnd:select();
+	if (wnd.wm.selected ~= ctx.wnd) then
+		if (gconfig_get("mouse_focus_event") == "click") then
+			ctx.wnd:select();
+		end
+		return;
 	end
 
 	if (wnd.space.mode ~= "float") then
@@ -1862,7 +1887,7 @@ local function add_mousehandler(wnd)
 	mh.wnd = wnd;
 	mouse_addlistener(mh, {
 		"button", "hover","motion",
-		"press","drop", "dblclick",
+		"click", "press","drop", "dblclick",
 		"drag","over","out"
 	});
 end
