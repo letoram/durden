@@ -123,9 +123,24 @@ function update_default_font(key, val)
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
 	system_defaultfont(font, sz, hint);
-	gconfig_set("sbar_sz", sz + gconfig_get("sbar_pad"));
-	gconfig_set("tbar_sz", sz + gconfig_get("tbar_pad"));
-	gconfig_set("lbar_sz", sz + gconfig_get("lbar_pad"));
+	gconfig_set("sbar_sz", sz + gconfig_get("sbar_pad") * 2);
+	gconfig_set("tbar_sz", sz + gconfig_get("tbar_pad") * 2);
+	gconfig_set("lbar_sz", sz + gconfig_get("lbar_pad") * 2);
+	gconfig_set("lbar_caret_h", sz + gconfig_get("lbar_pad"));
+	if (all_displays_iter) then
+		for disp in all_displays_iter() do
+			disp:resize(disp.width, disp.height);
+			disp:rebuild_border();
+			disp:invalidate_statusbar();
+		end
+	end
+
+	if (all_windows) then
+		for wnd in all_windows() do
+			wnd:set_title(wnd.title_text and wnd.title_text or "");
+			wnd:resize(wnd.width, wnd.height);
+		end
+	end
 end
 
 -- need these event handlers here since it ties together modules that should

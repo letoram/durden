@@ -373,6 +373,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
 		unpack(gconfig_get("lbar_bg")));
+
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
 	image_inherit_order(bar, true);
@@ -394,7 +395,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		move_image(bar, 0, wm.height - gconfig_get("lbar_sz"));
 	elseif (pos == "center") then
 		move_image(bar, 0, math.floor(0.5*(wm.height-gconfig_get("lbar_sz"))));
-	else
+	elseif (pos == "top") then
+		move_image(bar, 0, 0);
 	end
 	wm:set_input_lock(lbar_input);
 	wm.input_ctx = {
