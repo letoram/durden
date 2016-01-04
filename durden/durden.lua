@@ -10,6 +10,8 @@ EVENT_SYNCH = {};
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
+	update_default_font();
+
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("bbar.lua")(); -- input binding
 	system_load("keybindings.lua")(); -- static key configuration
@@ -70,6 +72,11 @@ function durden(argv)
 		CONTROL_CHANNEL = open_nonblock(cchan_fn);
 	end
 
+-- add hooks for changes to all default  font properties
+	gconfig_listen("font_def", "deffonth", update_default_font);
+	gconfig_listen("font_sz", "deffonth", update_default_font);
+	gconfig_listen("font_hint", "font_hint", update_default_font);
+
 -- preload cursor states
 	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
 	mouse_add_cursor("grabhint", load_image("cursor/grabhint.png"), 0, 0); --, 7, 10);
@@ -109,6 +116,16 @@ function durden(argv)
 	elseif (argv[1] == "input_lock") then
 		dispatch_symbol("input_lock_on");
 	end
+end
+
+function update_default_font(key, val)
+	local font = (key and key == "font_def") and val or gconfig_get("font_def");
+	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
+	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
+	system_defaultfont(font, sz, hint);
+	gconfig_set("sbar_sz", sz + gconfig_get("sbar_pad"));
+	gconfig_set("tbar_sz", sz + gconfig_get("tbar_pad"));
+	gconfig_set("lbar_sz", sz + gconfig_get("lbar_pad"));
 end
 
 -- need these event handlers here since it ties together modules that should
