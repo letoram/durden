@@ -302,11 +302,12 @@ end
 local function gen_status_tile(wm, lbl, min_sz, ofs)
 	local text = render_text(lbl);
 	local props = image_surface_properties(text);
+	local yp = 0; -- gconfig_get("tbar_pad");
 
 	if (props.width < min_sz) then
-		move_image(text, math.ceil(0.5*(min_sz - props.width)), 3);
+		move_image(text, math.ceil(0.5*(min_sz - props.width)), yp);
 	else
-		move_image(text, 2, 3);
+		move_image(text, 2, yp);
 	end
 
 	local tilew = (props.width+4) > min_sz and (props.width+4) or min_sz;
@@ -467,6 +468,29 @@ local function tile_upd(wm)
 	wm:update_statusbar({
 		space.mode .. (space.mode == "tile" and (":" .. im) or "")
 	});
+end
+
+local function tiler_statusbar_invalidate(wm)
+	if (wm.pretiles) then
+		for k,v in ipairs(wm.pretiles) do
+			if (valid_vid(v)) then
+				delete_image(v);
+			end
+		end
+		wm.pretiles = nil;
+	end
+
+	for i=1,10 do
+		if (wm.spaces[i] ~= nil) then
+			local space = wm.spaces[i];
+			if (valid_vid(space.label_id)) then
+				delete_image(space.label_id);
+				space.label_id = nil;
+			end
+		end
+	end
+
+	tile_upd(wm);
 end
 
 -- we need an overlay anchor that is only used for ordering, this to handle
@@ -2512,6 +2536,7 @@ function tiler_create(width, height, opts)
 		message = tiler_message,
 		resize = tiler_resize,
 		tile_update = tile_upd,
+		invalidate_statusbar = tiler_statusbar_invalidate,
 		update_statusbar = tiler_statusbar_update,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
