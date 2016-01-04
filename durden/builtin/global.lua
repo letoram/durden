@@ -738,9 +738,53 @@ local workspace_menu = {
 	}
 };
 
+local durden_font = {
+	{
+		name = "durden_font_sz",
+		label = "Size",
+		kind = "value";
+		validator = gen_valid_num(1, 100),
+		initial = function() return tostring(gconfig_get("font_sz")); end,
+		handler = function(ctx, val)
+			gconfig_set("font_sz", tonumber(val));
+		end
+	},
+	{
+		name = "durden_font_hinting",
+		label = "Hinting",
+		kind = "value",
+		validator = gen_valid_num(0, 3);
+		initial = function() return gconfig_get("font_hint"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_hint", tonumber(val));
+		end
+	},
+	{
+		name = "durden_font_name",
+		label = "Font",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		initial = function() return gconfig_get("font_def"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_def", val);
+		end
+	}
+};
+
 local durden_visual = {
 -- thickness is dependent on area, make sure the labels and
 -- constraints update dynamically
+	{
+		name = "default_font",
+		label = "Font",
+		kind = "action",
+		submenu = true,
+		handler = durden_font
+	},
 	{
 		name = "border_thickness",
 		label = "Border Thickness",
@@ -1181,7 +1225,7 @@ local toplevel = {
 		kind = "action",
 		submenu = true,
 		force = true,
-		hint = "settings:",
+		hint = "Config:",
 		handler = config_menu
 	},
 	{

@@ -137,10 +137,12 @@ end
 
 function display_manager_init()
 	displays[1] = {
-		tiler = tiler_create(VRESW, VRESH, {});
+		tiler = tiler_create(VRESW, VRESH, {sf = 1.0});
 		w = VRESW,
 		h = VRESH,
-		name = "default"
+		name = "default",
+		ppmm = 3.84,
+		sf = 1.0
 	};
 
 	displays.simple = gconfig_get("display_simple");

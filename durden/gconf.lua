@@ -18,8 +18,10 @@ LBL_METAGUARD_MENU = "Rebind \\bmenu\\!b  binding in %.2f seconds, %s to Abort";
 local defaults = {
 	msg_timeout = 100,
 	tbar_timeout = 200,
-	font_str = "\\ffonts/default.ttf,12",
+	font_def = "default.ttf",
 	font_sz = 12,
+	font_hint = 1,
+	font_str = "",
 	text_color = "\\#aaaaaa",
 	label_color = "\\#ffff00",
 	borderw = 1,
@@ -96,19 +98,20 @@ local defaults = {
 -- input bar graphics
 	lbar_position = "center", -- top, center, bottom
 	lbar_dim = 0.8,
-	lbar_sz = 16,
+	lbar_pad = 2,
+	lbar_sz = 12, -- dynamically recalculated on font changes
 	lbar_transition = 10,
 	lbar_bg = {0x33, 0x33, 0x33},
-	lbar_textstr = "\\ffonts/default.ttf,12\\#cccccc ",
-	lbar_labelstr = "\\ffonts/default.ttf,12\\#00ff00 ",
-	lbar_menulblstr = "\\ffonts/default.ttf,12\\#ffff00 ",
-	lbar_menulblselstr = "\\ffonts/default.ttf,12\\#ffff00 ",
-	lbar_errstr = "\\ffonts/default.ttf,12\\#ff4444 ",
+	lbar_textstr = "\\#cccccc ",
+	lbar_labelstr = "\\#00ff00 ",
+	lbar_menulblstr = "\\#ffff00 ",
+	lbar_menulblselstr = "\\#ffff00 ",
+	lbar_errstr = "\\#ff4444 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
 	lbar_label_col = {0xff, 0xff, 0x00},
 	lbar_caret_col = {0x00, 0xff, 0x00},
-	lbar_seltextstr = "\\ffonts/default.ttf,12\\#ffffff ",
+	lbar_seltextstr = "\\#ffffff ",
 	lbar_seltextbg = {0x44, 0x66, 0x88},
 	lbar_itemspace = 10,
 	lbar_textsz = 12,
@@ -117,15 +120,17 @@ local defaults = {
 	bind_waittime = 30,
 
 -- sbar
-	sbar_sz = 16,
+	sbar_pad = 2,
+	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_bg = {0x00, 0x00, 0x00},
-	sbar_textstr = "\\ffonts/default.ttf,12\\#00ff00 ",
+	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
 
 -- titlebar
-  tbar_sz = 16,
+  tbar_pad = 2,
+	tbar_sz = 12, -- dynamically recalculated on font changes
 	tbar_bg = {0x28, 0x55, 0x77},
-	tbar_textstr = "\\ffonts/default.ttf,12\\#ffffff ",
+	tbar_textstr = "\\#ffffff ",
 
 -- popup
 	pcol_bg = {0x3c, 0x3c, 0x3c},
@@ -160,13 +165,13 @@ if (type(val) ~= type(defaults[key])) then
 		return;
 	end
 
+	defaults[key] = val;
+
 	if (listeners[key]) then
 		for k,v in pairs(listeners[key]) do
 			v(key, val);
 		end
 	end
-
-	defaults[key] = val;
 end
 
 function gconfig_get(key)

@@ -186,8 +186,7 @@ local function update_completion_set(wm, ctx, set)
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
-		local carety = math.floor(0.5*(
-			gconfig_get("lbar_sz") - gconfig_get("lbar_textsz")));
+		local carety = math.floor(0.5 * gconfig_get("lbar_pad"));
 
 		if (i == ctx.csel) then
 			move_image(ctx.ccursor, ofs, 0);
@@ -222,10 +221,10 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 			show_image(ictx.text);
 			link_image(ictx.text, ictx.text_anchor);
 			image_inherit_order(ictx.text, true);
-			move_image(ictx.text, ictx.textofs, math.floor(0.5*(
-				gconfig_get("lbar_sz") - gconfig_get("lbar_textsz"))));
+			move_image(ictx.text, ictx.textofs,
+				math.floor(0.5 * gconfig_get("lbar_pad")));
 		end
-		end
+	end
 
 	update_caret(ictx);
 end
@@ -410,7 +409,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		set_label = lbar_label,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		ch_sz = lbar_textsz,
 		destroy = lbar_destroy,
 		cofs = 1,
 		csel = 1,

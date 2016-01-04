@@ -130,6 +130,8 @@ are being implemented, we have the following list:
   - [ ] Gaming Devices
     - [ ] Analog Calibration
     - [ ] Autofire
+  - [ ] Touchpads/screens
+    - [ ] Calibration
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
@@ -288,6 +290,18 @@ _files that might be of interest)_
 We don't keep any necessary assets in the resource path as that should be
 accessible to the browser (one could essentially set it to / or whatever
 filesystem mount-point one wants).
+
+Notes on DPI
+====
+
+Currently, we ignore display DPI property and dimensions are not specified
+on anything other than pixels. For proper handling we need to modify
+workspace/window migration to check for a change in pixel density and
+add that information in the normal target\_displayhint calls.
+
+In addition, there should be a conversion in text rendering that takes
+the size argument to fonts (which is freetype points and 1/72 of an inch)
+and converts to / from mm.
 
 Flow
 ====
