@@ -302,7 +302,7 @@ end
 local function gen_status_tile(wm, lbl, min_sz, ofs)
 	local text = render_text(lbl);
 	local props = image_surface_properties(text);
-	local yp = 0; -- gconfig_get("tbar_pad");
+	local yp = math.floor(0.5 * (props.height - min_sz));
 
 	if (props.width < min_sz) then
 		move_image(text, math.ceil(0.5*(min_sz - props.width)), yp);

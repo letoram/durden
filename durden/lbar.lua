@@ -5,7 +5,7 @@
 -- durden that supports some completion as well.
 
 local function inp_str(ictx, ul)
-	return gconfig_get("lbar_textstr") .. ictx.inp.view_str();
+	return {gconfig_get("lbar_textstr"), ictx.inp.view_str()};
 end
 
 local pending = {};
@@ -16,7 +16,7 @@ local function update_caret(ictx)
 		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
 	else
 		local msg = ictx.inp:caret_str();
-		local w, h = text_dimensions(gconfig_get("lbar_textstr") .. msg);
+		local w, h = text_dimensions({gconfig_get("lbar_textstr"),  msg});
 		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
 	end
 end
