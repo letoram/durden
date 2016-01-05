@@ -133,7 +133,8 @@ local function update_completion_set(wm, ctx, set)
 		local msgs = {};
 		local str;
 		if (type(set[i]) == "table") then
-			str = set[i][i == ctx.csel and 2 or 1] .. set[i][3];
+			table.insert(msgs, i == ctx.sel and set[i][2] or set[i][1]);
+			table.insert(msgs, set[i][3]);
 		else
 			table.insert(msgs, i == ctx.csel and
 				gconfig_get("lbar_seltextstr") or gconfig_get("lbar_textstr"));
@@ -143,6 +144,7 @@ local function update_completion_set(wm, ctx, set)
 		local w, h = text_dimensions(msgs);
 		local exit = false;
 
+-- outside display? show ..., if that's our index, slide page
 		if (ofs + w > ctxw - 10) then
 			str = "...";
 			if (i == ctx.csel) then
@@ -153,9 +155,11 @@ local function update_completion_set(wm, ctx, set)
 			exit = true;
 		end
 
-		local txt = render_text(#msgs > 0 and msgs or (str and str or ""));
+		local txt = render_text(str and str or (
+			#msgs > 0 and msgs or ""));
+
 		image_tracetag(txt, "lbar_text" ..tostring(i));
-		local cw = image_surface_properties(txt).width;
+		local cp = image_surface_properties(txt);
 		link_image(ctx.canchor, ctx.text_anchor);
 		link_image(txt, ctx.canchor);
 		link_image(ctx.ccursor, ctx.canchor);
@@ -172,7 +176,7 @@ local function update_completion_set(wm, ctx, set)
 			own = function(ctx, vid) return vid == txt; end,
 			motion = function(mctx)
 				ctx.csel = i;
-				resize_image(ctx.ccursor, cw, gconfig_get("lbar_sz"));
+				resize_image(ctx.ccursor, cp.width, gconfig_get("lbar_sz"));
 				move_image(ctx.ccursor, mctx.mofs, 0);
 			end,
 			click = function()
@@ -186,15 +190,14 @@ local function update_completion_set(wm, ctx, set)
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
-		local carety = math.floor(0.5 * gconfig_get("lbar_pad"));
-
+		local padsz = gconfig_get("lbar_pad");
 		if (i == ctx.csel) then
-			move_image(ctx.ccursor, ofs, 0);
-			resize_image(ctx.ccursor, cw, gconfig_get("lbar_sz"));
+			move_image(ctx.ccursor, ofs, padsz);
+			resize_image(ctx.ccursor, cp.width, gconfig_get("lbar_sz") - padsz);
 		end
 
-		move_image(txt, ofs, carety);
-		ofs = ofs + cw + gconfig_get("lbar_itemspace");
+		move_image(txt, ofs, padsz);
+		ofs = ofs + cp.width + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
 			ctx.clim = i-1;
