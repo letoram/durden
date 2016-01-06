@@ -502,7 +502,7 @@ local keyb_menu = {
 	}
 };
 
-local input_menu = {
+local bind_menu = {
 	{
 		name = "input_rebind_basic",
 		kind = "action",
@@ -532,6 +532,17 @@ local input_menu = {
 		kind = "action",
 		label = "Bind UTF-8",
 		handler = grab_global_function("bind_utf8")
+	}
+};
+
+local input_menu = {
+	{
+		name = "input_bind_menu",
+		kind = "action",
+		label = "Bind",
+		submenu = true,
+		force = true,
+		handler = bind_menu
 	},
 	{
 		name = "input_keyboard_menu",
@@ -550,10 +561,6 @@ local input_menu = {
 		handler = mouse_menu
 	}
 };
-
--- workspace actions:
--- 	layout (save [shallow, deep], load), display affinity,
--- 	reassign (if multiple displays), layout, shared
 
 local function switch_ws_menu()
 	local spaces = {};
