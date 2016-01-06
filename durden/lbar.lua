@@ -143,9 +143,16 @@ local function update_completion_set(wm, ctx, set)
 
 		local w, h = text_dimensions(msgs);
 		local exit = false;
+		local crop = false;
+
+-- special case, w is too large to fit, just crop to acceptable length
+		if (w > 0.3 * ctxw) then
+			w = math.floor(0.3 * ctxw);
+			crop = true;
+		end
 
 -- outside display? show ..., if that's our index, slide page
-		if (ofs + w > ctxw - 10) then
+		if (i ~= ctx.cofs and ofs + w > ctxw - 10) then
 			str = "...";
 			if (i == ctx.csel) then
 				ctx.clastc = i - ctx.cofs;
@@ -169,6 +176,9 @@ local function update_completion_set(wm, ctx, set)
 		order_image(txt, 2);
 		order_image(ctx.ccursor, 1);
 		image_clip_on(txt, CLIP_SHALLOW);
+		if (crop) then
+			crop_image(txt, w, h);
+		end
 
 -- allow (but sneer!) mouse for selection and activation
 		local mh = {
@@ -197,7 +207,7 @@ local function update_completion_set(wm, ctx, set)
 		end
 
 		move_image(txt, ofs, padsz);
-		ofs = ofs + cp.width + gconfig_get("lbar_itemspace");
+		ofs = ofs + (crop and w or cp.width) + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
 			ctx.clim = i-1;
