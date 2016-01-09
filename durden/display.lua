@@ -383,16 +383,27 @@ function all_displays(ref)
 	return known_dispids;
 end
 
+-- don't BREAK out of these, as that would leave the context
+-- attachment in a bad state
 function all_displays_iter()
 	local tbl = {};
 	for i,v in ipairs(displays) do
-		table.insert(tbl, v.tiler);
+		table.insert(tbl, v);
 	end
 	local c = #tbl;
 	local i = 0;
+	local ca = displays[displays[displays.main].rt];
 	return function()
 		i = i + 1;
-		return (i <= c) and tbl[i] or nil;
+		if (i <= c) then
+			if (valid_vid(tbl[i].rt)) then
+				set_context_attachment(tbl[i].rt);
+			end
+			return tbl[i].tiler;
+		else
+			set_context_attachment(ca);
+			return nil;
+		end
 	end
 end
 
@@ -400,14 +411,22 @@ function all_spaces_iter()
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for k,l in pairs(v.tiler.spaces) do
-			table.insert(tbl, l);
+			table.insert(tbl, {v,l});
 		end
 	end
 	local c = #tbl;
 	local i = 0;
 	return function()
 		i = i + 1;
-		return (i <= c) and tbl[i] or nil;
+		if (i <= c) then
+			if (valid_vid(tbl[i][1].rt)) then
+				set_context_attachment(tbl[i][1].rt);
+			end
+			return tbl[i][2];
+		else
+			set_context_attachment(displays[displays.main].rt);
+			return nil;
+		end
 	end
 end
 
@@ -415,7 +434,7 @@ function all_windows()
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
-			table.insert(tbl, k);
+			table.insert(tbl, {v, k});
 		end
 	end
 
@@ -423,7 +442,15 @@ function all_windows()
 	local c = #tbl;
 	return function()
 		i = i + 1;
-		return (i <= c) and tbl[i] or nil;
+		if (i <= c) then
+			if (valid_vid(tbl[i][1].rt)) then
+				set_context_attachment(tbl[i][1].rt);
+			end
+			return tbl[i][2];
+		else
+			set_context_attachment(displays[displays.main].rt);
+			return nil;
+		end
 	end
 end
 
