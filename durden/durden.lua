@@ -127,19 +127,23 @@ function update_default_font(key, val)
 	gconfig_set("tbar_sz", sz + gconfig_get("tbar_pad") * 2);
 	gconfig_set("lbar_sz", sz + gconfig_get("lbar_pad") * 2);
 	gconfig_set("lbar_caret_h", sz + gconfig_get("lbar_pad"));
-	if (all_displays_iter) then
-		for disp in all_displays_iter() do
-			disp:resize(disp.width, disp.height);
-			disp:rebuild_border();
-			disp:invalidate_statusbar();
-		end
+
+-- this is currently not correct for mixed DPI between displays,
+-- the different bars should just use text_dimensions to determine size
+-- and query the active display for the \f,size value
+	if (not all_displays_iter) then
+		return;
 	end
 
-	if (all_windows) then
-		for wnd in all_windows() do
-			wnd:set_title(wnd.title_text and wnd.title_text or "");
-			wnd:resize(wnd.width, wnd.height);
-		end
+	for disp in all_displays_iter() do
+		disp:resize(disp.width, disp.height);
+		disp:rebuild_border();
+		disp:invalidate_statusbar();
+	end
+
+	for wnd in all_windows() do
+		wnd:set_title(wnd.title_text and wnd.title_text or "");
+		wnd:resize(wnd.width, wnd.height);
 	end
 end
 

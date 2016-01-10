@@ -37,6 +37,17 @@ local function autohome_spaces(ndisp)
 	end
 end
 
+local function switch_active_display(ind)
+	if (displays[ind] == nil) then
+		return;
+	end
+
+	if (valid_vid(displays[ind].rt)) then
+		set_context_attachment(displays[ind].rt);
+		mouse_querytarget(displays[ind].rt);
+	end
+end
+
 local function display_data(id)
 	local data, hash = video_displaydescr(id);
 	local model = "unknown";
@@ -103,32 +114,47 @@ function durden_display_state(action, id)
 	end
 
 	if (action == "added") then
--- first mapping nonsens has previously made it easier
--- getting EDID in some cases
+-- first mapping nonsense has previously made it easier (?!)
+-- getting a valid EDID in some cases
 		map_video_display(WORLDID, id, HINT_NONE);
 
 		local modes = video_displaymodes(id);
 
 		local dw = VRESW;
 		local dh = VRESH;
+		local ppmm = 3.84;
+		local subpx = "RGB";
+
+-- we unfairly treat pixels as square and prefer subpixel hinting
 		if (modes and modes[1].width > 0) then
 			dw = modes[1].width;
 			dh = modes[1].height;
+
+			local wmm = modes[1].phy_width_mm;
+			local hmm = modes[1].phy_height_mm;
+			subpx = modes[1].subpixel_layout;
+			subpx = subpx == "unknown" and "RGB" or subpx;
+
+			if (wmm > 0 and hmm > 0) then
+				ppmm = math.sqrt(dw * dw + dh * dh) /
+					math.sqrt(wmm * wmm + hmm * hmm);
+			end
 		end
 
 -- default display is treated differently
+		local ddisp = {name = name, id = id, ppmm = ppmm, subpx = subpx};
 		if (id == 0) then
 			map_video_display(displays[1].rt, 0, HINT_NONE);
-			known_dispids[1] = {
-				name = name, primary = true, display = displays[1], id = 0};
+			ddisp.primary = true;
 		else
 			local disp = display_add(name, dw, dh);
 			map_video_display(disp.rt, id, HINT_NONE);
-			known_dispids[id+1] = {
-				name = name, primary = false, display = disp, id = id
-			};
+			ddisp.primary = false;
 		end
+		known_dispids[id+1] = ddisp;
 
+-- remove on a previous display is more like tagging it as orphan
+-- as it may reappear later
 	elseif (action == "removed") then
 		known_dispids[id] = nil;
 		display_remove(name);
@@ -141,7 +167,7 @@ function display_manager_init()
 		w = VRESW,
 		h = VRESH,
 		name = "default",
-		ppmm = 3.84,
+		ppmm = VPPMM,
 		sf = 1.0
 	};
 
@@ -234,6 +260,7 @@ function display_add(name, width, height)
 		nd.h = height;
 		nd.name = name;
 		nd.tiler.name = name;
+		nd.ind = #displays;
 		nd.rt = nd.tiler:set_rendertarget(true);
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
@@ -303,9 +330,12 @@ function display_ressw(id, mode)
 		return;
 	end
 
+	local save = displays.main;
+	switch_active_display(v.ind);
 	video_displaymodes(id, mode.modeid);
 	v.display.tiler:resize(mode.width, mode.height);
 	map_video_display(v.display.rt, id, HINT_FIT);
+	switch_active_display(save);
 end
 
 -- should only be used for debugging, disables normal multidisplay
@@ -319,9 +349,9 @@ function display_cycle_active()
 	repeat
 		nd = (nd + 1 > #displays) and 1 or (nd + 1);
 	until (nd == displays.main or not displays[nd].orphan);
+
+	switch_active_display(nd);
 	displays.main = nd;
-	set_context_attachment(displays[displays.main].rt);
-	mouse_querytarget(displays[displays.main].rt);
 	redraw_simulate();
 end
 
@@ -383,25 +413,28 @@ function all_displays(ref)
 	return known_dispids;
 end
 
+local function save_active_display()
+	return displays.main;
+end
+
 -- don't BREAK out of these, as that would leave the context
--- attachment in a bad state
+-- attachment in a bad / broken state
 function all_displays_iter()
 	local tbl = {};
 	for i,v in ipairs(displays) do
-		table.insert(tbl, v);
+		table.insert(tbl, {i, v});
 	end
 	local c = #tbl;
 	local i = 0;
-	local ca = displays[displays[displays.main].rt];
+	local save = displays.main;
+
 	return function()
 		i = i + 1;
 		if (i <= c) then
-			if (valid_vid(tbl[i].rt)) then
-				set_context_attachment(tbl[i].rt);
-			end
-			return tbl[i].tiler;
+			switch_active_display(tbl[i][1]);
+			return tbl[i][2].tiler;
 		else
-			set_context_attachment(ca);
+			switch_active_display(save);
 			return nil;
 		end
 	end
@@ -411,20 +444,20 @@ function all_spaces_iter()
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for k,l in pairs(v.tiler.spaces) do
-			table.insert(tbl, {v,l});
+			table.insert(tbl, {i,l});
 		end
 	end
 	local c = #tbl;
 	local i = 0;
+	local save = displays.main;
+
 	return function()
 		i = i + 1;
 		if (i <= c) then
-			if (valid_vid(tbl[i][1].rt)) then
-				set_context_attachment(tbl[i][1].rt);
-			end
+			switch_active_display(tbl[i][1]);
 			return tbl[i][2];
 		else
-			set_context_attachment(displays[displays.main].rt);
+			switch_active_display(save);
 			return nil;
 		end
 	end
@@ -434,21 +467,21 @@ function all_windows()
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
-			table.insert(tbl, {v, k});
+			table.insert(tbl, {i, k});
 		end
 	end
 
 	local i = 0;
 	local c = #tbl;
+	local save = displays.main;
+
 	return function()
 		i = i + 1;
 		if (i <= c) then
-			if (valid_vid(tbl[i][1].rt)) then
-				set_context_attachment(tbl[i][1].rt);
-			end
+			switch_active_display(tbl[i][1]);
 			return tbl[i][2];
 		else
-			set_context_attachment(displays[displays.main].rt);
+			switch_active_display(save);
 			return nil;
 		end
 	end
