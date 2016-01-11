@@ -312,7 +312,12 @@ local audio_menu = {
 		name = "global_gain",
 		label = "Global Gain",
 		kind = "action",
-		handler = grab_global_function("query_global_gain")
+		hint = "(0..1)",
+		kind = "value",
+		validator = shared_valid01_float,
+		handler = function(ctx, val)
+			grab_global_function("global_gain")(tonumber(val));
+		end
 	},
 	{
 		name = "gain_pos10",

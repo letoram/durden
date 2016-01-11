@@ -87,6 +87,8 @@ function durden(argv)
 	mouse_add_cursor("rz_right", load_image("cursor/rz_right.png"), 0, 0); -- 13, 5);
 	mouse_add_cursor("rz_up", load_image("cursor/rz_up.png"), 0, 0); -- 5, 0);
 
+	audio_gain(BADID, gconfig_get("global_gain"));
+
 -- load saved keybindings
 	dispatch_load();
 	iostatem_init();

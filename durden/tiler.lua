@@ -2485,7 +2485,6 @@ function tiler_create(width, height, opts)
 	local res = {
 -- null surfaces for clipping / moving / drawing
 		client_height = clh,
-		global_gain = 1.0,
 		name = opts.name and opts.name or "default",
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),

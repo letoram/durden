@@ -127,10 +127,7 @@ defhtbl["resized"] =
 function(wnd, source, stat)
 	wnd.space:resize();
 	wnd.source_audio = stat.source_audio;
-	audio_gain(stat.source_audio,
-			gconfig_get("global_mute") and 0.0 or (gconfig_get("global_gain") *
-			(wnd.source_gain and wnd.source_gain or 1.0))
-	);
+	audio_gain(stat.source_audio, gconfig_get("global_gain") * wnd.gain);
 	if (wnd.space.mode == "float") then
 		wnd:resize_effective(stat.width, stat.height);
 	end
