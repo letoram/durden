@@ -442,10 +442,11 @@ gf["mouse_sensitivity"] = function(val)
 end
 
 local function allgain(val)
+	audio_gain(BADID, val);
 	for wnd in all_windows() do
 		if (wnd.source_audio) then
 			audio_gain(wnd.source_audio,
-				val * (wnd.source_gain and wnd.source_gain or 1.0),
+				val * (wnd.gain and wnd.gain or 1.0),
 		  	gconfig_get("gain_fade"));
 		end
 	end
@@ -460,19 +461,24 @@ gf["gain_stepv"] = function(val)
 	allgain(gv);
 end
 
+gf["global_gain"] = function(val)
+	allgain(val);
+end
+
 -- separate toggle, we don't care about previously set gain value
 sf["toggle_audio"] = function(wnd)
 	if (not wnd or not wnd.source_audio) then
 		return;
 	end
 
-	if (wnd.muted) then
-		audio_gain(wnd.source_audio, gconfig_get("global_gain") *
-			(wnd.source_gain and wnd.source_gain or 1.0), gconfig_get("gain_fade"));
-		wnd.muted = nil;
+	if (wnd.save_gain) then
+		wnd.gain = wnd.save_gain;
+		audio_gain(wnd.source_audio, gconfig_get("global_gain") * wnd.gain);
+		wnd.save_gain = nil;
 	else
-		audio_gain(wnd.source_audio, 0.0, gconfig_get("gain_fade"));
-		wnd.muted = true;
+		wnd.save_gain = wnd.gain;
+		wnd.gain = 0.0;
+		audio_gain(wnd.source_audio, 0.0);
 	end
 end
 

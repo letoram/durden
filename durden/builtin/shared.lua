@@ -39,14 +39,14 @@ local function gain_stepv(gainv, abs)
 	end
 
 	if (not abs) then
-		gainv = gainv + (wnd.source_gain and wnd.source_gain or 1.0);
+		gainv = gainv + (wnd.gain and wnd.gain or 1.0);
 	end
 
 	gainv = gainv < 0.0 and 0.0 or gainv;
 	gainv = gainv > 1.0 and 1.0 or gainv;
-	wnd.source_gain = gainv;
-	audio_gain(wnd.source_audio, gconfig_get("global_gain") * gainv,
-		gconfig_get("gain_fade"));
+	gainv = gainv * gconfig_get("global_gain");
+	wnd.gain = gainv;
+	audio_gain(wnd.source_audio, gainv, gconfig_get("gain_fade"));
 end
 
 local function run_input_label(wnd, v)
