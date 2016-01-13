@@ -125,10 +125,19 @@ function update_default_font(key, val)
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
 	system_defaultfont(font, sz, hint);
-	gconfig_set("sbar_sz", sz + gconfig_get("sbar_pad") * 2);
-	gconfig_set("tbar_sz", sz + gconfig_get("tbar_pad") * 2);
-	gconfig_set("lbar_sz", sz + gconfig_get("lbar_pad") * 2);
-	gconfig_set("lbar_caret_h", sz + gconfig_get("lbar_pad"));
+
+	local test = render_text("\f,0 1A");
+	if (not valid_vid(test)) then
+		warning("update default font yielded broken font");
+		return;
+	end
+	local fonth = image_surface_properties(test).height;
+	delete_image(test);
+
+	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
+	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
+	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
+	gconfig_set("lbar_caret_h", fonth + gconfig_get("lbar_pad"));
 
 -- this is currently not correct for mixed DPI between displays,
 -- the different bars should just use text_dimensions to determine size

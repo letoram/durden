@@ -302,12 +302,12 @@ end
 local function gen_status_tile(wm, lbl, min_sz, ofs)
 	local text = render_text(lbl);
 	local props = image_surface_properties(text);
-	local yp = math.floor(0.5 * (props.height - min_sz));
+	local yp = gconfig_get("sbar_pad") + math.floor(0.5 * (min_sz - props.height));
 
 	if (props.width < min_sz) then
-		move_image(text, math.ceil(0.5*(min_sz - props.width)), yp);
+		move_image(text, math.floor(0.5*(min_sz - props.width)), yp);
 	else
-		move_image(text, 2, yp);
+		move_image(text, gconfig_get("sbar_pad"), yp);
 	end
 
 	local tilew = (props.width+4) > min_sz and (props.width+4) or min_sz;
@@ -1599,7 +1599,12 @@ local function wnd_title(wnd, message)
 	resize_image(wnd.titlebar,
 		wnd.width - wnd.border_w * 2, gconfig_get("tbar_sz"));
 	image_inherit_order(message, 1);
-	move_image(message, 1, 1);
+
+	local yp = math.floor(0.5 * (gconfig_get("tbar_sz") -
+		image_surface_properties(message).height));
+
+	local pad = gconfig_get("tbar_pad");
+	move_image(message, pad, pad + yp);
 	show_image(message);
 end
 
