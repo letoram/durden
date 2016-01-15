@@ -234,8 +234,7 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 			show_image(ictx.text);
 			link_image(ictx.text, ictx.text_anchor);
 			image_inherit_order(ictx.text, true);
-			move_image(ictx.text, ictx.textofs,
-				math.floor(0.5 * gconfig_get("lbar_pad")));
+			move_image(ictx.text, ictx.textofs, gconfig_get("lbar_pad"));
 		end
 	end
 
@@ -432,7 +431,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret_y = carety,
 		cleanup = opts.cleanup,
 		iostate = iostatem_save(),
-		force_completion = opts.force_completion and true or false
+-- if not set, default to true
+		force_completion = opts.force_completion == false and false or true
 	};
 	lbar_input(wm, "", {active = true,
 		kind = "digital", translated = true, devid = 0, subid = 0});

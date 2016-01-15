@@ -96,7 +96,6 @@ local function gen_disp_menu(disp)
 		label = "Resolution",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = function() return query_dispmenu(disp.id); end
 		}
 	};
@@ -111,7 +110,6 @@ local function query_displays()
 				label = v.name,
 				kind = "action",
 				submenu = true,
-				force = true,
 				handler = function() return gen_disp_menu(v); end
 			});
 		end
@@ -133,7 +131,6 @@ local display_menu = {
 		label = "Displays",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = function() return query_displays(); end
 	},
 	{
@@ -142,7 +139,6 @@ local display_menu = {
 		kind = "action",
 		hint = "Synchronization:",
 		submenu = true,
-		force = true,
 		handler = function() return query_synch(); end
 	},
 	{
@@ -190,7 +186,6 @@ local display_menu = {
 		kind = "action",
 		eval = function() return DEBUGLEVEL > 0; end,
 		submenu = true,
-		force = true,
 		handler = dbg_dsp
 	},
 };
@@ -274,7 +269,6 @@ local system_menu = {
 		label = "Shutdown",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Shutdown?",
 		handler = exit_query
 	},
@@ -283,7 +277,6 @@ local system_menu = {
 		label = "Reset",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Reset?",
 		handler = reset_query
 	}
@@ -295,7 +288,6 @@ if (DEBUGLEVEL > 0) then
 		label = "Debug",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Debug:",
 		handler = debug_menu,
 	});
@@ -315,6 +307,9 @@ local audio_menu = {
 		hint = "(0..1)",
 		kind = "value",
 		validator = shared_valid01_float,
+		initial = function()
+			return tostring(gconfig_get("global_gain"));
+		end,
 		handler = function(ctx, val)
 			grab_global_function("global_gain")(tonumber(val));
 		end
@@ -344,7 +339,6 @@ local mouse_menu = {
 		name = "mouse_sensitivity",
 		kind = "value",
 		label = "Sensitivity",
-		force = true,
 		hint = function() return "(0.01..10)"; end,
 		validator = function(val)
 			return gen_valid_num(0, 10)(val);
@@ -363,7 +357,6 @@ local mouse_menu = {
 		name = "mouse_hover_delay",
 		kind = "value",
 		label = "Hover Delay",
-		force = true,
 		hint = function() return "10..80"; end,
 		validator = function(val)
 			return gen_valid_num(0, 80)(val);
@@ -421,7 +414,6 @@ local mouse_menu = {
 		name = "mouse_hide_delay",
 		kind = "value",
 		label = "Autohide Delay",
-		force = true,
 		hint = function() return "40..400"; end,
 		validator = function(val)
 			return gen_valid_num(0, 400)(val);
@@ -440,7 +432,6 @@ local mouse_menu = {
 		name = "mouse_focus",
 		kind = "value",
 		label = "Focus Event",
-		force = true,
 		set = {"click", "motion", "hover", "none"},
 		initial = function()
 			return gconfig_get("mouse_focus_event");
@@ -546,7 +537,6 @@ local input_menu = {
 		kind = "action",
 		label = "Bind",
 		submenu = true,
-		force = true,
 		handler = bind_menu
 	},
 	{
@@ -554,7 +544,6 @@ local input_menu = {
 		kind = "action",
 		label = "Keyboard",
 		submenu = true,
-		force = true,
 		handler = keyb_menu
 	},
 	{
@@ -562,7 +551,6 @@ local input_menu = {
 		kind = "action",
 		label = "Mouse",
 		submenu = true,
-		force = true,
 		handler = mouse_menu
 	}
 };
@@ -684,7 +672,6 @@ local workspace_menu = {
 		kind = "action",
 		eval = function() return active_display():active_spaces() > 1; end,
 		submenu = true,
-		force = true,
 		hint = "Swap:",
 		handler = swap_ws_menu
 	},
@@ -693,7 +680,6 @@ local workspace_menu = {
 		label = "Layout",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Layout:",
 		handler = workspace_layout_menu
 	},
@@ -714,7 +700,6 @@ local workspace_menu = {
 		label = "Save",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Save Workspace:",
 		handler = save_ws
 	},
@@ -723,7 +708,6 @@ local workspace_menu = {
 		label = "Switch",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Switch To:",
 		handler = switch_ws_menu
 	},
@@ -918,10 +902,10 @@ local durden_system = {
 	}
 };
 
-local config_terminal = {
+local config_terminal_font = {
 	{
 		name = "terminal_font_sz",
-		label = "Font Size",
+		label = "Size",
 		kind = "value",
 		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("term_font_sz")); end,
@@ -930,19 +914,8 @@ local config_terminal = {
 		end
 	},
 	{
-		name = "terminal_bgalpha",
-		label = "Background Alpha",
-		kind = "value",
-		hint = "(0..1)",
-		validator = gen_valid_float(0, 1),
-		initial = function() return tostring(gconfig_get("term_opa")); end,
-		handler = function(ctx, val)
-			gconfig_set("term_opa", tonumber(val));
-		end
-	},
-	{
-		name = "terminal_hinting",
-		label = "Font Hinting",
+		name = "terminal_font_hinting",
+		label = "Hinting",
 		kind = "value",
 		set = {"light", "mono", "none"},
 		initial = function() return gconfig_get("term_font_hint"); end,
@@ -950,10 +923,11 @@ local config_terminal = {
 			gconfig_set("term_hint", tonumber(val));
 		end
 	},
--- should replace with "font browser"
+-- should replace with some "font browser" but we don't have asynch font
+-- loading etc. and no control over cache size
 	{
-		name = "terminal_font",
-		label = "Font Name",
+		name = "terminal_font_name",
+		label = "Name",
 		kind = "value",
 		set = function()
 			local set = glob_resource("*", SYS_FONT_RESOURCE);
@@ -968,13 +942,33 @@ local config_terminal = {
 	}
 };
 
+local config_terminal = {
+	{
+		name = "terminal_bgalpha",
+		label = "Background Alpha",
+		kind = "value",
+		hint = "(0..1)",
+		validator = gen_valid_float(0, 1),
+		initial = function() return tostring(gconfig_get("term_opa")); end,
+		handler = function(ctx, val)
+			gconfig_set("term_opa", tonumber(val));
+		end
+	},
+	{
+		name = "terminal_font",
+		label = "Font",
+		kind = "action",
+		submenu = true,
+		handler = config_terminal_font
+	}
+};
+
 local config_menu = {
 	{
 		name = "config_visual",
 		label = "Visual",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Visual:",
 		handler = durden_visual
 	},
@@ -983,7 +977,6 @@ local config_menu = {
 		label = "Workspaces",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Config Workspaces:",
 		handler = durden_workspace
 	},
@@ -992,7 +985,6 @@ local config_menu = {
 		label = "System",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Config System:",
 		handler = durden_system
 	},
@@ -1001,7 +993,6 @@ local config_menu = {
 		label = "Terminal",
 		kind = "action",
 		submenu = true,
-		force = true,
 		eval = function()
 			return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 		end,
@@ -1178,7 +1169,6 @@ local toplevel = {
 		label = "Open",
 		kind = "action",
 		submenu = true,
-		force = true,
 		eval = function() return #uriopen_menu; end,
 		handler = uriopen_menu
 	},
@@ -1218,7 +1208,6 @@ local toplevel = {
 		label = "Workspace",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Workspace:",
 		handler = workspace_menu
 	},
@@ -1227,7 +1216,6 @@ local toplevel = {
 		label = "Display",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Displays:",
 		handler = display_menu
 	},
@@ -1236,7 +1224,6 @@ local toplevel = {
 		label = "Config",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Config:",
 		handler = config_menu
 	},
@@ -1245,7 +1232,6 @@ local toplevel = {
 		label = "Audio",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Audio:",
 		handler = audio_menu
 	},
@@ -1254,7 +1240,6 @@ local toplevel = {
 		label = "Input",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "Input:",
 		handler = input_menu
 	},
@@ -1263,7 +1248,6 @@ local toplevel = {
 		label = "System",
 		kind = "action",
 		submenu = true,
-		force = true,
 		hint = "System:",
 		handler = system_menu
 	},

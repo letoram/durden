@@ -11,6 +11,10 @@
 
 -- number of Z values reserved for each window
 local WND_RESERVED = 10;
+
+-- multiply with in point- size to get CM
+local FONT_PP_CM = 0.0352778;
+
 system_load("lbar.lua")();
 
 --
@@ -1276,6 +1280,16 @@ local function wnd_effective_resize(wnd, neww, newh, force)
 		newh + wnd.pad_top + wnd.pad_bottom);
 end
 
+local function wnd_font(wnd, sz, hint, font)
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		if (font) then
+			target_fonthint(wnd.external, font, sz * FONT_PP_CM, hint);
+		else
+			target_fonthint(wnd.external, sz * FONT_PP_CM, hint);
+		end
+	end
+end
+
 local function wnd_resize(wnd, neww, newh, force)
 	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
@@ -2042,6 +2056,11 @@ local function wnd_create(wm, source, opts)
 		pad_right = bw,
 		pad_top = bw,
 		pad_bottom = bw,
+
+-- scale factor is manipulated by the display manager in order to take pixel
+-- density into account, so when a window is migrated or similar -- scale
+-- factor may well change
+		scale_factor = 1.0,
 		width = wm.min_width,
 		height = wm.min_height,
 		border_w = gconfig_get("borderw"),
@@ -2058,6 +2077,7 @@ local function wnd_create(wm, source, opts)
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		add_handler = wnd_addhandler,
+		update_font = wnd_font,
 		resize = wnd_resize,
 		migrate = wnd_migrate,
 		resize_effective = wnd_effective_resize,

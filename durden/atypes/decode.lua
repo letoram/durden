@@ -25,7 +25,8 @@ local rtbl = {
 		kbd_delay = 0,
 		scalemode = "aspect",
 		filtermode = FILTER_BILINEAR,
-		clipboard_block = true
+		clipboard_block = true,
+		font_block = true
 	},
 };
 

@@ -54,7 +54,8 @@ return {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
-		clipboard_block = true
+		clipboard_block = true,
+		font_block = true
 	},
 	default_shader = "noalpha"
 };

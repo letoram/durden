@@ -121,18 +121,13 @@ function durden(argv)
 end
 
 function update_default_font(key, val)
+	local newfont=(key and key == "font_def" and val ~= gconfig_get("font_def"));
 	local font = (key and key == "font_def") and val or gconfig_get("font_def");
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
 	system_defaultfont(font, sz, hint);
 
-	local test = render_text("\f,0 1A");
-	if (not valid_vid(test)) then
-		warning("update default font yielded broken font");
-		return;
-	end
-	local fonth = image_surface_properties(test).height;
-	delete_image(test);
+	local w, fonth = text_dimensions("\f,0 A1!");
 
 	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
 	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
@@ -147,7 +142,7 @@ function update_default_font(key, val)
 	end
 
 	for disp in all_displays_iter() do
-		disp:resize(disp.width, disp.height);
+		disp:resize(disp.width, disp.height, sz);
 		disp:rebuild_border();
 		disp:invalidate_statusbar();
 	end
@@ -155,6 +150,9 @@ function update_default_font(key, val)
 	for wnd in all_windows() do
 		wnd:set_title(wnd.title_text and wnd.title_text or "");
 		wnd:resize(wnd.width, wnd.height);
+		if (not wnd.font_block) then
+			wnd:update_font(sz, hint, font);
+		end
 	end
 end
 
