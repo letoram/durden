@@ -122,7 +122,7 @@ function durden_display_state(action, id)
 
 		local dw = VRESW;
 		local dh = VRESH;
-		local ppmm = 3.84;
+		local ppmm = VPPMM;
 		local subpx = "RGB";
 
 -- we unfairly treat pixels as square and prefer subpixel hinting
@@ -147,7 +147,7 @@ function durden_display_state(action, id)
 			map_video_display(displays[1].rt, 0, HINT_NONE);
 			ddisp.primary = true;
 		else
-			local disp = display_add(name, dw, dh);
+			local disp = display_add(name, dw, dh, ppmm);
 			map_video_display(disp.rt, id, HINT_NONE);
 			ddisp.primary = false;
 		end
@@ -242,7 +242,7 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
-function display_add(name, width, height)
+function display_add(name, width, height, ppmm)
 	local found = get_disp(name);
 	width = width < MAX_SURFACEW and width or MAX_SURFACEW;
 	height = height < MAX_SURFACEH and height or MAX_SURFACEH;
@@ -254,7 +254,7 @@ function display_add(name, width, height)
 		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
-		local nd = {tiler = tiler_create(width, height, {name = name})};
+		local nd = {tiler = tiler_create(width, height {name = name})};
 		table.insert(displays, nd);
 		nd.w = width;
 		nd.h = height;
@@ -463,7 +463,7 @@ function all_spaces_iter()
 	end
 end
 
-function all_windows()
+function all_windows(atype)
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
@@ -477,13 +477,16 @@ function all_windows()
 
 	return function()
 		i = i + 1;
-		if (i <= c) then
-			switch_active_display(tbl[i][1]);
-			return tbl[i][2];
-		else
-			switch_active_display(save);
-			return nil;
+		while (i <= c) do
+			if (not atype or (atype and tbl[i][2].atype == atype)) then
+				switch_active_display(tbl[i][1]);
+				return tbl[i][2];
+			else
+				i = i + 1;
+			end
 		end
+		switch_active_display(save);
+		return nil;
 	end
 end
 

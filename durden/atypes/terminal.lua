@@ -2,7 +2,6 @@
 -- Terminal archetype, settings and menus specific for terminal-
 -- frameserver session (e.g. keymapping, state control)
 --
-
 local res = {
 	dispatch = {
 
@@ -22,6 +21,7 @@ local res = {
 	props = {
 		scalemode = "stretch",
 		autocrop = true,
+		font_block = true,
 		filtermode = FILTER_NONE
 	}
 };
@@ -29,15 +29,33 @@ local res = {
 -- globally listen for changes to the default opacity and forward
 gconfig_listen("term_opa", "aterm",
 function(id, newv)
-	for wnd in all_windows() do
-		if (wnd.atype == "terminal" and
-			valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+	for wnd in all_windows("terminal") do
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			target_graphmode(wnd.external, 1, newv * 255.0);
 		end
 	end
 
 	local k, v = shader_getkey("clamp_crop");
 	shader_uniform(v.shid, "crop_opa", "f", PERSIST, newv);
+end);
+
+-- globally apply changes to terminal font and terminal font sz
+gconfig_listen("term_font", "aterm",
+function(id, newv)
+	for wnd in all_windows("terminal") do
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			wnd:update_font(-1, -1, newv);
+		end
+	end
+end);
+
+gconfig_listen("term_font_sz", "aterm",
+function(id, newv)
+	for wnd in all_windows("terminal") do
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			wnd:update_font(tonumber(newv), -1);
+		end
+	end
 end);
 
 res.labels["LEFT"] = "LEFT";

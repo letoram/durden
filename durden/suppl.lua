@@ -531,6 +531,8 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 		return;
 	end
 
+	fcomp = fcomp == nil and true or false;
+
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
 	opts.label = label;

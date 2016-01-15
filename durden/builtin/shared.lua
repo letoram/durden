@@ -123,7 +123,6 @@ local label_menu = {
 		kind = "action",
 		hint = "Input Label:",
 		submenu = true,
-		force = true,
 		handler = build_labelmenu
 	},
 	{
@@ -132,7 +131,6 @@ local label_menu = {
 		kind = "action",
 		hint = "Action:",
 		submenu = true,
-		force = true,
 		handler = function() return build_bindmenu(true); end
 	},
 	{
@@ -141,7 +139,6 @@ local label_menu = {
 		kind = "action",
 		hint = "Action:",
 		submenu = true,
-		force = true,
 		handler = function() return build_bindmenu(false); end
 	}
 };
@@ -248,7 +245,6 @@ local input_menu = {
 		label = "Labels",
 		kind = "action",
 		submenu = true,
-		force = true,
 		eval = function(ctx)
 			local sel = active_display().selected;
 			return sel and sel.input_labels and #sel.input_labels > 0;
@@ -260,7 +256,6 @@ local input_menu = {
 		label = "Keyboard",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = kbd_menu
 	},
 	{
@@ -274,7 +269,6 @@ local input_menu = {
 		label = "Mouse",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = mouse_menu
 	}
 };
@@ -374,7 +368,6 @@ local video_menu = {
 		kind = "action",
 		hint = "Scale Mode:",
 		submenu = true,
-		force = true,
 		handler = scalemodes
 	},
 	{
@@ -383,7 +376,6 @@ local video_menu = {
 		kind = "action",
 		hint = "Basic Filter:",
 		submenu = true,
-		force = true,
 		handler = filtermodes
 	},
 	{
@@ -686,7 +678,6 @@ local shared_actions = {
 		label = "Input",
 		submenu = true,
 		kind = "action",
-		force = true,
 		handler = input_menu
 	},
 	{
@@ -694,7 +685,6 @@ local shared_actions = {
 		label = "State",
 		submenu = true,
 		kind = "ation",
-		force = true,
 		handler = state_menu,
 		eval = function()
 			local wnd = active_display().selected;
@@ -706,7 +696,6 @@ local shared_actions = {
 		label = "Clipboard",
 		submenu = true,
 		kind = "action",
-		force = true,
 		eval = function()
 			return active_display().selected and
 				active_display().selected.clipboard_block == nil;
@@ -719,7 +708,6 @@ local shared_actions = {
 		submenu = true,
 		kind = "action",
 		handler = audio_menu,
-		force = true,
 		eval = function(ctx)
 			return active_display().selected and active_display().selected.source_audio
 		end
@@ -729,7 +717,6 @@ local shared_actions = {
 		label = "Video",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = video_menu,
 		hint = "Video:"
 	},
@@ -738,7 +725,6 @@ local shared_actions = {
 		label = "Window",
 		kind = "action",
 		submenu = true,
-		force = true,
 		handler = window_menu,
 		Hint = "Window: "
 	},
@@ -777,7 +763,6 @@ if (DEBUGLEVEL > 0) then
 		kind = "action",
 		hint = "Debug:",
 		submenu = true,
-		force = true,
 		handler = debug_menu
 	});
 end

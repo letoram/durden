@@ -110,7 +110,7 @@ are being implemented, we have the following list:
   - [ ] Workspace color sample points mapped to external LEDs
   - [x] Workspace Event Notification
   - [ ] Mouse Cursor Event Flash
-  - [ ] Font Customization
+  - [x] Font Customization
   - [ ] Color Customization
   - [x] Per Window canvas shader control
   - [x] Window Translucency
@@ -176,7 +176,7 @@ are being implemented, we have the following list:
   - [ ] Auto Suspend/Resume
     - [ ] Follow Focus
     - [ ] Follow Workspace
-  - [ ] Font Hinting
+  - [x] Font Hinting
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Screenreader Support
@@ -197,6 +197,7 @@ are being implemented, we have the following list:
   - [ ] Persistant pasteboard
   - [ ] Streaming Text
   - [ ] Text Hash to Color on Copy (show in paste menu)
+  - [ ] Special clipboard tracking for detected URLs
   - [ ] Images
   - [ ] Videos
   - [ ] Audio
@@ -214,7 +215,7 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
-  - [ ] Respect display DPI and use mm as size measurements
+  - [ ] Respect display DPI and use cm as size measurements
   - [ ] Power Management Controls (+ auto-DPMS)
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
