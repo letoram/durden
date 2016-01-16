@@ -394,6 +394,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
+	order_image(bg, 1);
 
 	local car = color_surface(gconfig_get("lbar_caret_w"),
 		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));

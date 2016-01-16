@@ -122,7 +122,7 @@ function durden_display_state(action, id)
 
 		local dw = VRESW;
 		local dh = VRESH;
-		local ppmm = VPPMM;
+		local ppcm = VPPCM;
 		local subpx = "RGB";
 
 -- we unfairly treat pixels as square and prefer subpixel hinting
@@ -136,18 +136,18 @@ function durden_display_state(action, id)
 			subpx = subpx == "unknown" and "RGB" or subpx;
 
 			if (wmm > 0 and hmm > 0) then
-				ppmm = math.sqrt(dw * dw + dh * dh) /
-					math.sqrt(wmm * wmm + hmm * hmm);
+				ppcm = 0.1 * (math.sqrt(dw * dw + dh * dh) /
+					math.sqrt(wmm * wmm + hmm * hmm));
 			end
 		end
 
 -- default display is treated differently
-		local ddisp = {name = name, id = id, ppmm = ppmm, subpx = subpx};
+		local ddisp = {name = name, id = id, ppcm = ppcm, subpx = subpx};
 		if (id == 0) then
 			map_video_display(displays[1].rt, 0, HINT_NONE);
 			ddisp.primary = true;
 		else
-			local disp = display_add(name, dw, dh, ppmm);
+			local disp = display_add(name, dw, dh, ppcm);
 			map_video_display(disp.rt, id, HINT_NONE);
 			ddisp.primary = false;
 		end
@@ -167,7 +167,7 @@ function display_manager_init()
 		w = VRESW,
 		h = VRESH,
 		name = "default",
-		ppmm = VPPMM,
+		ppmm = VPPCM,
 		sf = 1.0
 	};
 
@@ -242,7 +242,11 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
-function display_add(name, width, height, ppmm)
+function display_override_density(id, ppcm)
+
+end
+
+function display_add(name, width, height, ppcm)
 	local found = get_disp(name);
 	width = width < MAX_SURFACEW and width or MAX_SURFACEW;
 	height = height < MAX_SURFACEH and height or MAX_SURFACEH;
@@ -254,7 +258,7 @@ function display_add(name, width, height, ppmm)
 		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
-		local nd = {tiler = tiler_create(width, height {name = name})};
+		local nd = {tiler = tiler_create(width, height, {name = name})};
 		table.insert(displays, nd);
 		nd.w = width;
 		nd.h = height;
@@ -388,7 +392,7 @@ function display_share(args, recfn)
 	else
 -- this one can't handle resolution switching and we ignore audio for the
 -- time being or we'd need to do a lot of attachment tracking
-		disp.share_slot = alloc_surface(disp.w, disp.h);
+		disp.share_slot = alloc_surface(disp.w, disp.h, true);
 		define_recordtarget(disp.share_slot,
 		recfn, args, {disp.rt}, {}, RENDERTARGET_NODETACH, RENDERTARGET_NOSCALE, 1,
 		function(src, status)

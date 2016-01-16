@@ -38,15 +38,17 @@ local function browse_cb(ctx, instr, done, lastv)
 		else
 			local fn = match_ext(pn, ctx.fltext);
 			if (type(fn) == "function") then
-				fn(pn);
+				fn(pn, ctx.path);
 			elseif (ctx.trigger) then
-				ctx.trigger(pn);
+				ctx.trigger(pn, ctx.path);
 			end
 		end
 		return;
 	end
 
--- glob and tag the resulting table with the type
+-- glob and tag the resulting table with the type, current solution isn't
+-- ideal as this may be I/O operations stalling heavily on weird filesystems
+-- so we need an asynch glob_resource and all the problems that come there.
 	local path = table.concat(ctx.path, "/");
 	if (ctx.paths[path] == nil) then
 		ctx.paths[path] = glob_resource(path .. "/*", ctx.namespace);
@@ -77,7 +79,7 @@ local function browse_cb(ctx, instr, done, lastv)
 	return {set = res, valid = false};
 end
 
-function browse_file(pathtbl, extensions, mask, donecb, tblmin)
+function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	active_display():lbar(browse_cb, {
 		base = prefix,
 		path = pathtbl,
@@ -85,6 +87,7 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin)
 		minlen = tblmin ~= nil and tblmin or #pathtbl,
 		fltext = extensions,
 		namespace = mask,
-		trigger = donecb
+		trigger = donecb,
+		opts = opts and opts or {},
 	}, {force_completion = true});
 end
