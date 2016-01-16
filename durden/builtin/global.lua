@@ -92,6 +92,17 @@ local function gen_disp_menu(disp)
 		handler = function() warning("toggle display"); end
 		},
 		{
+		name = "disp_menu_density_override",
+		label = "Pixel Density",
+		kind = "value",
+		hint = "(px/cm)",
+		validator = gen_valid_float(0.01, 20.0),
+		initial = function() return tostring(disp.ppcm); end,
+		handler = function(ctx, val)
+			display_override_density(disp.id, tonumber(val));
+		end
+		},
+		{
 		name = "disp_menu_" .. tostring(disp.name) .. "state",
 		label = "Resolution",
 		kind = "action",
@@ -1016,7 +1027,10 @@ local function dechnd(source, status)
 	print("status.kind:", status.kind);
 end
 
-local function decwnd(fn)
+-- track lastpath so we can meta-launch browse internal and resume old path
+local lastpath = "";
+local function decwnd(fn, path)
+	lastpath = path;
 	local vid = launch_decode(fn, function() end);
 	if (valid_vid(vid)) then
 		durden_launch(vid, fn, "decode");

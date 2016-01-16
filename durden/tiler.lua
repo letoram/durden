@@ -649,7 +649,9 @@ local function workspace_activate(space, noanim, negdir, newbg)
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
-				blend_image(bg, 1.0, 0.4 * time);
+				instant_image_transform(bg);
+				blend_image(bg, 0.0, time);
+				blend_image(bg, 1.0, time);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
@@ -683,7 +685,7 @@ local function workspace_inactivate(space, noanim, negdir, newbg)
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
-				blend_image(bg, 0.0, 0.4 * time);
+				blend_image(bg, 0.0, 0.25 * time);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
@@ -694,7 +696,9 @@ local function workspace_inactivate(space, noanim, negdir, newbg)
 		end
 	else
 		hide_image(space.anchor);
-		if (space.background) then hide_image(space.background); end
+		if (valid_vid(space.background)) then
+			hide_image(space.background);
+		end
 	end
 end
 
@@ -2452,9 +2456,9 @@ local function tiler_rendertarget(wm, set)
 
 	local list = get_hier(wm.anchor);
 	if (set == true) then
-		wm.rtgt_id = alloc_surface(wm.width, wm.height);
+		wm.rtgt_id = alloc_surface(wm.width, wm.height, true);
 		image_tracetag(wm.rtgt_id, "tiler_rt");
-		local pitem = null_surface(32, 32); --workaround for rtgt restrction
+		local pitem = null_surface(32, 32); --workaround for rtgt restriction
 		image_tracetag(pitem, "rendertarget_placeholder");
 		define_rendertarget(wm.rtgt_id, {pitem});
 		for i,v in ipairs(list) do

@@ -135,8 +135,6 @@ shader_uniform(shdrtbl["clamp_black"].shid, "crop_opa",
 	"f", PERSIST, gconfig_get("term_opa"));
 
 function shader_setup(wnd, name)
-	print(debug.traceback());
-	print("setting shader:", wnd, name);
 	if (shdrtbl[name] == nil) then
 		return;
 	end

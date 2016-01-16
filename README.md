@@ -135,6 +135,7 @@ are being implemented, we have the following list:
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
+  - [ ] 'Sticky' Meta (meta press state persist n ticks)
   - [x] Drag Reposition/Resize in Float
   - [x] Double-Click Titlebar Maximize-Restore in Float
   - [x] Mouse-Hover Focus
@@ -194,7 +195,7 @@ are being implemented, we have the following list:
     - [ ] Base64 enc/dec
     - [ ] Shell escaped
     - [ ] Drop (pre+post or all) linefeeds
-  - [ ] Persistant pasteboard
+  - [ ] Persistant pasteboard (serialize to K/V store)
   - [ ] Streaming Text
   - [ ] Text Hash to Color on Copy (show in paste menu)
   - [ ] Special clipboard tracking for detected URLs
@@ -238,9 +239,10 @@ Extensions
 =====
 The above featureset mostly covers what would be useful from a tiling DE
 perspective, but given the relative minimal effort in adding features that
-would allow mimicking other DEs -- some extension scripts and support is
-planned but not currently implemented (likely to be drop:able into a
-plugins folder that globbed / scanned on load with some minimal hook api).
+would allow mimicking other DEs ('start' button, dock, control panel, ..)
+ -- some extension scripts and support is planned but not currently implemented
+(likely to be drop:able into a plugins folder that globbed / scanned on load
+With some minimal hook api).
 
 ### start button, popup, control panel
 traverse the window / target menus and convert to a popup- / settings
@@ -261,6 +263,14 @@ prelaunch for videos.
 ### desktop icons / shortcuts
 for float layouts, allow local icons and shortcuts to be added, similarly
 to how it already works in AWB.
+
+### configurable decorations
+Define sets of target-actions and icons that are added as buttons in the
+decoration
+
+### advanced keyboard - mouse navigation
+Use edge detection on window content and map key inputs to warp cursor between
+edges and center on continous regions (squares, circles)
 
 Repository
 =====

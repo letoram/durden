@@ -801,4 +801,5 @@ show_shmenu = function(wnd)
 	return launch_menu(active_display(), ctx, true, "Action:");
 end
 
+register_shared("paste_global", clipboard_paste);
 register_shared("target_actions", show_shmenu);

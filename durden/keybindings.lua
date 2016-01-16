@@ -50,8 +50,9 @@ function dispatch_reset(save)
 	tbl["m1_LEFT"] = "step_left";
 	tbl["m1_DOWN"] = "step_down";
 	tbl["m1_m2_d"] = "destroy";
-	tbl["m1_v"] = "mode_vertical";
-	tbl["m1_h"] = "mode_horizontal";
+	tbl["m1_m2_v"] = "mode_vertical";
+	tbl["m1_m2_h"] = "mode_horizontal";
+	tbl["m1_v"] = "clipboard_paste";
 	tbl["m1_m2_LEFT"] = "shrink_h";
 	tbl["m1_m2_RIGHT"] = "grow_h";
 	tbl["m1_m2_UP"] = "shrink_v";
@@ -95,6 +96,8 @@ function dispatch_reset(save)
 -- there is also input_ignore_on and input_ignore_off, these are
 -- not exposed as menus
 tbl["m1_m2_SYSREQ"] = "input_lock_toggle";
+tbl["m1_m2_INSERT"] = "input_lock_toggle";
+
 
 if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";
