@@ -827,6 +827,15 @@ function mouse_add_cursor(label, img, hs_x, hs_y)
 	};
 end
 
+function mouse_scale(factor)
+	if (not mouse.prescale) then
+		mouse.prescale = {
+		};
+	end
+	cursor.accel_x = mouse.prescale.ax * factor;
+	cursor.accel_y = mouse.prescale.ay * factor;
+end
+
 -- assumed: .vid(valid), .hotspot_x, .hotspot_y
 function mouse_custom_cursor(ct)
 	if (mstate.native) then
