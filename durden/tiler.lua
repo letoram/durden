@@ -898,7 +898,8 @@ local function set_tab(space)
 	local ofs = 0;
 
 	for k,v in ipairs(lst) do
-		v:resize_effective(space.wm.width, space.wm.client_height - tbar_sz);
+		v:resize_effective(space.wm.width,
+			space.wm.height - gconfig_get("sbar_sz") - tbar_sz);
 		move_image(v.anchor, 0, 0);
 		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
@@ -931,7 +932,8 @@ local function set_vtab(space)
 
 	local tbar_sz = gconfig_get("tbar_sz");
 	local ypos = #lst * tbar_sz;
-	local cl_area = space.wm.client_height - ypos - 2 * gconfig_get("borderw");
+	local cl_area = space.wm.height -
+		gconfig_get("sbar_sz") - ypos - 2 * gconfig_get("borderw");
 	if (cl_area < 1) then
 		return;
 	end
@@ -2431,10 +2433,11 @@ local function tiler_message(tiler, msg, timeout)
 	end
 end
 
-local function tiler_rebuild_border()
+local function tiler_rebuild_border(tiler)
 	local bw = gconfig_get("borderw");
 	build_shaders();
-	for v in all_windows() do
+
+	for i, v in ipairs(tiler.windows) do
 		local old_bw = v.border_w;
 		v.pad_left = v.pad_left - old_bw + bw;
 		v.pad_right = v.pad_right - old_bw + bw;
@@ -2455,8 +2458,11 @@ local function tiler_rendertarget(wm, set)
 	end
 
 	local list = get_hier(wm.anchor);
+
+-- the surface we use as rendertarget for compositioning will use the highest
+-- quality internal storage format, and disable the use of the alpha channel
 	if (set == true) then
-		wm.rtgt_id = alloc_surface(wm.width, wm.height, true);
+		wm.rtgt_id = alloc_surface(wm.width, wm.height, true, 1);
 		image_tracetag(wm.rtgt_id, "tiler_rt");
 		local pitem = null_surface(32, 32); --workaround for rtgt restriction
 		image_tracetag(pitem, "rendertarget_placeholder");
@@ -2505,15 +2511,9 @@ end
 
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
-	opts.font_sz = (opts.font_sz ~= nil) and opts.font_sz or 12;
-	opts.font = (opts.font ~= nil) and opts.font or "default.ttf";
-
-	local clh = height - opts.font_sz - 2;
-	assert(clh > 0);
 
 	local res = {
 -- null surfaces for clipping / moving / drawing
-		client_height = clh,
 		name = opts.name and opts.name or "default",
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),

@@ -1,12 +1,14 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
+--
 -- Description: The display- set of functions tracks connected displays
 -- and respond to plug/unplug events. They are also responsible for the
 -- creation of tiler- window managers and manual or automatic migration
 -- between window managers and their corresponding display.
 --
 
+local SIZE_UNIT = 38.4;
 local displays = {
 	simulate_md = false
 };
@@ -37,7 +39,7 @@ local function autohome_spaces(ndisp)
 	end
 end
 
-local function switch_active_display(ind)
+local function switch_active_display(ind, temporary)
 	if (displays[ind] == nil) then
 		return;
 	end
@@ -45,6 +47,13 @@ local function switch_active_display(ind)
 	if (valid_vid(displays[ind].rt)) then
 		set_context_attachment(displays[ind].rt);
 		mouse_querytarget(displays[ind].rt);
+	end
+
+	if (not temporary) then
+--		system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
+-- switch default font scaling options
+-- mouse_scale(displays[ind].sf);
+-- switch mouse scaling factor
 	end
 end
 
@@ -163,12 +172,11 @@ end
 
 function display_manager_init()
 	displays[1] = {
-		tiler = tiler_create(VRESW, VRESH, {sf = 1.0});
+		tiler = tiler_create(VRESW, VRESH, {scalef = VPPCM / SIZE_UNIT});
 		w = VRESW,
 		h = VRESH,
 		name = "default",
-		ppmm = VPPCM,
-		sf = 1.0
+		ppcm = VPPCM,
 	};
 
 	displays.simple = gconfig_get("display_simple");
@@ -242,8 +250,13 @@ local function redraw_simulate()
 	set_context_attachment(displays[displays.main].rt);
 end
 
-function display_override_density(id, ppcm)
+function display_override_density(name, ppcm)
+	local disp = get_disp(name);
+	if (not disp) then
+		return;
+	end
 
+	disp.ppcm = ppcm;
 end
 
 function display_add(name, width, height, ppcm)
@@ -258,7 +271,9 @@ function display_add(name, width, height, ppcm)
 		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
-		local nd = {tiler = tiler_create(width, height, {name = name})};
+		local nd = {tiler = tiler_create(width, height,
+			{name = name, scalef = ppcm / SIZE_UNIT}
+		)};
 		table.insert(displays, nd);
 		nd.w = width;
 		nd.h = height;
@@ -467,7 +482,7 @@ function all_spaces_iter()
 	end
 end
 
-function all_windows(atype)
+function all_windows(tiler, atype)
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
@@ -483,13 +498,13 @@ function all_windows(atype)
 		i = i + 1;
 		while (i <= c) do
 			if (not atype or (atype and tbl[i][2].atype == atype)) then
-				switch_active_display(tbl[i][1]);
+				switch_active_display(tbl[i][1], true);
 				return tbl[i][2];
 			else
 				i = i + 1;
 			end
 		end
-		switch_active_display(save);
+		switch_active_display(save, true);
 		return nil;
 	end
 end
