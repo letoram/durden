@@ -101,48 +101,48 @@ local function build_shaders()
 	local bw = gconfig_get("borderw");
 	local bt = bw - gconfig_get("bordert");
 	local a = build_shader(nil, border_shader, "border_act");
-	shader_uniform(a, "border", "f", PERSIST, bw);
-	shader_uniform(a, "thickness", "f", PERSIST, bt);
+	shader_uniform(a, "border", "f", bw);
+	shader_uniform(a, "thickness", "f", bt);
 
 	a = build_shader(nil, border_shader, "border_inact");
-	shader_uniform(a, "border", "f", PERSIST, bw);
-	shader_uniform(a, "thickness", "f", PERSIST, bt);
+	shader_uniform(a, "border", "f", bw);
+	shader_uniform(a, "thickness", "f", bt);
 
 	a = build_shader(nil, tile_shader, "tile_act");
 	local col = gconfig_get("pcol_act_border");
-	shader_uniform(a, "col_border", "fff", PERSIST,
+	shader_uniform(a, "col_border", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pcol_act_bg");
-	shader_uniform(a, "col_bg", "fff", PERSIST,
+	shader_uniform(a, "col_bg", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", PERSIST, 1);
+	shader_uniform(a, "border", "f", 1);
 
 	a = build_shader(nil, tile_shader, "tile_alert");
 	col = gconfig_get("tcol_alert_border");
-	shader_uniform(a, "col_border", "fff", PERSIST,
+	shader_uniform(a, "col_border", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("tcol_alert");
-	shader_uniform(a, "col_bg", "fff", PERSIST,
+	shader_uniform(a, "col_bg", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 
 	a = build_shader(nil, tile_shader, "tile_inact");
 	col = gconfig_get("pcol_bg");
-	shader_uniform(a, "col_bg", "fff", PERSIST,
+	shader_uniform(a, "col_bg", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pcol_border");
-	shader_uniform(a, "col_border", "fff", PERSIST,
+	shader_uniform(a, "col_border", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", PERSIST, 1);
+	shader_uniform(a, "border", "f", 1);
 
 	a = build_shader(nil, sbar_shader, "sbar_item");
 	a = build_shader(nil, tile_shader, "pretile");
 	col = gconfig_get("pretile_bg");
-	shader_uniform(a, "col_bg", "fff", PERSIST,
+	shader_uniform(a, "col_bg", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
 	col = gconfig_get("pretile_border");
-	shader_uniform(a, "col_border", "fff", PERSIST,
+	shader_uniform(a, "col_border", "fff",
 		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", PERSIST, 1);
+	shader_uniform(a, "border", "f", 1);
 
 	a = build_shader(nil, tbar_inact_shader, "tbar_inact");
 end
@@ -2436,8 +2436,10 @@ end
 local function tiler_rebuild_border(tiler)
 	local bw = gconfig_get("borderw");
 	build_shaders();
-
-	for i, v in ipairs(tiler.windows) do
+	if (tiler == nil) then
+		print(debug.traceback());
+	end
+	for i,v in ipairs(tiler.windows) do
 		local old_bw = v.border_w;
 		v.pad_left = v.pad_left - old_bw + bw;
 		v.pad_right = v.pad_right - old_bw + bw;
