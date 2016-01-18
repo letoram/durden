@@ -216,8 +216,10 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
+  - [ ] Change orientation (vertical / horizontal)
   - [ ] Respect display DPI and use cm as size measurements
-  - [ ] Power Management Controls (+ auto-DPMS)
+  - [x] Power Management Controls
+  - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
   - [ ] Redshift Color Temperature

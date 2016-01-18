@@ -108,6 +108,14 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		submenu = true,
 		handler = function() return query_dispmenu(disp.id); end
+		},
+		{
+		name = "display_mapping",
+		label = "Orientation",
+		kind = "action",
+		eval = function() return gconfig_get("display_simple") == false; end,
+		submenu = true,
+		handler = orientation_menu
 		}
 	};
 end
@@ -128,8 +136,6 @@ local function query_displays()
 	return res;
 end
 
--- DPMS toggle (force-on, force-off, toggle) / all or individual
--- ICC Profile (one, all)
 local display_menu = {
 	{
 		name = "display_rescan",
@@ -805,7 +811,7 @@ local durden_visual = {
 		handler = function(ctx, val)
 			local num = tonumber(val);
 			gconfig_set("bordert", tonumber(val));
-			active_display().rebuild_border();
+			active_display():rebuild_border();
 			for k,v in pairs(active_display().spaces) do
 				v:resize();
 			end
@@ -820,7 +826,7 @@ local durden_visual = {
 		validator = gen_valid_num(0, 20),
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
-			active_display().rebuild_border();
+			active_display():rebuild_border();
 			for k,v in pairs(active_display().spaces) do
 				v:resize();
 			end

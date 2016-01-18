@@ -13,6 +13,22 @@ local displays = {
 	simulate_md = false
 };
 
+-- arcan does not expose display gamma ramps or DRM/KMS- like interface
+-- to adjustning gamming, so for the moment we do this basic correction
+-- here and later expand with support for daltonization, ICC, profiles.
+local frag_dispcorr = [[
+uniform sampler2D map_tu0;
+uniform vec3 gamma_exp;
+varying vec2 texco;
+
+void main(){
+	vec3 col = pow(texture2D(map_tu0, texco).rgb, 1.0 / gamma_exp);
+	gl_FragColor = vec4(col, 1.0);
+}
+]];
+local corr_shid = build_shader(nil, frag_dispcorr, "color_correction");
+shader_uniform(corr_shid, "gamma_exp", "fff", 2.2, 2.2, 2.2);
+
 local function get_disp(name)
 	local found, foundi;
 	for k,v in ipairs(displays) do
@@ -153,11 +169,11 @@ function durden_display_state(action, id)
 -- default display is treated differently
 		local ddisp = {name = name, id = id, ppcm = ppcm, subpx = subpx};
 		if (id == 0) then
-			map_video_display(displays[1].rt, 0, HINT_NONE);
+			map_video_display(displays[1].rt, 0, displays[1].maphint);
 			ddisp.primary = true;
 		else
 			local disp = display_add(name, dw, dh, ppcm);
-			map_video_display(disp.rt, id, HINT_NONE);
+			map_video_display(disp.rt, id, 0, displays[1].maphint);
 			ddisp.primary = false;
 		end
 		known_dispids[id+1] = ddisp;
@@ -183,8 +199,13 @@ function display_manager_init()
 	displays.main = 1;
 	displays[1].tiler.name = "default";
 
+-- simple mode does not permit us to do much of the fun stuff, like different
+-- color etc. correction shaders or rotate/fit/...
 	if (not displays.simple) then
 		displays[1].rt = displays[1].tiler:set_rendertarget(true);
+		displays[1].maphint = HINT_NONE;
+		image_shader(displays[1].rt, corr_shid);
+
 		set_context_attachment(displays[1].rt);
 		mouse_querytarget(displays[1].rt);
 		show_image(displays[1].rt);
@@ -271,16 +292,20 @@ function display_add(name, width, height, ppcm)
 		image_resize_storage(found.rt, found.w, found.h);
 	else
 		set_context_attachment(WORLDID);
-		local nd = {tiler = tiler_create(width, height,
-			{name = name, scalef = ppcm / SIZE_UNIT}
-		)};
+		local nd = {
+			tiler = tiler_create(width, height, {name=name, scalef=ppcm/SIZE_UNIT}),
+			w = width,
+			h = height,
+			name = name,
+			maphint = HINT_NONE
+		};
 		table.insert(displays, nd);
-		nd.w = width;
-		nd.h = height;
-		nd.name = name;
 		nd.tiler.name = name;
 		nd.ind = #displays;
+
+-- this will rebuild tiler with all its little things attached to rt
 		nd.rt = nd.tiler:set_rendertarget(true);
+
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
 		show_image(nd.rt);
@@ -353,7 +378,7 @@ function display_ressw(id, mode)
 	switch_active_display(v.ind);
 	video_displaymodes(id, mode.modeid);
 	v.display.tiler:resize(mode.width, mode.height);
-	map_video_display(v.display.rt, id, HINT_FIT);
+	map_video_display(v.display.rt, id, v.maphint);
 	switch_active_display(save);
 end
 
