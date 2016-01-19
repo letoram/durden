@@ -35,7 +35,7 @@ local defaults = {
 -- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.
-	display_simple = true,
+	display_simple = false,
 
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out

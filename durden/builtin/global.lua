@@ -82,6 +82,20 @@ local function query_dispmenu(ind)
 	end
 end
 
+local function orientation_menu(name)
+	return {
+		{
+			name = "disp_orent_toggle_hv",
+			eval = function() return gconfig_get("display_simple") == false; end,
+			label = "Toggle H/V",
+			kind = "action",
+			handler = function()
+				display_reorient(name);
+			end
+		}
+	};
+end
+
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -115,7 +129,7 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		eval = function() return gconfig_get("display_simple") == false; end,
 		submenu = true,
-		handler = orientation_menu
+		handler = function() return orientation_menu(disp.name); end
 		}
 	};
 end

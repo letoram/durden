@@ -492,6 +492,15 @@ local function lbar_fun(ctx, instr, done, lastv)
 	return {set = res, valid = false};
 end
 
+function shared_valid01_float(inv)
+	if (string.len(inv) == 0) then
+		return true;
+	end
+
+	local val = tonumber(inv);
+	return val and (val >= 0.0 and val <= 1.0) or false;
+end
+
 function gen_valid_num(lb, ub)
 	return function(val)
 		if (string.len(val) == 0) then
