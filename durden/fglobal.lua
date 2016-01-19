@@ -235,6 +235,9 @@ end
 sf["wnd_tobg"] = function(wnd)
 	local disp = active_display();
 	local space = disp.spaces[disp.space_ind];
+	if (valid_vid(wnd.external)) then
+		wnd.dispstat_block = true;
+	end
 	space:set_background(wnd.canvas);
 end
 

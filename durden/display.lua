@@ -55,22 +55,24 @@ local function autohome_spaces(ndisp)
 	end
 end
 
-local function switch_active_display(ind, temporary)
-	if (displays[ind] == nil) then
+local function run_display_action(disp, cb)
+	local save = displays.main;
+	set_context_attachment(disp.rt);
+	cb();
+	set_context_attachment(displays[save].rt);
+end
+
+local function switch_active_display(ind)
+	if (displays[ind] == nil or not valid_vid(displays[ind].rt)) then
 		return;
 	end
 
-	if (valid_vid(displays[ind].rt)) then
-		set_context_attachment(displays[ind].rt);
-		mouse_querytarget(displays[ind].rt);
-	end
-
-	if (not temporary) then
---		system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
--- switch default font scaling options
+	displays.main = ind;
+	set_context_attachment(displays[ind].rt);
+	mouse_querytarget(displays[ind].rt);
+-- system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
 -- mouse_scale(displays[ind].sf);
 -- switch mouse scaling factor
-	end
 end
 
 local function display_data(id)
@@ -167,15 +169,20 @@ function durden_display_state(action, id)
 		end
 
 -- default display is treated differently
-		local ddisp = {name = name, id = id, ppcm = ppcm, subpx = subpx};
+		local ddisp;
 		if (id == 0) then
 			map_video_display(displays[1].rt, 0, displays[1].maphint);
+			ddisp = displays[1];
+			ddisp.id = 0;
 			ddisp.primary = true;
 		else
-			local disp = display_add(name, dw, dh, ppcm);
+			ddisp = display_add(name, dw, dh, ppcm);
+			ddisp.id = id;
 			map_video_display(disp.rt, id, 0, displays[1].maphint);
 			ddisp.primary = false;
 		end
+		ddisp.ppcm = ppcm;
+		ddisp.subpx = subpx;
 		known_dispids[id+1] = ddisp;
 
 -- remove on a previous display is more like tagging it as orphan
@@ -204,11 +211,9 @@ function display_manager_init()
 	if (not displays.simple) then
 		displays[1].rt = displays[1].tiler:set_rendertarget(true);
 		displays[1].maphint = HINT_NONE;
-		image_shader(displays[1].rt, corr_shid);
-
-		set_context_attachment(displays[1].rt);
-		mouse_querytarget(displays[1].rt);
 		show_image(displays[1].rt);
+		image_shader(displays[1].rt, corr_shid);
+		switch_active_display(1);
 	end
 end
 
@@ -374,12 +379,11 @@ function display_ressw(id, mode)
 		return;
 	end
 
-	local save = displays.main;
-	switch_active_display(v.ind);
-	video_displaymodes(id, mode.modeid);
-	v.display.tiler:resize(mode.width, mode.height);
-	map_video_display(v.display.rt, id, v.maphint);
-	switch_active_display(save);
+	run_display_action(displays[id], function()
+		video_displaymodes(id, mode.modeid);
+		v.display.tiler:resize(mode.width, mode.height);
+		map_video_display(v.display.rt, v.id, v.maphint);
+	end);
 end
 
 -- should only be used for debugging, disables normal multidisplay
@@ -395,7 +399,6 @@ function display_cycle_active()
 	until (nd == displays.main or not displays[nd].orphan);
 
 	switch_active_display(nd);
-	displays.main = nd;
 	redraw_simulate();
 end
 
@@ -418,6 +421,35 @@ function display_migrate_ws(disp, dstname)
 	if (#disp.spaces[disp.space_ind].children > 0) then
 		disp.spaces[disp.space_ind]:migrate(dsp2.tiler);
 	end
+end
+
+function display_reorient(name, hint)
+	if (displays.simple) then
+		return;
+	end
+
+	local disp = get_disp(name);
+	if (not disp) then
+		warning("display_reorient on missing display:" .. tostring(name));
+		return;
+	end
+	local cp = image_storage_properties(disp.rt);
+
+	if (hint ~= nil) then
+		disp.maphint = hint;
+	else
+		if (hint == HINT_ROTATE_CW_90 or hint == HINT_ROTATE_CCW_90) then
+			disp.maphint = HINT_NONE;
+		else
+			disp.maphint = HINT_ROTATE_CW_90;
+		end
+	end
+
+	local neww = cp.height;
+	local newh = cp.width;
+
+	disp.tiler:resize(neww, newh);
+	map_video_display(disp.rt, disp.id, disp.maphint);
 end
 
 function display_share(args, recfn)
@@ -461,8 +493,11 @@ local function save_active_display()
 	return displays.main;
 end
 
--- don't BREAK out of these, as that would leave the context
--- attachment in a bad / broken state
+--
+-- These iterators are primarily for archetype handlers and similar where we
+-- need "all windows regardless of display".  Don't break- out of this or
+-- things may get the wrong attachment later.
+--
 function all_displays_iter()
 	local tbl = {};
 	for i,v in ipairs(displays) do
@@ -523,13 +558,13 @@ function all_windows(tiler, atype)
 		i = i + 1;
 		while (i <= c) do
 			if (not atype or (atype and tbl[i][2].atype == atype)) then
-				switch_active_display(tbl[i][1], true);
+				switch_active_display(tbl[i][1]);
 				return tbl[i][2];
 			else
 				i = i + 1;
 			end
 		end
-		switch_active_display(save, true);
+		switch_active_display(save);
 		return nil;
 	end
 end

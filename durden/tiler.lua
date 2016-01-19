@@ -279,6 +279,11 @@ local function wnd_deselect(wnd)
 		mouse_lockto(BADID);
 	end
 
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
+		not wnd.dispstat_block) then
+		target_displayhint(wnd.external, 0, 0, TD_HINT_UNFOCUSED);
+	end
+
 	local x, y = mouse_xy();
 	if (image_hit(wnd.canvas, x, y) and wnd.cursor == "hidden") then
 		mouse_show();
@@ -535,6 +540,11 @@ local function wnd_select(wnd, source)
 		return;
 	end
 
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
+		not wnd.dispstat_block) then
+		target_displayhint(wnd.external, 0, 0, 0); -- reset to default state
+	end
+
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
 	end
@@ -627,6 +637,16 @@ local function workspace_activate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_in");
 
+-- wake any sleeping windows up
+	for k,v in ipairs(space.wm.windows) do
+		if (v.space == space and valid_vid(v.external, TYPE_FRAMESERVER) and
+			not v.dispstat_block) then
+			target_displayhint(v.external, 0, 0, space.selected ~= v and
+				bit.band(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE) or
+				TD_HINT_INVISIBLE);
+		end
+	end
+
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
@@ -668,9 +688,19 @@ local function workspace_activate(space, noanim, negdir, newbg)
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
-local function workspace_inactivate(space, noanim, negdir, newbg)
+local function workspace_deactivate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_out");
+
+-- notify windows that they can take things slow
+	for k,v in ipairs(space.wm.windows) do
+		if (v.space == space and valid_vid(v.external, TYPE_FRAMESERVER) and
+			not v.dispstat_block) then
+			target_displayhint(v.external, 0, 0, space.selected ~= v and
+				bit.band(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE) or
+				TD_HINT_INVISIBLE);
+		end
+	end
 
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
@@ -733,7 +763,7 @@ local function workspace_migrate(ws, newt)
 	end
 
 -- add/remove from corresponding tilers, update status bars
-	workspace_inactivate(ws, true);
+	workspace_deactivate(ws, true);
 	ws.wm = newt;
 	rendertarget_attach(newt.rtgt_id, ws.anchor, RENDERTARGET_DETACH);
 	link_image(ws.anchor, newt.anchor);
@@ -792,7 +822,7 @@ local function switch_tab(space, to, ndir)
 		for k,v in ipairs(wnds) do
 			show_image(v.anchor);
 		end
-		workspace_inactivate(space, false, ndir);
+		workspace_deactivate(space, false, ndir);
 	end
 end
 
@@ -811,7 +841,7 @@ local function switch_fullscreen(space, to, ndir)
 		show_image(space.selected.anchor);
 	else
 		show_image(space.wm.statusbar);
-		workspace_inactivate(space, false, ndir);
+		workspace_deactivate(space, false, ndir);
 	end
 end
 
@@ -1176,7 +1206,7 @@ end
 create_workspace = function(wm, anim)
 	local res = {
 		activate = workspace_activate,
-		inactivate = workspace_inactivate,
+		deactivate = workspace_deactivate,
 		resize = workspace_resize,
 		destroy = workspace_destroy,
 		migrate = workspace_migrate,
@@ -1511,7 +1541,7 @@ local function wnd_reassign(wnd, ind, ninv)
 		newspace.selected = wnd;
 		newspace:resize();
 		if (not ninv) then
-			newspace:inactivate(true);
+			newspace:deactivate(true);
 		end
 	end
 
@@ -2232,7 +2262,7 @@ local function tiler_switchws(wm, ind)
 	if (cursp.switch_hook) then
 		cursp:switch_hook(false, nd);
 	else
-		workspace_inactivate(cursp, false, nd, nextsp and nextsp.background or nil);
+		workspace_deactivate(cursp, false, nd, nextsp and nextsp.background or nil);
 	end
 
 -- policy, don't autodelete if the user has made some kind of customization
@@ -2502,8 +2532,8 @@ end
 local function tiler_resize(tiler, neww, newh)
 	tiler.width = neww;
 	tiler.height = newh;
-	if (valid_vid(tiler.rt)) then
-		image_resize_storage(tiler.rt, neww, newh);
+	if (valid_vid(tiler.rtgt_id)) then
+		image_resize_storage(tiler.rtgt_id, neww, newh);
 	end
 	for k,v in pairs(tiler.spaces) do
 		v:resize(neww, newh);
