@@ -1576,7 +1576,7 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (wnd.space.mode == "float") then
-		wnd:resize(wnd.width + (VRESW * w), wnd.height + (VRESH * h));
+		wnd:resize(wnd.width + (wnd.wm.width*w), wnd.height + (wnd.wm.height*h));
 		return;
 	end
 

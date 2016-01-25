@@ -175,7 +175,7 @@ function(wnd, source, stat)
 	end
 
 -- can either be table [tgt, cfg] or [guid]
-	if (not wnd.config_tgt and stat.guid > 0) then
+	if (not wnd.config_tgt) then
 		wnd.config_tgt = stat.guid;
 	end
 

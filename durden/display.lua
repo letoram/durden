@@ -178,7 +178,7 @@ function durden_display_state(action, id)
 		else
 			ddisp = display_add(name, dw, dh, ppcm);
 			ddisp.id = id;
-			map_video_display(disp.rt, id, 0, displays[1].maphint);
+			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
 			ddisp.primary = false;
 		end
 		ddisp.ppcm = ppcm;
@@ -372,17 +372,17 @@ function display_remove(name)
 	redraw_simulate();
 end
 
-function display_ressw(id, mode)
-	local v = known_dispids[id+1];
-	if (not v) then
+function display_ressw(name, mode)
+	local disp = get_disp(name);
+	if (not disp) then
 		warning("display_ressww(), invalid display reference");
 		return;
 	end
 
-	run_display_action(displays[id], function()
-		video_displaymodes(id, mode.modeid);
-		v.display.tiler:resize(mode.width, mode.height);
-		map_video_display(v.display.rt, v.id, v.maphint);
+	run_display_action(disp, function()
+		video_displaymodes(disp.id, mode.modeid);
+		disp.tiler:resize(mode.width, mode.height);
+		map_video_display(disp.rt, disp.id, disp.maphint);
 	end);
 end
 
@@ -433,23 +433,30 @@ function display_reorient(name, hint)
 		warning("display_reorient on missing display:" .. tostring(name));
 		return;
 	end
-	local cp = image_storage_properties(disp.rt);
 
 	if (hint ~= nil) then
 		disp.maphint = hint;
 	else
-		if (hint == HINT_ROTATE_CW_90 or hint == HINT_ROTATE_CCW_90) then
+		if (disp.maphint == HINT_ROTATE_CW_90 or
+			disp.maphint == HINT_ROTATE_CCW_90) then
 			disp.maphint = HINT_NONE;
 		else
 			disp.maphint = HINT_ROTATE_CW_90;
 		end
 	end
 
-	local neww = cp.height;
-	local newh = cp.width;
+	local neww = disp.w;
+	local newh = disp.h;
+	if (disp.maphint == HINT_ROTATE_CW_90 or
+		disp.maphint == HINT_ROTATE_CCW_90) then
+		neww = disp.h;
+		newh = disp.w;
+	end
 
-	disp.tiler:resize(neww, newh);
-	map_video_display(disp.rt, disp.id, disp.maphint);
+	run_display_action(disp, function()
+		disp.tiler:resize(neww, newh);
+		map_video_display(disp.rt, disp.id, disp.maphint);
+	end);
 end
 
 function display_share(args, recfn)

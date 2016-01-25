@@ -74,7 +74,7 @@ local function query_dispmenu(ind)
 					label = string.format("%d*%d, %d bits @%d Hz",
 						v.width, v.height, v.depth, v.refresh),
 					kind = "action",
-					handler = function() display_ressw(ind, v); end
+					handler = function() display_ressw(v.name, v); end
 				});
 			end
 		end
