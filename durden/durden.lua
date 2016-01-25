@@ -170,7 +170,7 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 			if (not wnd.sz_delta or
 				(math.abs(props.width - neww) > wnd.sz_delta.width or
 			   math.abs(props.height - newh) > wnd.sz_delta.height)) then
-				target_displayhint(wnd.external, neww, newh);
+				target_displayhint(wnd.external, neww, newh, wnd.dispmask);
 			end
 		end
 
