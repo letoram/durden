@@ -279,10 +279,7 @@ local function wnd_deselect(wnd)
 		mouse_lockto(BADID);
 	end
 
-	if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
-		not wnd.dispstat_block) then
-		target_displayhint(wnd.external, 0, 0, TD_HINT_UNFOCUSED);
-	end
+	wnd:set_dispmask(bit.bor(wnd.dispmask, TD_HINT_UNFOCUSED));
 
 	local x, y = mouse_xy();
 	if (image_hit(wnd.canvas, x, y) and wnd.cursor == "hidden") then
@@ -540,10 +537,8 @@ local function wnd_select(wnd, source)
 		return;
 	end
 
-	if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
-		not wnd.dispstat_block) then
-		target_displayhint(wnd.external, 0, 0, 0); -- reset to default state
-	end
+	wnd:set_dispmask(bit.band(wnd.dispmask,
+		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
 	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
@@ -637,13 +632,15 @@ local function workspace_activate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_in");
 
--- wake any sleeping windows up
+-- wake any sleeping windows up and make sure it knows it if is selected or not
 	for k,v in ipairs(space.wm.windows) do
-		if (v.space == space and valid_vid(v.external, TYPE_FRAMESERVER) and
-			not v.dispstat_block) then
-			target_displayhint(v.external, 0, 0, space.selected ~= v and
-				bit.band(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE) or
-				TD_HINT_INVISIBLE);
+		if (v.space == space) then
+			v:set_dispmask(bit.band(v.dispmask, bit.bnot(TD_HINT_INVISIBLE)), true);
+			if (space.selected ~= v) then
+				v:set_dispmask(bit.bor(v.dispmask, TD_HINT_UNFOCUSED));
+			else
+				v:set_dispmask(bit.band(v.dispmask, bit.bnot(TD_HINT_UNFOCUSED)));
+			end
 		end
 	end
 
@@ -694,11 +691,11 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 
 -- notify windows that they can take things slow
 	for k,v in ipairs(space.wm.windows) do
-		if (v.space == space and valid_vid(v.external, TYPE_FRAMESERVER) and
-			not v.dispstat_block) then
-			target_displayhint(v.external, 0, 0, space.selected ~= v and
-				bit.band(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE) or
-				TD_HINT_INVISIBLE);
+		if (v.space == space) then
+			if (valid_vid(v.external, TYPE_FRAMESERVER)) then
+				v:set_dispmask(bit.bor(v.dispmask, TD_HINT_INVISIBLE));
+				target_displayhint(v.external, 0, 0, v.dispmask);
+			end
 		end
 	end
 
@@ -2001,6 +1998,13 @@ local function wnd_addhandler(wnd, ev, fun)
 	table.insert(wnd.handlers[ev], fun);
 end
 
+local function wnd_dispmask(wnd, val, noflush)
+	wnd.dispmask = val;
+	if (not noflush and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_displayhint(wnd.external, 0, 0, wnd.dispmask);
+	end
+end
+
 local function wnd_migrate(wnd, tiler)
 	if (tiler == wnd.wm) then
 		return;
@@ -2088,6 +2092,7 @@ local function wnd_create(wm, source, opts)
 			select = {},
 			deselect = {}
 		},
+		dispmask = 0,
 		pad_left = bw,
 		pad_right = bw,
 		pad_top = bw,
@@ -2113,6 +2118,7 @@ local function wnd_create(wm, source, opts)
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		add_handler = wnd_addhandler,
+		set_dispmask = wnd_dispmask,
 		update_font = wnd_font,
 		resize = wnd_resize,
 		migrate = wnd_migrate,
