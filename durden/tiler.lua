@@ -1041,7 +1041,7 @@ end
 local function set_tile(space)
 	show_image(space.wm.statusbar);
 	level_resize(space, 0, 0, space.wm.width,
-		space.wm.height - gconfig_get("sbar_sz") - 1);
+		space.wm.height - gconfig_get("sbar_sz"));
 end
 
 local space_handlers = {
@@ -1965,8 +1965,8 @@ local function add_mousehandler(wnd)
 	wnd.mouse_handler = mh;
 	mh.wnd = wnd;
 	mouse_addlistener(mh, {
-		"button", "hover","motion",
-		"click", "press","drop", "dblclick",
+		"button", "hover", "motion",
+		"click", "press", "drop", "dblclick",
 		"drag","over","out"
 	});
 end
