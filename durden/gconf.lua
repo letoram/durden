@@ -21,6 +21,7 @@ local defaults = {
 	font_def = "default.ttf",
 	font_sz = 12,
 	font_hint = 1,
+	font_defsf = 1, -- recalculated on font update
 	font_str = "",
 	text_color = "\\#aaaaaa",
 	label_color = "\\#ffff00",

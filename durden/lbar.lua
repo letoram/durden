@@ -1,8 +1,13 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: lbar- is an input dialog- style bar intended for
--- durden that supports some completion as well.
+-- Description: lbar- is an input dialog- style bar intended for durden that
+-- supports some completion as well. It is somewhat messy as it grew without a
+-- real idea of what it was useful for then turned out to become really
+-- important. Missing support for using the vast regions of empty space for
+-- showing preview- information and other selection structures (graphs etc.)
+-- then a good cleanup...
+--
 
 local function inp_str(ictx, ul)
 	return {gconfig_get("lbar_textstr"), ictx.inp.view_str()};
@@ -109,13 +114,15 @@ local function update_completion_set(wm, ctx, set)
 		ctx.cofs = 1;
 	end
 
+-- very very messy positioning, relinking etc
 	local regw = image_surface_properties(ctx.text_anchor).width;
 	local step = math.ceil(0.5 + regw / 3);
 	local ctxw = 2 * step;
 	local textw = valid_vid(ctx.text) and (
 		image_surface_properties(ctx.text).width) or ctxw;
+	local lbarsz = gconfig_get("lbar_sz");
 
-	ctx.canchor = null_surface(wm.width, gconfig_get("lbar_sz"));
+	ctx.canchor = null_surface(wm.width, lbarsz);
 	image_tracetag(ctx.canchor, "lbar_anchor");
 
 	move_image(ctx.canchor, step, 0);
@@ -162,11 +169,10 @@ local function update_completion_set(wm, ctx, set)
 			exit = true;
 		end
 
-		local txt = render_text(str and str or (
-			#msgs > 0 and msgs or ""));
+		local txt, lines, txt_w, txt_h = render_text(
+			str and str or (#msgs > 0 and msgs or ""));
 
 		image_tracetag(txt, "lbar_text" ..tostring(i));
-		local cp = image_surface_properties(txt);
 		link_image(ctx.canchor, ctx.text_anchor);
 		link_image(txt, ctx.canchor);
 		link_image(ctx.ccursor, ctx.canchor);
@@ -176,6 +182,10 @@ local function update_completion_set(wm, ctx, set)
 		order_image(txt, 2);
 		order_image(ctx.ccursor, 1);
 		image_clip_on(txt, CLIP_SHALLOW);
+
+-- try to avoid very long items from overflowing their slot,
+-- should "pop up" a copy when selected instead where the full
+-- name is shown
 		if (crop) then
 			crop_image(txt, w, h);
 		end
@@ -186,7 +196,7 @@ local function update_completion_set(wm, ctx, set)
 			own = function(ctx, vid) return vid == txt; end,
 			motion = function(mctx)
 				ctx.csel = i;
-				resize_image(ctx.ccursor, cp.width, gconfig_get("lbar_sz"));
+				resize_image(ctx.ccursor, txt_w, lbarsz);
 				move_image(ctx.ccursor, mctx.mofs, 0);
 			end,
 			click = function()
@@ -200,14 +210,13 @@ local function update_completion_set(wm, ctx, set)
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
-		local padsz = gconfig_get("lbar_pad");
 		if (i == ctx.csel) then
-			move_image(ctx.ccursor, ofs, padsz);
-			resize_image(ctx.ccursor, cp.width, gconfig_get("lbar_sz") - padsz);
+			move_image(ctx.ccursor, ofs, 0);
+			resize_image(ctx.ccursor, txt_w, lbarsz);
 		end
 
-		move_image(txt, ofs, padsz);
-		ofs = ofs + (crop and w or cp.width) + gconfig_get("lbar_itemspace");
+		move_image(txt, ofs, 0.5 * (lbarsz - active_display().font_sf * txt_h));
+		ofs = ofs + (crop and w or txt_w) + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
 			ctx.clim = i-1;
@@ -229,12 +238,15 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		if (valid_vid(ictx.text)) then
 			ictx.text = render_text(ictx.text, inp_str(ictx));
 		else
-			ictx.text = render_text(inp_str(ictx));
+			local tvid, heights, textw, texth = render_text(inp_str(ictx));
+			ictx.text = tvid;
 			image_tracetag(ictx.text, "lbar_inpstr");
 			show_image(ictx.text);
 			link_image(ictx.text, ictx.text_anchor);
 			image_inherit_order(ictx.text, true);
-			move_image(ictx.text, ictx.textofs, gconfig_get("lbar_pad"));
+			texth = texth * active_display().font_sf;
+			move_image(ictx.text, ictx.textofs, math.ceil(
+				0.5*(gconfig_get("lbar_sz") - texth)));
 		end
 	end
 
@@ -314,21 +326,24 @@ local function lbar_label(lbar, lbl)
 		end
 	end
 
-	lbar.labelid = render_text(gconfig_get("lbar_labelstr")..lbl);
+	local id, lines, w, h = render_text(gconfig_get("lbar_labelstr")..lbl);
+	lbar.labelid = id;
 	if (not valid_vid(lbar.labelid)) then
 		return;
 	end
 
-	image_tracetag(lbar.labelid, "lbar_labelstr");
-	show_image(lbar.labelid);
-	link_image(lbar.labelid, lbar.text_anchor);
-	image_inherit_order(lbar.labelid, true);
-	order_image(lbar.labelid, 1);
+	image_tracetag(id, "lbar_labelstr");
+	show_image(id);
+	link_image(id, lbar.text_anchor);
+	image_inherit_order(id, true);
+	order_image(id, 1);
 
+	local sf = active_display().font_sf;
+	local pad = gconfig_get("lbar_pad");
+	local sz = gconfig_get("lbar_sz");
 -- relinking / delinking on changes every time
-	local props = image_surface_properties(lbar.labelid);
-	move_image(lbar.labelid, 1, 1);
-	lbar.textofs = props.width + gconfig_get("lbar_sz") + 1;
+	move_image(lbar.labelid, pad, math.ceil(0.5 * (sz - sf * h)));
+	lbar.textofs = w + sz + pad;
 	update_caret(lbar);
 end
 
@@ -401,7 +416,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	show_image(car);
 	image_inherit_order(car, true);
 	link_image(car, bar);
-	local carety = gconfig_get("lbar_sz") - gconfig_get("lbar_caret_h");
+	local carety = gconfig_get("lbar_pad");
 
 	local pos = gconfig_get("lbar_position");
 	if (pos == "bottom") then

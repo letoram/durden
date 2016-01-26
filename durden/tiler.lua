@@ -306,9 +306,10 @@ local function wnd_deselect(wnd)
 end
 
 local function gen_status_tile(wm, lbl, min_sz, ofs)
-	local text = render_text(lbl);
+	local text, lines, width, height = render_text(lbl);
+	height = height * wm.font_sf;
 	local props = image_surface_properties(text);
-	local yp = gconfig_get("sbar_pad") + math.floor(0.5 * (min_sz - props.height));
+	local yp = gconfig_get("sbar_pad") + math.floor(0.5 * (min_sz - height));
 
 	if (props.width < min_sz) then
 		move_image(text, math.floor(0.5*(min_sz - props.width)), yp);
@@ -453,12 +454,14 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		if (valid_vid(wm.statusbar_msg)) then
 			render_text(wm.statusbar_msg, text);
 		else
-			wm.statusbar_msg = render_text(text);
-			show_image(wm.statusbar_msg);
-			image_inherit_order(wm.statusbar_msg, true);
-			link_image(wm.statusbar_msg, wm.statusbar);
-			image_shader(wm.statusbar_msg, "sbar_item");
-			move_image(wm.statusbar_msg, ofs, 1);
+			local vid, lines, w, h = render_text(text);
+			wm.statusbar_msg = vid;
+			show_image(vid);
+			image_inherit_order(vid, true);
+			link_image(vid, wm.statusbar);
+			image_shader(vid, "sbar_item");
+			move_image(vid, ofs, math.floor(0.5 * (
+				gconfig_get("sbar_sz") - h * wm.font_sf)));
 		end
 
 		if (timeout and timeout > 0 and valid_vid(wm.statusbar_msg)) then
@@ -1648,7 +1651,7 @@ local function wnd_title(wnd, message)
 	image_inherit_order(message, 1);
 
 	local yp = math.floor(0.5 * (gconfig_get("tbar_sz") -
-		image_surface_properties(message).height));
+		image_surface_properties(message).height * wnd.wm.font_sf));
 
 	local pad = gconfig_get("tbar_pad");
 	move_image(message, pad, pad + yp);
@@ -2558,6 +2561,14 @@ function tiler_create(width, height, opts)
 		statusbar = color_surface(width, gconfig_get("sbar_sz"),
 			unpack(gconfig_get("sbar_bg"))),
 		empty_space = workspace_empty,
+
+-- to help with y positioning when we have large subscript
+		font_sf = gconfig_get("font_defsf"),
+
+-- when activating, switch default font to have \F,font_sz_ofs
+-- other dimensions are based on text size and text size differ
+-- with display DPI
+		font_sz_ofs = 0,
 
 -- pre-alloc these as they will be re-used a lot
 		border_color = fill_surface(1, 1,
