@@ -7,9 +7,9 @@ local res = {
 
 -- add a sub- protocol for communicating cell dimensions, this is
 -- used to cut down on resize calls (as they are ** expensive in
--- terminal land).
+-- terminal land) vs just using shader based cropping.
 		message = function(wnd, source, tbl)
-			print("parse terminal font size from tbl", tbl.message);
+--		print("parse terminal font size from tbl", tbl.message);
 		end
 	},
 -- actions are exposed as target- menu

@@ -127,12 +127,33 @@ function update_default_font(key, val)
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
 	system_defaultfont(font, sz, hint);
 
-	local w, fonth = text_dimensions("\f,0 A1!");
+-- centering vertically on fonth will look poor on fonts that has a
+-- pronounced ascent / descent and we have no exposed function to get access
+-- to more detailed font metrics, so lets go rough..
+	local vid, lines, w, fonth = render_text("\\f,0 abc");
+	local rfh = fonth;
+
+	image_access_storage(vid, function(tbl, w, h)
+		for y=h-1,0,-1 do
+			local rowv = 0;
+			for x=0,w-1 do
+				rowv = rowv + tbl:get(x, y, 1);
+			end
+			if (rowv ~= 0) then
+				break;
+			else
+				rfh = y;
+			end
+		end
+	end);
+	delete_image(vid);
+-- and not to break on mixed DPI multidisplay, we go with factors
+	local rfhf = rfh / fonth;
 
 	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
 	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
 	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
-	gconfig_set("lbar_caret_h", fonth + gconfig_get("lbar_pad"));
+	gconfig_set("font_defsf", rfhf);
 
 -- this is currently not correct for mixed DPI between displays,
 -- the different bars should just use text_dimensions to determine size
@@ -142,11 +163,14 @@ function update_default_font(key, val)
 	end
 
 	for disp in all_displays_iter() do
+		disp.font_sf = rfhf;
 		disp:resize(disp.width, disp.height, sz);
 		disp:rebuild_border();
 		disp:invalidate_statusbar();
 	end
 
+-- also propagate to each window so that it may push descriptors and
+-- size information to any external connections
 	for wnd in all_windows() do
 		wnd:set_title(wnd.title_text and wnd.title_text or "");
 		wnd:resize(wnd.width, wnd.height);
