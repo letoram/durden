@@ -216,7 +216,9 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
-  - [x] Change orientation (vertical / horizontal)
+  - [ ] Change orientation (vertical / horizontal)
+  -     [x] support switching vertical / horizontal
+  -     [ ] support switching LED layout hinting (RGB vs VRGB)
   - [ ] Respect display DPI and use cm as size measurements
   - [x] Power Management Controls
   - [x] Gamma Correction
