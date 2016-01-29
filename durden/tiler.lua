@@ -12,9 +12,6 @@
 -- number of Z values reserved for each window
 local WND_RESERVED = 10;
 
--- multiply with in point- size to get CM
-local FONT_PP_CM = 0.0352778;
-
 system_load("lbar.lua")();
 
 --
@@ -1319,9 +1316,9 @@ end
 local function wnd_font(wnd, sz, hint, font)
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		if (font) then
-			target_fonthint(wnd.external, font, sz * FONT_PP_CM, hint);
+			target_fonthint(wnd.external, font, sz * FONT_PT_SZ, hint);
 		else
-			target_fonthint(wnd.external, sz * FONT_PP_CM, hint);
+			target_fonthint(wnd.external, sz * FONT_PT_SZ, hint);
 		end
 	end
 end
