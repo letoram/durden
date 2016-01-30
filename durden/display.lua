@@ -285,6 +285,8 @@ function display_override_density(name, ppcm)
 	end
 
 	disp.ppcm = ppcm;
+-- FIXME: activate for display, calculate factor in pt
+-- tell tiler to update scalefactor
 end
 
 function display_add(name, width, height, ppcm)

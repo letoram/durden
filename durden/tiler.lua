@@ -266,7 +266,7 @@ local function wnd_message(wnd, message, timeout)
 	print(message);
 end
 
-local function wnd_deselect(wnd)
+local function wnd_deselect(wnd, nopick)
 	local mwm = wnd.space.mode;
 	if (mwm == "tab" or mwm == "vtab") then
 		hide_image(wnd.anchor);
@@ -289,7 +289,9 @@ local function wnd_deselect(wnd)
 
 	image_shader(wnd.border, "border_inact");
 	image_shader(wnd.titlebar, "tbar_inact");
-	image_sharestorage(wnd.wm.border_color, wnd.border);
+	if (not wnd.suspended) then
+		image_sharestorage(wnd.wm.border_color, wnd.border);
+	end
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
@@ -531,6 +533,10 @@ local function wnd_select(wnd, source)
 		return;
 	end
 
+	if (wnd.wm.deactivated) then
+		return;
+	end
+
 -- may be used to reactivate locking after a lbar or similar action
 -- has been performed.
 	if (wnd.wm.selected == wnd) then
@@ -555,7 +561,8 @@ local function wnd_select(wnd, source)
 
 	image_shader(wnd.border, "border_act");
 	image_shader(wnd.titlebar, "DEFAULT");
-	image_sharestorage(wnd.wm.active_border_color, wnd.border);
+	image_sharestorage(wnd.suspended and wnd.wm.suspend_color or
+		wnd.wm.active_border_color, wnd.border);
 	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
 	wnd.wm.selected = wnd;
@@ -862,6 +869,8 @@ local function drop_fullscreen(space, swap)
 	local dw = space.selected;
 	show_image(dw.titlebar);
 	show_image(dw.border);
+	for k,v in pairs(dw.fs_copy) do dw[k] = v; end
+	dw.fs_copy = nil;
 	dw.fullscreen = nil;
 	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
@@ -995,6 +1004,12 @@ local function set_fullscreen(space)
 		return;
 	end
 	local dw = space.selected;
+
+-- keep a copy of properties we may want to change during fullscreen
+	dw.fs_copy = {
+		centered = dw.centered
+	};
+	dw.centered = true;
 
 -- hide all images + statusbar
 	hide_image(dw.wm.statusbar);
@@ -1332,10 +1347,9 @@ local function wnd_resize(wnd, neww, newh, force)
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
 
 	resize_image(wnd.anchor, neww, newh);
-	resize_image(wnd.border, neww, newh);
 
-	resize_image(wnd.titlebar, neww - wnd.border_w * 2,
-		image_surface_properties(wnd.titlebar).height);
+	local tbh = image_surface_properties(wnd.titlebar).height;
+	resize_image(wnd.titlebar, neww - wnd.border_w * 2, tbh);
 
 	wnd.width = neww;
 	wnd.height = newh;
@@ -1352,8 +1366,6 @@ local function wnd_resize(wnd, neww, newh, force)
 		move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 		neww = neww - wnd.pad_left - wnd.pad_right;
 		newh = newh - wnd.pad_top - wnd.pad_bottom;
-	else
-		move_image(wnd.canvas, 0, 0);
 	end
 
 	if (neww <= 0 or newh <= 0) then
@@ -1363,12 +1375,21 @@ local function wnd_resize(wnd, neww, newh, force)
 	wnd.effective_w = neww;
 	wnd.effective_h = newh;
 
+-- now we know dimensions of the window in regards to its current tiling cell
+-- etc. so we can resize the border accordingly (or possibly cascade weights)
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
 
+	resize_image(wnd.border, wnd.width, wnd.effective_h + wnd.border_w*2 + tbh);
+
 	if (wnd.centered) then
-		move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
-			math.floor(0.5*(newh - wnd.effective_h)));
+		if (wnd.fullscreen) then
+			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
+				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
+		else
+			move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
+				math.floor(0.5*(newh - wnd.effective_h)));
+		end
 	end
 
 	run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
@@ -2050,6 +2071,27 @@ local function wnd_migrate(wnd, tiler)
 	wnd:assign_ws(dsp, true);
 end
 
+-- track suspend state with window so that we can indicate with
+-- border color and make sure we don't send state changes needlessly
+local function wnd_setsuspend(wnd, val)
+	local susp = (val == true) or (not wnd.suspended);
+	local sel = (wnd.wm.selected == wnd);
+
+	if (susp) then
+		if not wnd.suspend and valid_vid(wnd.external,TYPE_FRAMESERVER) then
+			suspend_target(wnd.external);
+		end
+		image_sharestorage(wnd.wm.suspend_color, wnd.border);
+		wnd.suspended = true;
+	else
+		if wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER) then
+			resume_target(wnd.external);
+		end
+		image_sharestorage(sel and wnd.wm.active_border_color or
+			wnd.wm.border_color, wnd.border);
+	end
+end
+
 local function wnd_loadcfg(wnd)
 	if (not wnd.config_tgt) then
 		return;
@@ -2105,7 +2147,6 @@ local function wnd_create(wm, source, opts)
 -- scale factor is manipulated by the display manager in order to take pixel
 -- density into account, so when a window is migrated or similar -- scale
 -- factor may well change
-		scale_factor = 1.0,
 		width = wm.min_width,
 		height = wm.min_height,
 		border_w = gconfig_get("borderw"),
@@ -2123,6 +2164,7 @@ local function wnd_create(wm, source, opts)
 		set_prefix = wnd_prefix,
 		add_handler = wnd_addhandler,
 		set_dispmask = wnd_dispmask,
+		set_suspend = wnd_setsuspend,
 		update_font = wnd_font,
 		resize = wnd_resize,
 		migrate = wnd_migrate,
@@ -2553,11 +2595,12 @@ end
 
 local function tiler_activate(wm)
 	if (wm.deactivated) then
-		if (wm.deactivated.wnd) then
-			wm.deactivated.wnd:select();
-		end
-		mouse_absinput(wm.deactivated.mx, wm.deactivated.my, true);
+		local deact = wm.deactivated;
 		wm.deactivated = nil;
+		mouse_absinput(deact.mx, deact.my, true);
+		if (deact.wnd) then
+			deact.wnd:select();
+		end
 	end
 end
 
@@ -2570,7 +2613,7 @@ local function tiler_deactivate(wm)
 		wnd = wm.selected
 	}
 	if (wm.selected) then
-		wm.selected:deselect();
+		wm.selected:deselect(true);
 	end
 end
 
@@ -2586,17 +2629,16 @@ function tiler_create(width, height, opts)
 			unpack(gconfig_get("sbar_bg"))),
 		empty_space = workspace_empty,
 
--- to help with y positioning when we have large subscript
+-- to help with y positioning when we have large subscript,
+-- this is manually probed during font-load
 		font_sf = gconfig_get("font_defsf"),
-
--- when activating, switch default font to have \F,font_sz_ofs
--- other dimensions are based on text size and text size differ
--- with display DPI
-		font_sz_ofs = 0,
 
 -- pre-alloc these as they will be re-used a lot
 		border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_inactive_border"))),
+
+		suspend_color = fill_surface(1, 1,
+			unpack(gconfig_get("tcol_suspend_border"))),
 
 		alert_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_alert"))),

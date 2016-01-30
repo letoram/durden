@@ -110,7 +110,7 @@ local function gen_disp_menu(disp)
 		label = "Pixel Density",
 		kind = "value",
 		hint = "(px/cm)",
-		validator = gen_valid_float(0.01, 30.0),
+		validator = gen_valid_float(0.01, 600.0),
 		initial = function() return tostring(disp.ppcm); end,
 		handler = function(ctx, val)
 			display_override_density(disp.name, tonumber(val));
