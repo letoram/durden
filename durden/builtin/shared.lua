@@ -11,18 +11,6 @@ local function shared_reset(wnd)
 	end
 end
 
-local function shared_resume(wnd)
-	if (wnd.external) then
-		resume_target(wnd.external);
-	end
-end
-
-local function shared_suspend(wnd)
-	if (wnd.external) then
-		suspend_target(wnd.external);
-	end
-end
-
 local function gain_stepv(gainv, abs)
 	local wnd = active_display().selected;
 	if (not wnd or not wnd.source_audio) then
@@ -461,12 +449,19 @@ local window_menu = {
 	},
 	{
 		name = "window_migrate_display",
-		label = "Migrate Display",
+		label = "Migrate",
 		kind = "action",
+		submenu = true,
 		handler = grab_shared_function("migrate_wnd_bydspname"),
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
 		end
+	},
+	{
+		name = "window_destroy",
+		label = "Destroy",
+		kind = "action",
+		handler = grab_shared_function("destroy")
 	}
 };
 
@@ -656,13 +651,17 @@ local shared_actions = {
 		name = "shared_suspend",
 		label = "Suspend",
 		kind = "action",
-		handler = shared_suspend
+		handler = function()
+			active_display().selected:set_suspend(true);
+		end
 	},
 	{
 		name = "shared_resume",
 		label = "Resume",
 		kind = "action",
-		handler = shared_resume
+		handler = function()
+			active_display().selected:set_suspend(false);
+		end
 	},
 	{
 		name = "shared_input",

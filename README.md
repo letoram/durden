@@ -1,4 +1,4 @@
-About
+about
 =====
 
 Durden is a free (3-clause BSD) desktop environment for Arcan, thus it requires
@@ -14,7 +14,7 @@ Authors and Contact
 Development is discussed on the IRC channel #arcan on the Freenode network
 (chat.freenode.org)
 
-2015+, Björn Ståhl
+2015-2016, Björn Ståhl
 
 Licensing
 =====
@@ -30,22 +30,24 @@ terminal, decode, encode, remoting etc. else those features will be missing.
 Durden probes for available engine features and enables/disables access to
 these accordingly.
 
-Start arcan with the resource path set to durden/res and active appl to
-durden/durden, like this (there are tons of better 'installation' setups, this
-is merely to get you going):
+Install by adding the durden subdirectory of the git repository to your home
+appl folder (/home/myuser/.arcan/appl/durden)
 
-		arcan -p path/to/durden\_root/res &path/to/durden\_root/durden
+Start arcan with the resource path set to whatever directory subtree you want
+to be able to access for assets when browsing for images, video etc.
+
+e.g. arcan -p /home/myser/content durden
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
-for the currently mapped functions. If you don't press any of the META keys
+for the currently mapped defaults. If you don't press any of the META keys
 during the first n (20 or so) keypresses, it is assumed that your meta bindings
 are broken and you will be queried for new ones.
 
-A big point with durden as a window manager is that absolutely no configuration
-file editing etc. should be needed, everything is accessible and remappable
-from the UI.  Most configuration changes are done through the global menu (by
-default, meta1+meta2+g) and through the window menu (by default, meta1+meta2+t
-but requires a selected window).
+A big point with durden as a desktop environment is that absolutely no
+configuration file editing etc. should be needed, everything is accessible and
+remappable from the UI. Most configuration changes are done through the global
+menu (by default, meta1+meta2+g) and through the window menu (by default,
+meta1+meta2+t but requires a selected window).
 
 The menus are navigated by default using the arrow keys and enter to select and
 you can filter the list of shown items by typing.
@@ -62,7 +64,36 @@ Database Configuration
 ====
 The launch bar (default meta1+d) uses preconfigured execution profiles that are
 managed with a separate external tool as part of Arcan, called *arcan_db*,
-check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more details.
+check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more
+information.
+
+Recall that for now, we don't implement display server protocols like
+X11, Wayland or MIR so the set of programs that can be launched and expected to
+run are fairly limited. See the development progress and timeline for Arcan
+itself for an idea as to when that will be possible.
+
+There is support for running [libretro](http://www.libretro.com) 'cores'
+(dynamically linked libraries that wrap input/output/state management for
+common games and emulators) however.
+
+The specifics for downloading/compiling cores and other data that might be
+needed is outside the scope here, but an example on how to add a target:
+
+    arcan_db add_target mycore RETRO [ARCAN_RESOURCEPATH]/.cores/core.so
+
+will add a target with the name 'mycore' to the default database
+(homedir/.arcan/arcan.sqlite), using the libretro- binary 'format' and
+the actual file located relative to the current set resourcepath
+/.cores/core.so
+
+Then we need a launch configuration, one with empty arguments are usually
+created with the name 'default' (when launching a target that has only one
+configuration, you won't be queried about what configuration that will be
+used).
+
+    arcan_db add_config mycore myconfig [ARCAN_RESOURCEPATH]/.assets/somefile
+
+will add a config 'myconfig' to 'mycore' with somefile as first argument.
 
 Statusbar / Command Channel
 ====
@@ -78,11 +109,10 @@ i3status:
 The current commands exposed over the control channel:
 
     rescan_displays - used for hooking up with output display hotplug monitors
-    input_lock_on - disable input processing (except for input_lock bindings)
-    input_lock_off - these can be used for cooperatively handle multiple arcan
-                     instances with a low-level input platform fighting both
-                     interpreting input.
-
+    input_lock_on   - disable input processing (except for input_lock bindings)
+    input_lock_off  - these can be used for cooperatively handle multiple arcan
+                      instances with the same input platform both interpreting
+                      all input being made.
 Features and Status
 =====
 To get an overview of the features that have been implemented and features that
@@ -105,7 +135,7 @@ are being implemented, we have the following list:
   - [x] Animated Transitions (fade, move)
   - [x] Dim-Layer on Menus
   - [x] Configurable Bar Positioning
-  - [ ] Tray/Statusbar movable to target/global menu
+  - [ ] Tray/Statusbar movable to target/global menu screen
   - [ ] Ws- switch time based on diff. in content brightness
   - [ ] Workspace color sample points mapped to external LEDs
   - [x] Workspace Event Notification
@@ -117,7 +147,7 @@ are being implemented, we have the following list:
   - [x] Window Alpha Channel Behavior Control (using shader)
   - [x] Off-Screen Window Alert
   - [ ] Centered canvas in overdimensioned windows (tiled, fullscreen)
-  - [ ] Mappable statusbar buttons in float mode
+  - [ ] Bind target/global action to titlebar icon
   - [x] Configurable Border Width/Gaps
   - [x] Per Workspace Background Image
 - [ ] Screen-Rotate Trigger to re-layout
@@ -138,6 +168,7 @@ are being implemented, we have the following list:
   - [ ] 'Sticky' Meta (meta press state persist n ticks)
   - [x] Drag Reposition/Resize in Float
   - [x] Double-Click Titlebar Maximize-Restore in Float
+  - [ ] Dekstop Icons in Float-Mode
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
@@ -149,15 +180,15 @@ are being implemented, we have the following list:
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
   - [ ] Global forwards (specify binding to send to window regardless of focus)
-  - [ ] LED key-state highlights (k70 etc. kbds)
+  - [ ] Input state to LED binding (keymap, active bindings for RGB keybarods)
 - [ ] Internationalization
   - [ ] Menu Translations
-  - [ ] Foreign IME
+  - [ ] Foreign IMEs
   - [x] Keyboard layout hotswapping
   - [ ] Per-Window keyboard layout override
   - [ ] Per-Keyboard Layout
   - [x] Custom Unicode Binding (global and per window)
-- [ ] State Management
+- [ ] Program Save-State Management
   - [ ] Dynamic state change support
   - [ ] State transfer between windows
 - [ ] Advanced Window Integration
@@ -174,6 +205,9 @@ are being implemented, we have the following list:
   - [ ] Icon to "Tray"
   - [ ] Content/Scroll Integration
   - [ ] Popup Windows
+  - [ ] Move window to float/hidden that can be toggled to cursor position
+  - [ ] Zoom at Cursor
+  - [x] Inactivity / Focus Notification
   - [ ] Auto Suspend/Resume
     - [ ] Follow Focus
     - [ ] Follow Workspace
@@ -181,6 +215,7 @@ are being implemented, we have the following list:
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Screenreader Support
+  - [ ] Tesseract / OCR window
   - [ ] Window Configuration Save
 - [ ] Display Sharing
   - [ ] Recording/Streaming/Sharing
@@ -219,7 +254,7 @@ are being implemented, we have the following list:
   - [ ] Change orientation (vertical / horizontal)
   -     [x] support switching vertical / horizontal
   -     [ ] support switching LED layout hinting (RGB vs VRGB)
-  - [ ] Respect display DPI and use cm as size measurements
+  - [ ] Respect display DPI and use cm/font-pt as size
   - [x] Power Management Controls
   - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
@@ -237,26 +272,37 @@ For lower power devices where multi-screen setups isn't needed,
 modify gconf.lua (or the corresponding database- fields if it has already
 been created and updated with all the keys) to disable 'display\_simple'.
 
-While somewhat buggy, one might also want to try out mouse\_mode = "native".
+Simple display mode disables some other features as well, e.g. orientation swap,
+recording / sharing and others.
+
+While somewhat buggy, one might also want to try out mouse\_mode = "native"
+where cursor drawing is treated outside the normal rendering pipeline. This may
+make the cursor feel more 'smooth' (but at the same time can't be used as an
+indicator for slowdowns in the rendering pipeline that might be relevant to
+investigate)
 
 Extensions
 =====
 The above featureset mostly covers what would be useful from a tiling DE
 perspective, but given the relative minimal effort in adding features that
-would allow mimicking other DEs ('start' button, dock, control panel, ..)
- -- some extension scripts and support is planned but not currently implemented
+would allow mimicking other DEs ('start' button, dock, control panel, ..) --
+some extension scripts and support is planned but not currently implemented
 (likely to be drop:able into a plugins folder that globbed / scanned on load
 With some minimal hook api).
 
 ### start button, popup, control panel
-traverse the window / target menus and convert to a popup- / settings
-style layout
+While the status/etc. bar code should probably be replaced with a more flexible
+system for adding dynamic bars and attachment points, adding a clickable button
+to work like the normal windows-style start menu should be an easy thing.
+
+The menu-code that uses the lbar currently could trivially be switched over
+to use such popup-menu style navigation, though some icon field may need to
+be added.
 
 ### widgets
-widgets, allow arcan lwa connections with a custom GUID to be attached to
-fixed- size dock slots and have them auto-launch on startup and a config-
-key for finding in the normal target database. Work like the little dockapps
-in WindowMaker.
+Sweep the database at launch for a specific tag and launch them all at startup,
+attaching to a fixed size docklet "WindowMaker/NeXTStep style" or as part of the
+global/target menu screen.
 
 ### content preview in browser
 extending lbar to support dynamic asynch- content loading for associating
@@ -265,16 +311,14 @@ helper for utf-8 bind or more advanced like thumbnails of images and silent
 prelaunch for videos.
 
 ### desktop icons / shortcuts
-for float layouts, allow local icons and shortcuts to be added, similarly
-to how it already works in AWB.
-
-### configurable decorations
-Define sets of target-actions and icons that are added as buttons in the
-decoration
+For float layouts, allow local icons and shortcuts to be added for launching,
+but also for 'minimizing selected window' to desktop icon and some operation
+to hide/reveal active windows.
 
 ### advanced keyboard - mouse navigation
-Use edge detection on window content and map key inputs to warp cursor between
-edges and center on continous regions (squares, circles)
+Offscreen, run edge detection/amplification, downscale and readback to get
+a 'navigation map' of continous regions that the mouse cursor can be centered
+to, allowing much faster keyboard control over mouse cursor.
 
 Repository
 =====
@@ -306,38 +350,3 @@ We don't keep any necessary assets in the resource path as that should be
 accessible to the browser (one could essentially set it to / or whatever
 filesystem mount-point one wants).
 
-Notes on DPI
-====
-
-Currently, we ignore display DPI property and dimensions are not specified
-on anything other than pixels. For proper handling we need to modify
-workspace/window migration to check for a change in pixel density and
-add that information in the normal target\_displayhint calls.
-
-In addition, there should be a conversion in text rendering that takes
-the size argument to fonts (which is freetype points and 1/72 of an inch)
-and converts to / from mm.
-
-Flow
-====
-
-After initial setup, the default code-paths are as follows:
-
-1. _input event:keyboard_ lookup matching key -> lookup against dispatch
-   defined in keybindings.
-
-2. _keybindings dispatch:found_ -> lookup matching function in
-   GLOBAL\_FUNCTIONS (fglobal).
-
-3. _keybindings dispatch:not found_ -> grab currently selected window,
-   match against window specific dispatch and run (if found).
-
-4. _window dispatch_: not found -> match against window specific translation,
-   attach semantic label (if defined) and forward to target.
-
-5. _input event:mouse_ forward to mouse.lua support script, registered
-   handlers point into durden for active display.
-
-Other than that, there is the def\_handler (durden.lua) that handles initial
-event handling for external connections, that - based on type - can be promoted
-to a specialized implementation (as per durden/atypes/*).

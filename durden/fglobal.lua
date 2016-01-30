@@ -152,13 +152,23 @@ gf["switch_ws_byname"] = function()
 	);
 end
 
-sf["migrate_wnd_bydspname"] = function(wnd)
+sf["migrate_wnd_bydspname"] = function()
 	local dsp = displays_alive(true);
-	if (#dsp > 0) then
-		active_display():lbar(tiler_lbarforce(dsp, function(cfstr)
-			display_migrate_wnd(wnd, cfstr);
-		end));
+	local res = {};
+	local wnd = active_display().selected;
+
+	for k,v in ipairs(dsp) do
+		table.insert(res, {
+			name = "wnd_migrate_disp",
+			label = v,
+			kind = "action",
+			handler = function()
+				display_migrate_wnd(wnd, v);
+			end
+		});
 	end
+
+	return res;
 end
 
 gf["migrate_ws_bydspname"] = function()
