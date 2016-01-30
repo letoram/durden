@@ -60,7 +60,7 @@ local dbg_dsp = {
 	}
 };
 
-local function query_dispmenu(ind)
+local function query_dispmenu(ind, name)
 	local modes = video_displaymodes(ind);
 	if (modes and #modes > 0) then
 		local mtbl = {};
@@ -74,7 +74,7 @@ local function query_dispmenu(ind)
 					label = string.format("%d*%d, %d bits @%d Hz",
 						v.width, v.height, v.depth, v.refresh),
 					kind = "action",
-					handler = function() display_ressw(v.name, v); end
+					handler = function() display_ressw(name, v); end
 				});
 			end
 		end
@@ -110,10 +110,10 @@ local function gen_disp_menu(disp)
 		label = "Pixel Density",
 		kind = "value",
 		hint = "(px/cm)",
-		validator = gen_valid_float(0.01, 20.0),
+		validator = gen_valid_float(0.01, 30.0),
 		initial = function() return tostring(disp.ppcm); end,
 		handler = function(ctx, val)
-			display_override_density(disp.id, tonumber(val));
+			display_override_density(disp.name, tonumber(val));
 		end
 		},
 		{
@@ -121,7 +121,7 @@ local function gen_disp_menu(disp)
 		label = "Resolution",
 		kind = "action",
 		submenu = true,
-		handler = function() return query_dispmenu(disp.id); end
+		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
 		name = "display_mapping",

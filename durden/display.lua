@@ -67,6 +67,8 @@ local function switch_active_display(ind)
 		return;
 	end
 
+	displays[displays.main].tiler:deactivate();
+	displays[ind].tiler:activate();
 	displays.main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
@@ -375,13 +377,14 @@ end
 function display_ressw(name, mode)
 	local disp = get_disp(name);
 	if (not disp) then
-		warning("display_ressww(), invalid display reference");
+		warning("display_ressww(), invalid display reference for " .. tostring(name));
 		return;
 	end
 
 	run_display_action(disp, function()
 		video_displaymodes(disp.id, mode.modeid);
 		disp.tiler:resize(mode.width, mode.height);
+		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
 	end);
 end

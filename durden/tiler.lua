@@ -184,6 +184,10 @@ local function wnd_destroy(wnd)
 		wm.debug_console:system_event("lost " .. wnd.name);
 	end
 
+	if (wm.deactivated and wm.deactivated.wnd == wnd) then
+		wm.deactivated.wnd = nil;
+	end
+
 	if (wm.selected == wnd) then
 		wnd:deselect();
 		local mx, my = mouse_xy();
@@ -2278,7 +2282,7 @@ local function tiler_switchws(wm, ind)
 		cursp:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
-		cursp.selected = cw;
+		cursp.Selected = cw;
 	end
 
 	if (wm.spaces[ind] == nil) then
@@ -2547,6 +2551,29 @@ local function tiler_resize(tiler, neww, newh)
 	tile_upd(tiler);
 end
 
+local function tiler_activate(wm)
+	if (wm.deactivated) then
+		if (wm.deactivated.wnd) then
+			wm.deactivated.wnd:select();
+		end
+		mouse_absinput(wm.deactivated.mx, wm.deactivated.my, true);
+		wm.deactivated = nil;
+	end
+end
+
+-- could've just had the external party call deselect,
+-- but hook may be useful for later so keep like this
+local function tiler_deactivate(wm)
+	local mx, my = mouse_xy();
+	wm.deactivated = {
+		mx = mx, my = my,
+		wnd = wm.selected
+	}
+	if (wm.selected) then
+		wm.selected:deselect();
+	end
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 
@@ -2604,6 +2631,8 @@ function tiler_create(width, height, opts)
 		swap_left = tiler_swapleft,
 		swap_right = tiler_swapright,
 		active_spaces = wm_countspaces,
+		activate = tiler_activate,
+		deactivate = tiler_deactivate,
 		set_rendertarget = tiler_rendertarget,
 		add_window = wnd_create,
 		find_window = tiler_find,

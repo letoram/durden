@@ -162,8 +162,8 @@ local function mouse_cursorupd(x, y)
 
 	mstate.x = mstate.x < 0 and 0 or mstate.x;
 	mstate.y = mstate.y < 0 and 0 or mstate.y;
-	mstate.x = mstate.x > VRESW and VRESW-1 or mstate.x;
-	mstate.y = mstate.y > VRESH and VRESH-1 or mstate.y;
+	mstate.x = mstate.x > mstate.max_x and mstate.max_x - 1 or mstate.x;
+	mstate.y = mstate.y > mstate.max_y and mstate.max_y - 1 or mstate.y;
 	mstate.hide_count = mstate.hide_base;
 
 	local relx = mstate.x - lmx;
@@ -318,8 +318,8 @@ end
 
 function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 	mstate.hidden = false;
-	mstate.x = math.floor(VRESW * 0.5);
-	mstate.y = math.floor(VRESH * 0.5);
+	mstate.x = math.floor(mstate.max_x * 0.5);
+	mstate.y = math.floor(mstate.max_y * 0.5);
 
 	mstate.cursor = null_surface(1, 1);
 	image_mask_set(mstate.cursor, MASK_UNPICKABLE);
@@ -375,7 +375,7 @@ end
 -- Some devices just give absolute movements, convert
 -- these to relative before moving on
 --
-function mouse_absinput(x, y)
+function mouse_absinput(x, y, nofwd)
 	local rx = x - mstate.x;
 	local ry = y - mstate.y;
 	local arx = mstate.accel_x * rx;
@@ -397,7 +397,9 @@ function mouse_absinput(x, y)
 			mstate.y + mstate.y_ofs);
 	end
 
-	mouse_input(mstate.x, mstate.y, nil, true);
+	if (not nofwd) then
+		mouse_input(mstate.x, mstate.y, nil, true);
+	end
 end
 
 --

@@ -375,12 +375,22 @@ function durden_input(iotbl, fromim)
 		if (iotbl.digital) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		else
-			mid_v[iotbl.subid+1] = iotbl.samples[1];
-			mid_c = mid_c + 1;
+-- we prefer relative mouse coordinates with warping etc. but not all
+-- platforms can deliver on that promise
+			if (iotbl.relative) then
+				if (iotbl.subid == 0) then
+					mouse_input(iotbl.samples[2], 0);
+				else
+					mouse_input(0, iotbl.samples[2]);
+				end
+			else
+				mid_v[iotbl.subid+1] = iotbl.samples[sofs];
+				mid_c = mid_c + 1;
 
-			if (mid_c == 2) then
-				mouse_absinput(mid_v[1], mid_v[2]);
-				mid_c = 0;
+				if (mid_c == 2) then
+					inp_fun(mid_v[1], mid_v[2]);
+					mid_c = 0;
+				end
 			end
 		end
 
