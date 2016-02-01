@@ -2089,6 +2089,7 @@ local function wnd_setsuspend(wnd, val)
 		end
 		image_sharestorage(sel and wnd.wm.active_border_color or
 			wnd.wm.border_color, wnd.border);
+		wnd.suspended = nil;
 	end
 end
 
