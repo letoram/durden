@@ -255,6 +255,7 @@ are being implemented, we have the following list:
   -     [x] support switching vertical / horizontal
   -     [ ] support switching LED layout hinting (RGB vs VRGB)
   - [ ] Respect display DPI and use cm/font-pt as size
+  - [ ] Remember DPI / overrides / orientation
   - [x] Power Management Controls
   - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
