@@ -165,7 +165,9 @@ function durden_display_state(action, id)
 			subpx = subpx == "unknown" and "RGB" or subpx;
 
 			if (wmm > 0 and hmm > 0) then
-				ppcm = 0.1 * (math.sqrt(dw * dw + dh * dh) /
+				wmm = 0.1 * wmm;
+				hmm = 0.1 * hmm;
+				ppcm = (math.sqrt(dw * dw + dh * dh) /
 					math.sqrt(wmm * wmm + hmm * hmm));
 			end
 		end
@@ -389,6 +391,11 @@ function display_ressw(name, mode)
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
 	end);
+
+-- as the dimensions have changed
+	if (active_display(true) == disp.rt) then
+		mouse_querytarget(disp.rt);
+	end
 end
 
 -- should only be used for debugging, disables normal multidisplay
@@ -462,6 +469,11 @@ function display_reorient(name, hint)
 		disp.tiler:resize(neww, newh);
 		map_video_display(disp.rt, disp.id, disp.maphint);
 	end);
+
+-- as the dimensions have changed
+	if (active_display(true) == disp.rt) then
+		mouse_querytarget(disp.rt);
+	end
 end
 
 function display_share(args, recfn)

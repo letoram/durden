@@ -367,7 +367,7 @@ end
 -- third,  message [cropped to fill] + timeout
 -- fourth, statusbar vid (will take ownership)
 local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
-	local statush = gconfig_get("sbar_sz");
+	local statush = math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 	resize_image(wm.statusbar, wm.width, statush);
 	move_image(wm.statusbar, 0, wm.height - statush);
 
@@ -463,8 +463,8 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 			image_inherit_order(vid, true);
 			link_image(vid, wm.statusbar);
 			image_shader(vid, "sbar_item");
-			move_image(vid, ofs, math.floor(0.5 * (
-				gconfig_get("sbar_sz") - h * wm.font_sf)));
+			local sbsz = image_surface_properties(wm.statusbar).height;
+			move_image(vid, ofs, math.floor(0.5 * (sbsz - h * wm.font_sf)));
 		end
 
 		if (timeout and timeout > 0 and valid_vid(wm.statusbar_msg)) then
@@ -932,14 +932,15 @@ local function set_tab(space)
 	space.switch_hook = switch_tab;
 	space.reassign_hook = reassign_tab;
 
-	local fairw = math.ceil(space.wm.width / #lst);
-	local tbar_sz = gconfig_get("tbar_sz");
+	local wm = space.wm;
+	local fairw = math.ceil(wm.width / #lst);
+	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
+	local sb_sz = math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 	local bw = gconfig_get("borderw");
 	local ofs = 0;
 
 	for k,v in ipairs(lst) do
-		v:resize_effective(space.wm.width,
-			space.wm.height - gconfig_get("sbar_sz") - tbar_sz);
+		v:resize_effective(wm.width, wm.height - sb_sz - tbar_sz);
 		move_image(v.anchor, 0, 0);
 		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
@@ -970,24 +971,26 @@ local function set_vtab(space)
 	space.switch_hook = nil; -- switch_tab;
 	space.reassign_hook = reassign_tab;
 
-	local tbar_sz = gconfig_get("tbar_sz");
+	local wm = space.wm;
+	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
+	local sb_sz = math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+
 	local ypos = #lst * tbar_sz;
-	local cl_area = space.wm.height -
-		gconfig_get("sbar_sz") - ypos - 2 * gconfig_get("borderw");
+	local cl_area = wm.height - sb_sz - ypos;
 	if (cl_area < 1) then
 		return;
 	end
 
 	local ofs = 0;
 	for k,v in ipairs(lst) do
-		v:resize_effective(space.wm.width, cl_area);
+		v:resize_effective(wm.width, cl_area);
 		move_image(v.anchor, 0, ypos);
 		move_image(v.canvas, 0, 0);
 		hide_image(v.anchor);
 		hide_image(v.border);
 		link_image(v.titlebar, space.anchor);
 		order_image(v.titlebar, 2);
-		resize_image(v.titlebar, space.wm.width, tbar_sz);
+		resize_image(v.titlebar, wm.width, tbar_sz);
 		move_image(v.titlebar, 0, (k-1) * tbar_sz);
 		ofs = ofs + tbar_sz;
 	end
@@ -1055,9 +1058,10 @@ local function set_float(space)
 end
 
 local function set_tile(space)
-	show_image(space.wm.statusbar);
-	level_resize(space, 0, 0, space.wm.width,
-		space.wm.height - gconfig_get("sbar_sz"));
+	local wm = space.wm;
+	show_image(wm.statusbar);
+	level_resize(space, 0, 0, wm.width,
+		wm.height - math.ceil(gconfig_get("sbar_sz") * wm.scalef));
 end
 
 local space_handlers = {
@@ -1644,13 +1648,13 @@ local function wnd_title(wnd, message)
 		);
 	end
 
-	if (not valid_vid(message)) then
+	if (not valid_vid(message) or wnd.hide_titlebar) then
 		if (props.opacity <= 0.001) then
 			return;
 		end
 		hide_image(wnd.titlebar);
 		local vch = wnd.pad_top - 1;
-		wnd.pad_top = wnd.pad_top - gconfig_get("tbar_sz");
+		wnd.pad_top = wnd.pad_top - props.height;
 		if (vch > 0 and wnd.space.mode ~= "float") then
 			wnd.space:resize();
 		end
@@ -1659,7 +1663,7 @@ local function wnd_title(wnd, message)
 
 	if (props.opacity <= 0.001) then
 		show_image(wnd.titlebar);
-		wnd.pad_top = wnd.pad_top + gconfig_get("tbar_sz");
+		wnd.pad_top = wnd.pad_top + props.height;
 		wnd.space:resize();
 	end
 
@@ -1668,11 +1672,10 @@ local function wnd_title(wnd, message)
 	wnd.title_temp = message;
 	image_clip_on(message, CLIP_SHALLOW);
 	image_mask_set(message, MASK_UNPICKABLE);
-	resize_image(wnd.titlebar,
-		wnd.width - wnd.border_w * 2, gconfig_get("tbar_sz"));
+	resize_image(wnd.titlebar, wnd.width - wnd.border_w * 2, props.height);
 	image_inherit_order(message, 1);
 
-	local yp = math.floor(0.5 * (gconfig_get("tbar_sz") -
+	local yp = math.floor(0.5 * (props.height -
 		image_surface_properties(message).height * wnd.wm.font_sf));
 
 	local pad = gconfig_get("tbar_pad");
@@ -2122,7 +2125,9 @@ local function wnd_create(wm, source, opts)
 -- we use fill surfaces rather than color surfaces to get texture coordinates
 		border = fill_surface(1, 1, 255, 255, 255),
 		titlebar = fill_surface(1,
-			gconfig_get("tbar_sz"), unpack(gconfig_get("tbar_bg"))),
+			math.ceil(wm.scalef * gconfig_get("tbar_sz")),
+			unpack(gconfig_get("tbar_bg"))
+		),
 		canvas = source,
 		gain = 1.0,
 		children = {},
@@ -2145,9 +2150,12 @@ local function wnd_create(wm, source, opts)
 		pad_top = bw,
 		pad_bottom = bw,
 
+-- note on multi-PPCM:
 -- scale factor is manipulated by the display manager in order to take pixel
 -- density into account, so when a window is migrated or similar -- scale
--- factor may well change
+-- factor may well change. Sizes are primarily defined relative to self or
+-- active default font size though, and display manager changes font-sizea
+-- during migration and display setup.
 		width = wm.min_width,
 		height = wm.min_height,
 		border_w = gconfig_get("borderw"),
@@ -2523,6 +2531,7 @@ local function tiler_rebuild_border(tiler)
 		print(debug.traceback());
 	end
 	for i,v in ipairs(tiler.windows) do
+		local tbarh = image_surface_properties(v.titlebar).height;
 		local old_bw = v.border_w;
 		v.pad_left = v.pad_left - old_bw + bw;
 		v.pad_right = v.pad_right - old_bw + bw;
@@ -2531,8 +2540,7 @@ local function tiler_rebuild_border(tiler)
 		v.border_w = bw;
 		if (v.space.mode == "tile" or v.space.mode == "float") then
 			move_image(v.titlebar, v.border_w, v.border_w);
-			resize_image(v.titlebar,
-			v.width - v.border_w * 2, gconfig_get("tbar_sz"));
+			resize_image(v.titlebar, v.width - v.border_w * 2, tbarh);
 		end
 	end
 end
@@ -2626,8 +2634,6 @@ function tiler_create(width, height, opts)
 		name = opts.name and opts.name or "default",
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),
-		statusbar = color_surface(width, gconfig_get("sbar_sz"),
-			unpack(gconfig_get("sbar_bg"))),
 		empty_space = workspace_empty,
 
 -- to help with y positioning when we have large subscript,
@@ -2655,6 +2661,7 @@ function tiler_create(width, height, opts)
 
 		lbar = tiler_lbar,
 		tick = tick_windows,
+		scalef = opts.scalef and opts.scalef or 1.0,
 
 -- management members
 		spaces = {},
@@ -2687,6 +2694,9 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
 	};
+
+	res.statusbar = color_surface(width,
+		gconfig_get("sbar_sz") * res.scalef, unpack(gconfig_get("sbar_bg")));
 	res.width = width;
 	res.height = height;
 	res.min_width = 32;
