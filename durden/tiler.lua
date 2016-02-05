@@ -1120,6 +1120,13 @@ local function workspace_set(space, mode)
 	end
 
 	space.mode = mode;
+
+-- enforce titlebar changes (some modes need them to work..)
+	local lst = linearize(space);
+	for k,v in ipairs(lst) do
+		v:set_title(v.title_text, false);
+	end
+
 	space:resize();
 	tiler_statusbar_update(space.wm, {mode});
 end
@@ -1346,17 +1353,32 @@ local function wnd_font(wnd, sz, hint, font)
 	end
 end
 
+local function tbar_mode(mode)
+	return mode == "vtab" or mode == "tab" or mode == "float";
+end
+
+local function tbar_geth(wnd)
+	local tbh = image_surface_properties(wnd.titlebar).height;
+	if (wnd.hide_titlebar and tbar_mode(wnd.space.mode)) then
+		tbh = 0;
+	end
+	return tbh;
+end
+
 local function wnd_resize(wnd, neww, newh, force)
 	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
 
+	local tbh = tbar_geth(wnd);
 	resize_image(wnd.anchor, neww, newh);
-
-	local tbh = image_surface_properties(wnd.titlebar).height;
 	resize_image(wnd.titlebar, neww - wnd.border_w * 2, tbh);
-
 	wnd.width = neww;
 	wnd.height = newh;
+
+	local hide_titlebar = wnd.hide_titlebar;
+	if (wnd.hide_titlebar and not tbar_mode(wnd.space.mode)) then
+		tbh = 1;
+	end
 
 	local props = image_storage_properties(wnd.canvas);
 
@@ -1633,30 +1655,40 @@ local function wnd_grow(wnd, w, h)
 	wnd.space:resize();
 end
 
-local function wnd_title(wnd, message)
+local function wnd_title(wnd, message, skipresize)
+	if (not message or string.len(message) == 0) then
+		message = " ";
+	end
+	message = wnd.title_prefix and (wnd.title_prefix .. ": ") or "" .. message
+
 	local props = image_surface_properties(wnd.titlebar);
-	if (valid_vid(wnd.title_temp)) then
-		delete_image(wnd.title_temp);
-		wnd.title_temp = nil;
+	local new = not wnd.title_text or message ~= wnd.title_text;
+	wnd.title_text = message;
+
+-- only re-render if the message has changed
+	if (new) then
+		local lbl = {gconfig_get("tbar_textstr"), message};
+		if (valid_vid(wnd.message_vid)) then
+			wnd.message_vid = render_text(wnd.message_vid, lbl);
+		else
+			wnd.message_vid = render_text(lbl);
+		end
 	end
 
-	if (type(message) == "string") then
-		wnd.title_text = message;
-		message = render_text({gconfig_get("tbar_textstr"),
-			wnd.title_prefix and (wnd.title_prefix .. ": ") or "",
-			"", wnd.title_text}
-		);
+-- override if the mode requires it
+	local hide_titlebar = wnd.hide_titlebar;
+	if (tbar_mode(wnd.space.mode)) then
+		hide_titlebar = false;
 	end
 
-	if (not valid_vid(message) or wnd.hide_titlebar) then
+	if (hide_titlebar) then
 		if (props.opacity <= 0.001) then
 			return;
 		end
 		hide_image(wnd.titlebar);
-		local vch = wnd.pad_top - 1;
-		wnd.pad_top = wnd.pad_top - props.height;
-		if (vch > 0 and wnd.space.mode ~= "float") then
-			wnd.space:resize();
+		wnd.pad_top = wnd.border_w + 1;
+		if (not skipresize) then
+			wnd:resize(wnd.width, wnd.height);
 		end
 		return;
 	end
@@ -1664,23 +1696,29 @@ local function wnd_title(wnd, message)
 	if (props.opacity <= 0.001) then
 		show_image(wnd.titlebar);
 		wnd.pad_top = wnd.pad_top + props.height;
-		wnd.space:resize();
+		if (not skipresize) then
+			wnd.space:resize();
+		end
 	end
 
-	link_image(message, wnd.titlebar);
-	image_tracetag(message, "wnd_titletext");
-	wnd.title_temp = message;
-	image_clip_on(message, CLIP_SHALLOW);
-	image_mask_set(message, MASK_UNPICKABLE);
+	local dv = wnd.message_vid;
+	if (new) then
+		link_image(dv, wnd.titlebar);
+		image_tracetag(dv, "wnd_titletext");
+		image_clip_on(dv, CLIP_SHALLOW);
+		image_mask_set(dv, MASK_UNPICKABLE);
+		image_inherit_order(dv, 1);
+	end
+
+-- finally reposition / relink
 	resize_image(wnd.titlebar, wnd.width - wnd.border_w * 2, props.height);
-	image_inherit_order(message, 1);
 
 	local yp = math.floor(0.5 * (props.height -
-		image_surface_properties(message).height * wnd.wm.font_sf));
+		image_surface_properties(dv).height * wnd.wm.font_sf));
 
 	local pad = gconfig_get("tbar_pad");
-	move_image(message, pad, pad + yp);
-	show_image(message);
+	move_image(dv, pad, pad + yp);
+	show_image(dv);
 end
 
 local function wnd_mouseown(ctx, vid, event)
@@ -2163,6 +2201,7 @@ local function wnd_create(wm, source, opts)
 		effective_h = 0,
 		weight = 1.0,
 		vweight = 1.0,
+		hide_titlebar = gconfig_get("hide_titlebar"),
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		load_config = wnd_loadcfg,
 		alert = wnd_alert,
@@ -2531,12 +2570,13 @@ local function tiler_rebuild_border(tiler)
 		print(debug.traceback());
 	end
 	for i,v in ipairs(tiler.windows) do
-		local tbarh = image_surface_properties(v.titlebar).height;
+		local tbarh = tbar_geth(v);
 		local old_bw = v.border_w;
 		v.pad_left = v.pad_left - old_bw + bw;
 		v.pad_right = v.pad_right - old_bw + bw;
 		v.pad_top = v.pad_top - old_bw + bw;
 		v.pad_bottom = v.pad_bottom - old_bw + bw;
+		print("new pad top:", v.pad_top);
 		v.border_w = bw;
 		if (v.space.mode == "tile" or v.space.mode == "float") then
 			move_image(v.titlebar, v.border_w, v.border_w);
