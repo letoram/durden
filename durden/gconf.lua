@@ -49,6 +49,8 @@ local defaults = {
 	ws_autoadopt = true,
 	ws_default = "tile",
 
+	hide_titlebar = false,
+
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
 	mouse_focus_event = "click", -- motion, hover
@@ -128,7 +130,7 @@ local defaults = {
 	sbar_alpha = 0.3,
 
 -- titlebar
-  tbar_pad = 2,
+  tbar_pad = 0,
 	tbar_sz = 12, -- dynamically recalculated on font changes
 	tbar_bg = {0x28, 0x55, 0x77},
 	tbar_textstr = "\\#ffffff ",

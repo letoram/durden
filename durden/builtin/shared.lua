@@ -448,6 +448,16 @@ local window_menu = {
 		handler = grab_shared_function("wnd_tobg");
 	},
 	{
+		name = "titlebar_toggle",
+		label = "Titlebar On/Off",
+		kind = "action",
+		handler = function()
+			local wnd = active_display().selected;
+			wnd.hide_titlebar = not wnd.hide_titlebar;
+			wnd:set_title(wnd.title_text);
+		end
+	},
+	{
 		name = "window_migrate_display",
 		label = "Migrate",
 		kind = "action",
