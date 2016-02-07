@@ -627,6 +627,10 @@ function launch_menu_path(wm, gfunc, pathdescr)
 		return;
 	end
 	local elems = string.split(pathdescr, "/");
+	if (#elems > 0 and string.len(elems[1]) == 0) then
+		table.remove(elems, 1);
+	end
+
 	local cl = nil;
 	local old_launch = launch_menu;
 
