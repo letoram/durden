@@ -10,7 +10,6 @@
 
 local SIZE_UNIT = 38.4;
 local displays = {
-	simulate_md = false
 };
 
 -- arcan does not expose display gamma ramps or DRM/KMS- like interface
@@ -229,57 +228,6 @@ function display_attachment()
 	end
 end
 
--- if we're in "simulated" multidisplay- mode, for development and testing,
--- there's the need to dynamically add and remove to see that workspace
--- migration works smoothly.
-local function redraw_simulate()
-	if (not displays.simulate_md) then
-		return;
-	end
-
-	local ac = 0;
-	for i=1,#displays do
-		if (not displays[i].orphan) then
-			ac = ac + 1;
-		end
-	end
-
-	if (valid_vid(displays.txt_anchor)) then
-		delete_image(displays.txt_anchor);
-	end
-	displays.txt_anchor = null_surface(1,1);
-	show_image(displays.txt_anchor);
-
-	set_context_attachment(WORLDID);
-	local font_sz = gconfig_get("font_sz");
-
-	if (ac == 0) then
-		for i=1,#displays do
-			hide_image(displays[i].rt);
-		end
-	else
-		local w = VRESW / ac;
-		local x = 0;
-
-		for i=1,#displays do
-			move_image(displays[i].rt, x, 0);
-			resize_image(displays[i].rt, w, VRESH - font_sz);
-			show_image(displays[i].rt);
-			local rstr = string.format("%s%d @ %d * %d- %s",
-				i == displays.main and "\\#00ff00" or "\\#ffffff", i,
-				displays[i].w, displays[i].h,
-				displays[i].name and displays[i].name or "no name"
-			);
-			local text = render_text(rstr);
-			show_image(text);
-			link_image(text, displays.txt_anchor);
-			move_image(text, x, VRESH - font_sz);
-			x = x + w;
-		end
-	end
-	set_context_attachment(displays[displays.main].rt);
-end
-
 function display_override_density(name, ppcm)
 	local disp = get_disp(name);
 	if (not disp) then
@@ -325,7 +273,6 @@ function display_add(name, width, height, ppcm)
 	end
 
 	autohome_spaces(found);
-	redraw_simulate();
 	return found;
 end
 
@@ -374,8 +321,6 @@ function display_remove(name)
 	if (foundi == displays.main) then
 		display_cycle_active(ws);
 	end
-
-	redraw_simulate();
 end
 
 function display_ressw(name, mode)
@@ -398,12 +343,6 @@ function display_ressw(name, mode)
 	end
 end
 
--- should only be used for debugging, disables normal multidisplay
--- and adds simulated ones on the main rendertarget
-function display_simulate()
-	displays.simulate_md = true;
-end
-
 function display_cycle_active()
 	local nd = displays.main;
 	repeat
@@ -411,7 +350,6 @@ function display_cycle_active()
 	until (nd == displays.main or not displays[nd].orphan);
 
 	switch_active_display(nd);
-	redraw_simulate();
 end
 
 function display_migrate_wnd(wnd, dstname)
