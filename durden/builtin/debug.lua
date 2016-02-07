@@ -239,5 +239,10 @@ local function debugwnd_spawn()
 end
 
 if (DEBUGLEVEL > 0) then
-	register_global("debug_debugwnd", debugwnd_spawn);
+	attach_global_menu("/system/debug", {
+		name = "debug_console",
+		label = "Console",
+		kind = "action",
+		handler = debugwnd_spawn
+	});
 end

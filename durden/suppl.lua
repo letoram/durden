@@ -613,6 +613,10 @@ end
 -- keybinding as for setup. gfunc should be a menu spawning function.
 --
 function launch_menu_path(wm, gfunc, pathdescr)
+	if (not gfunc) then
+		return;
+	end
+
 	if (not pathdescr or string.len(pathdescr) == 0) then
 		gfunc();
 		return;
