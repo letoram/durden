@@ -427,6 +427,7 @@ gf["query_launch"] = function()
 				if (valid_vid(vid)) then
 					local wnd = durden_launch(vid, cfstr, str);
 					wnd.config_tgt = {str, cfstr};
+					load_defaults(wnd);
 				end
 			end
 

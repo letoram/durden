@@ -4,6 +4,11 @@ local function shared_reset(wnd)
 	end
 end
 
+local function find_sibling(wnd)
+-- enumerate all windows, if stateinf exist and stateids match
+-- and we are not ourself, then we have a sibling...
+end
+
 return {
 	{
 		name = "shared_suspend",
@@ -34,10 +39,40 @@ return {
 		kind = "action",
 		submenu = true,
 		eval = function()
--- return active_display().selected.statinf ~= nil;
-			return false;
+			warning("glob state: state_prefix");
+		end,
+		handler = function(ctx, v)
+			warning("grab wnd, target_load from resname");
 		end
 	},
+	{
+		name = "state_save",
+		label = "Save",
+		kind = "action",
+		submenu = true,
+		handler = function()
+			warning("missing: query state name");
+			return {};
+		end,
+		eval = function()
+			local wnd = active_display().selected;
+			return active_display().selected.stateinf ~= nil;
+		end
+	},
+	{
+		name = "state_import",
+		label = "Import",
+		kind = "action",
+		handler = function()
+			local wnd = active_display().selected;
+			local subid = find_sibling(wnd);
+			if (subid) then
+			else
+				wnd:message("Couldn't import state, sibling missing.");
+			end
+		end,
+		eval = function()
+			return find_sibling();
+		end
+	}
 };
-
-

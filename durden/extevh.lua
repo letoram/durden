@@ -114,7 +114,7 @@ end
 
 defhtbl["cursorhint"] =
 function(wnd, source, stat)
--- FIXME: set mouse custom cursor state for window
+	wnd.cursor = stat.cursor;
 end
 
 defhtbl["viewport"] =
@@ -209,6 +209,7 @@ end
 --  stateinf is used in the builtin/shared
 defhtbl["state_size"] =
 function(wnd, source, stat)
+	warning("got state_size");
 	wnd.stateinf = {size = stat.state_size, typeid = stat};
 end
 

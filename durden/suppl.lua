@@ -574,7 +574,6 @@ function esc_to_fontstr(msg)
 --
 -- truecolor: \x1b[38;5;R;G;Bm  (38 fg, 48 bg)
 --
-
 end
 
 -- set a temporary hook that will override menu navigation

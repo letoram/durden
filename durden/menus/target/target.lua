@@ -7,6 +7,9 @@ local sdisp = {
 	end
 };
 
+-- default event handlers that will be added to a new registered
+-- window, used to track things like wanted key=vales (coreopts)
+-- and input labels
 function shared_dispatch()
 	return sdisp;
 end
@@ -23,8 +26,8 @@ local shared_actions = {
 		name = "shared_state",
 		label = "State",
 		submenu = true,
-		kind = "ation",
-		handler = system_load("menus/target/state.lua")();
+		kind = "action",
+		handler = system_load("menus/target/state.lua")()
 	},
 	{
 		name = "shared_clipboard",
@@ -35,33 +38,43 @@ local shared_actions = {
 			return active_display().selected and
 				active_display().selected.clipboard_block == nil;
 		end,
-		handler = system_load("menus/target/clipboard.lua")(),
+		handler = system_load("menus/target/clipboard.lua")()
+	},
+	{
+		name = "shared_options",
+		label = "Options",
+		submenu = true,
+		kind = "action",
+		eval = function()
+			local wnd = active_display().selected;
+			print("wnd.coreopt:", wnd.coreopt);
+			return wnd.coreopt and #wnd.coreopt > 0;
+		end,
+		handler = system_load("menus/target/coreopts.lua")()
 	},
 	{
 		name = "shared_audio",
 		label = "Audio",
 		submenu = true,
 		kind = "action",
-		handler = system_load("menus/target/audio.lua")(),
 		eval = function(ctx)
 			return active_display().selected.source_audio;
-		end
+		end,
+		handler = system_load("menus/target/audio.lua")()
 	},
 	{
 		name = "shared_video",
 		label = "Video",
 		kind = "action",
 		submenu = true,
-		handler = system_load("menus/target/video.lua")(),
-		hint = "Video:"
+		handler = system_load("menus/target/video.lua")()
 	},
 	{
 		name = "shared_window",
 		label = "Window",
 		kind = "action",
 		submenu = true,
-		handler = system_load("menus/target/window.lua")(),
-		Hint = "Window: "
+		handler = system_load("menus/target/window.lua")()
 	},
 };
 
@@ -70,7 +83,6 @@ if (DEBUGLEVEL > 0) then
 		name = "debug",
 		label = "Debug",
 		kind = "action",
-		hint = "Debug:",
 		submenu = true,
 		handler = system_load("menus/target/debug.lua")();
 	});

@@ -1,5 +1,7 @@
-local function set_temporary(wnd, slot, val)
-	print("set_temporary", wnd, slot, val);
+local function set_temporary(wnd, slot, opts, val)
+	target_coreopt(wnd.external, slot, val);
+-- note: IF meta1 is set, we SAVE to persistant config
+-- [get from tgt/config IDs or from registered UUID
 end
 
 local function list_values(wnd, ind, optslot, trigfun)
@@ -9,6 +11,7 @@ local function list_values(wnd, ind, optslot, trigfun)
 			handler = function()
 				trigfun(wnd, ind, optslot, v);
 			end,
+			label = v,
 			name = "coreopt_val_" .. v,
 			kind = "action"
 		});
@@ -22,6 +25,7 @@ local function list_coreopts(wnd, trigfun)
 		if (#v.values > 0 and v.description) then
 			table.insert(res, {
 				name = "coreopt_" .. v.description,
+				label = v.description,
 				kind = "action",
 				submenu = true,
 				handler = function()
@@ -39,11 +43,8 @@ return {
 		label = "Set",
 		kind = "action",
 		submenu = true,
-		eval = function()
-			return active_display().selected.coreopt ~= nil;
-		end,
 		handler = function()
-			list_coreopts(active_display().selected, set_temporary);
+			return list_coreopts(active_display().selected, set_temporary);
 		end
 	},
 };
