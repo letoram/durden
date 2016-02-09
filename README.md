@@ -146,11 +146,10 @@ are being implemented, we have the following list:
   - [x] Window Translucency
   - [x] Window Alpha Channel Behavior Control (using shader)
   - [x] Off-Screen Window Alert
-  - [ ] Centered canvas in overdimensioned windows (tiled, fullscreen)
+  - [x] Centered canvas in overdimensioned windows (fullscreen)
   - [ ] Bind target/global action to titlebar icon
   - [x] Configurable Border Width/Gaps
   - [x] Per Workspace Background Image
-- [ ] Screen-Rotate Trigger to re-layout
 - [x] Global and Window- specific audio controls
 - [x] Resource Browser
 - [x] IPC
@@ -203,7 +202,7 @@ are being implemented, we have the following list:
   - [x] Customized Border
   - [ ] Content position indicator (scrollbar)
   - [ ] Icon to "Tray"
-  - [ ] Content/Scroll Integration
+  - [ ] Content/Scrollbar Integration
   - [ ] Popup Windows
   - [ ] Move window to float/hidden that can be toggled to cursor position
   - [ ] Zoom at Cursor
@@ -215,7 +214,7 @@ are being implemented, we have the following list:
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Screenreader Support
-  - [ ] Tesseract / OCR window
+  - [ ] Tesseract / OCR-to-clipboard helper
   - [ ] Window Configuration Save
 - [ ] Display Sharing
   - [ ] Recording/Streaming/Sharing
@@ -339,13 +338,14 @@ _files that might be of interest)_
         durden.lua       - main script, input routing and process management
         display.lua      - display and multiple-workspace manager
         tiler.lua        - main tiling layout, workspace management etc.
+        wnd_settings.lua - window serialization and restore
         lbar.lua         - support script for textedit control
         bbar.lua         - binding bar, used for querying keybindings
         browser.lua      - lbar based resource browser
         suppl.lua        - text and menu convinience functions
 
     durden/atypes/* - menus and settings for specific client subtypes
-    durden/builtin/ - global menus and settings, target base menus and settings
+    durden/menus/ - global menus and settings, target base menus and settings
 
 We don't keep any necessary assets in the resource path as that should be
 accessible to the browser (one could essentially set it to / or whatever

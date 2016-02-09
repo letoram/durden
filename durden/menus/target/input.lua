@@ -127,7 +127,7 @@ local kbd_menu = {
 };
 
 local function mouse_lockfun(x, y, rx, ry, wnd)
---	print("forward input to target:", x, y, rx, ry, wnd);
+	print("forward input to target:", x, y, rx, ry, wnd);
 end
 
 local mouse_menu = {

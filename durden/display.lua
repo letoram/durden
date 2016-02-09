@@ -71,9 +71,10 @@ local function switch_active_display(ind)
 	displays.main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
+	local sf = gconfig_get("mouse_scalef");
+	mouse_cursor_sf(sf * displays[ind].tiler.scalef, sf * displays[ind].tiler.scalef);
+
 -- system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
--- mouse_scale(displays[ind].sf);
--- switch mouse scaling factor
 end
 
 local function display_data(id)
@@ -343,7 +344,12 @@ function display_ressw(name, mode)
 	end
 end
 
-function display_cycle_active()
+function display_cycle_active(ind)
+	if (type(ind) == "boolean") then
+		switch_active_display(displays.main);
+		return;
+	end
+
 	local nd = displays.main;
 	repeat
 		nd = (nd + 1 > #displays) and 1 or (nd + 1);
