@@ -80,6 +80,17 @@ local durden_visual = {
 		end
 	},
 	{
+		name = "config_mouse_scale",
+		label = "Mouse Scale",
+		kind = "value",
+		hint = "(0.1 .. 10.0)",
+		initial = function() return tostring(gconfig_get("mouse_scalef")); end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_scalef", tonumber(val));
+			display_cycle_active(true);
+		end
+	},
+	{
 		name = "transition_speed",
 		label = "Animation Speed",
 		kind = "value",

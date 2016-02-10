@@ -437,20 +437,6 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		end
 	end
 
--- update statusbar vid?
---
---			local props = image_surface_properties(wm.statusbar_msg);
---			local xpos = wm.width - props.width;
-
--- align to 40px just to lessen the effect of non-monospace font
---			if (xpos % 40 ~= 0) then
---				xpos = xpos - (xpos % 40);
---			end
---			xpos = xpos < ofs and ofs or xpos;
---			move_image(wm.statusbar_msg, xpos, 3);
---		end
---	end
-
 -- add msg in statusbar "slot", protect against overflow into ws list
 	if (msg ~= nil) then
 		local text = {gconfig_get("sbar_textstr"), msg};
@@ -899,10 +885,10 @@ local function drop_float(space, swap)
 	for i,v in ipairs(lst) do
 		local pos = image_surface_properties(v.anchor);
 		v.last_float = {
-			width = v.width,
-			height = v.height,
-			x = pos.x,
-			y = pos.y
+			width = space.wm.width / v.width,
+			height = space.wm.height / v.height,
+			x = space.wm.width / pos.x,
+			y = space.wm.height / pos.y
 		};
 	end
 
@@ -1042,14 +1028,20 @@ local function set_float(space)
 			local props = image_storage_properties(v.canvas);
 			local neww;
 			local newh;
-
+-- work with relative position / size to handle migrate or resize
 			if (v.last_float) then
-				neww = v.last_float.width;
-				newh = v.last_float.height;
-				move_image(v.anchor, v.last_float.x, v.last_float.y);
+				neww = space.wm.width * v.last_float.width;
+				newh = space.wm.height * v.last_float.height;
+				move_image(v.anchor,
+					space.wm.width * v.last_float.x,
+					space.wm.height * v.last_float.y
+				);
+-- if window havn't been here before, clamp
 			else
 				neww = props.width + v.pad_left + v.pad_right;
 				newh = props.height + v.pad_top + v.pad_bottom;
+				neww = (space.wm.width < neww and space.wm.width) or neww;
+				newh = (space.wm.height < newh and space.wm.height) or newh;
 			end
 
 			v:resize(neww, newh, true);
@@ -2201,6 +2193,7 @@ local function wnd_create(wm, source, opts)
 		effective_h = 0,
 		weight = 1.0,
 		vweight = 1.0,
+		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		load_config = wnd_loadcfg,
@@ -2676,10 +2669,6 @@ function tiler_create(width, height, opts)
 		order_anchor = null_surface(1, 1),
 		empty_space = workspace_empty,
 
--- to help with y positioning when we have large subscript,
--- this is manually probed during font-load
-		font_sf = gconfig_get("font_defsf"),
-
 -- pre-alloc these as they will be re-used a lot
 		border_color = fill_surface(1, 1,
 			unpack(gconfig_get("tcol_inactive_border"))),
@@ -2701,7 +2690,10 @@ function tiler_create(width, height, opts)
 
 		lbar = tiler_lbar,
 		tick = tick_windows,
+
+		font_sf = gconfig_get("font_defsf"),
 		scalef = opts.scalef and opts.scalef or 1.0,
+		font_delta = 0,
 
 -- management members
 		spaces = {},
@@ -2734,6 +2726,9 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
 	};
+
+-- to help with y positioning when we have large subscript,
+-- this is manually probed during font-load
 
 	res.statusbar = color_surface(width,
 		gconfig_get("sbar_sz") * res.scalef, unpack(gconfig_get("sbar_bg")));

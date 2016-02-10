@@ -19,6 +19,7 @@
 
 local gf = {};
 local sf = {};
+system_load("wnd_settings.lua")();
 
 function register_global(funname, funptr)
 	if (gf[funname] ~= nil) then
@@ -403,6 +404,61 @@ gf["rebind_meta"] = function(chain)
 	);
 end
 
+local function load_defaults(wnd)
+	local keys = {};
+	local kstrip = 0;
+
+	if (wnd.config_target) then
+		keys = get_keys(wnd.config_target, wnd.config_config);
+	elseif (wnd.cfg_prefix) then
+		keys = match_keys(wnd.cfg_prefix);
+		kstrip = string.len(wnd.cfg_prefix);
+	else
+		return;
+	end
+
+	local getkv = function(s)
+		local i = string.find(s, ':');
+		local key = string.sub(s, 1+kstrip, i-1);
+		local val = string.sub(s, 1, i+1);
+	end
+
+	local clampf = function(v, dv)
+		return (v < 0.0 or v > 1.0) and dv or v;
+	end
+
+	local last_fl = {width = 1.0, height = 1.0, x = 0.0, y = 0.0};
+	local got_fl = false;
+
+	for a,b in ipairs(keys) do
+		local k, v = getkv(b);
+		if (k == "filtermode") then
+			wnd.filtermode = v;
+		elseif (k == "autocrop") then
+			wnd.autocrop = true;
+		elseif (k == "scalemode") then
+			wnd.scalemode = v;
+		elseif (k == "floatw") then
+			last_fl.width = clampf(tonumber(v), 1.0);
+			got_fl = true;
+		elseif (k == "floath") then
+			last_fl.height = clampf(tonumber(v), 1.0);
+			got_fl = true;
+		elseif (k == "xpos") then
+		elseif (k == "ypos") then
+		end
+	end
+
+	if (got_fl) then
+		wnd.last_float = last_fl;
+	end
+--
+-- get_keys(target, target/config) otherwise match_keys with prefix..
+-- grab custom input bindings
+-- grab coreopts settings
+-- grab video filtering / scaling / ...
+end
+
 gf["query_launch"] = function()
 	local	targets = list_targets();
 	if (targets == nil or #targets == 0) then
@@ -418,15 +474,18 @@ gf["query_launch"] = function()
 				active_display():lbar(tiler_lbarforce(cfgs, function(cfstr)
 					vid = launch_target(str, cfstr, LAUNCH_INTERNAL, def_handler);
 					if (valid_vid(vid)) then
-						durden_launch(vid, cfstr, str);
+						local wnd = durden_launch(vid, cfstr, str);
+						wnd.config_target = str;
+						wnd.config_config = cfstr;
+						load_defaults(wnd);
 					end
 				end), {}, {label = str .. ", Config:", force_completion = true});
 			else
--- FIXME: load coreopts from serialization target and add here
 				vid = launch_target(str, cfgs[1], LAUNCH_INTERNAL, def_handler);
 				if (valid_vid(vid)) then
 					local wnd = durden_launch(vid, cfstr, str);
-					wnd.config_tgt = {str, cfstr};
+					wnd.config_target = str;
+					wnd.config_config = cfstr;
 					load_defaults(wnd);
 				end
 			end

@@ -103,7 +103,9 @@ local mstate = {
 	max_x = VRESW,
 	max_y = VRESH,
 	hotspot_x = 0,
-	hotspot_y = 0
+	hotspot_y = 0,
+	scale_w = 1, -- scale factors for cursor drawing
+	scale_h = 1,
 };
 
 local cursors = {
@@ -332,6 +334,9 @@ function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 	end
 
 	move_image(mstate.cursor, mstate.x, mstate.y);
+	local props = image_surface_properties(cvid);
+	mstate.size = {props.width, props.height};
+
 	mstate.pickdepth = pickdepth;
 	order_image(mstate.cursor, clayer);
 	image_mask_set(cvid, MASK_UNPICKABLE);
@@ -838,18 +843,30 @@ function mouse_scale(factor)
 	cursor.accel_y = mouse.prescale.ay * factor;
 end
 
+function mouse_cursor_sf(fx, fy)
+	mstate.scale_w = fx and fx or 1.0;
+	mstate.scale_h = fy and fy or 1.0;
+	local new_w = mstate.size[1] * mstate.scale_w;
+	local new_h = mstate.size[2] * mstate.scale_h;
+
+	if (mstate.native) then
+		resize_cursor(new_w, new_h);
+	else
+		resize_image(mstate.cursor, new_w, new_h);
+	end
+end
+
 -- assumed: .vid(valid), .hotspot_x, .hotspot_y
 function mouse_custom_cursor(ct)
 	if (mstate.native) then
 		cursor_setstorage(ct.vid);
-		resize_cursor(ct.width, ct.height);
-		mstate.size = {ct.width, ct.height};
 	else
 		image_sharestorage(ct.vid, mstate.cursor);
-		resize_image(mstate.cursor, ct.width, ct.height);
-		mstate.size = {ct.width, ct.height};
 	end
+	mstate.size = {ct.width, ct.height};
+	mouse_cursor_sf(mstate.scale_w, mstate.scale_h);
 
+-- hotspot isn't scaled yet
 	local hsdx = mstate.hotspot_x - ct.hotspot_x;
 	local hsdy = mstate.hotspot_y - ct.hotspot_y;
 
