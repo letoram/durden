@@ -47,7 +47,6 @@ local shared_actions = {
 		kind = "action",
 		eval = function()
 			local wnd = active_display().selected;
-			print("wnd.coreopt:", wnd.coreopt);
 			return wnd.coreopt and #wnd.coreopt > 0;
 		end,
 		handler = system_load("menus/target/coreopts.lua")()

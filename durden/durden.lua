@@ -185,9 +185,7 @@ function update_default_font(key, val)
 	for wnd in all_windows() do
 		wnd:set_title(wnd.title_text and wnd.title_text or "");
 		wnd:resize(wnd.width, wnd.height);
-		if (not wnd.font_block) then
-			wnd:update_font(sz, hint, font);
-		end
+		wnd:update_font(sz, hint, font);
 	end
 end
 
