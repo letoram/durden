@@ -387,8 +387,7 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		end
 		wm.pretiles = {};
 		for k,v in ipairs(pretiles) do
-			local text = {string.format("\\f,%s%s", wm.font_delta,
-				gconfig_get("pretiletext_color")), v};
+			local text = {wm.font_delta .. gconfig_get("pretiletext_color"), v};
 			local pret;
 			pret, ofs = gen_status_tile(wm, text, statush, ofs);
 			if (valid_vid(pret)) then
@@ -410,8 +409,8 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		if (wm.spaces[i] ~= nil) then
 			local space = wm.spaces[i];
 			if (space.label_id == nil) then
-				local text = {string.format("\\f,%s%s", wm.font_delta,
-					gconfig_get("pretiletext_color")), tostring(i)};
+				local text = {wm.font_delta .. gconfig_get(
+					"pretiletext_color"), tostring(i)};
 					if (space.label) then
 						text[3] = "";
 						text[4] = ":";
@@ -1340,7 +1339,13 @@ local function wnd_effective_resize(wnd, neww, newh, force)
 end
 
 local function wnd_font(wnd, sz, hint, font)
+	if (wnd.font_block) then
+		return;
+	end
+
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		wnd.last_font = {sz, hint, font};
+		sz = sz + wnd.wm.font_deltav;
 		if (font) then
 			target_fonthint(wnd.external, font, sz * FONT_PT_SZ, hint);
 		else
@@ -1355,10 +1360,8 @@ end
 
 local function tbar_geth(wnd)
 	local tbh = image_surface_properties(wnd.titlebar).height;
-	if (wnd.hide_titlebar and tbar_mode(wnd.space.mode)) then
-		tbh = 0;
-	end
-	return tbh;
+	return (wnd.hide_titlebar and tbar_mode(wnd.space.mode)) and 0 or
+		(wnd.wm.scalef * gconfig_get("tbar_sz"));
 end
 
 local function wnd_resize(wnd, neww, newh, force)
@@ -1658,12 +1661,13 @@ local function wnd_title(wnd, message, skipresize)
 	message = wnd.title_prefix and (wnd.title_prefix .. ": ") or "" .. message
 
 	local props = image_surface_properties(wnd.titlebar);
+	local tbh = tbar_geth(wnd);
 	local new = not wnd.title_text or message ~= wnd.title_text;
 	wnd.title_text = message;
 
 -- only re-render if the message has changed
 	if (new) then
-		local lbl = {gconfig_get("tbar_textstr"), message};
+		local lbl = {wnd.wm.font_delta .. gconfig_get("tbar_textstr"), message};
 		if (valid_vid(wnd.message_vid)) then
 			wnd.message_vid = render_text(wnd.message_vid, lbl);
 		else
@@ -1691,7 +1695,7 @@ local function wnd_title(wnd, message, skipresize)
 
 	if (props.opacity <= 0.001) then
 		show_image(wnd.titlebar);
-		wnd.pad_top = wnd.pad_top + props.height;
+		wnd.pad_top = wnd.pad_top + tbh;
 		if (not skipresize) then
 			wnd.space:resize();
 		end
@@ -1707,9 +1711,9 @@ local function wnd_title(wnd, message, skipresize)
 	end
 
 -- finally reposition / relink
-	resize_image(wnd.titlebar, wnd.width - wnd.border_w * 2, props.height);
+	resize_image(wnd.titlebar, wnd.width - wnd.border_w * 2, tbh);
 
-	local yp = math.floor(0.5 * (props.height -
+	local yp = math.floor(0.5 * (tbh -
 		image_surface_properties(dv).height * wnd.wm.font_sf));
 
 	local pad = gconfig_get("tbar_pad");
@@ -2103,9 +2107,20 @@ local function wnd_migrate(wnd, tiler)
 	table.remove_match(wnd.wm.windows, wnd);
 	wnd.wm = tiler;
 
+-- make sure titlebar sizes etc. match
+	wnd:rebuild_border(gconfig_get("borderw"));
+
 -- employ relayouting hooks to currently active ws
 	local dsp = tiler.spaces[tiler.space_ind];
 	wnd:assign_ws(dsp, true);
+
+-- rebuild border and titlebar to account for changes in font/scale
+	local tt = wnd.title_text;
+	wnd.title_text = nil;
+	wnd:set_title(tt);
+	if (wnd.last_font) then
+		wnd:update_font(unpack(wnd.last_font));
+	end
 end
 
 -- track suspend state with window so that we can indicate with
@@ -2127,6 +2142,20 @@ local function wnd_setsuspend(wnd, val)
 		image_sharestorage(sel and wnd.wm.active_border_color or
 			wnd.wm.border_color, wnd.border);
 		wnd.suspended = nil;
+	end
+end
+
+local function wnd_rebuild(v, bw)
+	local tbarh = tbar_geth(v);
+	v.pad_left = bw;
+	v.pad_right = bw;
+	v.pad_top = bw + tbarh;
+	v.pad_bottom = bw;
+	v.border_w = bw;
+
+	if (v.space.mode == "tile" or v.space.mode == "float") then
+		move_image(v.titlebar, v.border_w, v.border_w);
+		resize_image(v.titlebar, v.width - v.border_w * 2, tbarh);
 	end
 end
 
@@ -2210,6 +2239,7 @@ local function wnd_create(wm, source, opts)
 		add_handler = wnd_addhandler,
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
+		rebuild_border = wnd_rebuild,
 		update_font = wnd_font,
 		resize = wnd_resize,
 		migrate = wnd_migrate,
@@ -2567,18 +2597,7 @@ local function tiler_rebuild_border(tiler)
 		print(debug.traceback());
 	end
 	for i,v in ipairs(tiler.windows) do
-		local tbarh = tbar_geth(v);
-		local old_bw = v.border_w;
-		v.pad_left = v.pad_left - old_bw + bw;
-		v.pad_right = v.pad_right - old_bw + bw;
-		v.pad_top = v.pad_top - old_bw + bw;
-		v.pad_bottom = v.pad_bottom - old_bw + bw;
-		print("new pad top:", v.pad_top);
-		v.border_w = bw;
-		if (v.space.mode == "tile" or v.space.mode == "float") then
-			move_image(v.titlebar, v.border_w, v.border_w);
-			resize_image(v.titlebar, v.width - v.border_w * 2, tbarh);
-		end
+		wnd:rebuild_border(bw);
 	end
 end
 
@@ -2697,7 +2716,10 @@ function tiler_create(width, height, opts)
 
 		font_sf = gconfig_get("font_defsf"),
 		scalef = opts.scalef and opts.scalef or 1.0,
-		font_delta = "+0",
+
+-- keep both text and integer representations to help fonthint
+		font_delta = "\\f,+0",
+		font_deltav = 0,
 
 -- management members
 		spaces = {},
@@ -2730,6 +2752,17 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock
 	};
+
+	local fsz = gconfig_get("font_sz") * res.scalef - gconfig_get("font_sz");
+
+	local int, fract = math.modf(fsz);
+	int = int + ((fract > 0.75) and 1 or - 1);
+		res.font_deltav = int;
+	if (int > 0) then
+		res.font_delta = "\\f,+" .. tostring(int);
+	elseif (int < 0) then
+		res.font_delta = "\\f," .. tostring(int);
+	end
 
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load

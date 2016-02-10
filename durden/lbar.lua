@@ -120,7 +120,7 @@ local function update_completion_set(wm, ctx, set)
 	local ctxw = 2 * step;
 	local textw = valid_vid(ctx.text) and (
 		image_surface_properties(ctx.text).width) or ctxw;
-	local lbarsz = gconfig_get("lbar_sz");
+	local lbarsz = gconfig_get("lbar_sz") * wm.scalef;
 
 	ctx.canchor = null_surface(wm.width, lbarsz);
 	image_tracetag(ctx.canchor, "lbar_anchor");
@@ -140,11 +140,12 @@ local function update_completion_set(wm, ctx, set)
 		local msgs = {};
 		local str;
 		if (type(set[i]) == "table") then
-			table.insert(msgs, i == ctx.sel and set[i][2] or set[i][1]);
+			table.insert(msgs, wm.font_delta ..
+				(i == ctx.sel and set[i][2] or set[i][1]));
 			table.insert(msgs, set[i][3]);
 		else
-			table.insert(msgs, i == ctx.csel and
-				gconfig_get("lbar_seltextstr") or gconfig_get("lbar_textstr"));
+			table.insert(msgs, wm.font_delta .. (i == ctx.sel
+				and gconfig_get("lbar_seltextstr") or gconfig_get("lbar_textstr")));
 			table.insert(msgs, set[i]);
 		end
 
@@ -239,14 +240,14 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 			ictx.text = render_text(ictx.text, inp_str(ictx));
 		else
 			local tvid, heights, textw, texth = render_text(inp_str(ictx));
+			lbarh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 			ictx.text = tvid;
 			image_tracetag(ictx.text, "lbar_inpstr");
 			show_image(ictx.text);
 			link_image(ictx.text, ictx.text_anchor);
 			image_inherit_order(ictx.text, true);
 			texth = texth * active_display().font_sf;
-			move_image(ictx.text, ictx.textofs, math.ceil(
-				0.5*(gconfig_get("lbar_sz") - texth)));
+			move_image(ictx.text, ictx.textofs, math.ceil(0.5 * (lbarh - texth)));
 		end
 	end
 
@@ -326,7 +327,12 @@ local function lbar_label(lbar, lbl)
 		end
 	end
 
-	local id, lines, w, h = render_text(gconfig_get("lbar_labelstr")..lbl);
+	local wm = active_display();
+	local sf = wm.font_sf;
+
+	local id, lines, w, h = render_text({wm.font_delta ..
+		gconfig_get("lbar_labelstr"), lbl});
+
 	lbar.labelid = id;
 	if (not valid_vid(lbar.labelid)) then
 		return;
@@ -338,9 +344,8 @@ local function lbar_label(lbar, lbl)
 	image_inherit_order(id, true);
 	order_image(id, 1);
 
-	local sf = active_display().font_sf;
 	local pad = gconfig_get("lbar_pad");
-	local sz = gconfig_get("lbar_sz");
+	local sz = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 -- relinking / delinking on changes every time
 	move_image(lbar.labelid, pad, math.ceil(0.5 * (sz - sf * h)));
 	lbar.textofs = w + sz + pad;
@@ -398,8 +403,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	mouse_addlistener(ph, {"click"});
 	table.insert(pending, ph);
 
-	local bar = color_surface(wm.width, gconfig_get("lbar_sz"),
-		unpack(gconfig_get("lbar_bg")));
+	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	local bar = color_surface(wm.width, barh, unpack(gconfig_get("lbar_bg")));
 
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
@@ -411,8 +416,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
 	order_image(bg, 1);
 
-	local car = color_surface(gconfig_get("lbar_caret_w"),
-		gconfig_get("lbar_caret_h"), unpack(gconfig_get("lbar_caret_col")));
+	local car = color_surface(wm.scalef * gconfig_get("lbar_caret_w"),
+		wm.scalef * gconfig_get("lbar_caret_h"),
+		unpack(gconfig_get("lbar_caret_col"))
+	);
 	show_image(car);
 	image_inherit_order(car, true);
 	link_image(car, bar);
@@ -420,9 +427,9 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	local pos = gconfig_get("lbar_position");
 	if (pos == "bottom") then
-		move_image(bar, 0, wm.height - gconfig_get("lbar_sz"));
+		move_image(bar, 0, wm.height - barh);
 	elseif (pos == "center") then
-		move_image(bar, 0, math.floor(0.5*(wm.height-gconfig_get("lbar_sz"))));
+		move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 	elseif (pos == "top") then
 		move_image(bar, 0, 0);
 	end
