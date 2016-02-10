@@ -387,8 +387,8 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		end
 		wm.pretiles = {};
 		for k,v in ipairs(pretiles) do
-			local text = string.format("%s%s %s",
-				gconfig_get("font_str"), gconfig_get("pretiletext_color"), v);
+			local text = {string.format("\\f,%s%s", wm.font_delta,
+				gconfig_get("pretiletext_color")), v};
 			local pret;
 			pret, ofs = gen_status_tile(wm, text, statush, ofs);
 			if (valid_vid(pret)) then
@@ -410,10 +410,14 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		if (wm.spaces[i] ~= nil) then
 			local space = wm.spaces[i];
 			if (space.label_id == nil) then
-				local text = string.format("%s%s %d%s",
-					gconfig_get("font_str"), gconfig_get("text_color"), i,
-					space.label ~= nil and (":" .. gconfig_get("label_color") .. " " ..
-					space.label) or "");
+				local text = {string.format("\\f,%s%s", wm.font_delta,
+					gconfig_get("pretiletext_color")), tostring(i)};
+					if (space.label) then
+						text[3] = "";
+						text[4] = ":";
+						text[5] = gconfig_get("label_color");
+						text[6] = space.label;
+					end
 				space.label_id, ofs = gen_status_tile(wm, text, statush, ofs);
 			else
 				move_image(space.label_id, ofs, 0);
@@ -2693,7 +2697,7 @@ function tiler_create(width, height, opts)
 
 		font_sf = gconfig_get("font_defsf"),
 		scalef = opts.scalef and opts.scalef or 1.0,
-		font_delta = 0,
+		font_delta = "+0",
 
 -- management members
 		spaces = {},
