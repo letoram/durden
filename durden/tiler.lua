@@ -539,7 +539,7 @@ local function wnd_select(wnd, source)
 	wnd:set_dispmask(bit.band(wnd.dispmask,
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
-	if (wnd.wm.selected) then
+	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected:deselect();
 	end
 
@@ -554,7 +554,10 @@ local function wnd_select(wnd, source)
 		wnd.wm.active_border_color, wnd.border);
 	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
-	wnd.wm.selected = wnd;
+
+	if (wnd.wm.active_space == wnd.space) then
+		wnd.wm.selected = wnd;
+	end
 	wnd.space.selected = wnd;
 
 	ms = mouse_state();
@@ -682,6 +685,7 @@ local function workspace_activate(space, noanim, negdir, newbg)
 		if (space.background) then show_image(space.background); end
 	end
 
+	space.wm.active_space = space;
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
