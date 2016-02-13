@@ -14,6 +14,8 @@ local function pastefun(wnd, msg)
 		end);
 	end
 
+	msg = wnd.pastefilter ~= nil and wnd.pastefilter(msg) or msg;
+
 	if (msg and string.len(msg) > 0) then
 		target_input(wnd.clipboard_out, msg);
 	end
@@ -29,6 +31,8 @@ local function clipboard_paste_local()
 	pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 end
 
+-- can shorten further by dropping vowels and characters
+-- in beginning and end as we match more on those
 local function shorten(s)
 	if (s == nil or string.len(s) == 0) then
 		return "";
@@ -66,6 +70,25 @@ end
 
 local function clipboard_history()
 	return clipboard_histgen(active_display().selected, CLIPBOARD.globals);
+end
+
+local function clipboard_urls()
+	local res = {};
+	for k,v in ipairs(CLIPBOARD.urls) do
+		table.insert(res, {
+			name = "clipboard_url" .. tostring(k),
+			label = shorten(v),
+			kind = "action",
+			handler = function()
+				local m1, m2 = dispatch_meta();
+				pastefun(active_display().selected, v);
+				if (m1) then
+					CLIPBOARD:set_global(v);
+				end
+			end
+		});
+	end
+	return res;
 end
 
 register_shared("paste_global", clipboard_paste);
@@ -111,5 +134,44 @@ return {
 			active_display().selected.external, TYPE_FRAMESERVER);
 		end,
 		handler = clipboard_history
+	},
+	{
+		name = "clipboard_paste_url",
+		label = "URLs",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return valid_vid(
+				active_display().selected.external, TYPE_FRAMESERVER) and
+				#CLIPBOARD.urls > 0;
+		end,
+		handler = clipboard_urls
+	},
+	{
+		name = "clipboard_paste_mode",
+		label = "Mode",
+		kind = "action",
+		submenu = true,
+		initial = function()
+			local wnd = active_display().selected;
+			return wnd.pastemode;
+		end,
+		handler = function()
+			local res = {};
+			for k,v in ipairs(CLIPBOARD:pastemodes()) do
+				local f, l = CLIPBOARD:pastemodes(v);
+				table.insert(res, {
+					name = "clipboard_paste_mode_" .. v,
+					handler = function()
+						local wnd = active_display().selected;
+						wnd.pastefilter = f;
+						wnd.pastemode = l;
+					end,
+					kind = "action",
+					label = l
+				});
+			end
+			return res;
+		end,
 	}
 }

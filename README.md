@@ -213,9 +213,12 @@ are being implemented, we have the following list:
   - [x] Font Hinting
   - [ ] Block Alerts
   - [x] LL Origo Invert
-  - [ ] Screenreader Support
-  - [ ] Tesseract / OCR-to-clipboard helper
   - [ ] Window Configuration Save
+- [ ] Specials
+  - [ ] Overlay Select region
+    - [ ] Tesseract (OCR -> clipboard)
+    - [ ] To- Image Viewer
+    - [ ] Stream and/or Share
 - [ ] Display Sharing
   - [ ] Recording/Streaming/Sharing
     - [ ] Audio Control
@@ -224,15 +227,15 @@ are being implemented, we have the following list:
 - [ ] Cut and Paste
   - [x] Clipboard Management (local/global + history)
   - [x] Simple Text
-  - [ ] URL Catcher
-  - [ ] Paste text Reencoded
-    - [ ] Base64 enc/dec
-    - [ ] Shell escaped
-    - [ ] Drop (pre+post or all) linefeeds
+  - [x] URL Catcher
+  - [x] Paste text Reencoded
+    - [x] Trim
+    - [x] No CR/LF
+    - [x] No consecutive whitespace
   - [ ] Persistant pasteboard (serialize to K/V store)
   - [ ] Streaming Text
   - [ ] Text Hash to Color on Copy (show in paste menu)
-  - [ ] Special clipboard tracking for detected URLs
+  - [x] Special clipboard tracking for detected URLs
   - [ ] Images
   - [ ] Videos
   - [ ] Audio
