@@ -28,7 +28,7 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
--- set to empty or "" to disable
+-- SECURITY: set to empty or "" to disable these features
 	extcon_path = "durden",
 	status_path = "<durden_status",
 	control_path = "<durden_control",
@@ -49,6 +49,7 @@ local defaults = {
 	ws_autoadopt = true,
 	ws_default = "tile",
 
+-- per window toggle, global default here
 	hide_titlebar = false,
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
@@ -67,14 +68,13 @@ local defaults = {
 
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
--- scaling parameters.
+-- scaling parameters, SDL on OSX for instance.
 	mouse_hardlock = false,
 
 -- "native' or "nonnative", while native is more energy- efficient as mouse
 -- motion do not contribute to a full refresh, it may be bugged on some
--- platforms
+-- platforms and have problems with multiple monitors right now.
 	mouse_mode = "nonnative",
-
 	mouse_scalef = 1.0,
 
 -- audio settings
@@ -88,8 +88,6 @@ local defaults = {
 	kbd_delay = 300,
 
 -- built-in terminal defaults
-	term_rows = 80,
-	term_cols = 25,
 	term_autosz = true, -- will ignore cellw / cellh and use font testrender
 	term_cellw = 12,
 	term_cellh = 12,
@@ -127,32 +125,14 @@ local defaults = {
 -- sbar
 	sbar_pad = 2,
 	sbar_sz = 12, -- dynamically recalculated on font changes
-	sbar_bg = {0x00, 0x00, 0x00},
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
 
 -- titlebar
   tbar_pad = 0,
 	tbar_sz = 12, -- dynamically recalculated on font changes
-	tbar_bg = {0x28, 0x55, 0x77},
+	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
-
--- popup
-	pcol_bg = {0x3c, 0x3c, 0x3c},
-	pcol_border = {0x88, 0x88, 0x88},
-	pcol_act_bg = {0x44, 0x44, 0xaa},
-	pcol_act_border = {0x88, 0x88, 0xff},
-
--- tile
-	tbar_active = {0x3c, 0x68, 0x89},
-	tbar_inactive = {0x1c, 0x38, 0x59},
-	tcol_border = {0x4c, 0x78, 0x99},
-	tcol_inactive_border = {0x10, 0x10, 0x10},
-	tcol_alert = {0xff, 0x8c, 0x00},
-	tcol_alert_border = {0xff, 0xff, 0xff},
-	tcol_suspend_border = {0xff, 0x00, 0x00},
-	pretile_border = {0x88, 0x00, 0x00},
-	pretile_bg = {0x44, 0x00, 0x00},
 	pretiletext_color = "\\#ffffff ",
 };
 

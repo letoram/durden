@@ -4,11 +4,11 @@
 --
 return {
 	atype = "remoting",
-	props= {
+	props = {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
 		clipboard_block = true,
 		rate_unlimited = false
 	},
-	default_shader = "noalpha",
+	default_shader = {"simple", "noalpha"}
 };

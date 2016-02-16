@@ -16,7 +16,7 @@ local res = {
 	actions = {},
 -- labels is mapping between known symbol and string to forward
 	labels = {},
-	default_shader = "clamp_crop",
+	default_shader = {"simple", "crop"},
 	atype = "terminal",
 	props = {
 		scalemode = "stretch",
@@ -35,8 +35,9 @@ function(id, newv)
 		end
 	end
 
-	local k, v = shader_getkey("clamp_crop");
-	shader_uniform(v.shid, "crop_opa", "f", PERSIST, newv);
+	local col = gconfig_get("term_bgcol");
+	shader_update_uniform("crop", "simple", "color",
+		{col[1], col[2], col[3], newv}, nil, "term-alpha");
 end);
 
 -- globally apply changes to terminal font and terminal font sz

@@ -1,15 +1,12 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: Shader compilation and setup. Only the most basic features
--- in place, later iterations will maintain multiple shader languages,
--- format descriptor parsing, chaining and loading.
+-- Description: Shader compilation and setup.
 
--- Usual workaround for the fantastic GLES2 / GL21 precision specification
--- incompatibility.
 local old_build = build_shader;
 function build_shader(vertex, fragment, label)
-	fragment = [[
+	vertex = vetex and ("#define VERTEX\n" .. vertex) or nil;
+	fragment = fragment and ([[
 		#ifdef GL_ES
 			#ifdef GL_FRAGMENT_PRECISION_HIGH
 				precision highp float;
@@ -21,148 +18,166 @@ function build_shader(vertex, fragment, label)
 			#define mediump
 			#define highp
 		#endif
-	]] .. fragment;
+	]] .. fragment) or nil;
+
 	return old_build(vertex, fragment, label);
 end
 
-local shdrtbl = {};
-local frag_noalpha = [[
-uniform sampler2D map_tu0;
-uniform float obj_opacity;
-varying vec2 texco;
-
-void main(){
-	vec3 col = texture2D(map_tu0, texco).rgb;
-	gl_FragColor = vec4(col, obj_opacity);
-}
-]];
-
---
--- simple bar spectogram, adapted from guycooks reference at shadertoy
---
-local frag_spect = [[
-uniform sampler2D map_tu0;
-uniform float obj_opacity;
-varying vec2 texco;
-
-#define bars 32.0
-#define bar_sz (1.0 / bars)
-#define bar_gap (0.1 * bar_sz)
-
-float h2rgb(float h){
-	if (h < 0.0)
-		h += 1.0;
-	if (h < 0.16667)
-		return 0.1 + 4.8 * h;
-	if (h < 0.5)
-		return 0.9;
-	if (h < 0.66669)
-		return 0.1 + 4.8 * (0.6667 - h);
-	return 0.1;
-}
-
-vec3 i2c(float i)
-{
-	float h = 0.6667 - (i * 0.6667);
-	return vec3(h2rgb(h + 0.3334), h2rgb(h), h2rgb(h - 0.3334));
-}
-
-void main()
-{
-	if (obj_opacity < 0.01)
-		discard;
-
-	vec2 uv = vec2(1.0 - texco.s, 1.0 - texco.t);
-	float start = floor(uv.x * bars) / bars;
-
-	if (uv.x - start < bar_gap || uv.x > start + bar_sz - bar_gap){
-		gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-		return;
-	}
-
-/* rather low resolution as we've done no funky "pack float in rgba" trick */
-	float intens = 0.0;
-	for (float s = 0.0; s < bar_sz; s += bar_sz * 0.02){
-		intens += texture2D(map_tu0, vec2(start + s, 0.5)).g;
-	}
-
-	intens *= 0.02;
-	intens = clamp(intens, 0.005, 1.0);
-
-	float i = float(intens > uv.y);
-	gl_FragColor = vec4(i2c(intens) * i, obj_opacity);
-}
-]];
-
--- works with autocrop
-local frag_clamp = [[
-uniform sampler2D map_tu0;
-uniform float obj_opacity;
-uniform float crop_opa;
-varying vec2 texco;
-
-void main()
-{
-	vec4 col = texture2D(map_tu0, texco);
-	if (texco.s > 1.0 || texco.t > 1.0)
-		gl_FragColor = vec4(0.0, 0.0, 0.0, obj_opacity * crop_opa);
-	else
-		gl_FragColor = vec4(
-			col.r, col.g, col.b, obj_opacity * col.a);
-}
-]];
-
-shdrtbl["noalpha"] = {
-	name = "No Alpha",
-	shid = build_shader(nil, frag_noalpha, "noalpha")
+local shdrtbl = {
+	effect = {},
+	ui = {},
+	audio = {},
+	simple = {}
 };
 
-shdrtbl["fft_spectogram"] = {
-	name = "spectogram",
-	shid = build_shader(nil, frag_spect, "spectogram"),
-	fft = true,
-	hidden = true
-};
+function shdrmgmt_scan()
+	local groups = {"effect", "ui", "audio", "simple"};
+ 	for a,b in ipairs(groups) do
+ 		local path = string.format("shaders/%s/", b);
 
-shdrtbl["clamp_black"] = {
-	name = "clamp_crop",
-	shid = build_shader(nil, frag_clamp, "clamp_crop"),
-	hidden = true
-};
-
--- need better management for global config of shader tunables..
-shader_uniform(shdrtbl["clamp_black"].shid, "crop_opa",
-	"f", PERSIST, gconfig_get("term_opa"));
-
-function shader_setup(wnd, name)
-	if (shdrtbl[name] == nil) then
-		return;
-	end
-	image_shader(wnd.canvas, shdrtbl[name].shid);
-end
-
-function shader_getkey(name)
-	for k,v in pairs(shdrtbl) do
-		if (v.name == name) then
-			return k, v;
+		for i,j in ipairs(glob_resource(path .. "*.lua", APPL_RESOURCE)) do
+			local res = system_load(path .. j, false);
+			if (res) then
+				res = res();
+				if (not res or type(res) ~= "table" or res.version ~= 1) then
+					warning("shader " .. j .. " failed validation");
+				else
+					local key = string.sub(j, 1, string.find(j, '.', 1, true)-1);
+					shdrtbl[b][key] = res;
+				end
+		else
+				warning("error parsing " .. path .. j);
+ 			end
 		end
 	end
-	return name, shdrtbl[name];
 end
 
-function shader_list(fltfld)
-	local res = {};
-	for k,v in pairs(shdrtbl) do
-		if (fltfld) then
-			for i,j in ipairs(fltfld) do
-				if (v[j]) then
-					table.insert(res, v.name);
-					break;
+shdrmgmt_scan();
+
+local function set_uniform(dstid, name, typestr, vals, source)
+	local len = string.len(typestr);
+	if (type(vals) == "table" and len ~= #vals) or
+		(type(vals) ~= "table" and len > 1) then
+		warning("set_uniform called from broken source: " .. source);
+ 		return false;
+	end
+	if (type(vals) == "table") then
+		shader_uniform(dstid, name, typestr, unpack(vals));
+ 	else
+		shader_uniform(dstid, name, typestr, vals);
+	end
+	return true;
+end
+
+function shader_setup(dst, group, name, state)
+	if (not shdrtbl[group] or not shdrtbl[group][name]) then
+		return warning(string.format(
+			"shader_setup called with unknown group(%s) or name (%s) ",
+			group and group or "nil",
+			name and name or "nil"
+		));
+	end
+
+	local shader = shdrtbl[group][name];
+-- the different groups have different setup approaches
+	local outid = 0;
+	if (group == "ui" or group == "simple" or group == "audio") then
+-- build the main shader, set uniform and then derive substates with
+-- uniform overrides
+		if (not shader.shid) then
+			shader.shid = build_shader(shader.vert, shader.frag, group.."_"..name);
+			if (not shader.shid) then
+			warning("building shader failed for " .. group.."_"..name);
+				return;
+			end
+-- this is not very robust, bad written shaders will yield fatal()
+			for k,v in pairs(shader.uniforms) do
+				set_uniform(shader.shid, k, v.utype, v.default, name .. "-" .. k);
+			end
+-- states inherit shaders, define different uniform values
+			if (shader.states) then
+				for k,v in pairs(shader.states) do
+					shader.states[k].shid = shader_ugroup(shader.shid);
+
+					for i,j in pairs(v.uniforms) do
+						set_uniform(v.shid, i, shader.uniforms[i].utype, j,
+							string.format("%s-%s-%s", name, k, i));
+					end
 				end
 			end
-		elseif (not v.hidden) then
-			table.insert(res, v.name);
+
+		end
+-- now the shader exists, apply
+		local shid = ((state and shader.states and shader.states[state]) and
+			shader.states[state].shid) or shader.shid;
+		image_shader(dst, shid);
+ 	end
+
+-- missing, building effect, audio, display, simple and applying
+end
+
+-- update shader [sname] in group [domain] for the uniform [uname],
+-- targetting either the global [states == nil] or each individual
+-- instanced ugroup in [states].
+function shader_update_uniform(sname, domain, uname, args, states)
+	assert(shdrtbl[domain]);
+	assert(shdrtbl[domain][sname]);
+	local shdr = shdrtbl[domain][sname];
+	if (not states) then
+		states = {"default"};
+	end
+
+	for k,v in ipairs(states) do
+		local dstid, dstuni;
+-- special handling, allow default group to be updated alongside substates
+		if (v == "default") then
+			dstid = shdr.shid;
+			dstuni = shdr.uniforms;
+		else
+			if (shdr.states[v]) then
+				dstid = shdr.states[v].shid;
+				dstuni = shdr.states[v].uniforms;
+			end
+		end
+-- update the current "default" if this is set, in order to implement
+-- uniform persistance across restarts
+		if (dstid) then
+			if (set_uniform(dstid, uname, shdr.uniforms[uname].utype,
+				args, "update_uniform-" .. sname .. "-"..uname) and dstuni[uname]) then
+				dstuni[uname].default = args;
+			end
 		end
 	end
-	return res;
+end
+
+function shader_getkey(name, domain)
+	if (not shdrtbl[domain]) then
+		return;
+	end
+
+	for k,v in pairs(shdrtbl[domain]) do
+		if (v.label == name) then
+			return k;
+		end
+	end
+end
+
+function shader_key(label, domain)
+	for k,v in ipairs(shdrtbl[domain]) do
+		if (v.label == label) then
+			return k;
+ 		end
+ 	end
+end
+
+function shader_list(domain)
+	local res = {};
+	if (not shdrtbl[domain]) then
+		warning("shader_list requested uknown domain");
+		return;
+	end
+
+	for k,v in ipairs(shdrtbl[domain]) do
+		table.insert(res, v.label);
+	end
 end

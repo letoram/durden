@@ -187,16 +187,7 @@ function(wnd, source, stat)
 
 -- specify default shader by properties (e.g. no-alpha, fft) or explicit name
 	if (atbl.default_shader) then
-		local key;
-		if (type(atbl.default_shader) == "table") then
-			local lst = shader_list(atbl.default_shader);
-			key = lst[1];
-		else
-			key = shader_getkey(atbl.default_shader);
-		end
-		if (key) then
-			shader_setup(wnd, key);
-		end
+		shader_setup(wnd.canvas, unpack(atbl.default_shader));
 	end
 
 	if (atbl.init) then

@@ -1,149 +1,16 @@
 -- Copyright: 2015, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
+-- Depends: display, shdrmgmt, lbar, suppl, mouse
 -- Description: Tiler comprise the main tiling window management, event
--- routing, key interpretation and other hooks. It returns a single creation
--- function (tiler_create(W, H)) that returns the usual table of functions and
--- members in pseudo-OO style. Ideally this module should be as free from
--- dependencies to other files as possible to allow the creation of small
--- minimalistic tiling desktop environments.
---
+-- routing, key interpretation and other hooks. It returns a single
+-- creation function (tiler_create(W, H)) that returns the usual table
+-- of functions and members in pseudo-OO style.
 
 -- number of Z values reserved for each window
 local WND_RESERVED = 10;
 
-system_load("lbar.lua")();
-
---
--- there is a planned 'effects layer' that reuses the shader API functions
--- for pixman / framebuffer based backends. This layer will (but do not
--- currently) expose a function to set border width and color.
---
-assert(SHADER_LANGUAGE == "GLSL120" or SHADER_LANGUAGE == "GLSL100");
 local ent_count = 1;
-local border_shader = [[
-	uniform sampler2D map_diffuse;
-	uniform float border;
-	uniform float thickness;
-	uniform float obj_opacity;
-	uniform vec2 obj_output_sz;
-
-	varying vec2 texco;
-
-	void main()
-	{
-		float margin_s = (border / obj_output_sz.x);
-		float margin_t = (border / obj_output_sz.y);
-		float margin_w = (thickness / obj_output_sz.x);
-		float margin_h = (thickness / obj_output_sz.y);
-
-/* discard both inner and outer border in order to support 'gaps' */
-		if (
-			( texco.s <= 1.0 - margin_s && texco.s >= margin_s &&
-			texco.t <= 1.0 - margin_t && texco.t >= margin_t ) ||
-			(
-				texco.s < margin_w || texco.t < margin_h ||
-				texco.s > 1.0 - margin_w || texco.t > 1.0 - margin_h
-			)
-		)
-			discard;
-
-		gl_FragColor = vec4(texture2D(map_diffuse, texco).rgb, obj_opacity);
-	}
-]];
-
--- used for drawing both highlight and background
-local tile_shader = [[
-uniform float border;
-uniform vec3 col_border;
-uniform vec3 col_bg;
-uniform vec2 obj_output_sz;
-varying vec2 texco;
-
-void main()
-{
-	float bstep_x = border/obj_output_sz.x;
-	float bstep_y = border/obj_output_sz.y;
-
-	bvec2 marg1 = greaterThan(texco, vec2(1.0 - bstep_x, 1.0 - bstep_y));
-	bvec2 marg2 = lessThan(texco, vec2(bstep_x, bstep_y));
-	float f = float( !(any(marg1) || any(marg2)) );
-
-	gl_FragColor = vec4(mix(col_border, col_bg, f), 1.0);
-}
-]];
-
--- uised for ignoring alpha to do inherit for visibility but not blendstate
-local sbar_shader = [[
-uniform sampler2D map_tu0;
-varying vec2 texco;
-void main()
-{
-	gl_FragColor = vec4(texture2D(map_tu0, texco).rgba);
-}
-]];
-
-local tbar_inact_shader = [[
-uniform sampler2D map_tu0;
-varying vec2 texco;
-uniform float obj_opacity;
-void main()
-{
-	gl_FragColor = vec4(vec3(0.5, 0.5, 0.5) *
-		texture2D(map_tu0, texco).rgb, obj_opacity);
-}
-]];
-
-local function build_shaders()
-	local bw = gconfig_get("borderw");
-	local bt = bw - gconfig_get("bordert");
-	local a = build_shader(nil, border_shader, "border_act");
-	shader_uniform(a, "border", "f", bw);
-	shader_uniform(a, "thickness", "f", bt);
-
-	a = build_shader(nil, border_shader, "border_inact");
-	shader_uniform(a, "border", "f", bw);
-	shader_uniform(a, "thickness", "f", bt);
-
-	a = build_shader(nil, tile_shader, "tile_act");
-	local col = gconfig_get("pcol_act_border");
-	shader_uniform(a, "col_border", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	col = gconfig_get("pcol_act_bg");
-	shader_uniform(a, "col_bg", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", 1);
-
-	a = build_shader(nil, tile_shader, "tile_alert");
-	col = gconfig_get("tcol_alert_border");
-	shader_uniform(a, "col_border", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	col = gconfig_get("tcol_alert");
-	shader_uniform(a, "col_bg", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-
-	a = build_shader(nil, tile_shader, "tile_inact");
-	col = gconfig_get("pcol_bg");
-	shader_uniform(a, "col_bg", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	col = gconfig_get("pcol_border");
-	shader_uniform(a, "col_border", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", 1);
-
-	a = build_shader(nil, sbar_shader, "sbar_item");
-	a = build_shader(nil, tile_shader, "pretile");
-	col = gconfig_get("pretile_bg");
-	shader_uniform(a, "col_bg", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	col = gconfig_get("pretile_border");
-	shader_uniform(a, "col_border", "fff",
-		col[1] / 255.0, col[2] / 255.0, col[3] / 255.0);
-	shader_uniform(a, "border", "f", 1);
-
-	a = build_shader(nil, tbar_inact_shader, "tbar_inact");
-end
-build_shaders();
 
 local create_workspace = function() end
 
@@ -287,11 +154,9 @@ local function wnd_deselect(wnd, nopick)
 		mouse_show();
 	end
 
-	image_shader(wnd.border, "border_inact");
-	image_shader(wnd.titlebar, "tbar_inact");
-	if (not wnd.suspended) then
-		image_sharestorage(wnd.wm.border_color, wnd.border);
-	end
+	local state = wnd.suspended and "suspended" or "inactive";
+	shader_setup(wnd.border, "ui", "border", state);
+	shader_setup(wnd.titlebar, "ui", "titlebar", state);
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
@@ -322,6 +187,7 @@ local function gen_status_tile(wm, lbl, min_sz, ofs)
 
 	local tilew = (props.width+4) > min_sz and (props.width+4) or min_sz;
 	local tile = fill_surface(tilew, min_sz, 255, 255, 255);
+
 	link_image(text, tile);
 	show_image({text, tile});
 	image_mask_set(text, MASK_UNPICKABLE);
@@ -329,7 +195,6 @@ local function gen_status_tile(wm, lbl, min_sz, ofs)
 	image_inherit_order(text, true);
 	link_image(tile, wm.statusbar);
 	image_tracetag(text, "tiler_sbar_tile");
-	image_shader(text, "sbar_item");
 
 	move_image(tile, ofs, 0);
 	ofs = ofs + tilew + 1;
@@ -366,6 +231,10 @@ end
 -- second, [workspace-tiles]
 -- third,  message [cropped to fill] + timeout
 -- fourth, statusbar vid (will take ownership)
+-- this is really sloppy and should be broken out into a more
+-- generic bar system that allows for multiple attachments,
+-- horiz / vertical orientation, autohide  and only thing left in tiler
+-- code is the hooks to attach a bar (link_image + modify client area)
 local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 	local statush = math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 	resize_image(wm.statusbar, wm.width, statush);
@@ -390,10 +259,8 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 			local text = {wm.font_delta .. gconfig_get("pretiletext_color"), v};
 			local pret;
 			pret, ofs = gen_status_tile(wm, text, statush, ofs);
-			if (valid_vid(pret)) then
-				table.insert(wm.pretiles, pret);
-				image_shader(pret, "pretile");
-			end
+			shader_setup(pret, "ui", "pretile");
+			table.insert(wm.pretiles, pret);
 		end
 -- just slide the offset for re-use
 	else
@@ -418,13 +285,14 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 						text[6] = space.label;
 					end
 				space.label_id, ofs = gen_status_tile(wm, text, statush, ofs);
+				shader_setup(space.label_id, "ui", "tile", "inactive");
 			else
 				move_image(space.label_id, ofs, 0);
 				ofs = ofs + image_surface_properties(space.label_id).width + 1;
 			end
 
-			image_shader(space.label_id,
-				i == wm.space_ind and "tile_act" or "tile_inact");
+			shader_setup(space.label_id, "ui", "tile",
+				i == wm.space_ind and "active" or "inactive");
 
 			space.tile_ml = {
 				own = function(ctx, vid, event)
@@ -451,7 +319,7 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 			show_image(vid);
 			image_inherit_order(vid, true);
 			link_image(vid, wm.statusbar);
-			image_shader(vid, "sbar_item");
+			shader_setup(vid, "ui", "message", "active");
 			local sbsz = image_surface_properties(wm.statusbar).height;
 			move_image(vid, ofs, math.floor(0.5 * (sbsz - h * wm.font_sf)));
 		end
@@ -539,7 +407,7 @@ local function wnd_select(wnd, source)
 	wnd:set_dispmask(bit.band(wnd.dispmask,
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
-	if (wnd.wm.selected == wnd) then
+	if (wnd.wm.selected) then
 		wnd.wm.selected:deselect();
 	end
 
@@ -548,10 +416,10 @@ local function wnd_select(wnd, source)
 		show_image(wnd.anchor);
 	end
 
-	image_shader(wnd.border, "border_act");
-	image_shader(wnd.titlebar, "DEFAULT");
-	image_sharestorage(wnd.suspended and wnd.wm.suspend_color or
-		wnd.wm.active_border_color, wnd.border);
+	local state = wnd.suspended and "suspended" or "active";
+	shader_setup(wnd.border, "ui", "border", state);
+	shader_setup(wnd.titlebar, "ui", "titlebar", state);
+
 	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
 
@@ -1190,7 +1058,7 @@ local function workspace_background(ws, bgsrc, generalize)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(ws.wm.width, ws.wm.height);
-			image_shader(ws.background, shader_getkey("noalpha"));
+			shader_setup(ws.background, "effect", "noalpha");
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
@@ -1321,8 +1189,8 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		local wr = props.width / maxw;
 		local hr = props.height/ maxh;
 
-		outw = hr > wr and math.ceil(maxh * ar - 0.5) or maxw;
-		outh = hr < wr and math.ceil(maxw / ar - 0.5) or maxh;
+		outw = hr > wr and maxh * ar or maxw;
+		outh = hr < wr and maxw / ar or maxh;
 	end
 
 	resize_image(src, outw, outh);
@@ -1334,7 +1202,7 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
 	end
-	return outw, outh;
+	return math.floor(outw), math.floor(outh);
 end
 
 local function wnd_effective_resize(wnd, neww, newh, force)
@@ -2046,11 +1914,11 @@ local function wnd_alert(wnd)
 	end
 
 	if (wnd.space ~= wm.spaces[wm.space_ind]) then
-		image_shader(wnd.space.label_id, "tile_alert");
+		shader_setup(wnd, "ui", "tile", "alert");
 	end
 
-	image_sharestorage(wm.alert_color, wnd.titlebar);
-	image_sharestorage(wm.alert_color, wnd.border);
+	shader_setup(wnd.titlebar, "ui", "titlebar", "alert");
+	shader_setup(wnd.border, "ui", "border", "alert");
 end
 
 local function wnd_prefix(wnd, prefix)
@@ -2134,18 +2002,19 @@ local function wnd_setsuspend(wnd, val)
 	local sel = (wnd.wm.selected == wnd);
 
 	if (susp) then
-		if not wnd.suspend and valid_vid(wnd.external,TYPE_FRAMESERVER) then
-			suspend_target(wnd.external);
-		end
-		image_sharestorage(wnd.wm.suspend_color, wnd.border);
+	if (not wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER)) then
+		suspend_target(wnd.external);
 		wnd.suspended = true;
-	else
-		if wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER) then
-			resume_target(wnd.external);
-		end
-		image_sharestorage(sel and wnd.wm.active_border_color or
-			wnd.wm.border_color, wnd.border);
+		shader_setup(wnd.border, "ui", "border", "suspended");
+		shader_setup(wnd.titlebar, "ui", "titlebar", "suspended");
+	end
+
+	if (wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER)) then
+		resume_target(wnd.external);
 		wnd.suspended = nil;
+		shader_setup(wnd.border, "ui", "tile", sel and "active" or "inactive");
+		shader_setup(wnd.titlebar,"ui", "titlebar", sel and "active" or "inactive");
+	end
 	end
 end
 
@@ -2191,10 +2060,7 @@ local function wnd_create(wm, source, opts)
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
 		border = fill_surface(1, 1, 255, 255, 255),
-		titlebar = fill_surface(1,
-			math.ceil(wm.scalef * gconfig_get("tbar_sz")),
-			unpack(gconfig_get("tbar_bg"))
-		),
+		titlebar = fill_surface(1, 1, 127, 127, 127),
 		canvas = source,
 		gain = 1.0,
 		children = {},
@@ -2299,7 +2165,7 @@ local function wnd_create(wm, source, opts)
 	order_image(res.titlebar, 2);
 	order_image(res.canvas, 2);
 
-	image_shader(res.border, "border_inact");
+	shader_setup(res.border, "ui", "tile", "active");
 	show_image({res.border, res.canvas});
 
 	if (not wm.selected or wm.selected.space ~= space) then
@@ -2328,8 +2194,7 @@ local function wnd_create(wm, source, opts)
 		space:resize(res);
 		res:select();
 	else
-		image_shader(res.border, "border_inact");
-		image_sharestorage(res.wm.border_color, res.border);
+		shader_setup(wnd.border, "ui", "tile", "inactive");
 	end
 
 	if (not opts.block_mouse) then
@@ -2596,12 +2461,15 @@ end
 
 local function tiler_rebuild_border(tiler)
 	local bw = gconfig_get("borderw");
-	build_shaders();
+	local tw = bw - gconfig_get("bordert");
+	local s = {"active", "inactive", "alert", "default"};
+	shader_update_uniform("border", "ui", "border", bw, s, "tiler-rebuild");
+	shader_update_uniform("border", "ui", "thickness", tw, s, "tiler-rebuild");
 	if (tiler == nil) then
 		print(debug.traceback());
 	end
 	for i,v in ipairs(tiler.windows) do
-		wnd:rebuild_border(bw);
+		v:rebuild_border(bw);
 	end
 end
 
@@ -2695,35 +2563,14 @@ function tiler_create(width, height, opts)
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),
 		empty_space = workspace_empty,
-
--- pre-alloc these as they will be re-used a lot
-		border_color = fill_surface(1, 1,
-			unpack(gconfig_get("tcol_inactive_border"))),
-
-		suspend_color = fill_surface(1, 1,
-			unpack(gconfig_get("tcol_suspend_border"))),
-
-		alert_color = fill_surface(1, 1,
-			unpack(gconfig_get("tcol_alert"))),
-
-		active_tbar_color = fill_surface(1, 1,
-			unpack(gconfig_get("tbar_active"))),
-
-		tbar_color = fill_surface(1, 1,
-			unpack(gconfig_get("tbar_inactive"))),
-
-		active_border_color = fill_surface(1, 1,
-			unpack(gconfig_get("tcol_border"))),
-
 		lbar = tiler_lbar,
 		tick = tick_windows,
 
-		font_sf = gconfig_get("font_defsf"),
-		scalef = opts.scalef and opts.scalef or 1.0,
-
--- keep both text and integer representations to help fonthint
+-- for multi-DPI handling
 		font_delta = "\\f,+0",
 		font_deltav = 0,
+		font_sf = gconfig_get("font_defsf"),
+		scalef = opts.scalef and opts.scalef or 1.0,
 
 -- management members
 		spaces = {},
@@ -2772,11 +2619,12 @@ function tiler_create(width, height, opts)
 -- this is manually probed during font-load
 
 	res.statusbar = color_surface(width,
-		gconfig_get("sbar_sz") * res.scalef, unpack(gconfig_get("sbar_bg")));
+		gconfig_get("sbar_sz") * res.scalef, 0, 0, 0);
 	res.width = width;
 	res.height = height;
 	res.min_width = 32;
 	res.min_height = 32;
+	shader_setup(res.statusbar, "ui", "statusbar", "active");
 
 	image_tracetag(res.anchor, "tiler_anchor");
 	image_tracetag(res.order_anchor, "tiler_order_anchor");

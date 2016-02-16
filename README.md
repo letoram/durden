@@ -167,7 +167,7 @@ are being implemented, we have the following list:
   - [ ] 'Sticky' Meta (meta press state persist n ticks)
   - [x] Drag Reposition/Resize in Float
   - [x] Double-Click Titlebar Maximize-Restore in Float
-  - [ ] Dekstop Icons in Float-Mode
+  - [ ] Desktop Icons in Float-Mode
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
@@ -205,7 +205,10 @@ are being implemented, we have the following list:
   - [ ] Content/Scrollbar Integration
   - [ ] Popup Windows
   - [ ] Move window to float/hidden that can be toggled to cursor position
-  - [ ] Zoom at Cursor
+  - [ ] Cursor Drag - Event Region
+     -  [ ] Zoom region
+     -  [ ] Snapshot region
+     -  [ ] Record / VNC / OCR region
   - [x] Inactivity / Focus Notification
   - [ ] Auto Suspend/Resume
     - [ ] Follow Focus
@@ -241,7 +244,7 @@ are being implemented, we have the following list:
   - [ ] Audio
   - [ ] Drag N' Drop
 - [ ] Security and Stability Measures
-  - [ ] Visual Privilege Indicator
+  - [ ] Visual Privilege Level Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
   - [ ] Notification on reaching VID limit threshold
@@ -256,7 +259,7 @@ are being implemented, we have the following list:
   - [ ] Change orientation (vertical / horizontal)
   -     [x] support switching vertical / horizontal
   -     [ ] support switching LED layout hinting (RGB vs VRGB)
-  - [ ] Respect display DPI and use cm/font-pt as size
+  - [x] Respect display DPI and use cm/font-pt as size
   - [ ] Remember DPI / overrides / orientation
   - [x] Power Management Controls
   - [x] Gamma Correction
