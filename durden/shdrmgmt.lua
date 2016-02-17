@@ -3,6 +3,7 @@
 -- Reference: http://durden.arcan-fe.com
 -- Description: Shader compilation and setup.
 
+if (SHADER_LANGUAGE == "GLSL120") then
 local old_build = build_shader;
 function build_shader(vertex, fragment, label)
 	vertex = vetex and ("#define VERTEX\n" .. vertex) or nil;
@@ -22,16 +23,18 @@ function build_shader(vertex, fragment, label)
 
 	return old_build(vertex, fragment, label);
 end
+end
 
 local shdrtbl = {
 	effect = {},
 	ui = {},
+	display = {},
 	audio = {},
 	simple = {}
 };
 
 function shdrmgmt_scan()
-	local groups = {"effect", "ui", "audio", "simple"};
+	local groups = {"effect", "ui", "display", "audio", "simple"};
  	for a,b in ipairs(groups) do
  		local path = string.format("shaders/%s/", b);
 
@@ -69,51 +72,67 @@ local function set_uniform(dstid, name, typestr, vals, source)
 	return true;
 end
 
+local function ssetup(shader, dst, group, name, state)
+	if (not shader.shid) then
+		local dvf = (shader.vert and
+		type(shader.vert == "table") and shader.vert[SHADER_LANGUAGE])
+				and shader.vert[SHADER_LANGUAGE] or shader.vert;
+		local dff = (shader.frag and
+			type(shader.frag == "table") and shader.frag[SHADER_LANGUAGE])
+				and shader.frag[SHADER_LANGUAGE] or shader.frag;
+
+		shader.shid = build_shader(dvf, dff, group.."_"..name);
+		if (not shader.shid) then
+		warning("building shader failed for " .. group.."_"..name);
+			return;
+		end
+-- this is not very robust, bad written shaders will yield fatal()
+		for k,v in pairs(shader.uniforms) do
+			set_uniform(shader.shid, k, v.utype, v.default, name .. "-" .. k);
+		end
+-- states inherit shaders, define different uniform values
+		if (shader.states) then
+			for k,v in pairs(shader.states) do
+				shader.states[k].shid = shader_ugroup(shader.shid);
+
+				for i,j in pairs(v.uniforms) do
+					set_uniform(v.shid, i, shader.uniforms[i].utype, j,
+						string.format("%s-%s-%s", name, k, i));
+				end
+			end
+		end
+
+	end
+-- now the shader exists, apply
+	local shid = ((state and shader.states and shader.states[state]) and
+		shader.states[state].shid) or shader.shid;
+	image_shader(dst, shid);
+end
+
+local fmtgroups = {
+	ui = ssetup,
+	effect = function() warning("effect incomplete"); end,
+	display = ssetup,
+	audio = ssetup,
+	simple = ssetup
+};
+
 function shader_setup(dst, group, name, state)
+	if (not fmtgroups[group]) then
+		warning("shader_setup called with unknown group " .. group);
+		return dst;
+	end
+
 	if (not shdrtbl[group] or not shdrtbl[group][name]) then
-		return warning(string.format(
+		warning(string.format(
 			"shader_setup called with unknown group(%s) or name (%s) ",
 			group and group or "nil",
 			name and name or "nil"
 		));
+		return dst;
 	end
 
-	local shader = shdrtbl[group][name];
--- the different groups have different setup approaches
-	local outid = 0;
-	if (group == "ui" or group == "simple" or group == "audio") then
--- build the main shader, set uniform and then derive substates with
--- uniform overrides
-		if (not shader.shid) then
-			shader.shid = build_shader(shader.vert, shader.frag, group.."_"..name);
-			if (not shader.shid) then
-			warning("building shader failed for " .. group.."_"..name);
-				return;
-			end
--- this is not very robust, bad written shaders will yield fatal()
-			for k,v in pairs(shader.uniforms) do
-				set_uniform(shader.shid, k, v.utype, v.default, name .. "-" .. k);
-			end
--- states inherit shaders, define different uniform values
-			if (shader.states) then
-				for k,v in pairs(shader.states) do
-					shader.states[k].shid = shader_ugroup(shader.shid);
-
-					for i,j in pairs(v.uniforms) do
-						set_uniform(v.shid, i, shader.uniforms[i].utype, j,
-							string.format("%s-%s-%s", name, k, i));
-					end
-				end
-			end
-
-		end
--- now the shader exists, apply
-		local shid = ((state and shader.states and shader.states[state]) and
-			shader.states[state].shid) or shader.shid;
-		image_shader(dst, shid);
- 	end
-
--- missing, building effect, audio, display, simple and applying
+	return fmtgroups[group](shdrtbl[group][name], dst, group, name, state);
 end
 
 -- update shader [sname] in group [domain] for the uniform [uname],

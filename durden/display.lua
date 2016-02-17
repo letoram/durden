@@ -12,22 +12,6 @@ local SIZE_UNIT = 38.4;
 local displays = {
 };
 
--- arcan does not expose display gamma ramps or DRM/KMS- like interface
--- to adjustning gamming, so for the moment we do this basic correction
--- here and later expand with support for daltonization, ICC, profiles.
-local frag_dispcorr = [[
-uniform sampler2D map_tu0;
-uniform vec3 gamma_exp;
-varying vec2 texco;
-
-void main(){
-	vec3 col = pow(texture2D(map_tu0, texco).rgb, 1.0 / gamma_exp);
-	gl_FragColor = vec4(col, 1.0);
-}
-]];
-local corr_shid = build_shader(nil, frag_dispcorr, "color_correction");
-shader_uniform(corr_shid, "gamma_exp", "fff", 2.2, 2.2, 2.2);
-
 local function get_disp(name)
 	local found, foundi;
 	for k,v in ipairs(displays) do
@@ -216,7 +200,7 @@ function display_manager_init()
 		displays[1].rt = displays[1].tiler:set_rendertarget(true);
 		displays[1].maphint = HINT_NONE;
 		show_image(displays[1].rt);
-		image_shader(displays[1].rt, corr_shid);
+		shader_setup(displays[1].rt, "display", gconfig_get("display_shader"));
 		switch_active_display(1);
 	end
 end
