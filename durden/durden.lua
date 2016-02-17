@@ -7,15 +7,19 @@
 -- tick for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
+local update_default_font;
+
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
+	system_load("lbar.lua")();
+	system_load("bbar.lua")(); -- input binding
+	system_load("shdrmgmt.lua")(); -- shader format parser, builder
+	system_load("suppl.lua")(); -- convenience functions
+
 	update_default_font();
 
-	system_load("suppl.lua")(); -- convenience functions
-	system_load("bbar.lua")(); -- input binding
 	system_load("keybindings.lua")(); -- static key configuration
-	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
@@ -66,7 +70,7 @@ function durden(argv)
 -- only user-input controlled execution through configured database and open/browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0) then
-		new_connection();
+		durden_new_connection();
 	end
 
 -- unsetting these values will prevent all external communication that is not
@@ -131,7 +135,7 @@ function durden(argv)
 	end
 end
 
-function update_default_font(key, val)
+update_default_font = function(key, val)
 	local newfont=(key and key == "font_def" and val ~= gconfig_get("font_def"));
 	local font = (key and key == "font_def") and val or gconfig_get("font_def");
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
@@ -233,11 +237,20 @@ local function desel_input(wnd)
 	mouse_switch_cursor("default");
 end
 
-function durden_launch(vid, title, prefix)
+-- useful for terminal where we can possibly avoid a resize and
+-- the added initial delay by setting the size in beforehand
+function durden_prelaunch()
+	local nsurf = null_surface(32, 32);
+	return active_display:add_window(nsurf);
+end
+
+function durden_launch(vid, title, prefix, wnd)
 	if (not valid_vid(vid)) then
 		return;
 	end
-	local wnd = active_display():add_window(vid);
+	if (not wnd) then
+		wnd = active_display():add_window(vid);
+	end
 
 -- local keybinding->utf8 overrides, we map this to SYMTABLE
 	wnd.u8_translation = {};
@@ -248,11 +261,11 @@ function durden_launch(vid, title, prefix)
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);
-	shader_setup(wnd, wnd.shkey and wnd.shkey or "DEFAULT");
-	show_image(vid);
+	shader_setup(wnd, "effect", wnd.shkey);
+	show_image(wnd.canvas);
 
--- may use this function to launch / create some internal window that don't
--- need all the external dispatch stuff, so make sure
+-- may use this function to launch / create some internal window
+-- that don't need all the external dispatch stuff, so make sure
 	if (valid_vid(vid, TYPE_FRAMESERVER)) then
 		wnd.dispatch = shared_dispatch();
 		wnd.external = vid;
@@ -294,12 +307,13 @@ function durden_adopt(vid, kind, title, parent)
 	end
 end
 
--- global scope here as we refer to it in builtin/global.lua
-function new_connection(source, status)
+function durden_new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
 		INCOMING_ENDPOINT = target_alloc(
-			gconfig_get("extcon_path"), new_connection);
-		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
+			gconfig_get("extcon_path"), durden_new_connection);
+		if (valid_vid(INCOMING_ENDPOINT)) then
+			image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
+		end
 		if (status) then
 			durden_launch(source, "external", "");
 		end
@@ -310,7 +324,7 @@ end
 -- text/line command protocol for doing status bar updates, etc.
 -- as this grows, move into its own separate module.
 --
-function poll_status_channel()
+local function poll_status_channel()
 	local line = STATUS_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
 		return;
@@ -337,7 +351,7 @@ local allowed_global = {
 	input_lock_toggle = true
 };
 
-function poll_control_channel()
+local function poll_control_channel()
 	local line = CONTROL_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
 		return;

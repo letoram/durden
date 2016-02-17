@@ -172,7 +172,7 @@ local durden_system = {
 				INCOMING_ENDPOINT = nil;
 			end
 			gconfig_set("extcon_path", val);
-			new_connection();
+			durden_new_connection();
 		end
 	}
 };
