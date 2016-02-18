@@ -39,13 +39,21 @@ local function clipboard_add(ctx, source, msg, multipart)
 		ctx.locals[source] = {};
 	end
 
+-- default is promote to global, but less trusted won't be allowed to
+	if (not ctx.locals[source].blocked) then
+		ctx:set_global(msg);
+	end
+
+-- skip duplicates
+	for k,v in ipairs(ctx.locals[source]) do
+		if (v == msg) then
+			return;
+		end
+	end
+
 	table.insert(ctx.locals[source], 1, msg);
 	if (#ctx.locals[source] > ctx.history_size) then
 		table.remove(ctx.locals[source], #ctx.locals[source]);
-	end
-
-	if (not ctx.locals[source].blocked) then
-		ctx:set_global(msg);
 	end
 end
 
