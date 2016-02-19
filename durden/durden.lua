@@ -376,30 +376,45 @@ end
 
 local mid_c = 0;
 local mid_v = {0, 0};
-function durden_input(iotbl, fromim)
-	if (IGNORE_INPUT) then
-		return IGNORE_INPUT(iotbl);
-	end
 
+function durden_normal_input(iotbl, fromim)
+-- we track all iotbl events in full debug mode
 	if (DEBUGLEVEL > 2 and active_display().debug_console) then
 		active_display().debug_console:add_input(iotbl);
 	end
 
+-- first we feed into the simulated repeat state manager, this will
+-- invoke the callback handler and set fromim if it is a repeated/held
+-- input.
 	if (not fromim) then
-		local it = iostatem_input(iotbl);
-		if (it) then
-			for k,v in ipairs(it) do
-				durden_input(v, true);
-			end
+		iostatem_input(iotbl);
+	end
+
+-- then we forward keyboard events into the dispatch function, this applies
+-- translations, bindings and symtable mapping. Returns information if the
+-- event was consumed by some UI features (ok true) or what the internal string
+-- representation is (m1_m2_LEFT) and the patched iotbl. It will also apply any
+-- per-display hook active at the moment (lbar, bbar uses those). It also runs
+-- the meta-guard evaluation to try and figure out if the user seems unaware of
+-- his keybindings.
+	local ok, outsym, iotbl = dispatch_translate(iotbl);
+	if (iotbl.digital) then
+		if (ok) then
+			return;
 		end
 	end
 
+-- after that we have special handling for mouse motion and presses,
+-- any forwarded input there is based on event reception in listeners
+-- attached to mouse motion or presses.
 	if (iotbl.mouse) then
 		if (iotbl.digital) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		else
--- we prefer relative mouse coordinates with warping etc. but not all
--- platforms can deliver on that promise
+-- we prefer relative mouse coordinates for proper warping etc.
+-- but not all platforms can deliver on that promise and these are
+-- split BY AXIS but delivered in pairs (stupid legacy) so we have to
+-- merge.
 			if (iotbl.relative) then
 				if (iotbl.subid == 0) then
 					mouse_input(iotbl.samples[2], 0);
@@ -416,28 +431,37 @@ function durden_input(iotbl, fromim)
 				end
 			end
 		end
+		return;
+	end
 
-	elseif (iotbl.translated) then
+-- still a window alived but no input has consumed it? then we forward
+-- to the external- handler
+	local sel = active_display().selected;
+	if (not sel or not valid_vid(sel.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
+-- there may be per-window label tabel for custom input labels,
+-- those need to be applied still.
+	target_input(sel.external, iotbl);
+end
+
+-- special case: (UP, DOWN, LEFT, RIGHT + mouse motion is mapped to
+-- manipulate the mouse_select_begin() mouse_select_end() region,
+-- ESCAPE cancels the mode, end runs whatever trigger we set (global).
+-- see 'select_region_*' global functions + some button to align
+-- with selected window (if any, like m1 and m2)
+function durden_regionsel_input(iotbl)
+	print("regionsel input", DURDEN_REGIONSEL_TRIGGER);
+	if (iotbl.translated and iotbl.active) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
-		local sel = active_display().selected;
--- all input and symbol lookup paths go through this routine (in fglobal.lua)
-		local ok, lutsym = dispatch_lookup(iotbl, sym, active_display().input_lock);
-		if (ok or not sel) then
-			return;
-		end
 
-		if (sel.bindings and sel.bindings[sym]) then
-			sel.bindings[sym](sel);
-
-		elseif (sel.key_input) then
-			sel:key_input(sym, iotbl);
-
-		elseif (valid_vid(sel.external, TYPE_FRAMESERVER)) then
-			iotbl.label = sel.labels[lutsym];
-			target_input(sel.external, iotbl);
-		end
+		mouse_select_end();
+		durden_input = durden_normal_input;
 	end
 end
+
+durden_input = durden_normal_input;
 
 function durden_shutdown()
 	SYMTABLE:store_translation();

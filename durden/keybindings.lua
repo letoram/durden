@@ -189,11 +189,8 @@ function dispatch_meta_reset()
 	meta_2_state = false;
 end
 
-function dispatch_lookup(iotbl, keysym, hook_handler)
+local function track_label(iotbl, keysym, hook_handler)
 	local metadrop = false;
-	if (keysym == nil) then
-		return;
-	end
 
 	local metam = false;
 	if (keysym == SYSTEM_KEYS["meta_1"]) then
@@ -217,12 +214,60 @@ function dispatch_lookup(iotbl, keysym, hook_handler)
 		return true, lutsym;
 	end
 
+	return false, lutsym;
+end
+
+-- only for digital events, notice the difference between OUTSYM and LUTSYM,
+-- where OUTSYM will be prefixed with altgr_ lalt_ lshift_ style modifiers
+-- and LUTSYM will be prefixed with m1_ m2_.
+-- UI features and bindings should use m1_, m2_
+function dispatch_translate(iotbl)
+	local ok, sym, outsym;
+	local sel = active_display().selected;
+
+-- apply keymap (or possibly local keymap)
+	if (iotbl.translated) then
+		if (sel and sel.symtable) then
+			sym, outsym = sel.symtable:patch(iotbl);
+		else
+			sym, outsym = SYMTABLE:patch(iotbl);
+		end
+	else
+-- FIXME: apply special mouse /game-dev related translations
+	end
+
+	if (not sym) then
+		return false, nil, iotbl;
+	end
+
+-- generate durden specific meta- tracking or apply binding hooks
+	local ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
+	if (ok) then
+		return true, lutsym, iotbl;
+	end
+
 	if (tbl[lutsym]) then
 		if (iotbl.active) then
 			dispatch_symbol(tbl[lutsym]);
 		end
-		return true, lutsym;
+		return true, lutsym, iotbl;
+	elseif (not sel) then
+		return false, lutsym, iotbl;
 	end
 
-	return false, lutsym;
+-- we can have special bindings on a per window basis
+	if (sel.bindings and sel.bindings[lutsym]) then
+		if (iotbl.active) then
+			sel.bindings[lutsym](sel);
+		end
+		ok = true;
+-- or an input handler unique for the window
+	elseif (sel.key_input) then
+		sel:key_input(outsym, iotbl);
+		ok = true;
+	else
+		iotbl.label = sel.labels[lutsym];
+	end
+
+	return ok, outsym, iotbl;
 end
