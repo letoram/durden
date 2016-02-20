@@ -221,7 +221,7 @@ end
 -- where OUTSYM will be prefixed with altgr_ lalt_ lshift_ style modifiers
 -- and LUTSYM will be prefixed with m1_ m2_.
 -- UI features and bindings should use m1_, m2_
-function dispatch_translate(iotbl)
+function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym;
 	local sel = active_display().selected;
 
@@ -242,7 +242,7 @@ function dispatch_translate(iotbl)
 
 -- generate durden specific meta- tracking or apply binding hooks
 	local ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
-	if (ok) then
+	if (ok or nodispatch) then
 		return true, lutsym, iotbl;
 	end
 

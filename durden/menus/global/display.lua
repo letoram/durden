@@ -111,7 +111,7 @@ end
 
 local do_regsel = function(handler)
 	local col = color_surface(1, 1, 0, 255, 0);
-	show_image(col);
+	blend_image(col, 0.2);
 	mouse_select_begin(col);
 	durden_input = durden_regionsel_input;
 	DURDEN_REGIONSEL_TRIGGER = handler;

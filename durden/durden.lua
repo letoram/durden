@@ -61,13 +61,13 @@ function durden(argv)
 	if (gconfig_get("mouse_mode") == "native") then
 		mouse_setup_native(load_image("cursor/default.png"), 0, 0);
 	else
--- 65535 is special in that it will never be returned as 'max current image order'
+-- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
 		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
 	end
 	display_manager_init();
 
 -- this opens up the 'durden' external listening point, removing it means
--- only user-input controlled execution through configured database and open/browse
+-- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0) then
 		durden_new_connection();
@@ -170,9 +170,6 @@ update_default_font = function(key, val)
 	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
 	gconfig_set("font_defsf", rfhf);
 
--- this is currently not correct for mixed DPI between displays,
--- the different bars should just use text_dimensions to determine size
--- and query the active display for the \f,size value
 	if (not all_displays_iter) then
 		return;
 	end
@@ -377,6 +374,28 @@ end
 local mid_c = 0;
 local mid_v = {0, 0};
 
+local function mousemotion(iotbl)
+-- we prefer relative mouse coordinates for proper warping etc.
+-- but not all platforms can deliver on that promise and these are
+-- split BY AXIS but delivered in pairs (stupid legacy) so we have to
+-- merge.
+	if (iotbl.relative) then
+		if (iotbl.subid == 0) then
+			mouse_input(iotbl.samples[2], 0);
+		else
+			mouse_input(0, iotbl.samples[2]);
+		end
+	else
+		mid_v[iotbl.subid+1] = iotbl.samples[sofs];
+		mid_c = mid_c + 1;
+
+		if (mid_c == 2) then
+			inp_fun(mid_v[1], mid_v[2]);
+			mid_c = 0;
+		end
+	end
+end
+
 function durden_normal_input(iotbl, fromim)
 -- we track all iotbl events in full debug mode
 	if (DEBUGLEVEL > 2 and active_display().debug_console) then
@@ -411,25 +430,7 @@ function durden_normal_input(iotbl, fromim)
 		if (iotbl.digital) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		else
--- we prefer relative mouse coordinates for proper warping etc.
--- but not all platforms can deliver on that promise and these are
--- split BY AXIS but delivered in pairs (stupid legacy) so we have to
--- merge.
-			if (iotbl.relative) then
-				if (iotbl.subid == 0) then
-					mouse_input(iotbl.samples[2], 0);
-				else
-					mouse_input(0, iotbl.samples[2]);
-				end
-			else
-				mid_v[iotbl.subid+1] = iotbl.samples[sofs];
-				mid_c = mid_c + 1;
-
-				if (mid_c == 2) then
-					inp_fun(mid_v[1], mid_v[2]);
-					mid_c = 0;
-				end
-			end
+			mousemotion(iotbl);
 		end
 		return;
 	end
@@ -452,12 +453,24 @@ end
 -- see 'select_region_*' global functions + some button to align
 -- with selected window (if any, like m1 and m2)
 function durden_regionsel_input(iotbl)
-	print("regionsel input", DURDEN_REGIONSEL_TRIGGER);
 	if (iotbl.translated and iotbl.active) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 
-		mouse_select_end();
-		durden_input = durden_normal_input;
+		if (SYSTEM_KEYS["cancel"] == sym) then
+			mouse_select_end();
+			durden_input = durden_normal_input;
+		elseif (SYSTEM_KEYS["accept"] == sym) then
+			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
+			durden_input = durden_normal_input;
+		end
+
+	elseif (iotbl.mouse) then
+		if (iotbl.digital) then
+			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
+			durden_input = durden_normal_input;
+		else
+			mousemotion(iotbl);
+		end
 	end
 end
 
