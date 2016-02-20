@@ -32,6 +32,10 @@
 --  constrain(min_x, min_y, max_x, max_y)
 --  switch_cursor(label) ; switch active cursor to label
 --
+-- overlay selection:
+--  select_begin(vid, handler, constrain{x1,y1,x2,y2})
+--	select_end
+--
 -- use:
 --  addlistener(tbl, {event1, event2, ...})
 --   possible events: drag, drop, click, over, out
@@ -659,7 +663,7 @@ function mouse_input(x, y, state, noinp)
 		y = mstate.rel_y;
 	end
 
-	if (mstate.lockvid) then
+	if (mstate.lockvid or mstate.lockfun) then
 		return mouse_lockh(x, y);
 	end
 
@@ -994,7 +998,107 @@ function mouse_querytarget(rt)
 	end
 	mstate.max_x = props.width;
 	mstate.max_y = props.height;
-	mstate.rt = rt;
+	if (mstate.rt ~= rt) then
+		mstate.rt = rt;
+		mouse_select_end();
+	end
+end
+
+local function select_regupd()
+	local x, y = mouse_xy();
+	if (x < mstate.in_select.x) then
+		x = mstate.in_select.x;
+		mstate.in_select.x = mstate.x;
+	end
+
+	if (y < mstate.in_select.y) then
+		y = mstate.in_select.y;
+		mstate.in_select.y = mstate.y;
+	end
+	return x, y, mstate.in_select.x, mstate.in_select.y;
+end
+
+-- vid will be the object that will be promoted to cursor order
+-- and used to indicate the selected region. it's drawing setup
+-- should match the desired behavior (so for pattern region rather
+-- than blended, one needs repeating etc.)
+function mouse_select_begin(vid, constrain)
+	if (not valid_vid(vid)) then
+		return false;
+	end
+
+	if (mstate.in_select) then
+		mouse_select_end();
+	end
+
+	mstate.in_select = {
+		x = mstate.x,
+		y = mstate.y,
+		vid = vid,
+		autodelete = {},
+		lockvid = mstate.lockvid,
+		lockfun = mstate.lockfun
+	};
+
+-- just save any old constrain- vid and create a new one that match
+	if (constrain) then
+		assert(constrain[4] - constrain[2] > 0);
+		assert(constrain[3] - constrain[1] > 0);
+		assert(constrain[1] >= 0 and constrain[2] >= 0);
+		assert(constrain[3] <= mstate.max_x and constrain[4] <= mstate.max_y);
+		local newlock = null_surface(
+			constrain[3] - constrain[1],
+			constrain[4] - constrain[2]);
+		mstate.lockvid = newlock;
+		move_image(newlock, constrain[1], constrain[2]);
+		table.insert(mstate.in_select.autodelete, lockvid);
+	end
+
+-- set order
+	link_image(vid, mstate.cursor);
+	image_mask_clear(vid, MASK_POSITION);
+	image_inherit_order(vid, true);
+	order_image(vid, -1);
+	resize_image(vid, 1, 1);
+	move_image(vid, mstate.x, mstate.y);
+	table.insert(mstate.in_select.autodelete, vid);
+
+-- normal constrain- handler will deal with clamping etc.
+	mstate.lockfun = function()
+		local x, y = mouse_xy();
+		print(x, y);
+-- edge case, ignore
+		if (x == mstate.in_select.x and y == mstate.in_select.y) then
+			return;
+		end
+
+-- we don't "invert" but rather move around.
+		move_image(vid, mstate.in_select.x, mstate.in_select.y);
+		resize_image(vid, x - mstate.in_select.x, y - mstate.in_select.y);
+	end
+
+	return true;
+end
+
+-- explicit end, handler will return region
+function mouse_select_end(handler)
+	if (not mstate.in_select) then
+		return;
+	end
+
+	if (handler) then
+		handler(select_regupd());
+	end
+
+	if (valid_vid(mstate.in_select.lockvid)) then
+		mstate.lockvid = mstate.in_select.lockvid;
+	end
+
+	for i,v in ipairs(mstate.in_select.autodelete) do
+		delete_image(v);
+	end
+
+	mstate.in_select = nil;
 end
 
 function mouse_acceleration(newvx, newvy)

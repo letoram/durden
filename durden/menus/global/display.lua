@@ -109,6 +109,47 @@ local function query_displays()
 	return res;
 end
 
+local do_regsel = function(handler)
+	local col = color_surface(1, 1, 0, 255, 0);
+	show_image(col);
+	mouse_select_begin(col);
+	durden_input = durden_regionsel_input;
+	DURDEN_REGIONSEL_TRIGGER = handler;
+end
+
+local region_menu = {
+	{
+		name = "display_region_imgwnd",
+		label = "Snapshot",
+		kind = "action",
+		handler = function()
+			do_regsel(function(x1, y1, x2, y2)
+				print("display_region_imgwnd");
+			end);
+		end
+	},
+	{
+		name = "display_region_ocr",
+		label = "OCR",
+		kind = "action",
+		handler = function()
+			do_regsel(function(x1, y1, x2, y2)
+				print("display_region_ocr");
+			end);
+		end
+	},
+	{
+		name = "display_region_record",
+		label = "Record",
+		kind = "action",
+		handler = function()
+			do_regsel(function(x1, y1, x2, y2)
+				print("display_region_record");
+			end);
+		end,
+	},
+};
+
 return {
 	{
 		name = "display_rescan",
@@ -139,35 +180,10 @@ return {
 		handler = grab_global_function("display_cycle")
 	},
 	{
-		name = "display_share",
-		label = "Share",
-		kind = "value",
-		hint = "Arguments (host=ip:port=5900:password=xxx)",
-		validator = function() return true; end,
-		eval = function()
-			return gconfig_get("display_simple") == false and
-				string.find(FRAMESERVER_MODES, "encode") ~= nil;
-		end,
-		handler = function(ctx, args)
-			display_share("protocol=vnc:" .. (args and args or ""), "");
--- FIXME: meta_1 and query for individual values instead (host,
--- password, samplerate etc. then just push as table to display_share
-		end
-	},
-	{
-		name = "display_record",
-		label = "Record",
-		kind = "value",
-		hint = "arguments",
-		validator = function() return true; end,
-		eval = function()
-			return gconfig_get("display_simple") == false and
-				string.find(FRAMESERVER_MODES, "encode") ~= nil;
-		end,
-		handler = function(ctx, args)
-			display_share("", args);
--- FIXME: meta_1 and query for options instead (need a generic
--- function for that really)
-		end
+		name = "display_region",
+		label = "Region Action",
+		kind = "action",
+		submenu = true,
+		handler = region_menu
 	}
 };

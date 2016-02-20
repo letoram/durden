@@ -21,6 +21,8 @@ end
 
 function iostatem_restore(tbl)
 	devstate = tbl;
+	devstate.iotbl = nil;
+	devstate.counter = devstate.delay;
 end
 
 -- just feed this function, will cache state as necessary
