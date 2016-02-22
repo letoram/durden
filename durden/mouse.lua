@@ -1091,16 +1091,16 @@ function mouse_select_end(handler)
 		return;
 	end
 
-	if (handler) then
-		handler(select_regupd());
-	end
-
 	delete_image(mstate.lockvid);
 	mstate.lockfun = mstate.in_select.lockfun;
 	mstate.lockvid = mstate.in_select.lockvid;
 
 	for i,v in ipairs(mstate.in_select.autodelete) do
 		delete_image(v);
+	end
+
+	if (handler) then
+		handler(select_regupd());
 	end
 
 	mstate.in_select = nil;

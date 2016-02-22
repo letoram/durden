@@ -117,6 +117,62 @@ local do_regsel = function(handler)
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
 
+-- use active display rendertarget to create an intermediary region
+local function build_rt_reg(x1, y1, w, h, srate)
+	if (w <= 0 or h <= 0) then
+		return;
+	end
+
+	local dst = alloc_surface(w, h);
+	if (not valid_vid(dst)) then
+		warning("build_rt: failed to create intermediate");
+		return;
+	end
+	local cont = null_surface(w, h);
+	if (not valid_vid(cont)) then
+		delete_image(dst);
+		return;
+	end
+
+	local drt = active_display(true);
+	rendertarget_forceupdate(drt);
+	image_sharestorage(drt, cont);
+
+-- convert to surface coordinates
+	local props = image_storage_properties(cont);
+	local s1 = x1 / props.width;
+	local t1 = y1 / props.height;
+	local s2 = (x1+w) / props.width;
+	local t2 = (y1+h) / props.height;
+
+	local txcos = {s1, t1, s2, t1, s2, t2, s1, t2};
+	image_set_txcos(cont, txcos);
+	show_image({cont, dst});
+
+	define_rendertarget(dst,{cont},
+		RENDERTARGET_DETACH,RENDERTARGET_NOSCALE, srate);
+	return dst;
+end
+
+local function regimg_setup(x1, y1, x2, y2, static)
+	local w = x2 - x1;
+	local h = y2 - y1;
+	local img = build_rt_reg(x1, y1, w, h, static and 0 or -1);
+	if (valid_vid(img)) then
+		rendertarget_forceupdate(img);
+
+		if (static) then
+			local dsrf = null_surface(w, h);
+			image_sharestorage(img, dsrf);
+			delete_image(img);
+			img = dsrf;
+		end
+
+		show_image(img);
+		active_display():add_window(img, {scalemode = "stretch"});
+	end
+end
+
 local region_menu = {
 	{
 		name = "display_region_imgwnd",
@@ -124,14 +180,26 @@ local region_menu = {
 		kind = "action",
 		handler = function()
 			do_regsel(function(x1, y1, x2, y2)
-				print("display_region_imgwnd");
-			end);
-		end
+				regimg_setup(x1, y1, x2, y2, true);
+			end)
+		end,
+	},
+	{
+		name = "display_region_monitor",
+		label = "Monitor",
+		kind = "action",
+		handler = function()
+			do_regsel(function(x1, y1, x2, y2)
+				regimg_setup(x1, y1, x2, y2, false);
+			end)
+		end,
 	},
 	{
 		name = "display_region_ocr",
 		label = "OCR",
 		kind = "action",
+-- eval = should run a probe mode for encode to figure out if we have
+-- OCR / share /etc. support
 		handler = function()
 			do_regsel(function(x1, y1, x2, y2)
 				print("display_region_ocr");
@@ -141,6 +209,7 @@ local region_menu = {
 	{
 		name = "display_region_record",
 		label = "Record",
+-- eval = check for encode, we need a way to query arguments better
 		kind = "action",
 		handler = function()
 			do_regsel(function(x1, y1, x2, y2)
