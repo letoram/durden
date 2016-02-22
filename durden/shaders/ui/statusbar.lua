@@ -4,6 +4,7 @@ return {
 	frag =
 [[
 	uniform vec4 color;
+	float obj_opacity;
 
 	void main()
 	{
