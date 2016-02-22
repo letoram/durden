@@ -245,6 +245,26 @@ local function linear_find_vid(table, vid, state)
 	end
 end
 
+local function select_regupd()
+	local x, y = mouse_xy();
+	local x2 = mstate.in_select.x;
+	local y2 = mstate.in_select.y;
+
+	if (x > x2) then
+		local tx = x;
+		x = x2;
+		x2 = tx;
+	end
+
+	if (y > y2) then
+		local ty = y;
+		y = y2;
+		y2 = ty;
+	end
+
+	return x, y, x2, y2;
+end
+
 -- re-use cached results if the cursor hasn't moved and the logical clock
 -- hasn't changed since last query, this cuts down on I/O storms from high-
 -- res devices
@@ -1004,20 +1024,6 @@ function mouse_querytarget(rt)
 	end
 end
 
-local function select_regupd()
-	local x, y = mouse_xy();
-	if (x < mstate.in_select.x) then
-		x = mstate.in_select.x;
-		mstate.in_select.x = mstate.x;
-	end
-
-	if (y < mstate.in_select.y) then
-		y = mstate.in_select.y;
-		mstate.in_select.y = mstate.y;
-	end
-	return x, y, mstate.in_select.x, mstate.in_select.y;
-end
-
 -- vid will be the object that will be promoted to cursor order
 -- and used to indicate the selected region. it's drawing setup
 -- should match the desired behavior (so for pattern region rather
@@ -1064,17 +1070,16 @@ function mouse_select_begin(vid, constrain)
 	table.insert(mstate.in_select.autodelete, vid);
 
 -- normal constrain- handler will deal with clamping etc.
+	mstate.lockvid = null_surface(MAX_SURFACEW, MAX_SURFACEH);
 	mstate.lockfun = function()
-		local x, y = mouse_xy();
-		print(x, y);
--- edge case, ignore
-		if (x == mstate.in_select.x and y == mstate.in_select.y) then
+		local x1, y1, x2, y2 = select_regupd();
+		local w = x2 - x1;
+		local h = y2 - y1;
+		if (w <= 0 or h <= 0) then
 			return;
 		end
-
--- we don't "invert" but rather move around.
-		move_image(vid, mstate.in_select.x, mstate.in_select.y);
-		resize_image(vid, x - mstate.in_select.x, y - mstate.in_select.y);
+		move_image(vid, x1, y1);
+		resize_image(vid, w, h);
 	end
 
 	return true;
@@ -1090,9 +1095,9 @@ function mouse_select_end(handler)
 		handler(select_regupd());
 	end
 
-	if (valid_vid(mstate.in_select.lockvid)) then
-		mstate.lockvid = mstate.in_select.lockvid;
-	end
+	delete_image(mstate.lockvid);
+	mstate.lockfun = mstate.in_select.lockfun;
+	mstate.lockvid = mstate.in_select.lockvid;
 
 	for i,v in ipairs(mstate.in_select.autodelete) do
 		delete_image(v);

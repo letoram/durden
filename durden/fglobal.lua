@@ -624,20 +624,17 @@ end
 -- reduced version of durden input that only uses dispatch_lookup to
 -- figure out of we are running a symbol that maps to input_lock_* functions
 local ign_input = function(iotbl)
-	if (iotbl.active and iotbl.translated) then
-		local sym, lutsym = SYMTABLE:patch(iotbl);
-		dispatch_lookup(iotbl, sym, function(wm, sym, tiobl, lutsym, meta, bound)
-			if (meta) then return; end
-			if (bound and (bound == "input_lock_toggle"
-				or bound == "input_lock_off")) then
-					gf[bound]();
-			end
-		end);
-	end
+	dispatch_translate(iotbl, function(wm, sym, tiobl, lutsym, meta, bound)
+		if (meta) then return; end
+		if (bound and (bound == "input_lock_toggle"
+			or bound == "input_lock_off")) then
+				gf[bound]();
+		end
+	end);
 end
 
 gf["input_lock_toggle"] = function()
-	if (IGNORE_INPUT) then
+	if (durden_input == ign_input) then
 		gf["input_lock_off"]();
 	else
 		gf["input_lock_on"]();
@@ -646,14 +643,14 @@ end
 
 local iostate;
 gf["input_lock_on"] = function()
-	IGNORE_INPUT = ign_input;
+	durden_input = ign_input;
 	iostate = iostatem_save();
 	iostatem_repeat(0, 0);
 	active_display():message("Ignore input enabled");
 end
 
 gf["input_lock_off"] = function()
-	IGNORE_INPUT = nil;
+	durden_input = durden_normal_input;
 	if (iostate) then
 		iostatem_restore(iostate);
 		iostate = nil;

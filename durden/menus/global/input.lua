@@ -165,19 +165,19 @@ local bind_menu = {
 	{
 		name = "input_rebind_basic",
 		kind = "action",
-		label = "Rebind Basic",
+		label = "Basic",
 		handler = grab_global_function("rebind_basic")
 	},
 	{
 		name = "input_rebind_custom",
 		kind = "action",
-		label = "Bind Custom",
+		label = "Custom",
 		handler = grab_global_function("bind_custom")
 	},
 	{
 		name = "input_rebind_meta",
 		kind = "action",
-		label = "Bind Meta",
+		label = "Meta",
 		handler = grab_global_function("rebind_meta")
 	},
 	{
@@ -189,7 +189,7 @@ local bind_menu = {
 	{
 		name = "input_bind_utf8",
 		kind = "action",
-		label = "Bind UTF-8",
+		label = "UTF-8",
 		handler = grab_global_function("bind_utf8")
 	}
 };
