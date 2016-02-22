@@ -13,9 +13,8 @@ varying vec2 texco;
 
 void main()
 {
-	vec3 col = texture2D(map_tu0, texco);
+	vec3 col = texture2D(map_tu0, texco).rgb;
 	gl_FragColor = vec4(
 		col.r, col.g, col.b, obj_opacity);
-}
 }]]
 };

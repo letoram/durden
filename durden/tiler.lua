@@ -194,6 +194,7 @@ local function gen_status_tile(wm, lbl, min_sz, ofs)
 	image_inherit_order(tile, true);
 	image_inherit_order(text, true);
 	link_image(tile, wm.statusbar);
+	shader_setup(text, "ui", "sbar_item", "active");
 	image_tracetag(text, "tiler_sbar_tile");
 
 	move_image(tile, ofs, 0);
@@ -319,7 +320,7 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 			show_image(vid);
 			image_inherit_order(vid, true);
 			link_image(vid, wm.statusbar);
-			shader_setup(vid, "ui", "message", "active");
+			shader_setup(vid, "ui", "sbar_item", "active");
 			local sbsz = image_surface_properties(wm.statusbar).height;
 			move_image(vid, ofs, math.floor(0.5 * (sbsz - h * wm.font_sf)));
 		end
@@ -1058,7 +1059,7 @@ local function workspace_background(ws, bgsrc, generalize)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(ws.wm.width, ws.wm.height);
-			shader_setup(ws.background, "effect", "noalpha");
+			shader_setup(ws.background, "simple", "noalpha");
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
@@ -2625,7 +2626,6 @@ function tiler_create(width, height, opts)
 	res.min_width = 32;
 	res.min_height = 32;
 	shader_setup(res.statusbar, "ui", "statusbar", "active");
-
 	image_tracetag(res.anchor, "tiler_anchor");
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
 	image_tracetag(res.statusbar, "tiler_statusbar");
@@ -2638,6 +2638,7 @@ function tiler_create(width, height, opts)
 	image_mask_set(res.statusbar, MASK_UNPICKABLE);
 	show_image({res.anchor, res.statusbar, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
+	hide_image(res.statusbar);
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);

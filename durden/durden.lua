@@ -145,7 +145,7 @@ update_default_font = function(key, val)
 -- centering vertically on fonth will look poor on fonts that has a
 -- pronounced ascent / descent and we have no exposed function to get access
 -- to more detailed font metrics, so lets go rough..
-	local vid, lines, w, fonth = render_text("\\f,0 abc");
+	local vid, lines, w, fonth = render_text("\\f,0 gijy1!`");
 	local rfh = fonth;
 
 	image_access_storage(vid, function(tbl, w, h)
@@ -168,6 +168,7 @@ update_default_font = function(key, val)
 	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
 	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
 	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
+	gconfig_set("lbar_caret_h", fonth);
 	gconfig_set("font_defsf", rfhf);
 
 	if (not all_displays_iter) then
@@ -258,7 +259,6 @@ function durden_launch(vid, title, prefix, wnd)
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);
-	shader_setup(wnd, "effect", wnd.shkey);
 	show_image(wnd.canvas);
 
 -- may use this function to launch / create some internal window
