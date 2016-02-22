@@ -1535,17 +1535,14 @@ local function wnd_title(wnd, message, skipresize)
 
 	local props = image_surface_properties(wnd.titlebar);
 	local tbh = tbar_geth(wnd);
-	local new = not wnd.title_text or message ~= wnd.title_text;
 	wnd.title_text = message;
 
 -- only re-render if the message has changed
-	if (new) then
-		local lbl = {wnd.wm.font_delta .. gconfig_get("tbar_textstr"), message};
-		if (valid_vid(wnd.message_vid)) then
-			wnd.message_vid = render_text(wnd.message_vid, lbl);
-		else
-			wnd.message_vid = render_text(lbl);
-		end
+	local lbl = {wnd.wm.font_delta .. gconfig_get("tbar_textstr"), message};
+	if (valid_vid(wnd.message_vid)) then
+		wnd.message_vid = render_text(wnd.message_vid, lbl);
+	else
+		wnd.message_vid = render_text(lbl);
 	end
 
 -- override if the mode requires it
@@ -1575,13 +1572,11 @@ local function wnd_title(wnd, message, skipresize)
 	end
 
 	local dv = wnd.message_vid;
-	if (new) then
-		link_image(dv, wnd.titlebar);
-		image_tracetag(dv, "wnd_titletext");
-		image_clip_on(dv, CLIP_SHALLOW);
-		image_mask_set(dv, MASK_UNPICKABLE);
-		image_inherit_order(dv, 1);
-	end
+	link_image(dv, wnd.titlebar);
+	image_tracetag(dv, "wnd_titletext");
+	image_clip_on(dv, CLIP_SHALLOW);
+	image_mask_set(dv, MASK_UNPICKABLE);
+	image_inherit_order(dv, 1);
 
 -- finally reposition / relink
 	resize_image(wnd.titlebar, wnd.width - wnd.border_w * 2, tbh);
