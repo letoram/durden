@@ -106,13 +106,13 @@ i3status:
 
     i3status | sed -e 's/^/status:/' > ~/durden/durden\_
 
-The current commands exposed over the control channel:
+The command channel uses the format "namespace:command" where namespace
+is one of (command, global, target). In addition, the command name must be
+enabled in the built-in table in gconf.lua or manually added through the
+global/config/command\_channel path. The feature works much like normal
+custom target or global bindings, but with some additional (gfunc.lua)
+functions available to be exposed.
 
-    rescan_displays - used for hooking up with output display hotplug monitors
-    input_lock_on   - disable input processing (except for input_lock bindings)
-    input_lock_off  - these can be used for cooperatively handle multiple arcan
-                      instances with the same input platform both interpreting
-                      all input being made.
 Features and Status
 =====
 To get an overview of the features that have been implemented and features that
@@ -154,7 +154,7 @@ are being implemented, we have the following list:
 - [x] Resource Browser
 - [x] IPC
   -  [x] Basic Notification Bar Control (i3status, ...)
-  -  [x] External Command Interface (limited at the moment)
+  -  [x] External Command Interface
 - [ ] Input
   - [ ] Gaming Devices
     - [ ] Analog Calibration
@@ -179,7 +179,7 @@ are being implemented, we have the following list:
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
   - [ ] Global forwards (specify binding to send to window regardless of focus)
-  - [ ] Input state to LED binding (keymap, active bindings for RGB keybarods)
+  - [ ] Input state to LED binding (keymap, active bindings for RGB keyboards)
 - [ ] Internationalization
   - [ ] Menu Translations
   - [ ] Foreign IMEs
@@ -206,8 +206,8 @@ are being implemented, we have the following list:
   - [ ] Popup Windows
   - [ ] Move window to float/hidden that can be toggled to cursor position
   - [ ] Cursor Drag - Event Region
-     -  [ ] Zoom region
-     -  [ ] Snapshot region
+     -  [x] Monitor region
+     -  [x] Snapshot region
      -  [ ] Record / VNC / OCR region
   - [x] Inactivity / Focus Notification
   - [ ] Auto Suspend/Resume

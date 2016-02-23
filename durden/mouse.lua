@@ -1041,11 +1041,13 @@ function mouse_select_begin(vid, constrain)
 		x = mstate.x,
 		y = mstate.y,
 		vid = vid,
+		hidden = mstate.hidden,
 		autodelete = {},
 		lockvid = mstate.lockvid,
 		lockfun = mstate.lockfun
 	};
 
+	mouse_show();
 -- just save any old constrain- vid and create a new one that match
 	if (constrain) then
 		assert(constrain[4] - constrain[2] > 0);
@@ -1063,6 +1065,7 @@ function mouse_select_begin(vid, constrain)
 -- set order
 	link_image(vid, mstate.cursor);
 	image_mask_clear(vid, MASK_POSITION);
+	image_mask_set(vid, MASK_UNPICKABLE);
 	image_inherit_order(vid, true);
 	order_image(vid, -1);
 	resize_image(vid, 1, 1);
@@ -1085,10 +1088,36 @@ function mouse_select_begin(vid, constrain)
 	return true;
 end
 
+function mouse_select_set(vid)
+	if (not mstate.lockfun or not mstate.in_select) then
+		return;
+	end
+
+	if (valid_vid(vid)) then
+		local props = image_surface_resolve_properties(vid);
+		mstate.x = props.x + props.width;
+		mstate.y = props.y + props.height;
+		mstate.in_select.x = props.x;
+		mstate.in_select.y = props.y;
+		mouse_cursorupd(0, 0);
+		mstate.lockfun();
+	else
+		local mx, my = mouse_xy();
+		mstate.in_select.x = mx;
+		mstate.in_select.y = my;
+		mouse_cursorupd(0, 0);
+		mstate.lockfun();
+	end
+end
+
 -- explicit end, handler will return region
 function mouse_select_end(handler)
 	if (not mstate.in_select) then
 		return;
+	end
+
+	if (mstate.hidden) then
+		mouse_hide();
 	end
 
 	delete_image(mstate.lockvid);
