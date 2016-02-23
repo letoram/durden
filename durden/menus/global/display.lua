@@ -95,6 +95,14 @@ end
 
 local function query_displays()
 	local res = {};
+	local v = active_display(false, true);
+	table.insert(res, {
+		name = "disp_menu_current",
+		label = "Current",
+		kind = "action",
+		submenu = true,
+		handler = function() return gen_disp_menu(v); end
+	});
 	for k,v in pairs(all_displays()) do
 		if (string.len(v.name) > 0) then
 			table.insert(res, {
@@ -250,7 +258,7 @@ return {
 	},
 	{
 		name = "display_region",
-		label = "Region Action",
+		label = "Region",
 		kind = "action",
 		submenu = true,
 		handler = region_menu
