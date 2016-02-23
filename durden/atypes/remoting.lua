@@ -7,6 +7,7 @@ return {
 	props = {
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
+		font_block = true,
 		clipboard_block = true,
 		rate_unlimited = false
 	},

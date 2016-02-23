@@ -2190,7 +2190,7 @@ local function wnd_create(wm, source, opts)
 		space:resize(res);
 		res:select();
 	else
-		shader_setup(wnd.border, "ui", "tile", "inactive");
+		shader_setup(res.border, "ui", "tile", "inactive");
 	end
 
 	if (not opts.block_mouse) then
