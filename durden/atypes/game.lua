@@ -57,5 +57,4 @@ return {
 		clipboard_block = true,
 		font_block = true
 	},
-	default_shader = "noalpha"
 };
