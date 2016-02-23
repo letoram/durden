@@ -44,18 +44,18 @@ end);
 gconfig_listen("term_font", "aterm",
 function(id, newv)
 	for wnd in all_windows("terminal") do
-		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			wnd:update_font(-1, -1, newv);
-		end
+		wnd.font_block = false;
+		wnd:update_font(-1, -1, newv);
+		wnd.font_block = true;
 	end
 end);
 
 gconfig_listen("term_font_sz", "aterm",
 function(id, newv)
 	for wnd in all_windows("terminal") do
-		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			wnd:update_font(tonumber(newv), -1);
-		end
+		wnd.font_block = false;
+		wnd:update_font(tonumber(newv), -1);
+		wnd.font_block = true;
 	end
 end);
 
