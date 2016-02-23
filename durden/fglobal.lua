@@ -624,13 +624,13 @@ end
 -- reduced version of durden input that only uses dispatch_lookup to
 -- figure out of we are running a symbol that maps to input_lock_* functions
 local ign_input = function(iotbl)
-	dispatch_translate(iotbl, function(wm, sym, tiobl, lutsym, meta, bound)
-		if (meta) then return; end
-		if (bound and (bound == "input_lock_toggle"
-			or bound == "input_lock_off")) then
-				gf[bound]();
+	local ok, sym, outsym, lutval = dispatch_translate(iotbl, true);
+	if (iotbl.active and lutval) then
+		if (lutval == "input_lock_toggle" or lutval == "input_lock_off" or
+			lutval == "input_lock_on") then
+			gf[lutval]();
 		end
-	end);
+	end
 end
 
 gf["input_lock_toggle"] = function()

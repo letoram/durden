@@ -342,12 +342,6 @@ local function poll_status_channel()
 	end
 end
 
-local allowed_global = {
-	input_lock_on = true,
-	input_lock_off = true,
-	input_lock_toggle = true
-};
-
 local function poll_control_channel()
 	local line = CONTROL_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
@@ -359,15 +353,39 @@ local function poll_control_channel()
 -- hotplug event
 	if (elem[1] == "rescan_displays") then
 		video_displaymodes();
+		return;
+	end
 
-	elseif (elem[1] == "screenshot") then
+	if (#elem ~= 2) then
+		warning("broken command received on control channel, expected 2 args");
+		return;
+	end
+
+	if (elem[1] == "screenshot") then
 		local rt = active_display(true);
-		if (valid_vid(rt) and elem[2]) then
+		if (valid_vid(rt)) then
+			print("saved screenshot:", elem[2]);
 			save_screenshot(elem[2], FORMAT_PNG, rt);
 		end
 
-	elseif (allowed_global[elem[1]]) then
-		dispatch_symbol(elem[1]);
+	elseif (DEBUGLEVEL > 0 and elem[1] == "snapshot") then
+		print("saved snapshot:debug/" .. elem[2]);
+		system_snapshot("debug/" .. elem[2]);
+	else
+		if (not allowed_commands(elem[2])) then
+			warning("unknown/disallowed command: " .. elem[2]);
+			return;
+		end
+
+		if (elem[1] == "command") then
+			dispatch_symbol(elem[2]);
+		elseif (elem[1] == "global") then
+			dispatch_symbol("!/" .. elem[2]);
+		elseif (elem[1] == "target") then
+			dispatch_symbol("#/" .. elem[2]);
+		else
+			warning("unknown command namespace: " .. elem[1]);
+		end
 	end
 end
 
