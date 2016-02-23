@@ -480,6 +480,15 @@ function durden_regionsel_input(iotbl)
 		elseif (SYSTEM_KEYS["accept"] == sym) then
 			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
 			durden_input = durden_normal_input;
+		elseif (SYSTEM_KEYS["meta_1"] == sym) then
+			mouse_select_set();
+		elseif (SYSTEM_KEYS["meta_2"] == sym) then
+			local rt = active_display(true);
+			local mx, my = mouse_xy();
+			local items = pick_items(mx, my, 1, true, rt);
+			if (#items > 0) then
+				mouse_select_set(items[1]);
+			end
 		end
 
 	elseif (iotbl.mouse) then

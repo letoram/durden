@@ -117,19 +117,23 @@ local function query_displays()
 	return res;
 end
 
-local do_regsel = function(handler)
-	local col = color_surface(1, 1, 0, 255, 0);
+local do_regsel = function(r, g, b, handler)
+	local col = color_surface(1, 1, r, g, b);
 	blend_image(col, 0.2);
 	mouse_select_begin(col);
 	durden_input = durden_regionsel_input;
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
 
--- use active display rendertarget to create an intermediary region
-local function build_rt_reg(x1, y1, w, h, srate)
+local function build_rt_reg(drt, x1, y1, w, h, srate)
 	if (w <= 0 or h <= 0) then
 		return;
 	end
+
+-- grab in worldspace, translate
+	local props = image_surface_resolve_properties(drt);
+	x1 = x1 - props.x;
+	y1 = y1 - props.y;
 
 	local dst = alloc_surface(w, h);
 	if (not valid_vid(dst)) then
@@ -142,12 +146,9 @@ local function build_rt_reg(x1, y1, w, h, srate)
 		return;
 	end
 
-	local drt = active_display(true);
-	rendertarget_forceupdate(drt);
 	image_sharestorage(drt, cont);
 
 -- convert to surface coordinates
-	local props = image_storage_properties(cont);
 	local s1 = x1 / props.width;
 	local t1 = y1 / props.height;
 	local s2 = (x1+w) / props.width;
@@ -162,10 +163,26 @@ local function build_rt_reg(x1, y1, w, h, srate)
 	return dst;
 end
 
-local function regimg_setup(x1, y1, x2, y2, static)
+local function regimg_setup(x1, y1, x2, y2, static, title)
 	local w = x2 - x1;
 	local h = y2 - y1;
-	local img = build_rt_reg(x1, y1, w, h, static and 0 or -1);
+
+-- check sample points if we match a single vid or we need to
+-- use the aggregate surface and restrict to the behaviors of rt
+	local drt = active_display(true);
+	local i1 = pick_items(x1, y1, 1, true, drt);
+	local i2 = pick_items(x2, y1, 1, true, drt);
+	local i3 = pick_items(x1, y2, 1, true, drt);
+	local i4 = pick_items(x2, y2, 1, true, drt);
+	local img = drt;
+	if (#i1 == 0 or #i2 == 0 or #i3 == 0 or #i4 == 0 or
+		i1[1] ~= i2[1] or i1[1] ~= i3[1] or i1[1] ~= i4[1]) then
+		rendertarget_forceupdate(drt);
+	else
+		img = i1[1];
+	end
+	img = build_rt_reg(img, x1, y1, w, h, static and 0 or -1);
+
 	if (valid_vid(img)) then
 		rendertarget_forceupdate(img);
 
@@ -177,7 +194,8 @@ local function regimg_setup(x1, y1, x2, y2, static)
 		end
 
 		show_image(img);
-		active_display():add_window(img, {scalemode = "stretch"});
+		local wnd = active_display():add_window(img, {scalemode = "stretch"});
+		wnd:set_title(title);
 	end
 end
 
@@ -187,8 +205,8 @@ local region_menu = {
 		label = "Snapshot",
 		kind = "action",
 		handler = function()
-			do_regsel(function(x1, y1, x2, y2)
-				regimg_setup(x1, y1, x2, y2, true);
+			do_regsel(255, 0, 0, function(x1, y1, x2, y2)
+				regimg_setup(x1, y1, x2, y2, true, "Snapshot");
 			end)
 		end,
 	},
@@ -197,8 +215,8 @@ local region_menu = {
 		label = "Monitor",
 		kind = "action",
 		handler = function()
-			do_regsel(function(x1, y1, x2, y2)
-				regimg_setup(x1, y1, x2, y2, false);
+			do_regsel(0, 255, 0, function(x1, y1, x2, y2)
+				regimg_setup(x1, y1, x2, y2, false, "Monitor");
 			end)
 		end,
 	},
@@ -206,21 +224,31 @@ local region_menu = {
 		name = "display_region_ocr",
 		label = "OCR",
 		kind = "action",
--- eval = should run a probe mode for encode to figure out if we have
--- OCR / share /etc. support
+		eval = function() return false; end,
 		handler = function()
-			do_regsel(function(x1, y1, x2, y2)
+			do_regsel(0, 255, 255, function(x1, y1, x2, y2)
 				print("display_region_ocr");
+			end);
+		end
+	},
+	{
+		name = "display_region_remote",
+		label = "Remote",
+		kind = "action",
+		eval = function() return false; end,
+		handler = function()
+			do_regsel(255, 255, 0, function(x1, y1, x2, y2)
+				print("display_region_remote");
 			end);
 		end
 	},
 	{
 		name = "display_region_record",
 		label = "Record",
--- eval = check for encode, we need a way to query arguments better
+		eval = function() return false; end,
 		kind = "action",
 		handler = function()
-			do_regsel(function(x1, y1, x2, y2)
+			do_regsel(255, 0, 255, function(x1, y1, x2, y2)
 				print("display_region_record");
 			end);
 		end,
