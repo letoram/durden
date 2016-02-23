@@ -616,6 +616,10 @@ function launch_menu_path(wm, gfunc, pathdescr)
 		return;
 	end
 
+	if (DEBUGLEVEL > 2) then
+		print("launch_menu_path: ", pathdescr);
+	end
+
 	if (not pathdescr or string.len(pathdescr) == 0) then
 		gfunc();
 		return;
@@ -655,7 +659,7 @@ function launch_menu_path(wm, gfunc, pathdescr)
 
 		if (not found) then
 			warning(string.format(
-				"run_menu_path(%s) failed at index %d", pathdescr, i));
+				"run_menu_path(%s) failed at index %d, couldn't find %s", pathdescr, i, v));
 			launch_menu = old_launch;
 			return;
 		else

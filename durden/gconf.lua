@@ -161,6 +161,16 @@ if (type(val) ~= type(defaults[key])) then
 	end
 end
 
+local allowed = {
+	input_lock_on = true,
+	input_lock_off = true,
+	input_lock_toggle = true
+};
+
+function allowed_commands(cmd)
+	return allowed[cmd] ~= nil;
+end
+
 function gconfig_get(key)
 	return defaults[key];
 end

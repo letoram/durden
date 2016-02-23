@@ -243,7 +243,7 @@ function dispatch_translate(iotbl, nodispatch)
 -- generate durden specific meta- tracking or apply binding hooks
 	local ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
 	if (ok or nodispatch) then
-		return true, lutsym, iotbl;
+		return true, lutsym, iotbl, tbl[lutsym];
 	end
 
 	if (tbl[lutsym]) then
