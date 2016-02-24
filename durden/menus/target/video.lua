@@ -94,11 +94,11 @@ return {
 		name = "target_shader",
 		label = "Shader",
 		kind = "value",
-		set = shader_list("effect"),
+		set = function() return shader_list({"effect", "simple"}); end,
 		handler = function(ctx, val)
-			local key = shader_getkey(val);
+			local key, dom = shader_getkey(val, {"effect", "simple"});
 			if (key ~= nil) then
-				shader_setup(active_display().selected, "effect", key);
+				shader_setup(active_display().selected.canvas, dom, key);
 			end
 		end
 -- really cool preview here would be to have lbar run in tile helper mode,

@@ -33,8 +33,9 @@ local shdrtbl = {
 	simple = {}
 };
 
+local groups = {"effect", "ui", "display", "audio", "simple"};
+
 function shdrmgmt_scan()
-	local groups = {"effect", "ui", "display", "audio", "simple"};
  	for a,b in ipairs(groups) do
  		local path = string.format("shaders/%s/", b);
 
@@ -170,13 +171,22 @@ function shader_update_uniform(sname, domain, uname, args, states)
 end
 
 function shader_getkey(name, domain)
-	if (not shdrtbl[domain]) then
-		return;
+	if (not domain) then
+		domain = groups;
 	end
 
-	for k,v in pairs(shdrtbl[domain]) do
-		if (v.label == name) then
-			return k;
+	if (type(domain) ~= "table") then
+		domain = {domain};
+	end
+
+-- the end- slide of Lua, why u no continue ..
+	for i,j in ipairs(domain) do
+		if (shdrtbl[j]) then
+			for k,v in pairs(shdrtbl[j]) do
+				if (v.label == name) then
+					return k, j;
+				end
+			end
 		end
 	end
 end
@@ -191,12 +201,17 @@ end
 
 function shader_list(domain)
 	local res = {};
-	if (not shdrtbl[domain]) then
-		warning("shader_list requested uknown domain");
-		return;
+
+	if (type(domain) ~= "table") then
+		domain = {domain};
 	end
 
-	for k,v in ipairs(shdrtbl[domain]) do
-		table.insert(res, v.label);
+	for i,j in ipairs(domain) do
+		if (shdrtbl[j]) then
+			for k,v in pairs(shdrtbl[j]) do
+				table.insert(res, v.label);
+			end
+		end
 	end
+	return res;
 end
