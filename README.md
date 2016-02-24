@@ -209,6 +209,10 @@ are being implemented, we have the following list:
      -  [x] Monitor region
      -  [x] Snapshot region
      -  [ ] Record / VNC / OCR region
+  - [ ] Automation
+     -  [ ] Fire-Once Timers
+     -  [ ] Idle-Timers
+     -  [ ] Timer-Bind
   - [x] Inactivity / Focus Notification
   - [ ] Auto Suspend/Resume
     - [ ] Follow Focus
@@ -217,11 +221,6 @@ are being implemented, we have the following list:
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Window Configuration Save
-- [ ] Specials
-  - [ ] Overlay Select region
-    - [ ] Tesseract (OCR -> clipboard)
-    - [ ] To- Image Viewer
-    - [ ] Stream and/or Share
 - [ ] Display Sharing
   - [ ] Recording/Streaming/Sharing
     - [ ] Audio Control
@@ -349,6 +348,7 @@ _files that might be of interest)_
         bbar.lua         - binding bar, used for querying keybindings
         browser.lua      - lbar based resource browser
         suppl.lua        - text and menu convinience functions
+        timer.lua        - one-off or recurrent timer events
 
     durden/atypes/* - menus and settings for specific client subtypes
     durden/menus/ - global menus and settings, target base menus and settings
