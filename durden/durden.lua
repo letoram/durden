@@ -1,4 +1,4 @@
--- Copyright: 2015, Björn Ståhl
+-- Copyright: 2015-2016, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main setup for the Arcan/Durden desktop environment
@@ -8,14 +8,17 @@
 EVENT_SYNCH = {};
 
 local update_default_font;
+local argv_cmds = {};
+local ievcount = 0;
 
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
-	system_load("lbar.lua")();
+	system_load("lbar.lua")(); -- used to navigate menus
 	system_load("bbar.lua")(); -- input binding
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("suppl.lua")(); -- convenience functions
+	system_load("timer.lua")(); -- timers, will hook clock_pulse
 
 	update_default_font();
 
@@ -119,20 +122,32 @@ function durden(argv)
 		end
 	end
 
--- just used for quick documentation work, traverses the menu tree and writes
--- to stdout, does not yet handle shared or archetype- specific menus
-	if (argv[1] == "dump_menus") then
-		for k,v in ipairs(get_menu_tree(get_global_menu())) do
-			print(v);
+	for i,v in ipairs(argv) do
+		if (argv_cmds[v]) then
+			argv_cmds[v]();
 		end
-		return shutdown();
-
--- for one or more parallel instances sharing input devices, it helps if
--- we can start in a locked state and then use toggle keybinding (if only 2)
--- or command_channel to switch
-	elseif (argv[1] == "input_lock") then
-		dispatch_symbol("input_lock_on");
 	end
+end
+
+argv_cmds["dump_menus"] = function()
+	for k,v in ipairs(get_menu_tree(get_global_menu())) do
+		print(v);
+	end
+	return shutdown();
+end
+
+argv_cmds["input_lock"] = function()
+	dispatch_symbol("input_lock_on");
+end
+
+argv_cmds["safety_timer"] = function()
+	timer_add_idle("Safety Shutdown",
+		1000, true, function()
+			if (ievcount < 1) then
+				return shutdown("no device input");
+			end
+		end
+	);
 end
 
 update_default_font = function(key, val)
@@ -420,12 +435,23 @@ function durden_normal_input(iotbl, fromim)
 		active_display().debug_console:add_input(iotbl);
 	end
 
+	if (iotbl.kind == "status") then
+		active_display():message(string.format("%d:%d %s",
+			iotbl.devid, iotbl.subid, iotbl.action));
+		return;
+	end
+
+	ievcount = ievcount + 1;
+
 -- first we feed into the simulated repeat state manager, this will
 -- invoke the callback handler and set fromim if it is a repeated/held
 -- input.
 	if (not fromim) then
 		iostatem_input(iotbl);
 	end
+
+-- since we have some kind of input event, reset our idle timers
+	timer_reset_idle();
 
 -- then we forward keyboard events into the dispatch function, this applies
 -- translations, bindings and symtable mapping. Returns information if the
