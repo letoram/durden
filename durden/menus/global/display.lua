@@ -120,6 +120,7 @@ end
 local do_regsel = function(r, g, b, handler)
 	local col = color_surface(1, 1, r, g, b);
 	blend_image(col, 0.2);
+	iostatem_save();
 	mouse_select_begin(col);
 	durden_input = durden_regionsel_input;
 	DURDEN_REGIONSEL_TRIGGER = handler;

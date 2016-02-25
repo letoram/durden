@@ -502,9 +502,11 @@ function durden_regionsel_input(iotbl)
 
 		if (SYSTEM_KEYS["cancel"] == sym) then
 			mouse_select_end();
+			iostatem_restore();
 			durden_input = durden_normal_input;
 		elseif (SYSTEM_KEYS["accept"] == sym) then
 			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
+			iostatem_restore();
 			durden_input = durden_normal_input;
 		elseif (SYSTEM_KEYS["meta_1"] == sym) then
 			mouse_select_set();
@@ -520,6 +522,7 @@ function durden_regionsel_input(iotbl)
 	elseif (iotbl.mouse) then
 		if (iotbl.digital) then
 			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
+			iostatem_restore();
 			durden_input = durden_normal_input;
 		else
 			mousemotion(iotbl);
