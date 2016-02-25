@@ -127,6 +127,12 @@ local function wnd_destroy(wnd)
 
 -- rebuild layout
 	space:resize();
+
+-- reset meta-state tracker, this might lead to some presses
+-- not registering correctly, but also act as a safe-guard against
+-- someone about to delete a window when it just closed, leading to
+-- possible windows being lost
+	dispatch_meta_reset();
 end
 
 local function wnd_message(wnd, message, timeout)
