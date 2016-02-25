@@ -98,7 +98,6 @@ function dispatch_reset(save)
 tbl["m1_m2_SYSREQ"] = "input_lock_toggle";
 tbl["m1_m2_INSERT"] = "input_lock_toggle";
 
-
 if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";
 	end
@@ -152,7 +151,6 @@ function dispatch_load()
 
 -- custom bindings, global shared
 	for i,v in ipairs(match_keys("custg_%")) do
-		local key, val = get_kv(v);
 		if (val and string.len(val) > 0) then
 			tbl[key] = "!" .. val;
 		end
@@ -171,11 +169,14 @@ function dispatch_custom(key, val, nomb, wnd, global)
 	local old = tbl[key];
 	local pref = wnd and "custs_" or "custg_";
 
+-- go through these hoops to support unbind (nomb),
+-- global/target prefix (which uses symbols not allowed as dbkey)
 	if (nomb) then
 		tbl[key] = val;
 	else
 		tbl[key] = val and ((wnd and "#" or "!") .. val) or nil;
 	end
+
 	store_key(pref .. key, val and val or "");
 	return old;
 end

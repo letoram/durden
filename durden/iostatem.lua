@@ -8,6 +8,8 @@ local devstate = {};
 
 -- returns a table that can be used to restore the input state, used
 -- for context switching between different windows or input targets.
+local odst;
+
 function iostatem_save()
 	odst = devstate;
 	devstate = {
@@ -20,7 +22,8 @@ function iostatem_save()
 end
 
 function iostatem_restore(tbl)
-	devstate = tbl;
+	dispatch_meta_reset();
+	devstate = tbl and tbl or odst;
 	devstate.iotbl = nil;
 	devstate.counter = devstate.delay;
 end

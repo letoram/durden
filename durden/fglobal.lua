@@ -78,7 +78,7 @@ function dispatch_symbol(sym, arg, src)
 		return;
 	end
 
-	if (sf[sym]) then
+	if (sf[sym] and ms) then
 		if (ms) then
 			sf[sym](ms, arg);
 		end
@@ -335,7 +335,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 			if (done) then
 				launch_menu_hook(function(path)
 					IN_CUSTOM_BIND = false;
-					local res = dispatch_custom(sym, path, wnd, m1);
+					local res = dispatch_custom(sym, path, false, wnd, m1);
 					if (res ~= nil) then
 						active_display():message(res .. " unbound");
 					end
@@ -641,25 +641,25 @@ gf["input_lock_toggle"] = function()
 	end
 end
 
-local iostate;
 gf["input_lock_on"] = function()
 	durden_input = ign_input;
-	iostate = iostatem_save();
+	iostatem_save();
 	iostatem_repeat(0, 0);
 	active_display():message("Ignore input enabled");
 end
 
 gf["input_lock_off"] = function()
 	durden_input = durden_normal_input;
-	if (iostate) then
-		iostatem_restore(iostate);
-		iostate = nil;
-	end
+	iostatem_restore(iostate);
 	dispatch_meta_reset();
 	active_display():message("Ignore input disabled");
 end
 
 sf["fullscreen"] = function(wnd)
+	if (not wnd) then
+		print(debug.traceback());
+	end
+
 	(wnd.fullscreen and wnd.space.tile or wnd.space.fullscreen)(wnd.space);
 end
 sf["mergecollapse"] = function(wnd)
