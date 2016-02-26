@@ -336,9 +336,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 				launch_menu_hook(function(path)
 					IN_CUSTOM_BIND = false;
 					local res = dispatch_custom(sym, path, false, wnd, m1);
-					if (res ~= nil) then
-						active_display():message(res .. " unbound");
-					end
+					active_display():message(res and res .. " unbound" or nil);
 				end);
 				active_display():message("select function to bind to " .. sym, -1);
 				local ctx;
@@ -366,13 +364,18 @@ gf["unbind_combo"] = function()
 	tiler_bbar(active_display(),
 		string.format(LBL_UNBIND_COMBINATION, SYSTEM_KEYS["cancel"]),
 		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
-		function(sym, done)
+		function(sym, done, sym2)
 			if (done) then
-				dispatch_custom(sym, nil);
-				SYMTABLE:add_translation(sym, nil);
+				dispatch_custom(sym, nil, true);
+				SYMTABLE:add_translation(sym2, nil);
 				dispatch_load();
 			end
 		end);
+end
+
+sf["unbind_custom"] = function()
+	-- local res = dispatch_custom(sym, path, false, wnd, m1);
+	-- gf["bind_custom"](
 end
 
 -- a little messy, but covers binding single- keys for meta 1 and meta 2

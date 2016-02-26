@@ -551,6 +551,7 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	if (not bar.on_cancel) then
 		bar.on_cancel = function()
 			local m1, m2 = dispatch_meta();
+			iostatem_restore();
 			if (m1) then
 				local last = string.split(path, "/");
 				path = "";

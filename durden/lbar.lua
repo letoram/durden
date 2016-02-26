@@ -51,7 +51,6 @@ local function accept_cancel(wm, accept)
 		wm.debug_console:system_event(string.format(
 			"lbar(%s) returned %s", sym, ictx.inp.msg));
 	end
-	iostatem_restore(ictx.iostate);
 	wm.input_ctx = nil;
 	wm:set_input_lock();
 	if (accept) then
@@ -453,7 +452,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret = car,
 		caret_y = carety,
 		cleanup = opts.cleanup,
-		iostate = iostatem_save(),
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};

@@ -86,4 +86,5 @@ end
 function iostatem_init()
 	devstate.devices = {};
 	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
+	iostatem_save();
 end
