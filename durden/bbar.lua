@@ -2,8 +2,10 @@
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: b(inding)bar is an input dialog for binding / rebinding inputs.
--- it only supports digital inputs, analog need some better illustration that
--- combines other mechanics (filtering, ...).
+-- it only supports translated inputs, analog need some better illustration that
+-- combines other mechanics (filtering, ...). Much of this is hack'n'patch and
+-- is high up on the list for rewrite as the requirements were not at all clear
+-- when this began.
 
 PENDING_FADE = nil;
 local function drop_bbar(wm)
@@ -28,7 +30,7 @@ local function drop_bbar(wm)
 	wm.input_ctx = nil;
 end
 
-local function bbar_input_key(wm, sym, iotbl, lutsym)
+local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 	local ctx = wm.input_ctx;
 
 	if (ctx.cancel and sym == ctx.cancel) then
@@ -37,20 +39,21 @@ local function bbar_input_key(wm, sym, iotbl, lutsym)
 
 	if (ctx.ok and sym == ctx.ok and ctx.psym) then
 		drop_bbar(wm);
-		ctx.cb(ctx.psym, true);
+		ctx.cb(ctx.psym, true, lutsym2);
 		return;
 	end
 
 	if (iotbl.active) then
 		if (not ctx.psym or ctx.psym ~= sym) then
-			local res = ctx.cb(lutsym, false);
+			local res = ctx.cb(lutsym, false, lutsym2);
 			if (type(res) == "string") then
 				ctx.psym = nil;
 				ctx:label(string.format("%s%s\\t%s%s", gconfig_get("lbar_errstr"),
 					res, gconfig_get("lbar_labelstr"), ctx.message));
 			else
 				ctx.psym = sym;
-				ctx:data(ctx.psym);
+				ctx.psym2 = lutsym2;
+				ctx:data(ctx.psym .. (lutsym2 and '+' .. lutsym2 or ""));
 				ctx.clock = ctx.clock_start;
 			end
 		end
@@ -69,10 +72,11 @@ local function bbar_input_keyorcombo(wm, sym, iotbl, lutsym, mstate)
 		return;
 	end
 
--- unless we have meta, expand modifiers into lutsym and use that
+-- this needs to propagate both the m1_m2 and the possible modifiers
+-- altgr etc. which may or may not collide (really bad design)
 	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
-	lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
-	bbar_input_key(wm, lutsym, iotbl, lutsym, mstate);
+	local lutsym2 = string.len(mods) > 0 and (mods .."_" .. sym) or nil;
+	bbar_input_key(wm, lutsym, iotbl, lutsym, nil, lutsym2);
 end
 
 -- enforce meta + other key for bindings
@@ -108,7 +112,7 @@ local function set_data(ctx, data)
 		delete_image(ctx.did);
 	end
 
-	ctx.did = render_text(gconfig_get("lbar_textstr") .. data);
+	ctx.did = render_text({gconfig_get("lbar_textstr"), data});
 	show_image(ctx.did);
 	link_image(ctx.did, ctx.bar);
 	image_inherit_order(ctx.did, true);
@@ -178,14 +182,15 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 		set_progress = set_progress,
 		message = msg,
 		iostate = iostatem_save(),
-		data_y = gconfig_get("lbar_sz")
+		data_y = gconfig_get("lbar_sz") * wm.scalef
 	};
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;
 	end
 	PENDING_FADE = nil;
-	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2, gconfig_get("transition"));
+	setup_vids(wm, ctx,
+		gconfig_get("lbar_sz") * 2 * wm.scalef, gconfig_get("transition"));
 
 -- intercept tick callback to implement the "hold then bind" approach
 -- for single keys.
@@ -196,7 +201,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 			set_progress(ctx, 1.0 - ctx.clock / ctx.clock_start);
 			if (ctx.clock == 0) then
 				drop_bbar(wm);
-				ctx.cb(ctx.psym, true);
+				ctx.cb(ctx.psym, true, ctx.psym2);
 			end
 		end
 		ctx.clock_fwd(a, b);
@@ -220,9 +225,10 @@ function tiler_tbar(wm, msg, timeout, action, cancel)
 		bar_w = wm.width,
 		set_progress = set_progress,
 		iostate = iostatem_save(),
-		data_y = gconfig_get("lbar_sz")
+		data_y = gconfig_get("lbar_sz") * wm.scalef
 	};
-	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2, gconfig_get("transition"));
+	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2 *
+		wm.scalef, gconfig_get("transition"));
 	iostatem_repeat(0, 0);
 
 	_G[APPLID .. "_clock_pulse"] = function(a, b)

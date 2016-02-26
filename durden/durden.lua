@@ -379,13 +379,13 @@ local function poll_control_channel()
 	if (elem[1] == "screenshot") then
 		local rt = active_display(true);
 		if (valid_vid(rt)) then
-			print("saved screenshot:", elem[2]);
 			save_screenshot(elem[2], FORMAT_PNG, rt);
+			active_display():message("saved screenshot");
 		end
 
 	elseif (DEBUGLEVEL > 0 and elem[1] == "snapshot") then
-		print("saved snapshot:debug/" .. elem[2]);
 		system_snapshot("debug/" .. elem[2]);
+		active_display():message("saved debug snapshot");
 	else
 		if (not allowed_commands(elem[2])) then
 			warning("unknown/disallowed command: " .. elem[2]);

@@ -214,6 +214,12 @@ return {
 		handler = grab_shared_function("bind_custom"),
 	},
 	{
+		name = "target_input_unbind",
+		label = "Unbind",
+		kind = "action",
+		handler = grab_shared_function("unbind_custom")
+	},
+	{
 		name = "target_input_mouse",
 		label = "Mouse",
 		kind = "action",
