@@ -38,6 +38,22 @@ local function build_labelmenu()
 	return res;
 end
 
+local function build_unbindmenu()
+	local res = {};
+	local wnd = active_display().selected;
+	for k,v in pairs(wnd.labels) do
+		table.insert(res, {
+			name = "target_input_" .. v,
+			label = k .. "=>" .. v,
+			kind = "action",
+			handler = function()
+				wnd.labels[k] = nil;
+			end
+		});
+	end
+	return res;
+end
+
 local function build_bindmenu(wide)
 	local wnd = active_display().selected;
 	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
@@ -54,8 +70,10 @@ local function build_bindmenu(wide)
 				tiler_bbar(active_display(),
 					string.format("Bind: %s, hold desired combination.", v[1]),
 					"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
-					function(sym)
-						wnd.labels[sym] = v[1];
+					function(sym, done, aggsym)
+						if (done) then
+							wnd.labels[aggsym and aggsym or sym] = v[1];
+						end
 					end
 				);
 			end
@@ -74,9 +92,10 @@ local label_menu = {
 		submenu = true,
 		handler = build_labelmenu
 	},
+-- not finished yet, part of the whole "settings per target" problem
 	{
 		name = "target_input_localbind",
-		label = "Local-Bind",
+		label = "Temporary-Bind",
 		kind = "action",
 		hint = "Action:",
 		submenu = true,
@@ -84,11 +103,20 @@ local label_menu = {
 	},
 	{
 		name = "target_input_globalbind",
-		label = "Global-Bind",
+		label = "Class-Bind",
 		kind = "action",
+		eval = function() return false; end,
 		hint = "Action:",
 		submenu = true,
 		handler = function() return build_bindmenu(false); end
+	},
+	{
+		name = "target_input_labelunbind",
+		label = "Unbind",
+		kind = "action",
+		hint = "Unbind",
+		submenu = true,
+		handler = function() return build_unbindmenu(); end
 	}
 };
 
@@ -102,6 +130,18 @@ local kbd_menu = {
 			return (sel and sel.u8_translation) and true or false;
 		end,
 		handler = grab_shared_function("bind_utf8")
+	},
+	{
+		name = "target_input_bindcustom",
+		label = "Bind Custom",
+		kind = "action",
+		handler = grab_shared_function("bind_custom"),
+	},
+	{
+		name = "target_input_unbind",
+		label = "Unbind",
+		kind = "action",
+		handler = grab_shared_function("unbind_custom")
 	},
 	{
 		name = "target_keyboard_repeat",
@@ -206,18 +246,6 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = kbd_menu
-	},
-	{
-		name = "target_input_bindcustom",
-		label = "Bind Custom",
-		kind = "action",
-		handler = grab_shared_function("bind_custom"),
-	},
-	{
-		name = "target_input_unbind",
-		label = "Unbind",
-		kind = "action",
-		handler = grab_shared_function("unbind_custom")
 	},
 	{
 		name = "target_input_mouse",

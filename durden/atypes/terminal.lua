@@ -65,11 +65,5 @@ res.labels["DOWN"] = "DOWN";
 res.labels["RIGHT"] = "RIGHT"
 res.labels["lshift_UP"] = "SCROLL_UP";
 res.labels["lshift_DOWN"] = "SCROLL_DOWN";
-res.labels["PAGE_UP"] = "PAGE_UP";
-res.labels["PAGE_DOWN"] = "PAGE_DOWN";
-res.labels["lctrl_t"] = "SIGINFO";
-res.labels["lctrl_m"] = "MUTE";
-res.labels["lshift_F7"] = "FONTSZ_INC";
-res.labels["lshift_F8"] = "FONTSZ_DEC";
 
 return res;

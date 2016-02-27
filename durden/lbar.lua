@@ -393,7 +393,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	end
 	PENDING_FADE = nil;
 
-	local bg = color_surface(wm.width, wm.height, 0, 0, 0);
+	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
+	shader_setup(bg, "ui", "lbarbg");
 	local ph = {
 		name = "bg_cancel",
 		own = function(ctx, vid) return vid == bg; end,
@@ -403,7 +404,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	table.insert(pending, ph);
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
-	local bar = color_surface(wm.width, barh, unpack(gconfig_get("lbar_bg")));
+	local bar = fill_surface(wm.width, barh, 255, 0, 0);
+	shader_setup(bar, "ui", "lbar");
 
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
