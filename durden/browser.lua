@@ -4,6 +4,8 @@
 -- Description: Brower covers a lbar- based resource picker for
 -- existing resources.
 
+local last_path = {};
+
 local function match_ext(v, tbl)
 	if (tbl == nil) then
 		return true;
@@ -18,14 +20,24 @@ local function match_ext(v, tbl)
 	return tbl[ext];
 end
 
-local function browse_cb(ctx, instr, done, lastv)
+local function browse_cb(ctx, instr, done, lastv, inputv)
 	if (done) then
+		if (inputv == "/") then
+			while (#ctx.path > ctx.minlen) do
+				table.remove(ctx.path, #ctx.path);
+			end
+			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
+			return;
+		end
 		if (instr == "..") then
 			local path = ctx.path;
 			if (#path > ctx.minlen) then
 				table.remove(path, #path);
 			end
 			browse_file(path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
+			return;
+		elseif (instr == "/") then
+			browse_file(ctx.initial, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 			return;
 		end
 
@@ -49,6 +61,7 @@ local function browse_cb(ctx, instr, done, lastv)
 -- glob and tag the resulting table with the type, current solution isn't
 -- ideal as this may be I/O operations stalling heavily on weird filesystems
 -- so we need an asynch glob_resource and all the problems that come there.
+	last_path = ctx.path;
 	local path = table.concat(ctx.path, "/");
 	if (ctx.paths[path] == nil) then
 		ctx.paths[path] = glob_resource(path .. "/*", ctx.namespace);
@@ -80,9 +93,13 @@ local function browse_cb(ctx, instr, done, lastv)
 end
 
 function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
+	pathtbl = pathtbl and pathtbl or last_path;
+	local dup = {};
+	for k,v in ipairs(pathtbl) do dup[k] = v; end
 	active_display():lbar(browse_cb, {
 		base = prefix,
 		path = pathtbl,
+		initial = dup,
 		paths = {},
 		minlen = tblmin ~= nil and tblmin or #pathtbl,
 		fltext = extensions,

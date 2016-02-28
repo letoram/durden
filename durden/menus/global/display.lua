@@ -159,6 +159,11 @@ local function build_rt_reg(drt, x1, y1, w, h, srate)
 	image_set_txcos(cont, txcos);
 	show_image({cont, dst});
 
+	local shid = image_shader(drt);
+	if (shid) then
+		image_shader(cont, shid);
+	end
+
 	define_rendertarget(dst,{cont},
 		RENDERTARGET_DETACH,RENDERTARGET_NOSCALE, srate);
 	return dst;
