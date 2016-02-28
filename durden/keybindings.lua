@@ -161,6 +161,7 @@ function dispatch_load()
 		local key, val = get_kv(v);
 		if (val and string.len(val) > 0) then
 			tbl[key] = "#" .. val;
+			print("loaded version", tbl[key]);
 		end
 	end
 end
@@ -175,6 +176,7 @@ function dispatch_custom(key, val, nomb, wnd, global)
 		tbl[key] = val;
 	else
 		tbl[key] = val and ((wnd and "#" or "!") .. val) or nil;
+		print("custom bind", wnd, tbl[key]);
 	end
 
 	store_key(pref .. key, val and val or "");

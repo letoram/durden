@@ -244,7 +244,9 @@ gf["rebind_basic"] = function(chain)
 end
 
 sf["wnd_tobg"] = function(wnd)
+	print("sf", wnd);
 	local disp = active_display();
+	local wnd = disp.selected;
 	local space = disp.spaces[disp.space_ind];
 	if (valid_vid(wnd.external)) then
 		wnd.dispstat_block = true;
@@ -356,6 +358,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 end
 
 sf["bind_custom"] = function(ctx, wnd)
+	print("sf bind custom", ctx, wnd, debug.traceback());
 	gf["bind_custom"](nil, "lbl", {}, wnd, dispatch_meta);
 end
 

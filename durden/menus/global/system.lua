@@ -26,7 +26,10 @@ local reset_query = {
 		label = "Yes",
 		kind = "action",
 		dangerous = true,
-		handler = function() system_collapse(); end
+		handler = function()
+			durden_shutdown();
+			system_collapse();
+		end
 	},
 };
 
@@ -94,10 +97,5 @@ if (DEBUGLEVEL > 0) then
 		handler = debug_menu,
 	});
 end
-
-register_global("query_exit", query_exit);
-register_global("exit", shutdown);
-register_global("query_reset", query_reset);
-register_global("reset", function() system_collapse(APPLID); end);
 
 return system_menu;

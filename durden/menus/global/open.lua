@@ -100,7 +100,7 @@ local function browse_internal()
 		ffmts[v] = decwnd;
 	end
 
-	browse_file({}, ffmts, SHARED_RESOURCE, nil);
+	browse_file(nil, ffmts, SHARED_RESOURCE, nil);
 end
 
 register_global("spawn_terminal", spawn_terminal);
