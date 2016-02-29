@@ -54,6 +54,10 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 			elseif (ctx.trigger) then
 				ctx.trigger(pn, ctx.path);
 			end
+			local m1, m2 = dispatch_meta();
+			if (m1) then
+				browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
+			end
 		end
 		return;
 	end

@@ -2556,6 +2556,34 @@ local function tiler_deactivate(wm)
 	end
 end
 
+local function recalc_fsz(wm)
+	local fsz = gconfig_get("font_sz") * wm.scalef - gconfig_get("font_sz");
+	local int, fract = math.modf(fsz);
+	int = int + ((fract > 0.75) and 1 or - 1);
+	wm.font_deltav = int;
+	if (int > 0) then
+		wm.font_delta = "\\f,+" .. tostring(int);
+	elseif (int < 0) then
+		wm.font_delta = "\\f," .. tostring(int);
+	end
+end
+
+-- the tiler is now on a display with a new scale factor, this means redoing
+-- everything from decorations to rendered text which will cascade to different
+-- window sizes etc.
+local function tiler_scalef(wm, newf)
+	wm.scalef = newf;
+	recalc_fsz(wm);
+	wm:rebuild_border();
+	wm:invalidate_statusbar();
+
+	for k,v in ipairs(wm.windows) do
+		v:set_title(v.title_text and v.title_text or "");
+	end
+
+	wm:resize(wm.width, wm.height);
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 
@@ -2603,19 +2631,11 @@ function tiler_create(width, height, opts)
 		invalidate_statusbar = tiler_statusbar_invalidate,
 		update_statusbar = tiler_statusbar_update,
 		rebuild_border = tiler_rebuild_border,
-		set_input_lock = tiler_input_lock
+		set_input_lock = tiler_input_lock,
+		update_scalef = tiler_scalef,
 	};
 
-	local fsz = gconfig_get("font_sz") * res.scalef - gconfig_get("font_sz");
-
-	local int, fract = math.modf(fsz);
-	int = int + ((fract > 0.75) and 1 or - 1);
-		res.font_deltav = int;
-	if (int > 0) then
-		res.font_delta = "\\f,+" .. tostring(int);
-	elseif (int < 0) then
-		res.font_delta = "\\f," .. tostring(int);
-	end
+	recalc_fsz(res);
 
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load

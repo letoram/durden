@@ -107,6 +107,7 @@ local defaults = {
 	lbar_transition = 10,
 	lbar_bg = {0x33, 0x33, 0x33},
 	lbar_textstr = "\\#cccccc ",
+	lbar_alertstr = "\\#ff0000 ",
 	lbar_labelstr = "\\#00ff00 ",
 	lbar_menulblstr = "\\#ffff00 ",
 	lbar_menulblselstr = "\\#ffff00 ",
