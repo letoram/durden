@@ -3,29 +3,36 @@ function spawn_terminal()
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
 
+-- we want the dimensions in beforehand so we can pass them immediately
+-- and in that way avoid the cost of a _resize() + signal cycle
+	local wnd = durden_prelaunch();
+
+	local ppcm = tostring(active_display(true, true).ppcm);
+	local ppcm = string.gsub(ppcm, ',', '.');
+
 	local lstr = string.format(
-		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:"..
+		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:width=%d:height=%d:ppcm=%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		gconfig_get("term_font_hint"), gconfig_get("term_font"),
-		gconfig_get("term_font_sz"),
+		wnd.width, wnd.height, ppcm, gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
 			("env=ARCAN_CONNPATH="..cp) or ""
 	);
 
 	if (not gconfig_get("term_autosz")) then
-		lstr = lstr .. string.format(":cell_w=%d:cell_h=%d",
-			gconfig_get("term_cellw"), gconfig_get("term_cellh"));
+		lstr = lstr .. string.format(":width=%d:height=%d", wnd.width, wnd.height);
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
 	if (valid_vid(vid)) then
-		local wnd = durden_launch(vid, "", "terminal");
+		durden_launch(vid, "", "terminal", wnd);
 		extevh_default(vid, {
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
-		wnd.space:resize();
+		image_sharestorage(vid, wnd.canvas);
 	else
 		active_display():message( "Builtin- terminal support broken" );
+		wnd:destroy();
 	end
 end
 

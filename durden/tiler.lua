@@ -2270,7 +2270,7 @@ local function tiler_switchws(wm, ind)
 		cursp:destroy();
 		wm.spaces[wm.space_ind] = nil;
 	else
-		cursp.Selected = cw;
+		cursp.selected = cw;
 	end
 
 	if (wm.spaces[ind] == nil) then

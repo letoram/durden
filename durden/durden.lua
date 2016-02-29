@@ -254,7 +254,7 @@ end
 -- the added initial delay by setting the size in beforehand
 function durden_prelaunch()
 	local nsurf = null_surface(32, 32);
-	return active_display:add_window(nsurf);
+	return active_display():add_window(nsurf);
 end
 
 function durden_launch(vid, title, prefix, wnd)

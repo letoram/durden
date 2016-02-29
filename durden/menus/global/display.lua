@@ -59,7 +59,7 @@ local function gen_disp_menu(disp)
 	return {
 		{
 		name = "disp_menu_" .. tostring(disp.name) .. "state",
-		eval = function() return disp.primary ~= true; end,
+		eval = function() return disp.id ~= nil and disp.primary ~= true; end,
 		label = "Toggle On/Off",
 		kind = "action",
 		handler = function() warning("toggle display"); end
@@ -80,13 +80,15 @@ local function gen_disp_menu(disp)
 		label = "Resolution",
 		kind = "action",
 		submenu = true,
+		eval = function() return disp.id ~= nil; end,
 		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
 		name = "display_mapping",
 		label = "Orientation",
 		kind = "action",
-		eval = function() return gconfig_get("display_simple") == false; end,
+		eval = function() return gconfig_get("display_simple") == false and
+			disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
 		}
