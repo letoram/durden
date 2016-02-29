@@ -9,8 +9,11 @@
 -- then a good cleanup...
 --
 
-local function inp_str(ictx, ul)
-	return {gconfig_get("lbar_textstr"), ictx.inp.view_str()};
+local function inp_str(ictx, valid)
+	return {
+		valid and gconfig_get("lbar_textstr") or gconfig_get("lbar_alertstr"),
+		ictx.inp.view_str()
+	};
 end
 
 local pending = {};
@@ -225,29 +228,46 @@ local function update_completion_set(wm, ctx, set)
 	end
 end
 
-local function lbar_ih(wm, ictx, inp, sym, caret)
-	if (caret == nil) then
-		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
-		if (res == false) then
-			ictx.inp:undo();
-		elseif (res == true) then
-		elseif (res ~= nil and res.set) then
-			update_completion_set(wm, ictx, res.set);
-		end
+local function setup_string(wm, ictx, str)
+	local tvid, heights, textw, texth = render_text(str);
+	if (not valid_vid(tvid)) then
+		return ictx;
+	end
 
-		if (valid_vid(ictx.text)) then
-			ictx.text = render_text(ictx.text, inp_str(ictx));
-		else
-			local tvid, heights, textw, texth = render_text(inp_str(ictx));
-			lbarh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
-			ictx.text = tvid;
-			image_tracetag(ictx.text, "lbar_inpstr");
-			show_image(ictx.text);
-			link_image(ictx.text, ictx.text_anchor);
-			image_inherit_order(ictx.text, true);
-			texth = texth * active_display().font_sf;
-			move_image(ictx.text, ictx.textofs, math.ceil(0.5 * (lbarh - texth)));
-		end
+	local lbarh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	ictx.text = tvid;
+	image_tracetag(ictx.text, "lbar_inpstr");
+	show_image(ictx.text);
+	link_image(ictx.text, ictx.text_anchor);
+	image_inherit_order(ictx.text, true);
+	local texth = texth * active_display().font_sf;
+	move_image(ictx.text, ictx.textofs, math.ceil(0.5 * (lbarh - texth)));
+
+	return tvid;
+end
+
+local function lbar_ih(wm, ictx, inp, sym, caret)
+	if (caret ~= nil) then
+		update_caret(ictx);
+		return;
+	end
+
+	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
+
+-- special case, we have a strict set to chose from
+	if (type(res) == "table" and res.set) then
+		update_completion_set(wm, ictx, res.set);
+	end
+
+-- other option would be to run ictx.inp:undo, which was the approach earlier,
+-- but that prevented the input of more complex values that could go between
+-- valid and invalid. Now we just visually indicate.
+	local str = inp_str(ictx, not (res == false or res == nil));
+
+	if (valid_vid(ictx.text)) then
+		ictx.text = render_text(ictx.text, str);
+	else
+		ictx.text = setup_string(wm, ictx, str);
 	end
 
 	update_caret(ictx);
@@ -309,7 +329,7 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 -- permit, -> tbl with set? change completion view
 	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
 	if (res == false) then
-		ictx.inp:undo();
+--		ictx.inp:undo();
 	elseif (res == true) then
 	elseif (res ~= nil and res.set) then
 		update_completion_set(wm, ictx, res.set);

@@ -56,9 +56,8 @@ local function switch_active_display(ind)
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
 	local sf = gconfig_get("mouse_scalef");
-	mouse_cursor_sf(sf * displays[ind].tiler.scalef, sf * displays[ind].tiler.scalef);
-
--- system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
+	mouse_cursor_sf(sf * displays[ind].tiler.scalef,
+		sf * displays[ind].tiler.scalef);
 end
 
 local function display_data(id)
@@ -70,7 +69,7 @@ local function display_data(id)
 	end
 
 -- data should typically be EDID, if it is 128 bytes long we assume it is
-	if (string.len(data) == 128) then
+	if (string.len(data) == 128 or string.len(data) == 256) then
 		for i,ofs in ipairs({54, 72, 90, 108}) do
 
 			if (string.byte(data, ofs+1) == 0x00 and
@@ -123,7 +122,7 @@ function durden_display_state(action, id)
 	local model, serial = display_data(id);
 	local name = "unkn_" .. tostring(id);
 	if (model) then
-		name = string.split(model, '\r')[1] .. ":" .. serial;
+		name = string.split(model, '\r')[1] .. "/" .. serial;
 	end
 
 	if (action == "added") then
@@ -138,7 +137,6 @@ function durden_display_state(action, id)
 		local ppcm = VPPCM;
 		local subpx = "RGB";
 
--- we unfairly treat pixels as square and prefer subpixel hinting
 		if (modes and modes[1].width > 0) then
 			dw = modes[1].width;
 			dh = modes[1].height;
@@ -162,6 +160,7 @@ function durden_display_state(action, id)
 			map_video_display(displays[1].rt, 0, displays[1].maphint);
 			ddisp = displays[1];
 			ddisp.id = 0;
+			ddisp.name = name;
 			ddisp.primary = true;
 		else
 			ddisp = display_add(name, dw, dh, ppcm);
@@ -169,6 +168,10 @@ function durden_display_state(action, id)
 			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
 			ddisp.primary = false;
 		end
+
+-- load possible overrides since before, note that this is slightly
+-- inefficient as it will force rebuild of underlying rendertargets
+-- etc. but it beats have to cover a number of corner cases / races
 		ddisp.ppcm = ppcm;
 		ddisp.subpx = subpx;
 		known_dispids[id+1] = ddisp;
@@ -214,14 +217,17 @@ function display_attachment()
 end
 
 function display_override_density(name, ppcm)
-	local disp = get_disp(name);
+	local disp, dispi = get_disp(name);
 	if (not disp) then
 		return;
 	end
 
+-- it might be that the selected display is not currently the main one
+	local ind = displays.main;
+	switch_active_display(dispi);
+	disp.tiler:update_scalef(ppcm / SIZE_UNIT);
 	disp.ppcm = ppcm;
--- FIXME: activate for display, calculate factor in pt
--- tell tiler to update scalefactor
+	switch_active_display(ind);
 end
 
 function display_add(name, width, height, ppcm)
