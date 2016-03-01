@@ -551,12 +551,15 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	if (not bar.on_cancel) then
 		bar.on_cancel = function()
 			local m1, m2 = dispatch_meta();
-			iostatem_restore();
 			if (m1) then
 				local last = string.split(path, "/");
-				path = "";
 				local lpath = table.concat(last, '/', 1, #last-1);
-				launch_menu_path(wm, LAST_ACTIVE_MENU, lpath);
+				lpath = string.len(lpath) > 0 and lpath or nil;
+				path = lpath;
+				launch_menu_path(wm, LAST_ACTIVE_MENU, path);
+			else
+				path = "";
+				iostatem_restore();
 			end
 		end
 	end
