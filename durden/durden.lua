@@ -294,28 +294,41 @@ end
 -- recovery from crash is handled just like newly launched windows, one
 -- big caveat though, these are attached to WORLDID but in the multidisplay
 -- setup we have another attachment.
-function durden_adopt(vid, kind, title, parent)
+local pending_adopt = {};
+local function adopt_child(vid, kind, parent, last)
+	if (kind == "clipboard") then
+	local wnd = extevh_get_window(parent);
+		if (wnd ~= nil) then
+			wnd.clipboard = vid;
+			target_updatehandler(vid, function(source, status)
+				extevh_clipboard(wnd, source, status);
+			end);
+		elseif (not last) then
+			table.insert(pending_adopt, {vid, kind, parent});
+		else
+			warning("suspicious orphan clipboard");
+			delete_image(vid);
+		end
+	else
+		durden_launch(vid, title);
+	end
+end
+
+function durden_adopt(vid, kind, title, parent, last)
 	local ap = display_attachment();
 	if (ap ~= nil) then
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
 	end
 
 	if (valid_vid(parent)) then
-		if (kind == "clipboard") then
-			local wnd = extevh_get_window(parent);
-			if (wnd ~= nil) then
-				wnd.clipboard = vid;
-				target_updatehandler(vid, function(source, status)
-					extevh_clipboard(wnd, source, status);
-				end);
-			else
-				delete_image(vid);
-			end
-		else
-			durden_launch(vid, title);
-		end
+		adopt_child(vid, kind, parent);
 	else
 		durden_launch(vid, title);
+	end
+
+-- we need to defer these because the order is not deterministic
+	for k,v in ipairs(pending_adopt) do
+		adopt_child(unpack(v), true);
 	end
 end
 

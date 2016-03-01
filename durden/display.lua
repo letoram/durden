@@ -58,6 +58,7 @@ local function switch_active_display(ind)
 	local sf = gconfig_get("mouse_scalef");
 	mouse_cursor_sf(sf * displays[ind].tiler.scalef,
 		sf * displays[ind].tiler.scalef);
+-- system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
 end
 
 local function display_data(id)
