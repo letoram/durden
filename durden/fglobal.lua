@@ -358,7 +358,6 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 end
 
 sf["bind_custom"] = function(ctx, wnd)
-	print("sf bind custom", ctx, wnd, debug.traceback());
 	gf["bind_custom"](nil, "lbl", {}, wnd, dispatch_meta);
 end
 
