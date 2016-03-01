@@ -404,6 +404,19 @@ local function lbar_destroy(bar)
 	accept_cancel(active_display(), false);
 end
 
+local function lbar_helper(lbar, domain, arg)
+	if (domain == lbar.HELPER_TOOLTIP) then
+		warning("fixme: helper_tooltip");
+
+	elseif (domain == lbar.HELPER_PATH) then
+		warning("fixme: helper path");
+	elseif (domain == lbar.HELPER_REG1) then
+		warning("fixme: helper_reg1");
+	elseif (domain == lbar.HELPER_REG2) then
+		warning("fixme: helper_reg2");
+	end
+end
+
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 	local time = gconfig_get("lbar_transition");
@@ -446,7 +459,14 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	link_image(car, bar);
 	local carety = gconfig_get("lbar_pad");
 
+-- we support up to 4 helper regions (depending on bar position):
+-- h1 [ show current path, clickable to navigate back ]
+-- h2 [ show selection overlay ]
+-- h3 [ big region, above (if not at top ]
+-- h4 [ big region, blow (if not at bottom )
+
 	local pos = gconfig_get("lbar_position");
+
 	if (pos == "bottom") then
 		move_image(bar, 0, wm.height - barh);
 	elseif (pos == "center") then
@@ -454,8 +474,14 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	elseif (pos == "top") then
 		move_image(bar, 0, 0);
 	end
+
 	wm:set_input_lock(lbar_input);
 	wm.input_ctx = {
+-- just expose the constants here instead of polluting something global
+		HELPER_TOOLTIP = 1,
+		HELPER_PATH = 2,
+		HELPER_REG1 = 3,
+		HELPER_REG2 = 4,
 		anchor = bg,
 		text_anchor = bar,
 -- we cache these per context as we don't want them changing mid- use
@@ -467,9 +493,12 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		set_label = lbar_label,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
+		helpers = {},
 		destroy = lbar_destroy,
+		helper_tags = lbar_helper,
 		cofs = 1,
 		csel = 1,
+		barh = barh,
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
