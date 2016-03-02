@@ -6,6 +6,7 @@ function spawn_terminal()
 -- we want the dimensions in beforehand so we can pass them immediately
 -- and in that way avoid the cost of a _resize() + signal cycle
 	local wnd = durden_prelaunch();
+	wnd:set_title("");
 
 	local ppcm = tostring(active_display(true, true).ppcm);
 	local ppcm = string.gsub(ppcm, ',', '.');
@@ -25,11 +26,15 @@ function spawn_terminal()
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
+	image_tracetag(vid, "terminal");
+
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal", wnd);
 		extevh_default(vid, {
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
 		image_sharestorage(vid, wnd.canvas);
+--		hide_image(wnd.border);
+--		hide_image(wnd.canvas);
 	else
 		active_display():message( "Builtin- terminal support broken" );
 		wnd:destroy();
@@ -131,9 +136,12 @@ return {
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
 	end,
+-- missing, hash url, allow hint-set on clipboard url grab
 	handler = function(ctx, val)
 		local vid = launch_avfeed(get_remstr(val), "remoting");
 		durden_launch(vid, "", "remoting");
+		extevh_default(vid, {
+			kind = "registered", segkind = "remoting", title = "", guid = 2});
 	end;
 },
 {

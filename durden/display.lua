@@ -226,8 +226,8 @@ function display_override_density(name, ppcm)
 -- it might be that the selected display is not currently the main one
 	local ind = displays.main;
 	switch_active_display(dispi);
-	disp.tiler:update_scalef(ppcm / SIZE_UNIT);
 	disp.ppcm = ppcm;
+	disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
 	switch_active_display(ind);
 end
 

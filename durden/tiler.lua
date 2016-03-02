@@ -117,6 +117,10 @@ local function wnd_destroy(wnd)
 		delete_image(wnd.titlebar);
 	end
 
+	if (valid_vid(wnd.external)) then
+		delete_image(wnd.external);
+	end
+
 	local space = wnd.space;
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
@@ -1224,7 +1228,6 @@ local function wnd_font(wnd, sz, hint, font)
 
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		wnd.last_font = {sz, hint, font};
-		sz = sz + wnd.wm.font_deltav;
 		if (font) then
 			target_fonthint(wnd.external, font, sz * FONT_PT_SZ, hint);
 		else
@@ -2571,7 +2574,7 @@ end
 -- the tiler is now on a display with a new scale factor, this means redoing
 -- everything from decorations to rendered text which will cascade to different
 -- window sizes etc.
-local function tiler_scalef(wm, newf)
+local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
 	recalc_fsz(wm);
 	wm:rebuild_border();
@@ -2579,6 +2582,9 @@ local function tiler_scalef(wm, newf)
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title(v.title_text and v.title_text or "");
+		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
+			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
+		end
 	end
 
 	wm:resize(wm.width, wm.height);
