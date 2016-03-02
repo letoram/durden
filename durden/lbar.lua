@@ -4,9 +4,14 @@
 -- Description: lbar- is an input dialog- style bar intended for durden that
 -- supports some completion as well. It is somewhat messy as it grew without a
 -- real idea of what it was useful for then turned out to become really
--- important. Missing support for using the vast regions of empty space for
--- showing preview- information and other selection structures (graphs etc.)
--- then a good cleanup...
+-- important.
+--
+-- The big flawed design stem from all the hoops you have to go through to
+-- retain state after accepting/cancelling, and that it was basically designed
+-- to chain through itself (create -> [ok press] -> destroy [ok handler] ->
+-- call create again) etc. It worked OK when we didn't consider
+-- launch-for-binding, path helpers, tooltip hints and meta up/down navigation
+-- but is now just ugly.
 --
 
 local function inp_str(ictx, valid)
@@ -29,14 +34,19 @@ local function update_caret(ictx)
 	end
 end
 
-local function accept_cancel(wm, accept)
-	for i,v in ipairs(pending) do mouse_droplistener(v); end
+local function destroy(wm, ictx)
+	for i,v in ipairs(pending) do
+		mouse_droplistener(v);
+	end
 	pending = {};
 
+-- our lbar
 	local ictx = wm.input_ctx;
 	local time = gconfig_get("lbar_transition");
+
 	blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
 	blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
+
 	if (time > 0) then
 		PENDING_FADE = ictx.anchor;
 		expire_image(ictx.anchor, time + 1);
@@ -44,18 +54,24 @@ local function accept_cancel(wm, accept)
 			PENDING_FADE = nil;
 		end);
 	else
-		for k,v in ipairs(pending) do
-			mouse_droplistener(v);
-		end
-		pending = {};
 		delete_image(ictx.anchor);
 	end
+
 	if (wm.debug_console) then
 		wm.debug_console:system_event(string.format(
 			"lbar(%s) returned %s", sym, ictx.inp.msg));
 	end
+
 	wm.input_ctx = nil;
 	wm:set_input_lock();
+end
+
+local function accept_cancel(wm, accept)
+	local ictx = wm.input_ctx;
+	if (not ictx.no_destroy) then
+		destroy(wm, ictx);
+	end
+
 	if (accept) then
 		local base = ictx.inp.msg;
 		if (ictx.force_completion or string.len(base) == 0) then
@@ -183,8 +199,8 @@ local function update_completion_set(wm, ctx, set)
 		image_inherit_order(ctx.ccursor, true);
 		image_inherit_order(txt, true);
 		order_image(txt, 2);
-		order_image(ctx.ccursor, 1);
 		image_clip_on(txt, CLIP_SHALLOW);
+		order_image(ctx.ccursor, 1);
 
 -- try to avoid very long items from overflowing their slot,
 -- should "pop up" a copy when selected instead where the full
@@ -199,7 +215,7 @@ local function update_completion_set(wm, ctx, set)
 			own = function(ctx, vid) return vid == txt; end,
 			motion = function(mctx)
 				ctx.csel = i;
-				resize_image(ctx.ccursor, txt_w, lbarsz);
+				resize_image(ctx.ccursor, w, lbarsz);
 				move_image(ctx.ccursor, mctx.mofs, 0);
 			end,
 			click = function()
@@ -215,7 +231,7 @@ local function update_completion_set(wm, ctx, set)
 
 		if (i == ctx.csel) then
 			move_image(ctx.ccursor, ofs, 0);
-			resize_image(ctx.ccursor, txt_w, lbarsz);
+			resize_image(ctx.ccursor, w, lbarsz);
 		end
 
 		move_image(txt, ofs, 0.5 * (lbarsz - active_display().font_sf * txt_h));
@@ -400,19 +416,15 @@ function tiler_lbarforce(tbl, cb)
 	end
 end
 
-local function lbar_destroy(bar)
-	accept_cancel(active_display(), false);
-end
-
 local function lbar_helper(lbar, domain, arg)
 	if (domain == lbar.HELPER_TOOLTIP) then
 		warning("fixme: helper_tooltip");
-
-	elseif (domain == lbar.HELPER_PATH) then
-		warning("fixme: helper path");
+-- tooltip, initial fade up, then grow / shrink, arg is vid or text
 	elseif (domain == lbar.HELPER_REG1) then
+-- return anchor point, expect callback in arg
 		warning("fixme: helper_reg1");
 	elseif (domain == lbar.HELPER_REG2) then
+-- if botttom or top, return broken
 		warning("fixme: helper_reg2");
 	end
 end
@@ -446,9 +458,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	image_inherit_order(bg, true);
 	image_mask_clear(bar, MASK_OPACITY);
 
-	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
 	order_image(bg, 1);
+	order_image(bar, 3);
+	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
 	local car = color_surface(wm.scalef * gconfig_get("lbar_caret_w"),
 		wm.scalef * gconfig_get("lbar_caret_h"),
@@ -479,11 +492,11 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	wm.input_ctx = {
 -- just expose the constants here instead of polluting something global
 		HELPER_TOOLTIP = 1,
-		HELPER_PATH = 2,
-		HELPER_REG1 = 3,
-		HELPER_REG2 = 4,
+		HELPER_REG1 = 2,
+		HELPER_REG2 = 3,
 		anchor = bg,
 		text_anchor = bar,
+		position = pos,
 -- we cache these per context as we don't want them changing mid- use
 		accept = SYSTEM_KEYS["accept"],
 		cancel = SYSTEM_KEYS["cancel"],
@@ -493,8 +506,14 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		set_label = lbar_label,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		helpers = {},
-		destroy = lbar_destroy,
+		no_destroy = opts.no_destroy,
+		helpers = {{}, {}, {}},
+		destroy = function()
+			accept_cancel(active_display(), false);
+			if (opts.no_destroy) then
+				destroy(wm, wm.input_ctx);
+			end
+		end,
 		helper_tags = lbar_helper,
 		cofs = 1,
 		csel = 1,

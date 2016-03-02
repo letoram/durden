@@ -1,4 +1,4 @@
-about
+About
 =====
 
 Durden is a free (3-clause BSD) desktop environment for Arcan, thus it requires
@@ -30,8 +30,8 @@ terminal, decode, encode, remoting etc. else those features will be missing.
 Durden probes for available engine features and enables/disables access to
 these accordingly.
 
-Install by adding the durden subdirectory of the git repository to your home
-appl folder (/home/myuser/.arcan/appl/durden)
+Install by adding or symlinking the durden subdirectory of the git repository
+to your home appl folder (/home/myuser/.arcan/appl/durden)
 
 Start arcan with the resource path set to whatever directory subtree you want
 to be able to access for assets when browsing for images, video etc.
@@ -43,22 +43,44 @@ for the currently mapped defaults. If you don't press any of the META keys
 during the first n (20 or so) keypresses, it is assumed that your meta bindings
 are broken and you will be queried for new ones.
 
+Quick! meta1+enter - now you should get a terminal window.
+
 A big point with durden as a desktop environment is that absolutely no
 configuration file editing etc. should be needed, everything is accessible and
 remappable from the UI. Most configuration changes are done through the global
-menu (by default, meta1+meta2+g) and through the window menu (by default,
-meta1+meta2+t but requires a selected window).
+menu (by default, meta1+g) and through the target menu (by default,
+meta1+t but requires a selected window).
 
 The menus are navigated by default using the arrow keys and enter to select and
-you can filter the list of shown items by typing.
+you can filter the list of shown items by typing. meta1+escape to go back one
+level, meta1+select to activate but remain in menu, escape to close down.
 
-Any path or menu item in the global or window menu can be bound to a
+Any path or menu item in the global or target menu can be bound to a
 keycombination, and this is done by going to global/input/bind custom. You will
 be prompted to press the binding you like and then navigate to the menu item
 you want to bind it to. To bind a sub-menu, hold meta1 while selecting.
 
 It is however also possible to tweak/modify the startup defaults (see
 keybindings.lua and gconf.lua).
+
+Statusbar / Command Channel
+====
+
+By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
+(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
+appldir) with the name (durden\_status) and (durden\_control). These can be
+used to run remote controls and to update the statusbar. For instance, using
+i3status:
+
+    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
+
+The command channel uses the format "namespace:command" where namespace
+is one of (command, global, target). In addition, the command name must be
+enabled in the built-in table in gconf.lua or manually added through the
+global/config/command\_channel path. The feature works much like normal
+custom target or global bindings, but with some additional (gfunc.lua)
+functions available to be exposed.
+
 
 Database Configuration
 ====
@@ -95,24 +117,6 @@ used).
 
 will add a config 'myconfig' to 'mycore' with somefile as first argument.
 
-Statusbar / Command Channel
-====
-
-By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
-(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
-appldir) with the name (durden\_status) and (durden\_control). These can be
-used to run remote controls and to update the statusbar. For instance, using
-i3status:
-
-    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
-
-The command channel uses the format "namespace:command" where namespace
-is one of (command, global, target). In addition, the command name must be
-enabled in the built-in table in gconf.lua or manually added through the
-global/config/command\_channel path. The feature works much like normal
-custom target or global bindings, but with some additional (gfunc.lua)
-functions available to be exposed.
-
 Features and Status
 =====
 To get an overview of the features that have been implemented and features that
@@ -141,13 +145,14 @@ are being implemented, we have the following list:
   - [x] Workspace Event Notification
   - [ ] Mouse Cursor Event Flash
   - [x] Font Customization
-  - [ ] Color Customization
+  - [ ] Color (UI Shader Uniform settings) Customization
   - [x] Per Window canvas shader control
   - [x] Window Translucency
   - [x] Window Alpha Channel Behavior Control (using shader)
   - [x] Off-Screen Window Alert
   - [x] Centered canvas in overdimensioned windows (fullscreen)
   - [ ] Bind target/global action to titlebar icon
+  - [ ] Bind target/global action to statusbar icon
   - [x] Configurable Border Width/Gaps
   - [x] Per Workspace Background Image
 - [x] Global and Window- specific audio controls
@@ -267,7 +272,7 @@ are being implemented, we have the following list:
   - [ ] Redshift Color Temperature
   - [ ] Advanced scaling effects (xBR, ...)
 
-Bear in mind that a lot of these features are primarily mapping to what arcan
+Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
 
