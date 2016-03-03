@@ -712,7 +712,7 @@ function launch_menu_hook(fun)
 	cpath:reset();
 end
 
-function get_menu_tree(menu)
+function get_menu_tree(menu, pref)
 	local res = {};
 
 	local recfun = function(fun, mnu, pref)
@@ -722,7 +722,7 @@ function get_menu_tree(menu)
 
 		for k,v in ipairs(mnu) do
 			table.insert(res, pref .. v.name);
-			if (v.submenu) then
+			if (v.submenu and (not v.eval or v.eval())) then
 				fun(fun,
 					type(v.handler) == "function" and v.handler() or
 					v.handler, pref .. v.name .. "/"
@@ -731,7 +731,7 @@ function get_menu_tree(menu)
 		end
 	end
 
-	recfun(recfun, menu, "/");
+	recfun(recfun, menu, pref and pref or "/");
 	return res;
 end
 

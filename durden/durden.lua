@@ -127,12 +127,25 @@ function durden(argv)
 			argv_cmds[v]();
 		end
 	end
+
+-- process user- configuration commands
+	local cmd = system_load("autorun.lua", 0);
+	if (type(cmd) == "function") then
+		cmd();
+	end
 end
 
 argv_cmds["dump_menus"] = function()
-	for k,v in ipairs(get_menu_tree(get_global_menu())) do
+	for k,v in ipairs(get_menu_tree(get_global_menu(), '!')) do
 		print(v);
 	end
+
+	local wnd = durden_prelaunch();
+
+	for k,v in ipairs(get_menu_tree(get_shared_menu(), '#')) do
+		print(v);
+	end
+
 	return shutdown();
 end
 
