@@ -301,7 +301,6 @@ function durden_adopt(vid, kind, title, parent, last)
 	end
 
 	if (not valid_vid(parent)) then
-		print("adopt", title, kind);
 		durden_launch(vid, title);
 		return true;
 	end

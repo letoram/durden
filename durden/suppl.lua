@@ -401,7 +401,125 @@ function merge_menu(m1, m2)
 end
 
 local menu_hook = nil;
-local path = nil;
+
+local function lbar_props()
+	local pos = gconfig_get("lbar_position");
+	local dir = 1;
+	local wm = active_display();
+	local barh = gconfig_get("lbar_sz") * wm.scalef;
+	local yp = 0;
+
+	if (pos == "top") then
+		yp = 0;
+	elseif (pos == "center") then
+		yp = math.floor(0.5*(wm.height-barh));
+	elseif (pos == "bottom") then
+		yp = wm.height;
+		dir = -1;
+	end
+
+	return yp, barh, dir;
+end
+
+local function menu_path_append(ctx, new, lbl)
+	local path = ctx.path;
+	local helper = ctx.helper;
+
+	table.insert(path, new);
+	local res = table.concat(path, "/");
+	local yp, tileh, dir = lbar_props();
+
+-- build a helper-tile with a label, shaded based on activity
+-- and placed based on where the bar is set
+	local csurf = fill_surface(1, 1, 255, 0, 0);
+	link_image(csurf, active_display().order_anchor);
+	image_inherit_order(csurf, true);
+	order_image(csurf, 2);
+	local txt, lineheights, w, h = render_text(
+		{gconfig_get("lbar_helperstr"), lbl});
+	if (not valid_vid(txt)) then
+		delete_image(csurf);
+		return;
+	end
+
+	link_image(txt, csurf);
+	local pad = gconfig_get("lbar_pad");
+	resize_image(csurf, w+2*pad, h+2*pad);
+	local yshift = h - (gconfig_get("font_defsf") * h);
+	center_image(txt, csurf, ANCHOR_C, 0, yshift);
+	image_inherit_order(txt, true);
+
+-- if ofs + width, compact left and add a "grow" offset on pop
+	local ofs = #helper > 0 and helper[#helper].ofs or 0;
+	local yofs = (tileh + 1) * dir;
+	show_image({txt, csurf});
+	move_image(csurf, ofs, yp); -- switch, lbar height
+	nudge_image(csurf, 0, yofs, gconfig_get("transition") * 0.5, INTERP_SINE);
+	if (#helper > 0) then
+		shader_setup(helper[#helper].vid, "ui", "lbar_tile", "inactive");
+		shader_setup(helper[#helper].tvid, "ui", "lbar_tiletext", "inactive");
+	end
+	table.insert(helper, {vid = csurf, tvid = txt,
+		yofs = yofs, ofs = ofs + w + 3*pad});
+	shader_setup(csurf, "ui", "lbar_tile", "active");
+	shader_setup(txt, "ui", "lbar_tiletext", "active");
+	return res;
+end
+
+local function menu_path_pop(ctx)
+	local path = ctx.path;
+	local helper = ctx.helper;
+
+	table.remove(path, #path);
+	local res = table.concat(path, "/");
+-- fixme, other animation
+	local as = gconfig_get("transition") * 0.5;
+	local hlp = helper[#helper];
+	if (not hlp) then
+		return res;
+	end
+
+	expire_image(hlp.vid, as);
+	nudge_image(hlp.vid, 0, -1 * hlp.yofs, as);
+	blend_image(hlp.vid, 0, as);
+
+	table.remove(helper, #helper);
+	if (#helper > 0) then
+		shader_setup(helper[#helper].vid, "ui", "lbar_tile", "active");
+		shader_setup(helper[#helper].tvid, "ui", "lbar_tiletext", "active");
+	end
+	return res;
+end
+
+local function menu_path_reset(ctx)
+	for k,v in ipairs(ctx.helper) do
+		delete_image(v.vid);
+	end
+	ctx.helper = {};
+	ctx.path = {};
+end
+
+function menu_path_new()
+	return {
+		helper = {},
+		path = {},
+		reset = menu_path_reset,
+		pop = menu_path_pop,
+		append = menu_path_append
+	};
+end
+
+local cpath = menu_path_new();
+
+local function menu_cancel(wm)
+	local m1, m2 = dispatch_meta();
+	if (m1) then
+		launch_menu_path(active_display(), LAST_ACTIVE_MENU, cpath:pop());
+	else
+		cpath:reset();
+		iostatem_restore();
+	end
+end
 
 local function run_value(ctx)
 	local hintstr = string.format("%s %s %s",
@@ -412,25 +530,40 @@ local function run_value(ctx)
 		and ctx.hint() or ctx.hint) .. ":") or ""
 	);
 
+-- explicit set to chose from?
+	local res;
 	if (ctx.set) then
-		return active_display():lbar(function(ctx, instr, done, lastv)
+		res = active_display():lbar(function(ctx, instr, done, lastv)
 			if (done) then
 				ctx.handler(ctx, instr);
+				cpath:reset();
 			end
 			local dset = ctx.set;
 			if (type(ctx.set) == "function") then
 				dset = ctx.set();
 			end
 			return {set = table.i_subsel(dset, instr)};
-		end, ctx, {label = hintstr, force_completion = true});
+		end, ctx, {label = hintstr, force_completion = true}
+		);
 	else
-		return active_display():lbar(function(ctx, instr, done, lastv)
-			if (done and (ctx.validator == nil or ctx.validator(instr))) then
-				ctx.handler(ctx, instr);
+-- or a "normal" run with custom input and validator feedback
+		res = active_display():lbar(function(ctx, instr, done, lastv)
+			if (done) then
+				if (instr and string.len(instr) > 0
+					and (ctx.validator == nil or ctx.validator(instr))) then
+					ctx.handler(ctx, instr);
+				end
+				cpath:reset();
+			else
+				return ctx.validator == nil or ctx.validator(instr);
 			end
-		return ctx.validator == nil or ctx.validator(instr);
-	end, ctx, {label = hintstr});
+		end, ctx, {label = hintstr}
+		);
 	end
+	if (not res.on_cancel) then
+		res.on_cancel = menu_cancel;
+	end
+	return res;
 end
 
 local function lbar_fun(ctx, instr, done, lastv)
@@ -442,6 +575,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 			end
 		end
 		if (tgt == nil) then
+			cpath:reset();
 			return;
 		end
 
@@ -449,26 +583,26 @@ local function lbar_fun(ctx, instr, done, lastv)
 -- item for shortcuts. handler_hook needs to be set and either meta+submenu or
 -- just non-submenu for the hook to be called instead of the default handler
 		if (tgt.kind == "action") then
-			path = path and (path .. "/" .. tgt.name) or tgt.name;
+			cpath:append(tgt.name, tgt.label);
 			local m1, m2 = dispatch_meta();
 			if (menu_hook and
 				(tgt.submenu and m1 or not tgt.submenu)) then
-					menu_hook(path);
+					menu_hook(table.concat(path, "/"));
 					menu_hook = nil;
-					path = "";
+					cpath:reset();
 					return;
 			elseif (tgt.submenu) then
 				ctx.list = type(tgt.handler) == "function"
 					and tgt.handler() or tgt.handler;
-				return launch_menu(ctx.wm, ctx, tgt.force, tgt.hint);
-
+				local nlb = launch_menu(ctx.wm, ctx, tgt.force, tgt.hint);
+				return nlb;
 			elseif (tgt.handler) then
 				tgt.handler(ctx.handler, instr, ctx);
-				path = "";
+				cpath:reset();
 				return;
 			end
 		elseif (tgt.kind == "value") then
-			path = path and (path .. "/" .. tgt.name) or tgt.name;
+			cpath:append(tgt.name, tgt.label);
 			return run_value(tgt);
 		end
 	end
@@ -523,8 +657,9 @@ end
 --  list [# of {name, label, kind, validator, handler}]
 --  + any data the handler might need
 --
-function launch_menu(wm, ctx, fcomp, label, opts)
+function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	if (ctx == nil or ctx.list == nil or #ctx.list == 0) then
+		cpath:reset();
 		return;
 	end
 
@@ -547,21 +682,11 @@ function launch_menu(wm, ctx, fcomp, label, opts)
 	opts.label = label;
 	ctx.wm = wm;
 
+-- this was initially written to be independent, that turned out to be a
+-- terrible design decision.
 	local bar = wm:lbar(lbar_fun, ctx, opts);
 	if (not bar.on_cancel) then
-		bar.on_cancel = function()
-			local m1, m2 = dispatch_meta();
-			if (m1) then
-				local last = string.split(path, "/");
-				local lpath = table.concat(last, '/', 1, #last-1);
-				lpath = string.len(lpath) > 0 and lpath or nil;
-				path = lpath;
-				launch_menu_path(wm, LAST_ACTIVE_MENU, path);
-			else
-				path = "";
-				iostatem_restore();
-			end
-		end
+		bar.on_cancel = menu_cancel;
 	end
 	return bar;
 end
@@ -584,7 +709,7 @@ end
 -- and instead send the path to the specified function one time
 function launch_menu_hook(fun)
 	menu_hook = fun;
-	path = nil;
+	cpath:reset();
 end
 
 function get_menu_tree(menu)

@@ -169,7 +169,6 @@ end
 function dispatch_custom(key, val, nomb, wnd, global)
 	local old = tbl[key];
 	local pref = wnd and "custs_" or "custg_";
-
 -- go through these hoops to support unbind (nomb),
 -- global/target prefix (which uses symbols not allowed as dbkey)
 	if (nomb) then

@@ -125,7 +125,6 @@ end
 
 defhtbl["resized"] =
 function(wnd, source, stat)
-	print("resized", wnd, source, stat);
 	wnd.space:resize();
 	wnd.source_audio = stat.source_audio;
 	audio_gain(stat.source_audio, gconfig_get("global_gain") * wnd.gain);

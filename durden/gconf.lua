@@ -111,6 +111,7 @@ local defaults = {
 	lbar_labelstr = "\\#00ff00 ",
 	lbar_menulblstr = "\\#ffff00 ",
 	lbar_menulblselstr = "\\#ffff00 ",
+	lbar_helperstr = "\\#ffffff ",
 	lbar_errstr = "\\#ff4444 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
