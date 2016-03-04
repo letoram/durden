@@ -521,6 +521,60 @@ local function menu_cancel(wm)
 	end
 end
 
+local function seth(ctx, instr, done, lastv)
+	local m1, m2 = dispatch_meta();
+	if (done) then
+		if (menu_hook) then
+			menu_hook(table.concat(cpath.path, "/") .. "=" .. instr);
+			menu_hook = nil;
+		else
+			ctx.handler(ctx, instr);
+		end
+		cpath:reset();
+	end
+-- more data required
+	local dset = ctx.set;
+	if (type(ctx.set) == "function") then
+		dset = ctx.set();
+	end
+
+	return {set = table.i_subsel(dset, instr)};
+end
+
+local function normh(ctx, instr, done, lastv)
+	if (not done) then
+		return ctx.validator == nil or ctx.validator(instr);
+	end
+
+-- validate if necessary
+	if (ctx.validator ~= nil and not ctx.validator(instr)) then
+		menu_hook = nil;
+		cpath:reset();
+		return;
+	end
+
+-- slightly more cumbersome as we need to handle all permuations of
+-- hook_on/off, valid but empty string with menu item default value
+	instr = instr and instr or "";
+	local hf = function(arg) ctx:handler(arg); end
+	if (menu_hook) then
+		hf = function(arg)
+		local rp = table.concat(cpath.path, "/") .. "=" .. instr;
+		menu_hook(rp);
+		menu_hook = null;
+		end
+	end
+
+	if (string.len(instr) > 0) then
+		hf(instr);
+	elseif (ctx.default) then
+		hf(instr);
+	end
+
+	cpath:reset();
+	menu_hook = nil;
+end
+
 local function run_value(ctx)
 	local hintstr = string.format("%s %s %s",
 		ctx.label and ctx.label or "",
@@ -533,32 +587,11 @@ local function run_value(ctx)
 -- explicit set to chose from?
 	local res;
 	if (ctx.set) then
-		res = active_display():lbar(function(ctx, instr, done, lastv)
-			if (done) then
-				ctx.handler(ctx, instr);
-				cpath:reset();
-			end
-			local dset = ctx.set;
-			if (type(ctx.set) == "function") then
-				dset = ctx.set();
-			end
-			return {set = table.i_subsel(dset, instr)};
-		end, ctx, {label = hintstr, force_completion = true}
-		);
+		res = active_display():lbar(seth, run_value,
+			ctx, {label = hintstr, force_completion = true});
 	else
 -- or a "normal" run with custom input and validator feedback
-		res = active_display():lbar(function(ctx, instr, done, lastv)
-			if (done) then
-				if (instr and string.len(instr) > 0
-					and (ctx.validator == nil or ctx.validator(instr))) then
-					ctx.handler(ctx, instr);
-				end
-				cpath:reset();
-			else
-				return ctx.validator == nil or ctx.validator(instr);
-			end
-		end, ctx, {label = hintstr}
-		);
+		res = active_display():lbar(normh, ctx, {label = hintstr});
 	end
 	if (not res.on_cancel) then
 		res.on_cancel = menu_cancel;
@@ -587,7 +620,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 			local m1, m2 = dispatch_meta();
 			if (menu_hook and
 				(tgt.submenu and m1 or not tgt.submenu)) then
-					menu_hook(table.concat(path, "/"));
+					menu_hook(table.concat(cpath.path, "/"));
 					menu_hook = nil;
 					cpath:reset();
 					return;
@@ -754,18 +787,33 @@ function launch_menu_path(wm, gfunc, pathdescr)
 		return;
 	end
 
+-- just filter first character if it happens to be a separator (legacy),
+-- handles /////// style typos too
 	if (string.sub(pathdescr, 1, 1) == "/") then
 		launch_menu_path(wm, gfunc, string.sub(pathdescr, 2));
 		return;
 	end
+
+-- = is reserved to match binding value menu item kinds
+	local vt = string.split(pathdescr, "=");
+	local arg = nil;
+
+-- use first splitpoint and merge together again after that
+	if (#vt > 0) then
+		arg = table.concat(vt, "=", 2);
+		pathdescr = vt[1];
+	end
+
+-- finally seperate into individual elements
 	local elems = string.split(pathdescr, "/");
 	if (#elems > 0 and string.len(elems[1]) == 0) then
 		table.remove(elems, 1);
 	end
 
+-- temporarily replace menu functions, and otherwise simulate
+-- normal user interaction
 	local cl = nil;
 	local old_launch = launch_menu;
-
 	launch_menu = function(wm, ctx, fcomp, label)
 		cl = ctx;
 	end
@@ -779,6 +827,8 @@ function launch_menu_path(wm, gfunc, pathdescr)
 	for i,v in ipairs(elems) do
 		local found = false;
 
+-- linear search for matching name as we index on number (want deterministic
+-- but manually managed presentation order)
 		for m,n in ipairs(cl.list) do
 			if (n.name == v) then
 				found = n;
@@ -786,26 +836,40 @@ function launch_menu_path(wm, gfunc, pathdescr)
 			end
 		end
 
+-- something bad with the keybinding, eval() function will be handled elsewhere
 		if (not found) then
 			warning(string.format(
-				"run_menu_path(%s) failed at index %d, couldn't find %s", pathdescr, i, v));
+				"run_menu_path(%s) failed at index %d, couldn't find %s",
+				pathdescr, i, v)
+			);
 			launch_menu = old_launch;
 			return;
-		else
-			if (found.handler == nil) then
-				warning("missing handler for: " .. found.name);
-			elseif (found.submenu) then
-				launch_menu = i == #elems and old_launch or launch_menu;
-				local menu = found.handler;
-				if (type(found.handler) == "function") then
-					menu = found.handler();
-				end
-				launch_menu(wm, {list=menu}, found.force, found.hint);
-			else
-				launch_menu = old_launch;
-				found.handler(cl.handler, "", cl); -- is reserved for when we support vals
-				return;
+		end
+
+		if (found.eval and not found.eval(arg)) then
+			if (DEBUGLEVEL > 0) then
+				warning(string.format(
+					"run_menu_path(%s) evaluation function failed", pathdescr));
 			end
+			launch_menu = old_launch;
+			return;
+		end
+
+-- something broken with the menu item? any such cases should be noted
+		if (found.handler == nil) then
+			warning("missing handler for: " .. found.name);
+		elseif (found.submenu) then
+-- special handling if the last entry ends up as a menu, meaning it should
+-- be visible in the UI, unwise to add to a timer or command_channel
+			launch_menu = i == #elems and old_launch or launch_menu;
+			local menu = type(found.handler) == "function" and
+				found.handler() or found.handler;
+			launch_menu(wm, {list=menu}, found.force, found.hint);
+		else
+-- or revert and activate the handler, with arg if value- action
+			launch_menu = old_launch;
+			found.handler(cl.handler, arg);
+			return;
 		end
 	end
 

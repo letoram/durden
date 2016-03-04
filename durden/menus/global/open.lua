@@ -119,14 +119,10 @@ register_global("spawn_terminal", spawn_terminal);
 
 return {
 {
-	name = "uriopen_terminal",
-	label = "Terminal",
+	name = "browse",
+	label = "Browse",
 	kind = "action",
-	hint = "(m1_accept for args)",
-	eval = function()
-		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
-	end,
-	handler = spawn_terminal
+	handler = browse_internal
 },
 {
 	name = "uriopen_remote",
@@ -157,30 +153,31 @@ return {
 	end
 },
 {
-	name = "browse",
-	label = "Browse",
-	kind = "action",
-	handler = browse_internal
+	name = "uriopen_terminal",
+	label = "Terminal",
+	kind = "value",
+	hint = "(append arguments)",
+	default = "",
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+	end,
+	handler = function(ctx, val)
+		spawn_terminal(cmd);
+	end
 },
 {
 	name = "uriopen_avfeed",
 	label = "AV Feed",
-	kind = "action",
+	kind = "value",
+	default = "(append arguments)",
 	hint = "(m1_accept for args)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "avfeed") ~= nil;
 	end,
+	default = "",
 	handler = function(ctx, val)
-		local m1, m2 = dispatch_meta();
-		if (m1) then
-			query_args( function(argstr)
-			local vid = launch_avfeed(argstr, "avfeed");
-			durden_launch(vid, "", "avfeed");
-			end);
-		else
-			local vid = launch_avfeed("", "avfeed");
-			durden_launch(vid, "", "avfeed");
-		end
+		local vid = launch_avfeed(val, "avfeed");
+		durden_launch(vid, "", "avfeed");
 	end
 }
 };
