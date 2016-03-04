@@ -46,8 +46,8 @@ are broken and you will be queried for new ones.
 Quick! meta1+enter - now you should get a terminal window.
 
 A big point with durden as a desktop environment is that absolutely no
-configuration file editing etc. should be needed, everything is accessible and
-remappable from the UI. Most configuration changes are done through the global
+configuration file editing should be needed to automate or tune basic
+features. Most configuration changes are done through the global
 menu (by default, meta1+g) and through the target menu (by default,
 meta1+t but requires a selected window).
 
@@ -75,12 +75,30 @@ i3status:
     i3status | sed -e 's/^/status:/' > ~/durden/durden\_
 
 The command channel uses the format "namespace:command" where namespace
-is one of (command, global, target). In addition, the command name must be
-enabled in the built-in table in gconf.lua or manually added through the
-global/config/command\_channel path. The feature works much like normal
-custom target or global bindings, but with some additional (gfunc.lua)
-functions available to be exposed.
+is one of (command, global, target). In addition, the command name or path
+ must be enabled in the built-in table in gconf.lua or manually added
+through the global/config/command\_channel path. The feature works much
+like normal custom target or global bindings, but with some additional
+(gfunc.lua) functions available to be exposed.
 
+Timers
+====
+Durden does not have explicit settings for suspend/resume, shutdown,
+lockscreen or similar features. Instead, most commands can be bound to
+a timer, of which there are three types:
+
+1. Fire Once(a): about (n) seconds from now, run command (a)
+2. Fire Periodically(a): every (n) seconds from now, run command (a)
+3. Fire Idle(a,b): after (n) seconds of idle (no input activity and active space
+is not in fullscreen state), run command (a) going into idle, (b) going out.
+
+3 is of particular interest as you can set up multiple like:
+After (30 seconds, run lockscreen with key 'unlock'). After (60 seconds,
+disable/enable displays) etc.
+
+The file autorun.lua can also be used to add timers that are set each
+when launched, Make sure the syntax is correct, the entire file will be
+ignored on parser errors.
 
 Database Configuration
 ====
@@ -350,6 +368,7 @@ _files that might be of interest)_
         tiler.lua        - main tiling layout, workspace management etc.
         wnd_settings.lua - window serialization and restore
         lbar.lua         - support script for textedit control
+        uiprim.lua       - UI primitives, buttons etc.
         bbar.lua         - binding bar, used for querying keybindings
         browser.lua      - lbar based resource browser
         suppl.lua        - text and menu convinience functions

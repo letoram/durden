@@ -87,6 +87,10 @@ if (DEBUGLEVEL > 0) then
 	});
 end
 
+function get_shared_menu()
+	return shared_actions;
+end
+
 local show_shmenu;
 show_shmenu = function(wnd)
 	wnd = wnd and wnd or active_display().selected;
