@@ -289,6 +289,7 @@ are being implemented, we have the following list:
   - [ ] Daltonization
   - [ ] Redshift Color Temperature
   - [ ] Advanced scaling effects (xBR, ...)
+  - [x] Lockscreen
 
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than

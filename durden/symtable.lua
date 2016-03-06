@@ -550,6 +550,11 @@ end
 
 -- for filling the utf8- field with customized bindings
 symtable.add_translation = function(tbl, combo, u8)
+	if (not combo) then
+		print("tried to add broken combo:", debug.traceback());
+		return;
+	end
+
 	tbl.u8lut[combo] = u8;
 	tbl.u8basic[combo] = u8;
 end
@@ -559,10 +564,14 @@ symtable.load_translation = function(tbl)
 	for i,v in ipairs(match_keys("utf8k_%")) do
 		local pos, stop = string.find(v, "=", 1);
 		local npos, nstop = string.find(v, string.char(255), stop+1);
-
-		local key = string.sub(v, stop+1, npos-1);
-		local val = string.sub(v, nstop+1);
-		tbl:add_translation(key, val);
+		if (not npos) then
+			warning("removing broken binding for " .. v);
+			store_key(v, "");
+		else
+			local key = string.sub(v, stop+1, npos-1);
+			local val = string.sub(v, nstop+1);
+			tbl:add_translation(key, val);
+		end
 	end
 end
 

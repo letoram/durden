@@ -21,6 +21,10 @@ function iostatem_save()
 	return odst;
 end
 
+function iostatem_state()
+	return devstate.period, devstate.delay, devstate.counter;
+end
+
 function iostatem_restore(tbl)
 	dispatch_meta_reset();
 	devstate = tbl and tbl or odst;

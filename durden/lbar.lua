@@ -23,12 +23,16 @@ end
 
 local pending = {};
 
-local function update_caret(ictx)
+local function update_caret(ictx, mask)
 	local pos = ictx.inp.caretpos - ictx.inp.chofs;
 	if (pos == 0) then
 		move_image(ictx.caret, ictx.textofs, ictx.caret_y);
 	else
 		local msg = ictx.inp:caret_str();
+		if (mask) then
+			msg = string.rep("*", string.len(msg));
+		end
+
 		local w, h = text_dimensions({gconfig_get("lbar_textstr"),  msg});
 		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
 	end
@@ -264,7 +268,7 @@ end
 
 local function lbar_ih(wm, ictx, inp, sym, caret)
 	if (caret ~= nil) then
-		update_caret(ictx);
+		update_caret(ictx, ictx.mask_text);
 		return;
 	end
 
@@ -279,6 +283,9 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 -- but that prevented the input of more complex values that could go between
 -- valid and invalid. Now we just visually indicate.
 	local str = inp_str(ictx, not (res == false or res == nil));
+	if (ictx.mask_text) then
+		str[2] = string.rep("*", string.len(str[2]));
+	end
 
 	if (valid_vid(ictx.text)) then
 		ictx.text = render_text(ictx.text, str);
@@ -286,14 +293,13 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		ictx.text = setup_string(wm, ictx, str);
 	end
 
-	update_caret(ictx);
+	update_caret(ictx, ictx.mask_text);
 end
 
 -- used on spawn to get rid of crossfade effect
 PENDING_FADE = nil;
 local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	local ictx = wm.input_ctx;
-
 	if (meta) then
 		return;
 	end
@@ -497,6 +503,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		anchor = bg,
 		text_anchor = bar,
 		position = pos,
+		mask_text = opts.password_mask,
 -- we cache these per context as we don't want them changing mid- use
 		accept = SYSTEM_KEYS["accept"],
 		cancel = SYSTEM_KEYS["cancel"],

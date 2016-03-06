@@ -546,6 +546,20 @@ function durden_regionsel_input(iotbl)
 	end
 end
 
+-- no keyrepeat, only forward to timer and wm, used for the
+-- system/lock=key state.
+function durden_locked_input(iotbl)
+	if (not iotbl.translated) then
+		return;
+	end
+
+	timer_reset_idle();
+
+-- notranslate option will still forward to WM
+	local ok, outsym, iotbl = dispatch_translate(iotbl, true);
+end
+
+
 durden_input = durden_normal_input;
 
 function durden_shutdown()
@@ -585,10 +599,6 @@ function durden_clock_pulse(n)
 			durden_input(v, true);
 		end
 	end
-
---	if (CLOCK % 100) then (quick and dirty leak check)
---		print(current_context_usage());
---	end
 
 	flush_pending();
 	mouse_tick(1);
