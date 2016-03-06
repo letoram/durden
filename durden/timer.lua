@@ -14,33 +14,18 @@ local old_clock = _G[clockkey];
 local idle_count = 0;
 local tick_count = 0;
 
-local function timer_group(grp, refv, step)
-
-	for i=#grp,1,-1 do
-		if (refv >= grp[i].delay) then
-			grp[i].trigger();
-			if (grp[i].wakeup) then
-				table.insert(wakeups, grp[i].wakeup);
-			end
-			if (grp[i].once) then
-				table.remove(grp, i);
-			end
-		end
-	end
-
-end
-
-local function timer_tick()
+function timer_tick()
 	idle_count = idle_count + 1;
 	tick_count = tick_count + 1;
 
 -- idle timers are more complicated in the sense that they require both
 -- a possible 'wakeup' stage and tracking so that they are not called repeatedly.
 	for i=#idle_timers,1,-1 do
-		if (tick_count >= idle_timers[i].delay and not idle_timers[i].passive) then
+		if (idle_count >= idle_timers[i].delay and not idle_timers[i].passive) then
 			idle_timers[i].trigger();
+-- add to front of wakeup queue so we get last-in-first-out
 			if (idle_timers[i].wakeup) then
-				table.insert(wakeups, idle_timers[i].wakeup);
+				table.insert(wakeups, 1, idle_timers[i].wakeup);
 			end
 			if (idle_timers[i].once) then
 				table.remove(idle_timers, i);
@@ -92,6 +77,8 @@ function timer_reset_idle()
 	for i,v in ipairs(wakeups) do
 		v();
 	end
+	local wakeup = {};
+
 	for i,v in ipairs(idle_timers) do
 		if (v.passive) then
 			v.passive = nil;
@@ -141,7 +128,6 @@ local function add(dst, name, delay, once, trigger, wtrigger)
 			wakeup = wtrigger
 		};
 	end
-
 	table.insert(dst, res);
 	return res;
 end

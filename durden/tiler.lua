@@ -183,7 +183,7 @@ local function wnd_deselect(wnd, nopick)
 	run_event(wnd, "deselect");
 end
 
-local function gen_status_tile(wm, lbl, min_sz, ofs)
+local function gen_status_tile(wm, space, lbl, min_sz, ofs)
 	local text, lines, width, height = render_text(lbl);
 	height = height * wm.font_sf;
 	local props = image_surface_properties(text);
@@ -206,6 +206,20 @@ local function gen_status_tile(wm, lbl, min_sz, ofs)
 	link_image(tile, wm.statusbar);
 	shader_setup(text, "ui", "sbar_item", "active");
 	image_tracetag(text, "tiler_sbar_tile");
+
+	if (space) then
+		space.tile_ml = {
+			own = function(ctx, vid, event)
+				return vid == space.label_id;
+			end,
+			click = function(ctx, vid, event)
+				wm:switch_ws(i);
+			end,
+			rclick = click,
+			name = "tile_ml_" .. tostring(i)
+		};
+		mouse_addlistener(space.tile_ml, {"click", "rclick"});
+	end
 
 	move_image(tile, ofs, 0);
 	ofs = ofs + tilew + 1;
@@ -269,7 +283,7 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 		for k,v in ipairs(pretiles) do
 			local text = {wm.font_delta .. gconfig_get("pretiletext_color"), v};
 			local pret;
-			pret, ofs = gen_status_tile(wm, text, statush, ofs);
+			pret, ofs = gen_status_tile(wm, nil, text, statush, ofs);
 			shader_setup(pret, "ui", "pretile");
 			table.insert(wm.pretiles, pret);
 		end
@@ -295,7 +309,7 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 						text[5] = gconfig_get("label_color");
 						text[6] = space.label;
 					end
-				space.label_id, ofs = gen_status_tile(wm, text, statush, ofs);
+				space.label_id, ofs = gen_status_tile(wm, space, text, statush, ofs);
 				shader_setup(space.label_id, "ui", "tile", "inactive");
 			else
 				move_image(space.label_id, ofs, 0);
@@ -304,18 +318,6 @@ local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 
 			shader_setup(space.label_id, "ui", "tile",
 				i == wm.space_ind and "active" or "inactive");
-
-			space.tile_ml = {
-				own = function(ctx, vid, event)
-					return vid == space.label_id;
-				end,
-				click = function(ctx, vid, event)
-					wm:switch_ws(i);
-				end,
-				rclick = click,
-				name = "tile_ml_" .. tostring(i)
-			};
-			mouse_addlistener(space.tile_ml, {"click", "rclick"});
 		end
 	end
 

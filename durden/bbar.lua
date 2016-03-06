@@ -252,4 +252,6 @@ function tiler_tbar(wm, msg, timeout, action, cancel)
 	wm.input_ctx = ctx;
 	ctx:set_progress(1.0);
 	ctx:label(string.format(msg, timeout / CLOCKRATE, cancel));
+
+	return ctx;
 end

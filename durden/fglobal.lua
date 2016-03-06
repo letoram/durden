@@ -282,13 +282,15 @@ local function bind_u8(hook)
 		if (done) then
 			active_display():lbar(
 			function(ctx, instr, done, lastv)
-				if (done) then
-					instr = str_to_u8(instr);
-					if (instr and utf8valid(instr)) then
-							hook(sym, instr);
-					else
-						active_display():message("invalid utf-8 sequence specified");
-					end
+				if (not done) then
+					return instr and string.len(instr) > 0 and str_to_u8(instr) ~= nil;
+				end
+
+				instr = str_to_u8(instr);
+				if (instr and utf8valid(instr)) then
+						hook(sym, instr);
+				else
+					active_display():message("invalid utf-8 sequence specified");
 				end
 			end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
 		end
@@ -330,7 +332,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
-	tiler_bbar(active_display(),
+	local ctx = tiler_bbar(active_display(),
 		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
@@ -355,6 +357,8 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 			end
 		end
 	);
+
+	ctx.on_cancel = function() IN_CUSTOM_BIND = false; end
 end
 
 sf["bind_custom"] = function(ctx, wnd)
@@ -369,7 +373,7 @@ gf["unbind_combo"] = function()
 		function(sym, done, sym2)
 			if (done) then
 				dispatch_custom(sym, nil, true);
-				SYMTABLE:add_translation(sym2, nil);
+				SYMTABLE:add_translation(sym2 == nil and sym or sym2, "");
 				dispatch_load();
 			end
 		end);

@@ -533,7 +533,8 @@ local function seth(ctx, instr, done, lastv)
 		cpath:reset();
 	end
 -- more data required
-	local dset = ctx.set;
+	print(debug.traceback());
+local dset = ctx.set;
 	if (type(ctx.set) == "function") then
 		dset = ctx.set();
 	end
@@ -575,7 +576,7 @@ local function normh(ctx, instr, done, lastv)
 	menu_hook = nil;
 end
 
-local function run_value(ctx)
+local function run_value(ctx, mask)
 	local hintstr = string.format("%s %s %s",
 		ctx.label and ctx.label or "",
 		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
@@ -587,11 +588,12 @@ local function run_value(ctx)
 -- explicit set to chose from?
 	local res;
 	if (ctx.set) then
-		res = active_display():lbar(seth, run_value,
+		res = active_display():lbar(seth,
 			ctx, {label = hintstr, force_completion = true});
 	else
 -- or a "normal" run with custom input and validator feedback
-		res = active_display():lbar(normh, ctx, {label = hintstr});
+		res = active_display():lbar(normh, ctx, {
+			password_mask = mask, label = hintstr});
 	end
 	if (not res.on_cancel) then
 		res.on_cancel = menu_cancel;
@@ -636,7 +638,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 			end
 		elseif (tgt.kind == "value") then
 			cpath:append(tgt.name, tgt.label);
-			return run_value(tgt);
+			return run_value(tgt, tgt.password_mask);
 		end
 	end
 

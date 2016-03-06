@@ -806,6 +806,14 @@ function mouse_addlistener(tbl, events)
 	end
 end
 
+function mouse_handlercount()
+	local cnt = 0;
+	for ind, val in pairs(mstate.handlers) do
+		cnt = cnt + #val;
+	end
+	return cnt;
+end
+
 function mouse_dumphandlers()
 	warning("mouse_dumphandlers()");
 
@@ -968,12 +976,7 @@ function mouse_tick(val)
 
 	mstate.in_handler = true;
 	local hval = mstate.hover_ticks;
--- "cooldown"
---	if (CLOCK - mstate.last_hover < 200) then
---		hval = 2;
---	end
 
---	print(CLOCK, mstate.last_hover, mstate.hover_count);
 	if (mstate.hover_count > hval) then
 		if (hover_reset) then
 			local hists = mouse_pickfun(mstate.x, mstate.y, mstate.pickdepth, 1);
