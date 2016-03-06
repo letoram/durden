@@ -45,11 +45,15 @@ are broken and you will be queried for new ones.
 
 Quick! meta1+enter - now you should get a terminal window.
 
-A big point with durden as a desktop environment is that absolutely no
-configuration file editing should be needed to automate or tune basic
-features. Most configuration changes are done through the global
-menu (by default, meta1+g) and through the target menu (by default,
-meta1+t but requires a selected window).
+A big point with durden as a desktop environment is to make minimal distinction
+between static configuration and UI directed reconfiguration. The means for
+changing settings should look and feel 'the same' no matter if it means exposing
+configuration changes to external programs using a pipe- command channel, mapping
+it to an input device, UI element like a button or even a timer.
+
+UI directed configuration is made through global and target menus, accessible
+using meta1+g for global and meta1+t for target (if a window is selected).
+>>>>>>> Stashed changes
 
 The menus are navigated by default using the arrow keys and enter to select and
 you can filter the list of shown items by typing. meta1+escape to go back one
@@ -61,25 +65,7 @@ be prompted to press the binding you like and then navigate to the menu item
 you want to bind it to. To bind a sub-menu, hold meta1 while selecting.
 
 It is however also possible to tweak/modify the startup defaults (see
-keybindings.lua and gconf.lua).
-
-Statusbar / Command Channel
-====
-
-By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
-(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
-appldir) with the name (durden\_status) and (durden\_control). These can be
-used to run remote controls and to update the statusbar. For instance, using
-i3status:
-
-    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
-
-The command channel uses the format "namespace:command" where namespace
-is one of (command, global, target). In addition, the command name or path
- must be enabled in the built-in table in gconf.lua or manually added
-through the global/config/command\_channel path. The feature works much
-like normal custom target or global bindings, but with some additional
-(gfunc.lua) functions available to be exposed.
+autorun.lua, keybindings.lua and gconf.lua).
 
 Timers
 ====
@@ -92,13 +78,13 @@ a timer, of which there are three types:
 3. Fire Idle(a,b): after (n) seconds of idle (no input activity and active space
 is not in fullscreen state), run command (a) going into idle, (b) going out.
 
-3 is of particular interest as you can set up multiple like:
-After (30 seconds, run lockscreen with key 'unlock'). After (60 seconds,
-disable/enable displays) etc.
+3 is of particular interest as you can set multiple idle timers. For example>
+After (30 seconds, run lockscreen with key '1password1'). Then after (60 seconds
+, disable/enable displays) and finally after 120 seconds, suspend.
 
-The file autorun.lua can also be used to add timers that are set each
-when launched, Make sure the syntax is correct, the entire file will be
-ignored on parser errors.
+The file autorun.lua can also be used to add timers that are set when launched,
+Make sure the syntax is correct because the entire file will be ignored in the
+event of parser errors.
 
 Database Configuration
 ====
@@ -134,6 +120,24 @@ used).
     arcan_db add_config mycore myconfig [ARCAN_RESOURCEPATH]/.assets/somefile
 
 will add a config 'myconfig' to 'mycore' with somefile as first argument.
+
+Statusbar / Command Channel
+====
+
+By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
+(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
+appldir) with the name (durden\_status) and (durden\_control). These can be
+used to run remote controls and to update the statusbar. For instance, using
+i3status:
+
+    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
+
+The command channel uses the format "namespace:command" where namespace
+is one of (command, global, target). In addition, the command name or path
+ must be enabled in the built-in table in gconf.lua or manually added
+through the global/config/command\_channel path. The feature works much
+like normal custom target or global bindings, but with some additional
+(gfunc.lua) functions available to be exposed.
 
 Features and Status
 =====
@@ -229,13 +233,13 @@ are being implemented, we have the following list:
   - [ ] Popup Windows
   - [ ] Move window to float/hidden that can be toggled to cursor position
   - [ ] Cursor Drag - Event Region
-     -  [x] Monitor region
-     -  [x] Snapshot region
-     -  [ ] Record / VNC / OCR region
-  - [ ] Automation
-     -  [ ] Fire-Once Timers
-     -  [ ] Idle-Timers
-     -  [ ] Timer-Bind
+    -  [x] Monitor region
+    -  [x] Snapshot region
+    -  [ ] Record / VNC / OCR region
+  - [x] Automation
+    -  [x] Fire-Once Timers
+    -  [x] Idle-Timers
+    -  [x] Timer-Bind
   - [x] Inactivity / Focus Notification
   - [ ] Auto Suspend/Resume
     - [ ] Follow Focus
@@ -244,10 +248,6 @@ are being implemented, we have the following list:
   - [ ] Block Alerts
   - [x] LL Origo Invert
   - [ ] Window Configuration Save
-- [ ] Display Sharing
-  - [ ] Recording/Streaming/Sharing
-    - [ ] Audio Control
-    - [ ] Secondary Audio Sources (microphone)
   - [x] Display screenshot (through command channel)
 - [ ] Cut and Paste
   - [x] Clipboard Management (local/global + history)

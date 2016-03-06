@@ -13,15 +13,12 @@ local clockkey = APPLID .. "_clock_pulse";
 local old_clock = _G[clockkey];
 local idle_count = 0;
 local tick_count = 0;
+local idle_masked = false;
 
-function timer_tick()
-	idle_count = idle_count + 1;
-	tick_count = tick_count + 1;
-
--- idle timers are more complicated in the sense that they require both
--- a possible 'wakeup' stage and tracking so that they are not called repeatedly.
+local function run_idle_timers()
 	for i=#idle_timers,1,-1 do
-		if (idle_count >= idle_timers[i].delay and not idle_timers[i].passive) then
+		if (idle_count >= idle_timers[i].delay and not idle_timers[i].passive
+			and not idle_timers[i].suspended) then
 			idle_timers[i].trigger();
 -- add to front of wakeup queue so we get last-in-first-out
 			if (idle_timers[i].wakeup) then
@@ -34,16 +31,29 @@ function timer_tick()
 			end
 		end
 	end
+end
+
+function timer_tick()
+	idle_count = idle_count + 1;
+	tick_count = tick_count + 1;
+
+-- idle timers are more complicated in the sense that they require both
+-- a possible 'wakeup' stage and tracking so that they are not called repeatedly.
+	if (not idle_masked) then
+		run_idle_timers();
+	end
 
 	for i=#timers,1,-1 do
-		timers[i].count = timers[i].count - 1;
-		if (timers[i].count == 0) then
-			if (timers[i].once) then
-				table.remove(timers, i);
-			else
-				timers[i].count = timers[i].delay;
+		if (not timers[i].suspended) then
+			timers[i].count = timers[i].count - 1;
+			if (timers[i].count == 0) then
+				timers[i].trigger();
+				if (timers[i].once) then
+					table.remove(timers, i);
+				else
+					timers[i].count = timers[i].delay;
+				end
 			end
-			timers[i].trigger();
 		end
 	end
 
@@ -52,7 +62,19 @@ end
 
 _G[clockkey] = timer_tick;
 
-function timer_list(group)
+function timer_mask_idle(state)
+	if (nil == state) then
+		return idle_masked;
+	end
+	if (true == state) then
+		idle_masked = true;
+		idle_count = 0;
+	elseif (false == state) then
+		idle_masked = false;
+	end
+end
+
+function timer_list(group, active)
 	local groups = {timers, idle_timers};
 	if (group) then
 		if (group == "timers") then
@@ -65,7 +87,11 @@ function timer_list(group)
 	local res = {};
 	for i,j in ipairs(groups) do
 		for k,l in ipairs(j) do
-			table.insert(res, l.name);
+			print(k, l, l.suspended, active);
+			if (active == nil or ((active == true and not l.suspended) or
+				(active == false and l.suspended))) then
+				table.insert(res, l.name);
+			end
 		end
 	end
 
@@ -87,19 +113,46 @@ function timer_reset_idle()
 	wakeups = {};
 end
 
-local function find_drop(name)
+local function find(name, drop)
 	for k,v in ipairs(idle_timers) do
 		if (v.name == name) then
-			table.remove(dile_timers, k);
+			if (drop) then
+				table.remove(idle_timers, k);
+			end
 			return v;
 		end
 	end
 	for k,v in ipairs(timers) do
 		if (v.name == name) then
-			table.remove(timers, k);
+			if (drop) then
+				table.remove(timers, k);
+			end
 			return v;
 		end
 	end
+end
+
+function timer_delete(name)
+	find(name, true);
+end
+
+function timer_suspend(name)
+	local timer = find(name);
+	if (not timer) then
+		warning("unknown timer " .. name .. " requested");
+	end
+	timer.suspended = true;
+end
+
+function timer_resume(name)
+	local timer = find(name);
+	if (not timer) then
+		warning("unknown timer " .. name .. " requested");
+	end
+-- slight question if we need to reset count here for idle timers,
+-- but the ida is that whatever triggered this call should've reset
+-- the idle counter anyhow
+	timer.suspended = false;
 end
 
 -- add an idle timer that will trigger after [delay] ticks.
@@ -111,9 +164,9 @@ end
 local function add(dst, name, delay, once, trigger, wtrigger)
 	assert(name);
 	assert(delay);
-	assert(trigger);
+	assert(trigger and type(trigger) == "function");
 
-	local res = find_drop(name);
+	local res = find(name, true);
 	if (res) then
 		res.delay = delay;
 		res.once = once;

@@ -533,8 +533,7 @@ local function seth(ctx, instr, done, lastv)
 		cpath:reset();
 	end
 -- more data required
-	print(debug.traceback());
-local dset = ctx.set;
+	local dset = ctx.set;
 	if (type(ctx.set) == "function") then
 		dset = ctx.set();
 	end
@@ -550,7 +549,9 @@ local function normh(ctx, instr, done, lastv)
 -- validate if necessary
 	if (ctx.validator ~= nil and not ctx.validator(instr)) then
 		menu_hook = nil;
-		cpath:reset();
+		if (not ctx.noreset) then
+			cpath:reset();
+		end
 		return;
 	end
 
@@ -559,10 +560,12 @@ local function normh(ctx, instr, done, lastv)
 	instr = instr and instr or "";
 	local hf = function(arg) ctx:handler(arg); end
 	if (menu_hook) then
-		hf = function(arg)
-		local rp = table.concat(cpath.path, "/") .. "=" .. instr;
-		menu_hook(rp);
-		menu_hook = null;
+		hf =
+		function(arg)
+			local rp = table.concat(cpath.path, "/") .. "=" .. instr;
+			local fun = menu_hook;
+			menu_hook = nil;
+			fun(rp);
 		end
 	end
 
@@ -572,11 +575,16 @@ local function normh(ctx, instr, done, lastv)
 		hf(instr);
 	end
 
-	cpath:reset();
-	menu_hook = nil;
+	if (not ctx.noreset) then
+		cpath:reset();
+	end
 end
 
-local function run_value(ctx, mask)
+function suppl_access_path()
+	return cpath;
+end
+
+function suppl_run_value(ctx, mask)
 	local hintstr = string.format("%s %s %s",
 		ctx.label and ctx.label or "",
 		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
@@ -638,7 +646,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 			end
 		elseif (tgt.kind == "value") then
 			cpath:append(tgt.name, tgt.label);
-			return run_value(tgt, tgt.password_mask);
+			return suppl_run_value(tgt, tgt.password_mask);
 		end
 	end
 

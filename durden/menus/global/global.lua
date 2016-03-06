@@ -36,6 +36,15 @@ local toplevel = {
 			grab_global_function("target_actions")
 		end
 	},
+-- useful for idle- timers where you only want enter or exit behavior
+	{
+		name "do_nothing",
+		label = "Nothing",
+		kind = "action",
+		invisible = true,
+		handler = function()
+		end
+	},
 	{
 		name = "workspace",
 		label = "Workspace",
