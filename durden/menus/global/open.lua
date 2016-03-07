@@ -99,6 +99,53 @@ local function decwnd(fn, path)
 	end
 end
 
+local function launch(str, cfg)
+	local vid = launch_target(str, cfg, LAUNCH_INTERNAL, def_handler);
+	if (valid_vid(vid)) then
+		local wnd = durden_launch(vid, cfg, str);
+		wnd.config_target = str;
+		wnd.config_config = cfg;
+		wnd_settings_load(wnd);
+	end
+end
+
+local function target_cfgmenu(str, cfgs)
+	local res = {};
+	for k,v in ipairs(cfgs) do
+		table.insert(res,{
+			name = "target_launch_" .. tostring(util.hash(str))
+				.. "_" .. tostring(util.hash(v)),
+			kind = "action",
+			label = v,
+			force_completion = true,
+			handler = function() launch(str, v); end
+		});
+	end
+	return res;
+end
+
+local function target_submenu()
+	local res = {};
+	local targets = list_targets();
+	for k,v in ipairs(targets) do
+		local cfgs = target_configurations(v);
+		local nent = {
+			name = "target_launch_" .. tostring(util.hash(v)),
+			kind = "action",
+			label = v
+		};
+		if (#cfgs > 1) then
+			nent.submenu = true;
+			nent.handler = function() return target_cfgmenu(v, cfgs); end
+		else
+			nent.handler = function() launch(v, cfgs[1]); end
+		end
+
+		table.insert(res, nent);
+	end
+	return res;
+end
+
 local function browse_internal()
 	local ffmts = {
 	jpg = imgwnd,
@@ -145,6 +192,7 @@ return {
 	name = "uriopen_decode",
 	label = "Media URL",
 	kind = "value",
+-- helpsel: just return list of known captured clipboard urls
 	hint = "(protocol://user:pass@host:port)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "decode") ~= nil;
@@ -180,5 +228,17 @@ return {
 		local vid = launch_avfeed(val, "avfeed");
 		durden_launch(vid, "", "avfeed");
 	end
+},
+{
+	name = "uriopen_target",
+	label = "Target",
+	submenu = true,
+	kind = "action",
+	force_completion = true,
+	eval = function()
+		local tgt = list_targets();
+		return tgt ~= nil and #tgt > 0;
+	end,
+	handler = target_submenu
 }
 };

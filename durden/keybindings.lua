@@ -42,7 +42,7 @@ local stbl = {};
 function dispatch_reset(save)
 	tbl = {};
 	tbl["m1_RETURN"] = "spawn_terminal";
-	tbl["m1_d"] = "query_launch";
+	tbl["m1_d"] = "!open/uriopen_target";
 	tbl["m1_g"] = "global_actions";
 	tbl["m1_t"] = "target_actions";
 	tbl["m1_RIGHT"] = "step_right";

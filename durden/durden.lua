@@ -28,6 +28,7 @@ function durden(argv)
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
+	system_load("wnd_settings.lua")(); -- per window settings persistence
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 
 -- functions exposed to user through menus, binding and scripting

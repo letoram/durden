@@ -523,28 +523,36 @@ end
 
 local function seth(ctx, instr, done, lastv)
 	local m1, m2 = dispatch_meta();
-	if (done) then
-		if (menu_hook) then
-			local fun = menu_hook;
-			menu_hook = nil;
-			fun(table.concat(cpath.path, "/") .. "=" .. instr);
-		else
-			ctx.handler(ctx, instr);
+	if (not done) then
+		local dset = ctx.set;
+		if (type(ctx.set) == "function") then
+			dset = ctx.set();
 		end
-		cpath:reset();
-	end
--- more data required
-	local dset = ctx.set;
-	if (type(ctx.set) == "function") then
-		dset = ctx.set();
+
+		return {set = table.i_subsel(dset, instr)};
 	end
 
-	return {set = table.i_subsel(dset, instr)};
+	if (menu_hook) then
+		local fun = menu_hook;
+		menu_hook = nil;
+		fun(table.concat(cpath.path, "/") .. "=" .. instr);
+	else
+		ctx.handler(ctx, instr);
+	end
+	cpath:reset();
 end
 
 local function normh(ctx, instr, done, lastv)
 	if (not done) then
-		return ctx.validator == nil or ctx.validator(instr);
+		if (ctx.validator ~= nil and not ctx.validator(instr)) then
+			return false;
+		end
+
+		if (ctx.helpsel) then
+			return {set = table.i_subsel(ctx:helpsel(), instr)};
+		end
+
+		return true;
 	end
 
 -- validate if necessary
