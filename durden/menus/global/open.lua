@@ -176,6 +176,7 @@ return {
 	name = "uriopen_remote",
 	label = "Remote Desktop",
 	kind = "value",
+	helpsel = function() return CLIPBOARD.urls; end,
 	hint = "(user:pass@host+port)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
@@ -192,7 +193,7 @@ return {
 	name = "uriopen_decode",
 	label = "Media URL",
 	kind = "value",
--- helpsel: just return list of known captured clipboard urls
+	helpsel = function() return CLIPBOARD.urls; end,
 	hint = "(protocol://user:pass@host:port)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "decode") ~= nil;
