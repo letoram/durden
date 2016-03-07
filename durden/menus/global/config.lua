@@ -256,11 +256,17 @@ return {
 		handler = durden_workspace
 	},
 	{
+		name = "config_timers",
+		label = "Timers",
+		kind = "action",
+		submenu = true,
+		handler = system_load("menus/global/timer.lua")()
+	},
+	{
 		name = "config_system",
 		label = "System",
 		kind = "action",
 		submenu = true,
-		hint = "Config System:",
 		handler = durden_system
 	},
 	{

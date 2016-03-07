@@ -122,6 +122,7 @@ return {
 	name = "browse",
 	label = "Browse",
 	kind = "action",
+	namespace = "@/browse/",
 	handler = browse_internal
 },
 {

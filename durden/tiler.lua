@@ -2005,23 +2005,24 @@ end
 -- track suspend state with window so that we can indicate with
 -- border color and make sure we don't send state changes needlessly
 local function wnd_setsuspend(wnd, val)
-	local susp = (val == true) or (not wnd.suspended);
+	local susp = val;
+	if ((wnd.suspended and susp) or (not wnd.suspended and not susp) or
+		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
 	local sel = (wnd.wm.selected == wnd);
 
 	if (susp) then
-	if (not wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER)) then
 		suspend_target(wnd.external);
 		wnd.suspended = true;
 		shader_setup(wnd.border, "ui", "border", "suspended");
 		shader_setup(wnd.titlebar, "ui", "titlebar", "suspended");
-	end
-
-	if (wnd.suspended and valid_vid(wnd.external,TYPE_FRAMESERVER)) then
+	else
 		resume_target(wnd.external);
 		wnd.suspended = nil;
 		shader_setup(wnd.border, "ui", "tile", sel and "active" or "inactive");
 		shader_setup(wnd.titlebar,"ui", "titlebar", sel and "active" or "inactive");
-	end
 	end
 end
 
