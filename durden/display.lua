@@ -185,6 +185,12 @@ function durden_display_state(action, id)
 	end
 end
 
+function display_all_mode(mode)
+	for i,v in ipairs(displays) do
+		video_display_state(v.id, mode);
+	end
+end
+
 function display_manager_init()
 	displays[1] = {
 		tiler = tiler_create(VRESW, VRESH, {scalef = VPPCM / SIZE_UNIT});
@@ -324,6 +330,8 @@ function display_ressw(name, mode)
 
 	run_display_action(disp, function()
 		video_displaymodes(disp.id, mode.modeid);
+		local wuf = disp.tiler.width / mode.width;
+		local huf = disp.tiler.height / mode.height;
 		disp.tiler:resize(mode.width, mode.height);
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);

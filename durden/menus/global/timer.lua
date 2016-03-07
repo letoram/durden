@@ -46,9 +46,7 @@ local function run_menu(cb, name, doublefun)
 
 		if (doublefun) then
 			menu_spawn(function(path2, ok)
-				if (not ok) then
-					cb(name, path);
-				else
+				if (ok) then
 					cb(name, path, path2);
 				end
 			end);

@@ -525,8 +525,9 @@ local function seth(ctx, instr, done, lastv)
 	local m1, m2 = dispatch_meta();
 	if (done) then
 		if (menu_hook) then
-			menu_hook(table.concat(cpath.path, "/") .. "=" .. instr);
+			local fun = menu_hook;
 			menu_hook = nil;
+			fun(table.concat(cpath.path, "/") .. "=" .. instr);
 		else
 			ctx.handler(ctx, instr);
 		end
@@ -630,8 +631,9 @@ local function lbar_fun(ctx, instr, done, lastv)
 			local m1, m2 = dispatch_meta();
 			if (menu_hook and
 				(tgt.submenu and m1 or not tgt.submenu)) then
-					menu_hook(table.concat(cpath.path, "/"));
+					local hf = menu_hook;
 					menu_hook = nil;
+					hf(table.concat(cpath.path, "/"));
 					cpath:reset();
 					return;
 			elseif (tgt.submenu) then
