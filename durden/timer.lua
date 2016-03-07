@@ -87,7 +87,6 @@ function timer_list(group, active)
 	local res = {};
 	for i,j in ipairs(groups) do
 		for k,l in ipairs(j) do
-			print(k, l, l.suspended, active);
 			if (active == nil or ((active == true and not l.suspended) or
 				(active == false and l.suspended))) then
 				table.insert(res, l.name);

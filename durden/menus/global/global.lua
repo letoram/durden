@@ -38,7 +38,7 @@ local toplevel = {
 	},
 -- useful for idle- timers where you only want enter or exit behavior
 	{
-		name "do_nothing",
+		name = "do_nothing",
 		label = "Nothing",
 		kind = "action",
 		invisible = true,

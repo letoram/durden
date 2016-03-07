@@ -54,7 +54,6 @@ local function query_dispmenu(ind, name)
 	end
 end
 
-
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -62,7 +61,11 @@ local function gen_disp_menu(disp)
 		eval = function() return disp.id ~= nil and disp.primary ~= true; end,
 		label = "Toggle On/Off",
 		kind = "action",
-		handler = function() warning("toggle display"); end
+		handler = function()
+			local mode = video_display_state(disp.id);
+			video_display_state(disp.id,
+				mode ~= DISPLAY_ON and DISPLAY_ON or DISPLAY_OFF);
+		end
 		},
 		{
 		name = "disp_menu_density_override",
@@ -104,6 +107,42 @@ local function query_displays()
 		kind = "action",
 		submenu = true,
 		handler = function() return gen_disp_menu(v); end
+	});
+	table.insert(res, {
+		name = "disp_menu_all_off",
+		label = "All Off",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			display_all_mode(DISPLAY_OFF);
+		end
+	});
+	table.insert(res, {
+		name = "disp_menu_all_suspend",
+		label = "All Suspend",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			display_all_mode(DISPLAY_SUSPEND);
+		end
+	});
+	table.insert(res, {
+		name = "disp_menu_all_standby",
+		label = "All Standby",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			display_all_mode(DISPLAY_STANDBY);
+		end
+	});
+	table.insert(res, {
+		name = "disp_menu_all_on",
+		label = "All On",
+		kind = "action",
+		invisible = true,
+		handler = function()
+			display_all_mode(DISPLAY_ON);
+		end
 	});
 	for k,v in pairs(all_displays()) do
 		if (string.len(v.name) > 0) then
