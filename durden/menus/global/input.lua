@@ -119,6 +119,39 @@ local function list_keymaps()
 	return kmm;
 end
 
+local function bind_utf8()
+	fglobal_bind_u8(function(sym, val, sym2, iotbl)
+		SYMTABLE:update_map(iotbl, val);
+	end);
+end
+
+local keymaps_menu = {
+	{
+		name = "keymap_switch",
+		label = "Load",
+		kind = "action",
+		eval = function() return #(SYMTABLE:list_keymaps()) > 0; end,
+		handler = list_keymaps,
+		submenu = true
+	},
+	{
+		name = "keymap_bind_utf8",
+		label = "Bind UTF-8",
+		kind = "action",
+		handler = bind_utf8,
+	},
+	{
+		name = "keymap_save",
+		label = "Save",
+		kind = "value",
+		hint = "(name)",
+		validator = function(val) return val and string.len(val) > 0; end,
+		handler = function(ctx, val)
+			SYMTABLE:save_keymap(val);
+		end
+	}
+};
+
 local keyb_menu = {
 	{
 		name = "keyboard_repeat",
@@ -147,11 +180,10 @@ local keyb_menu = {
 	},
 	{
 		name = "keyboard_maps",
-		label = "Map",
+		label = "Maps",
 		kind = "action",
 		submenu = true,
-		eval = function() return #(SYMTABLE:list_keymaps()) > 0; end,
-		handler = list_keymaps
+		handler = keymaps_menu
 	},
 	{
 		name = "keyboard_reset",

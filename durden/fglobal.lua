@@ -276,9 +276,9 @@ local function str_to_u8(instr)
 	return s;
 end
 
-local function bind_u8(hook)
+function fglobal_bind_u8(hook)
 	local bwt = gconfig_get("bind_waittime");
-	local tbhook = function(sym, done)
+	local tbhook = function(sym, done, sym2, iotbl)
 		if (done) then
 			active_display():lbar(
 			function(ctx, instr, done, lastv)
@@ -288,7 +288,7 @@ local function bind_u8(hook)
 
 				instr = str_to_u8(instr);
 				if (instr and utf8valid(instr)) then
-						hook(sym, instr);
+						hook(sym, instr, sym2, iotbl);
 				else
 					active_display():message("invalid utf-8 sequence specified");
 				end
@@ -302,14 +302,14 @@ local function bind_u8(hook)
 end
 
 gf["bind_utf8"] = function()
-	bind_u8(function(sym, str)
-		SYMTABLE:add_translation(sym, str);
+	fglobal_bind_u8(function(sym, str, sym2, iotbl)
+		SYMTABLE:add_translation(sym2 and sym2 or sym, str);
 	end);
 end
 
 sf["bind_utf8"] = function(wnd)
-	bind_u8(function(sym, str)
-		wnd.u8_translation[sym] = str;
+	fglobal_bind_u8(function(sym, str, sym2)
+		wnd.u8_translation[sym2 and sym2 or sym] = str;
 		SYMTABLE:translation_overlay(wnd.u8_translation);
 	end);
 end
