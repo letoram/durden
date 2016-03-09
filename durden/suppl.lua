@@ -409,16 +409,14 @@ local function lbar_props()
 	local barh = gconfig_get("lbar_sz") * wm.scalef;
 	local yp = 0;
 
-	if (pos == "top") then
-		yp = 0;
-	elseif (pos == "center") then
-		yp = math.floor(0.5*(wm.height-barh));
-	elseif (pos == "bottom") then
-		yp = wm.height;
-		dir = -1;
-	end
+	yp = math.floor(0.5*(wm.height-barh));
 
 	return yp, barh, dir;
+end
+
+local function display_fontfn()
+	local ad = active_display();
+	return ad.font_delta .. "\\#ffffff", ad.font_sf;
 end
 
 local function menu_path_append(ctx, new, lbl)
@@ -428,41 +426,22 @@ local function menu_path_append(ctx, new, lbl)
 	table.insert(path, new);
 	local res = table.concat(path, "/");
 	local yp, tileh, dir = lbar_props();
-
--- build a helper-tile with a label, shaded based on activity
--- and placed based on where the bar is set
-	local csurf = fill_surface(1, 1, 255, 0, 0);
-	link_image(csurf, active_display().order_anchor);
-	image_inherit_order(csurf, true);
-	order_image(csurf, 2);
-	local txt, lineheights, w, h = render_text(
-		{gconfig_get("lbar_helperstr"), lbl});
-	if (not valid_vid(txt)) then
-		delete_image(csurf);
-		return;
-	end
-
-	link_image(txt, csurf);
 	local pad = gconfig_get("lbar_pad");
-	resize_image(csurf, w+2*pad, h+2*pad);
-	local yshift = h - (gconfig_get("font_defsf") * h);
-	center_image(txt, csurf, ANCHOR_C, 0, yshift);
-	image_inherit_order(txt, true);
+	local btn = uiprim_button(active_display().order_anchor,
+		"lbar_tile", "lbar_tiletext", lbl, pad,
+		display_fontfn, 0, tileh
+	);
 
 -- if ofs + width, compact left and add a "grow" offset on pop
 	local ofs = #helper > 0 and helper[#helper].ofs or 0;
 	local yofs = (tileh + 1) * dir;
-	show_image({txt, csurf});
-	move_image(csurf, ofs, yp); -- switch, lbar height
-	nudge_image(csurf, 0, yofs, gconfig_get("transition") * 0.5, INTERP_SINE);
+	move_image(btn.bg, ofs, yofs);
+	move_image(btn.bg, ofs, yp); -- switch, lbar height
+	nudge_image(btn.bg, 0, yofs, gconfig_get("transition") * 0.5, INTERP_SINE);
 	if (#helper > 0) then
-		shader_setup(helper[#helper].vid, "ui", "lbar_tile", "inactive");
-		shader_setup(helper[#helper].tvid, "ui", "lbar_tiletext", "inactive");
+		helper[#helper].btn:switch_state("inactive");
 	end
-	table.insert(helper, {vid = csurf, tvid = txt,
-		yofs = yofs, ofs = ofs + w + 3*pad});
-	shader_setup(csurf, "ui", "lbar_tile", "active");
-	shader_setup(txt, "ui", "lbar_tiletext", "active");
+	table.insert(helper, {btn = btn, yofs = yofs, ofs = ofs + btn.w + 3 * pad});
 	return res;
 end
 
@@ -479,21 +458,17 @@ local function menu_path_pop(ctx)
 		return res;
 	end
 
-	expire_image(hlp.vid, as);
-	nudge_image(hlp.vid, 0, -1 * hlp.yofs, as);
-	blend_image(hlp.vid, 0, as);
-
+	hlp.btn:destroy();
 	table.remove(helper, #helper);
 	if (#helper > 0) then
-		shader_setup(helper[#helper].vid, "ui", "lbar_tile", "active");
-		shader_setup(helper[#helper].tvid, "ui", "lbar_tiletext", "active");
+		helper[#helper].btn:switch_state("active");
 	end
 	return res;
 end
 
 local function menu_path_reset(ctx)
 	for k,v in ipairs(ctx.helper) do
-		delete_image(v.vid);
+		v.btn:destroy();
 	end
 	ctx.helper = {};
 	ctx.path = {};
