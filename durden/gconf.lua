@@ -100,7 +100,6 @@ local defaults = {
 	term_opa = 1.0,
 
 -- input bar graphics
-	lbar_position = "center", -- top, center, bottom
 	lbar_dim = 0.8,
 	lbar_pad = 2,
 	lbar_sz = 12, -- dynamically recalculated on font changes

@@ -481,18 +481,9 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 -- we support up to 4 helper regions (depending on bar position):
 -- h1 [ show current path, clickable to navigate back ]
 -- h2 [ show selection overlay ]
--- h3 [ big region, above (if not at top ]
--- h4 [ big region, blow (if not at bottom )
-
-	local pos = gconfig_get("lbar_position");
-
-	if (pos == "bottom") then
-		move_image(bar, 0, wm.height - barh);
-	elseif (pos == "center") then
-		move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
-	elseif (pos == "top") then
-		move_image(bar, 0, 0);
-	end
+-- h3 [ big region, above ]
+-- h4 [ big region, below ]
+	move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 
 	wm:set_input_lock(lbar_input);
 	wm.input_ctx = {
@@ -502,7 +493,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		HELPER_REG2 = 3,
 		anchor = bg,
 		text_anchor = bar,
-		position = pos,
 		mask_text = opts.password_mask,
 -- we cache these per context as we don't want them changing mid- use
 		accept = SYSTEM_KEYS["accept"],

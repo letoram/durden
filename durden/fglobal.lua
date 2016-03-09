@@ -570,6 +570,7 @@ end
 
 gf["input_lock_on"] = function()
 	durden_input = ign_input;
+	dispatch_meta_reset();
 	iostatem_save();
 	iostatem_repeat(0, 0);
 	active_display():message("Ignore input enabled");
@@ -577,6 +578,7 @@ end
 
 gf["input_lock_off"] = function()
 	durden_input = durden_normal_input;
+	dispatch_meta_reset();
 	iostatem_restore(iostate);
 	dispatch_meta_reset();
 	active_display():message("Ignore input disabled");

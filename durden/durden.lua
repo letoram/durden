@@ -14,9 +14,10 @@ local ievcount = 0;
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
+	system_load("shdrmgmt.lua")(); -- shader format parser, builder
+	system_load("uiprim.lua")(); -- ui primitives (buttons!)
 	system_load("lbar.lua")(); -- used to navigate menus
 	system_load("bbar.lua")(); -- input binding
-	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
 
@@ -174,8 +175,9 @@ update_default_font = function(key, val)
 -- centering vertically on fonth will look poor on fonts that has a
 -- pronounced ascent / descent and we have no exposed function to get access
 -- to more detailed font metrics, so lets go rough..
-	local vid, lines, w, fonth = render_text("\\f,0 gijy1!`");
+	local vid, lines, w, fonth = render_text("\\f,0\\#ffffff gijy1!`");
 	local rfh = fonth;
+	local props = image_surface_properties(vid);
 
 	image_access_storage(vid, function(tbl, w, h)
 		for y=h-1,0,-1 do
@@ -191,8 +193,9 @@ update_default_font = function(key, val)
 		end
 	end);
 	delete_image(vid);
+
 -- and not to break on mixed DPI multidisplay, we go with factors
-	local rfhf = rfh / fonth;
+	local rfhf = (rfh > 0 and rfh or fonth) / fonth;
 
 	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
 	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
