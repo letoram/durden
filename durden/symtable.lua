@@ -1,5 +1,23 @@
 -- various symbol table conversions for handling underlying input
 -- layer deficiencies, customized remapping etc.
+--
+-- also basic support for keymaps and translations.
+--
+-- Translations are managed globally and built using a symbol- level
+-- mash of modifiers and symbol squashed into a string index with utf8 out.
+-- They are stored in the k/v database in the appl_ specific domain.
+--
+-- Translations can also be shadowed by a switchable overlay of
+-- translations (for context- specific remapping)
+--
+-- Keymaps work on a local level and are tied to input platform and uses
+-- other, low-level fields (devid, subid, scancode, modifiers). They can
+-- be used to provide keysym and the default utf8 result, and are stored
+-- in SYMTABLE_DOMAIN as .lua files.
+--
+-- [iotbl] -> patch(iotbl, keymap) -> translation -> out.
+--
+-- the higher-level [label] remapping is not performed here.
 
 -- modify to use other namespace
 local SYMTABLE_DOMAIN = APPL_RESOURCE;
@@ -504,23 +522,21 @@ symtable.patch = function(tbl, iotbl)
 -- apply utf8 translation and modify supplied utf8 with keymap
 	if (tbl.keymap) then
 		local m = tbl.keymap.map;
-		if (iotbl.modifiers == 0) then
-			iotbl.utf8 = m["plain"] ~= nil and m["plain"][iotbl.subid] or ""
-		else
-			iotbl.utf8 = m[mods] ~= nil and m[mods][iotbl.subid] or ""
+		local ind = iotbl.modifiers == 0 and "plain" or mods;
+			if (m[ind] and m[ind][iotbl.subid]) then
+				iotbl.utf8 = m[ind][iotbl.subid];
+			end
 		end
-	end
 
 -- other symbols are described relative to the internal sdl symbols
 	local sym = tbl[iotbl.keysym];
 	if (not sym) then
 		return;
 	end
-
 	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
 -- two support layers at the moment, normal press or with modifiers.
-	if (sym and iotbl.active) then
+	if (iotbl.active) then
 		if (tbl.u8lut[lutsym]) then
 			iotbl.utf8 = tbl.u8lut[lutsym];
 		elseif (tbl.u8lut[sym]) then
@@ -575,6 +591,30 @@ symtable.load_translation = function(tbl)
 	end
 end
 
+symtable.update_map = function(tbl, iotbl, u8)
+	if (not tbl.keymap) then
+		tbl.keymap = {
+			name = "unknown",
+			map = {
+				plain = {}
+			},
+			diac = {},
+			diac_ind = 0
+		};
+	end
+
+	local m = tbl.keymap.map;
+	if (iotbl.modifiers == 0) then
+		m.plain[iotbl.subid] = u8;
+	else
+		local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+		if (not m[mods]) then
+			m[mods] = {};
+		end
+		m[mods][iotbl.subid] = u8;
+	end
+end
+
 symtable.store_translation = function(tbl)
 -- drop current list
 	local rst = {};
@@ -601,18 +641,41 @@ end
 local symtable_cache = {};
 
 local function tryload(km)
-	local res = system_load("keymaps/" .. km, false)();
-	if (res and type(res) == "table" and res.platform_flt and res.name
-		and string.len(res.name) > 0) then
+	local res = system_load("keymaps/" .. km, 0);
+	if (not res) then
+		warning("parsing error loading keymap: " .. km);
+		return;
+	end
+
+	local okstate, res = pcall(res);
+	if (not okstate) then
+		warning("execution error loading keymap: " .. km);
+		return;
+	end
+	if (res and type(res) == "table"
+		and res.name and string.len(res.name) > 0) then
+
+		if (res.platform_flt and not res.platform_flt()) then
+			warning("platform filter rejected keymap: " .. km);
+			return nil;
+		end
+
 		symtable_cache[km] = res;
-		res.valid = res:platform_flt(API_ENGINE_BUILD);
-		return res.valid and res or nil;
+		res.dctind = 0;
+		return res;
 	end
 end
 
-symtable.list_keymaps = function(tbl)
-	local list = glob_resource("keymaps/*.lua", SYMTABLE_DOMAIN);
+symtable.list_keymaps = function(tbl, cached)
 	local res = {};
+	if (cached) then
+		for k,v in pairs(symtable_cache) do
+			table.insert(res, v.name);
+		end
+		return res;
+	end
+
+	local list = glob_resource("keymaps/*.lua", SYMTABLE_DOMAIN);
 
 	if (list and #list > 0) then
 		for k,v in ipairs(list) do
@@ -661,6 +724,38 @@ symtable.translation_overlay = function(tbl, combotbl)
 	for k,v in pairs(combotbl) do
 		tbl.u8lut[k] = v;
 	end
+end
+
+-- store the current utf-8 keymap + added translations into a
+-- file (ignore the overlay)
+symtable.save_keymap = function(tbl, name)
+	assert(name and type(name) == "string" and string.len(name) > 0);
+	local dst = "keymaps/" .. name .. ".lua";
+	if (resource(dst,SYMTABLE_DOMAIN)) then
+		zap_resource(dst);
+	end
+
+	local wout = open_nonblock(dst, 1);
+	if (not wout) then
+		warning("symtable/save: couldn't open " .. fname .. " for writing.");
+		return false;
+	end
+
+	wout:write(string.format("local res = { name = [[%s]], ", name));
+	wout:write("dctbl = {}, map = { plain = {} } };\n");
+
+	if (tbl.keymap) then
+		for k,v in pairs(tbl.keymap.map) do
+			wout:write(string.format("res.map[\"%s\"] = {};\n", k));
+			for i,j in pairs(v) do
+				wout:write(string.format(
+					"res.map[\"%s\"][%d] = [[%s]];\n", k, tonumber(i), tostring(j)));
+			end
+		end
+	end
+
+	wout:write("return res;\n");
+	wout:close();
 end
 
 return symtable;

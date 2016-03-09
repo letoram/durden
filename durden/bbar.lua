@@ -39,13 +39,13 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 
 	if (ctx.ok and sym == ctx.ok and ctx.psym) then
 		drop_bbar(wm);
-		ctx.cb(ctx.psym, true, lutsym2);
+		ctx.cb(ctx.psym, true, lutsym2, iotbl);
 		return;
 	end
 
 	if (iotbl.active) then
 		if (not ctx.psym or ctx.psym ~= sym) then
-			local res = ctx.cb(lutsym, false, lutsym2);
+			local res = ctx.cb(lutsym, false, lutsym2, iotbl);
 			if (type(res) == "string") then
 				ctx.psym = nil;
 				ctx:label(string.format("%s%s\\t%s%s", gconfig_get("lbar_errstr"),
@@ -53,6 +53,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 			else
 				ctx.psym = sym;
 				ctx.psym2 = lutsym2;
+				ctx.iotbl = iotbl;
 				ctx:data(ctx.psym .. (lutsym2 and '+' .. lutsym2 or ""));
 				ctx.clock = ctx.clock_start;
 			end
@@ -201,7 +202,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 			set_progress(ctx, 1.0 - ctx.clock / ctx.clock_start);
 			if (ctx.clock == 0) then
 				drop_bbar(wm);
-				ctx.cb(ctx.psym, true, ctx.psym2);
+				ctx.cb(ctx.psym, true, ctx.psym2, ctx.iotbl);
 			end
 		end
 		ctx.clock_fwd(a, b);
