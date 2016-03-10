@@ -79,7 +79,7 @@ function dispatch_reset(save)
 	tbl["m1_7"] = "switch_ws7";
 	tbl["m1_8"] = "switch_ws8";
 	tbl["m1_9"] = "switch_ws9";
-	tbl["m1_10"] = "switch_ws10";
+	tbl["m1_0"] = "switch_ws10";
 	tbl["m1_m2_r"] = "rename_space";
 	tbl["m1_m2_1"] = "assign_ws1";
 	tbl["m1_m2_2"] = "assign_ws2";
@@ -90,7 +90,7 @@ function dispatch_reset(save)
 	tbl["m1_m2_7"] = "assign_ws7";
 	tbl["m1_m2_8"] = "assign_ws8";
 	tbl["m1_m2_9"] = "assign_ws9";
-	tbl["m1_m2_10"] = "assign_ws10";
+	tbl["m1_m2_0"] = "assign_ws10";
 	tbl["m1_p"] = "debug_testwnd_bar";
 
 -- there is also input_ignore_on and input_ignore_off, these are

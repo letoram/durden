@@ -414,11 +414,6 @@ local function lbar_props()
 	return yp, barh, dir;
 end
 
-local function display_fontfn()
-	local ad = active_display();
-	return ad.font_delta .. "\\#ffffff", ad.font_sf;
-end
-
 local function menu_path_append(ctx, new, lbl)
 	local path = ctx.path;
 	local helper = ctx.helper;
@@ -429,7 +424,7 @@ local function menu_path_append(ctx, new, lbl)
 	local pad = gconfig_get("lbar_pad");
 	local btn = uiprim_button(active_display().order_anchor,
 		"lbar_tile", "lbar_tiletext", lbl, pad,
-		display_fontfn, 0, tileh
+		active_display().font_resfn, 0, tileh
 	);
 
 -- if ofs + width, compact left and add a "grow" offset on pop

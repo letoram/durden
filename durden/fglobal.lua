@@ -425,7 +425,6 @@ gf["rename_space"] = function()
 	active_display():lbar(function(ctx, instr, done)
 			if (done) then
 				ctx.space:set_label(instr);
-				ctx.space.wm:update_statusbar();
 			end
 			ctx.ulim = 16;
 			return {set = {}};
