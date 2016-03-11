@@ -1,6 +1,6 @@
 return {
 	version = 1,
-	label = "Pretile",
+	label = "Statusbar Tile",
 	frag = [[
 uniform float border;
 uniform vec3 col_border;
@@ -19,19 +19,12 @@ void main()
 
 	gl_FragColor = vec4(mix(col_border, col_bg, f), 1.0);
 }
-	]],
+]],
 	uniforms = {
 		col_border = {
 			label = 'Border Color',
 			utype = 'fff',
-			default = {0.7, 0.0, 0.0},
-			low = 0,
-			high = 1.0
-		},
-		col_bg = {
-			label = "Tile Color",
-			utype = 'fff',
-			default = {0.06, 0.0, 0.0},
+			default = {0.5, 0.5, 0.5},
 			low = 0,
 			high = 1.0
 		},
@@ -41,8 +34,23 @@ void main()
 			default = 1.0,
 			low = 0.0,
 			high = 10.0
-		}
-	},
+		},
+		col_bg = {
+			label = "Tile Color",
+			utype = 'fff',
+			default = {0.135, 0.135, 0.135},
+			low = 0,
+			high = 1.0
+		},
+ 	},
 	states = {
+		inactive = { uniforms = {
+			col_border = {0.3, 0.3, 0.3},
+			col_bg = {0.03, 0.03, 0.03}
+		} },
+		alert = { uniforms = {
+			col_border = {1.0, 1.0, 0.0},
+			col_bg = {0.549, 0.549, 0.0}
+		} }
 	}
 };

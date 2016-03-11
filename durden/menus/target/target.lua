@@ -106,7 +106,7 @@ show_shmenu = function(wnd)
 		handler = wnd
 	};
 
-	return launch_menu(active_display(), ctx, true, "Action:");
+	return launch_menu(active_display(), ctx, true, nil, {tag = "Target"});
 end
 
 register_shared("target_actions", show_shmenu);

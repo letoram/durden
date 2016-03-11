@@ -25,10 +25,10 @@ local workspace_layout_menu = {
 	{
 		name = "layout_tile_h",
 		kind = "action",
-		label = "Tile-Horizontal",
+		label = "Tile-Horiz",
 		handler = function()
 			local space  = active_display().spaces[active_display().space_ind];
-			space.insert = "horizontal";
+			space.insert = "h";
 			space:tile();
 			space.wm:tile_update();
 		end
@@ -36,10 +36,10 @@ local workspace_layout_menu = {
 	{
 		name = "layout_tile_v",
 		kind = "action",
-		label = "Tile-Vertical",
+		label = "Tile-Vert",
 		handler = function()
 			local space  = active_display().spaces[active_display().space_ind];
-			space.insert = "vertical";
+			space.insert = "v";
 			space:tile();
 			space.wm:tile_update();
 		end

@@ -1,10 +1,9 @@
 -- used for text labels and similar items on statusbar that need to
 -- inherit visibility but not subject itself to that alpha
 return {
-	label = "Statusbar Item",
+	label = "Titlebar Text",
 	version = 1,
-	frag =
-[[
+	frag = [[
 	uniform sampler2D map_tu0;
 	varying vec2 texco;
 	uniform vec3 color;
@@ -26,6 +25,6 @@ return {
 		}
 	},
 	states = {
-		inactive = { uniforms = { color = {0.3, 0.3, 0.3} } },
+		inactive = { uniforms = { color = {0.8, 1.0, 0.8} } },
 	}
 };

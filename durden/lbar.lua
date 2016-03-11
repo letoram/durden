@@ -183,7 +183,7 @@ local function update_completion_set(wm, ctx, set)
 
 -- outside display? show ..., if that's our index, slide page
 		if (i ~= ctx.cofs and ofs + w > ctxw - 10) then
-			str = "...";
+			str = "..."; -- string.char(0xe2, 0x86, 0x92);
 			if (i == ctx.csel) then
 				ctx.clastc = i - ctx.cofs;
 				ctx.cofs = ctx.csel;
