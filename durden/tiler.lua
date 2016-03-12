@@ -183,49 +183,6 @@ local function wnd_deselect(wnd, nopick)
 	run_event(wnd, "deselect");
 end
 
-local function gen_status_tile(wm, space, lbl, min_sz, ofs)
-	local text, lines, width, height = render_text(lbl);
-	height = height * wm.font_sf;
-	local props = image_surface_properties(text);
-	local yp = gconfig_get("sbar_pad") + math.floor(0.5 * (min_sz - height));
-
-	if (props.width < min_sz) then
-		move_image(text, math.floor(0.5*(min_sz - props.width)), yp);
-	else
-		move_image(text, gconfig_get("sbar_pad"), yp);
-	end
-
-	local tilew = (props.width+4) > min_sz and (props.width+4) or min_sz;
-	local tile = fill_surface(tilew, min_sz, 255, 255, 255);
-
-	link_image(text, tile);
-	show_image({text, tile});
-	image_mask_set(text, MASK_UNPICKABLE);
-	image_inherit_order(tile, true);
-	image_inherit_order(text, true);
-	link_image(tile, wm.statusbar);
-	shader_setup(text, "ui", "sbar_item", "active");
-	image_tracetag(text, "tiler_sbar_tile");
-
-	if (space) then
-		space.tile_ml = {
-			own = function(ctx, vid, event)
-				return vid == space.label_id;
-			end,
-			click = function(ctx, vid, event)
-				wm:switch_ws(i);
-			end,
-			rclick = click,
-			name = "tile_ml_" .. tostring(i)
-		};
-		mouse_addlistener(space.tile_ml, {"click", "rclick"});
-	end
-
-	move_image(tile, ofs, 0);
-	ofs = ofs + tilew + 1;
-	return tile, ofs;
-end
-
 local function output_mouse_devent(btl, wnd)
 	btl.kind = "digital";
 	btl.source = "mouse";
@@ -251,128 +208,34 @@ local function output_mouse_devent(btl, wnd)
 	target_input(wnd.external, btl);
 end
 
--- statusbar is divided into three areas:
--- first,  [pre-tiles]
--- second, [workspace-tiles]
--- third,  message [cropped to fill] + timeout
--- fourth, statusbar vid (will take ownership)
--- this is really sloppy and should be broken out into a more
--- generic bar system that allows for multiple attachments,
--- horiz / vertical orientation, autohide  and only thing left in tiler
--- code is the hooks to attach a bar (link_image + modify client area)
 local function tiler_statusbar_update(wm, pretiles, msg, timeout, sbar)
 	local statush = math.ceil(gconfig_get("sbar_sz") * wm.scalef);
-	resize_image(wm.statusbar, wm.width, statush);
-	move_image(wm.statusbar, 0, wm.height - statush);
+	wm.statusbar:resize(wm.width, statush);
+	wm.statusbar:move(0, wm.height - statush);
 
 	if(wm.spaces[wm.space_ind].mode == "fullscreen") then
-		hide_image(wm.statusbar);
+		wm.statusbar:hide();
 	else
-		blend_image(wm.statusbar, gconfig_get("sbar_alpha"));
+		wm.statusbar:show();
 	end
-	local ofs = 0;
 
--- pretiles for various status indicators, if we mark the set for update:
-	if (pretiles) then
-		if (wm.pretiles) then
-			for k,v in ipairs(wm.pretiles) do
-				if (valid_vid(v)) then delete_image(v); end
-			end
-		end
-		wm.pretiles = {};
-		for k,v in ipairs(pretiles) do
-			local text = {wm.font_delta .. gconfig_get("pretiletext_color"), v};
-			local pret;
-			pret, ofs = gen_status_tile(wm, nil, text, statush, ofs);
-			shader_setup(pret, "ui", "pretile");
-			table.insert(wm.pretiles, pret);
-		end
--- just slide the offset for re-use
-	else
-		if (wm.pretiles) then
-			for k,v in ipairs(wm.pretiles) do
-				move_image(v, ofs, 0);
-				ofs = ofs + image_surface_properties(v).width + 1;
-			end
-		end
-	end
--- and set ws
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
-			local space = wm.spaces[i];
-			if (space.label_id == nil) then
-				local text = {wm.font_delta .. gconfig_get(
-					"pretiletext_color"), tostring(i)};
-					if (space.label) then
-						text[3] = "";
-						text[4] = ":";
-						text[5] = gconfig_get("label_color");
-						text[6] = space.label;
-					end
-				space.label_id, ofs = gen_status_tile(wm, space, text, statush, ofs);
-				shader_setup(space.label_id, "ui", "tile", "inactive");
-			else
-				move_image(space.label_id, ofs, 0);
-				ofs = ofs + image_surface_properties(space.label_id).width + 1;
+			wm.sbar_ws[i]:show();
+			local lbltbl = {gconfig_get("pretiletext_color"), tostring(i)};
+			local lbl = wm.spaces[i].label;
+			if (lbl and string.len(lbl) > 0) then
+				lbltbl[3] = "";
+				lbltbl[4] = ":";
+				lbltbl[5] = gconfig_get("label_color");
+				lbltbl[6] = lbl;
 			end
-
-			shader_setup(space.label_id, "ui", "tile",
-				i == wm.space_ind and "active" or "inactive");
-		end
-	end
-
--- add msg in statusbar "slot", protect against overflow into ws list
-	if (msg ~= nil) then
-		local text = {gconfig_get("sbar_textstr"), msg};
-		if (valid_vid(wm.statusbar_msg)) then
-			render_text(wm.statusbar_msg, text);
+			wm.sbar_ws[i]:update(lbltbl);
 		else
-			local vid, lines, w, h = render_text(text);
-			wm.statusbar_msg = vid;
-			show_image(vid);
-			image_inherit_order(vid, true);
-			link_image(vid, wm.statusbar);
-			shader_setup(vid, "ui", "sbar_item", "active");
-			local sbsz = image_surface_properties(wm.statusbar).height;
-			move_image(vid, ofs, math.floor(0.5 * (sbsz - h * wm.font_sf)));
+			wm.sbar_ws[i]:hide();
 		end
-
-		if (timeout and timeout > 0 and valid_vid(wm.statusbar_msg)) then
-			expire_image(wm.statusbar_msg, timeout);
-		end
+		wm.sbar_ws[i]:switch_state(i == wm.space_ind and "active" or "inactive");
 	end
-end
-
-local function tile_upd(wm)
-	local space = wm.spaces[wm.space_ind];
-	local im = space.insert == "horizontal" and "horiz" or "vert";
-
-	wm:update_statusbar({
-		space.mode .. (space.mode == "tile" and (":" .. im) or "")
-	});
-end
-
-local function tiler_statusbar_invalidate(wm)
-	if (wm.pretiles) then
-		for k,v in ipairs(wm.pretiles) do
-			if (valid_vid(v)) then
-				delete_image(v);
-			end
-		end
-		wm.pretiles = nil;
-	end
-
-	for i=1,10 do
-		if (wm.spaces[i] ~= nil) then
-			local space = wm.spaces[i];
-			if (valid_vid(space.label_id)) then
-				delete_image(space.label_id);
-				space.label_id = nil;
-			end
-		end
-	end
-
-	tile_upd(wm);
 end
 
 -- we need an overlay anchor that is only used for ordering, this to handle
@@ -1022,12 +885,16 @@ local function workspace_resize(space)
 end
 
 local function workspace_label(space, lbl)
-	if (valid_vid(space.label_id)) then
-		delete_image(space.label_id);
-		space.label_id = nil;
-	end
-	space.label = lbl;
-	space.wm:update_statusbar();
+	local ind = 1;
+	repeat
+		if (space.wm.spaces[ind] == space) then
+			break;
+		end
+		ind = ind + 1;
+	until (ind > 10);
+
+	space.wm.sbar_ws[ind]:update((lbl and string.len(lbl) > 0)
+		and tostring(ind) .. ":" .. lbl or tostring(ind));
 end
 
 local function workspace_empty(wm, i)
@@ -2281,10 +2148,12 @@ local function tiler_switchws(wm, ind)
 
 	if (wm.spaces[ind] == nil) then
 		wm.spaces[ind] = create_workspace(wm);
+		wm.sbar_ws[ind]:show();
 	end
 
+	wm.sbar_ws[wm.space_ind]:switch_state("inactive");
+	wm.sbar_ws[ind]:switch_state("active");
 	wm.space_ind = ind;
-	tile_upd(wm);
 
 	if (wm.spaces[ind].switch_hook) then
 		wm.spaces[ind]:switch_hook(true, not nd);
@@ -2457,14 +2326,7 @@ local function tiler_message(tiler, msg, timeout)
 		timeout = gconfig_get("msg_timeout");
 	end
 
-	if (not msg) then
-		if (valid_vid(tiler.statusbar_msg)) then
-			delete_image(tiler.statusbar_msg);
-			tiler.statusbar_msg = nil;
-		end
-	else
-		tiler_statusbar_update(tiler, nil, msg, timeout);
-	end
+-- tiler.res_ws.message:update(msg, timeout);
 end
 
 local function tiler_rebuild_border(tiler)
@@ -2535,7 +2397,7 @@ local function tiler_resize(tiler, neww, newh)
 	for k,v in pairs(tiler.spaces) do
 		v:resize(neww, newh);
 	end
-	tile_upd(tiler);
+	tiler:update_statusbar();
 end
 
 local function tiler_activate(wm)
@@ -2581,7 +2443,6 @@ local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
 	recalc_fsz(wm);
 	wm:rebuild_border();
-	wm:invalidate_statusbar();
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title(v.title_text and v.title_text or "");
@@ -2591,6 +2452,10 @@ local function tiler_scalef(wm, newf, disptbl)
 	end
 
 	wm:resize(wm.width, wm.height);
+end
+
+local function tiler_fontres(wm)
+	return wm.font_delta .. "\\#ffffff", wm.font_sf;
 end
 
 function tiler_create(width, height, opts)
@@ -2636,39 +2501,51 @@ function tiler_create(width, height, opts)
 		find_window = tiler_find,
 		message = tiler_message,
 		resize = tiler_resize,
-		tile_update = tile_upd,
-		invalidate_statusbar = tiler_statusbar_invalidate,
-		update_statusbar = tiler_statusbar_update,
+		tile_update = tiler_statusbar_update,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
 	};
 
-	recalc_fsz(res);
+	res.font_resfn = function() return tiler_fontres(res); end
 
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load
+	recalc_fsz(res);
 
-	res.statusbar = color_surface(width,
-		gconfig_get("sbar_sz") * res.scalef, 0, 0, 0);
+	local sbsz = math.ceil(gconfig_get("sbar_sz") * res.scalef);
+
+	res.statusbar = uiprim_bar(
+		res.order_anchor, ANCHOR_UL, width, sbsz, "statusbar");
+	res.sbar_ws = {};
+
+-- add_button(left, pretile, label etc.)
+
+-- pre-allocate buffer slots, but keep hidden
+	for i=1,10 do
+		res.sbar_ws[i] = res.statusbar:add_button("left", "tile", "sbar_item",
+			tostring(i), gconfig_get("sbar_pad"), res.font_resfn, sbsz, sbsz,
+			{
+				click = function(btn)
+					res:switch_ws(i);
+				end,
+				rclick = click
+			}
+		);
+		res.sbar_ws[i]:hide();
+	end
+-- allocate fill-slot for messages?
+
 	res.width = width;
 	res.height = height;
 	res.min_width = 32;
 	res.min_height = 32;
-	shader_setup(res.statusbar, "ui", "statusbar", "active");
 	image_tracetag(res.anchor, "tiler_anchor");
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
-	image_tracetag(res.statusbar, "tiler_statusbar");
 
 	order_image(res.order_anchor, 2);
-	move_image(res.statusbar, 0, clh);
-	link_image(res.statusbar, res.order_anchor);
-	image_inherit_order(res.statusbar, true);
-	order_image(res.statusbar, 1);
-	image_mask_set(res.statusbar, MASK_UNPICKABLE);
-	show_image({res.anchor, res.statusbar, res.order_anchor});
+	show_image({res.anchor, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
-	hide_image(res.statusbar);
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);
@@ -2709,7 +2586,7 @@ function tiler_create(width, height, opts)
 	if (not res.spaces[1]) then
 		res.spaces[1] = create_workspace(res, true);
 	end
-	tile_upd(res);
 
+	res:tile_update();
 	return res;
 end

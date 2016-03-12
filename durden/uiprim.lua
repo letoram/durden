@@ -218,9 +218,14 @@ end
 local function bar_resize(bar, neww, newh)
 	assert(neww > 0);
 	assert(newh > 0);
+	if (neww == bar.width and newh == bar.height) then
+		return;
+	end
+
 	bar.width = neww;
 	bar.height = newh;
 	resize_image(bar.anchor, bar.width, bar.height);
+
 	bar:relayout();
 end
 
@@ -235,7 +240,7 @@ local function bar_relayout_horiz(bar)
 		local lx = 0;
 		for k,v in ipairs(bar.buttons.left) do
 			local w, h = v:dimensions();
-			local yp = math.floor(0.5 * (bar.height - h));
+			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			afn(v.bg, lx, yp);
 			lx = lx + w;
 		end
@@ -244,7 +249,7 @@ local function bar_relayout_horiz(bar)
 		for k,v in ipairs(bar.buttons.right) do
 			local w, h = v:dimensions();
 			rx = rx - w;
-			local yp = math.floor(0.5 * (bar.height - h));
+			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			afn(v.bg, rx, yp);
 		end
 		return lx, rx;
@@ -262,11 +267,11 @@ local function bar_relayout_horiz(bar)
 		return lx - rx;
 	end
 
+	local lx, rx = relay(move_image);
+
 	if (ca == 0) then
 		return 0;
 	end
-
-	local lx, rx = relay(move_image);
 
 	local fair_sz = math.floor((rx -lx)/ #bar.buttons.center);
 	for k,v in ipairs(bar.buttons.center) do
@@ -283,7 +288,7 @@ local function bar_relayout_horiz(bar)
 end
 
 -- note that this kills multiple returns
-local function chain_upd(bar, fun)
+local function chain_upd(bar, fun, tag)
 	return function(...)
 		local rv = fun(...);
 		bar:relayout();
@@ -321,9 +326,9 @@ local function bar_button(bar, align, bgshname, lblshname,
 		button_destroy(btn);
 		bar:relayout();
 	end
-	btn.update = chain_upd(bar, btn.update);
-	btn.hide = chain_upd(bar, btn.hide);
-	btn.show = chain_upd(bar, btn.show);
+	btn.update = chain_upd(bar, btn.update, "update");
+	btn.hide = chain_upd(bar, btn.hide, "hide");
+	btn.show = chain_upd(bar, btn.show, "show");
 
 	if (align == "center") then
 		btn:constrain(pad);
@@ -331,6 +336,7 @@ local function bar_button(bar, align, bgshname, lblshname,
 	end
 
 	bar:relayout();
+	return btn;
 end
 
 local function bar_state(bar, state, cascade)
@@ -370,6 +376,18 @@ local function bar_destroy(bar)
 	end
 end
 
+local function bar_hide(bar)
+	hide_image(bar.anchor);
+end
+
+local function bar_show(bar)
+	show_image(bar.anchor);
+end
+
+local function bar_move(bar, newx, newy, time, interp)
+	move_image(bar.anchor, newx, newy, time, interp);
+end
+
 -- work as a vertical or horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -394,6 +412,9 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		relayout = bar_relayout_horiz,
 		switch_state = bar_state,
 		add_button = bar_button,
+		hide = bar_hide,
+		show = bar_show,
+		move = bar_move,
 		destroy = bar_destroy
 	};
 
