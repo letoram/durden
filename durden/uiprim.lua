@@ -23,8 +23,8 @@ local function button_labelupd(btn, lbl)
 			lbl[1] = fontstr .. lbl[1];
 		end
 
-		if (btn.textlbl) then
-			txt, lineh, w, h = render_text(btn.textlbl, lbl);
+		if (btn.lbl) then
+			txt, lineh, w, h = render_text(btn.lbl, lbl);
 		else
 			txt, lineh, w, h = render_text(lbl);
 		end
@@ -33,7 +33,7 @@ local function button_labelupd(btn, lbl)
 			warning("error updating button label");
 			return;
 -- switch from icon based label to text based
-		elseif (valid_vid(btn.lbl)) then
+		elseif (txt ~= btn.lbl and valid_vid(btn.lbl)) then
 			delete_image(btn.lbl);
 		end
 		btn.lbl = txt;
@@ -75,6 +75,14 @@ local function button_labelupd(btn, lbl)
 		h = h + padsz;
 	end
 
+	if (btn.maxw and btn.maxw > 0 and w > btn.maxw) then
+		w = btn.maxw;
+	end
+
+	if (btn.maxh and btn.maxh > 0 and w > btn.maxh) then
+		h = btn.maxh;
+	end
+
 	btn.w = w;
 	btn.h = h;
 
@@ -82,8 +90,9 @@ local function button_labelupd(btn, lbl)
 	image_tracetag(btn.lbl, btn.name .. "_label");
 	resize_image(btn.bg, btn.w, btn.h);
 	link_image(btn.lbl, btn.bg);
+	image_mask_set(btn.lbl, MASK_UNPICKABLE);
 	image_clip_on(btn.lbl, CLIP_SHALLOW);
-	center_image(btn.lbl, btn.bg, ANCHOR_C, 0, 0); -- btn.yshift);
+	center_image(btn.lbl, btn.bg, ANCHOR_C, 0, btn.yshift);
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -240,8 +249,6 @@ local function bar_resize(bar, neww, newh)
 	local domupd = (bar.vertical and neww ~= bar.width) or
 		(not bar.vertical and newh ~= bar.height);
 
-	local dw = neww - bar.width;
-	local dh = newh - bar.height;
 	bar.width = neww;
 	bar.height = newh;
 	resize_image(bar.anchor, bar.width, bar.height);

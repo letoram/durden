@@ -2,7 +2,6 @@ local function set_scalef(mode)
 	local wnd = active_display().selected;
 	if (wnd) then
 		wnd.scalemode = mode;
-		wnd.settings.scalemode = mode;
 		wnd:resize(wnd.width, wnd.height);
 	end
 end
@@ -84,7 +83,6 @@ return {
 			local wnd = active_display().selected;
 			if (wnd) then
 				local opa = tonumber(val);
-				wnd.settings.opacity = opa;
 				blend_image(wnd.border, opa);
 				blend_image(wnd.canvas, opa);
 			end

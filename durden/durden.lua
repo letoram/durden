@@ -222,9 +222,9 @@ update_default_font = function(key, val)
 -- also propagate to each window so that it may push descriptors and
 -- size information to any external connections
 	for wnd in all_windows() do
+		wnd:update_font(sz, hint, font);
 		wnd:set_title(wnd.title_text and wnd.title_text or "");
 		wnd:resize(wnd.width, wnd.height);
-		wnd:update_font(sz, hint, font);
 	end
 end
 
