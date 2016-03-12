@@ -8,6 +8,13 @@ local function button_labelupd(btn, lbl)
 	local txt, lineh, w, h;
 	local fontstr, offsetf = btn.fontfn();
 
+-- keep this around so we can update if the fontfn changes
+	if (lbl == nil) then
+		lbl = btn.last_lbl;
+	else
+		btn.last_lbl = lbl;
+	end
+
 -- allow string or prerendered, only update lbl on new content
 	if (type(lbl) == "string" or type(lbl) == "table") then
 		if (type(lbl) == "string") then
@@ -56,24 +63,27 @@ local function button_labelupd(btn, lbl)
 
 -- done with label, figure out new button size including padding and minimum
 	local padsz = 2 * btn.pad;
-	if (btn.minw and btn.minw > 0) then
-		w = w < btn.minw and btn.minw or w;
-		w = w - padsz;
+	if (btn.minw and btn.minw > 0 and w < btn.minw) then
+		w = btn.minw;
+	else
+		w = w + padsz;
 	end
 
-	if (btn.minh and btn.minh > 0) then
-		h = h < btn.minh and btn.minh or h;
-		h = h - padsz;
+	if (btn.minh and btn.minh > 0 and h < btn.minh) then
+		h = btn.minh;
+	else
+		h = h + padsz;
 	end
-	btn.w = w + padsz;
-	btn.h = h + padsz;
+
+	btn.w = w;
+	btn.h = h;
 
 -- finally make the visual changes
 	image_tracetag(btn.lbl, btn.name .. "_label");
 	resize_image(btn.bg, btn.w, btn.h);
 	link_image(btn.lbl, btn.bg);
 	image_clip_on(btn.lbl, CLIP_SHALLOW);
-	center_image(btn.lbl, btn.bg, ANCHOR_C, 0, btn.yshift);
+	center_image(btn.lbl, btn.bg, ANCHOR_C, 0, 0); -- btn.yshift);
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -103,11 +113,11 @@ local function button_destroy(btn, timeout)
 end
 
 local function button_state(btn, newstate)
-	if (btn.state ~= newstate) then
-		btn.state = newstate;
+	btn.state = newstate;
+	if (btn.bgsh) then
 		shader_setup(btn.bg, "ui", btn.bgsh, newstate);
-		shader_setup(btn.lbl, "ui", btn.lblsh, newstate);
 	end
+	shader_setup(btn.lbl, "ui", btn.lblsh, newstate);
 end
 
 local function button_hide(btn)
@@ -154,7 +164,6 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 	pad, fontfn, minw, minh, mouseh)
 	ind = ind + 1;
 	local res = {
-		bg = fill_surface(1, 1, 255, 0, 0),
 		lblfmt = "\\f,0\\#ffffff",
 		bgsh = bgshname,
 		lblsh = lblshname,
@@ -175,6 +184,12 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 		constrain = button_constrain
 	};
 
+	if (not bgshname) then
+		res.bg = null_surface(1, 1);
+	else
+		res.bg = fill_surface(1, 1, 255, 0, 0);
+	end
+
 	if (minw and minw > 0) then
 		res.minw = minw;
 	end
@@ -188,7 +203,6 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 	image_inherit_order(res.bg, true);
 	order_image(res.bg, 2);
 	show_image(res.bg);
-	shader_setup(res.bg, "ui", res.bgsh, "active");
 
 	res:update(lbl);
 
@@ -212,19 +226,29 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 		image_mask_set(res.bg, MASK_UNPICKABLE);
 	end
 
+	res:switch_state("active");
 	return res;
 end
 
 local function bar_resize(bar, neww, newh)
-	assert(neww > 0);
-	assert(newh > 0);
+	assert(neww and neww > 0);
+	assert(newh and newh > 0);
 	if (neww == bar.width and newh == bar.height) then
 		return;
 	end
 
+	local domupd = (bar.vertical and neww ~= bar.width) or
+		(not bar.vertical and newh ~= bar.height);
+
+	local dw = neww - bar.width;
+	local dh = newh - bar.height;
 	bar.width = neww;
 	bar.height = newh;
 	resize_image(bar.anchor, bar.width, bar.height);
+
+	if (domupd) then
+		bar:invalidate();
+	end
 
 	bar:relayout();
 end
@@ -302,6 +326,21 @@ end
 local function bar_button(bar, align, bgshname, lblshname,
 	lbl, pad, fontfn, minw, minh, mouseh)
 	assert(bar.buttons[align] ~= nil);
+	assert(type(fontfn) == "function");
+
+-- autofill in the non-dominant axis
+	local fill = false;
+	if (not bar.vertical) then
+		if (not minh) then
+			minh = bar.height;
+			fill = true;
+		end
+	else
+		if (not minw) then
+			minw = bar.width;
+			fill = true;
+		end
+	end
 
 	local btn = uiprim_button(bar.anchor, bgshname, lblshname,
 		lbl, pad, fontfn, minw, minh, mouseh);
@@ -310,6 +349,7 @@ local function bar_button(bar, align, bgshname, lblshname,
 		warning("couldn't create button");
 		return;
 	end
+	btn.autofill = true;
 
 	table.insert(bar.buttons[align], btn);
 -- chain to the destructor so we get removed immediately
@@ -348,8 +388,8 @@ local function bar_state(bar, state, cascade)
 
 -- may want to forward some settings to all buttons (titlebar is one case)
 	if (cascade) then
-		for a, b in pairs(buttons) do
-			for i, j in iapirs(b) do
+		for a, b in pairs(bar.buttons) do
+			for i, j in ipairs(b) do
 				j:switch_state(state);
 			end
 		end
@@ -388,6 +428,36 @@ local function bar_move(bar, newx, newy, time, interp)
 	move_image(bar.anchor, newx, newy, time, interp);
 end
 
+local function bar_update(bar, group, index, ...)
+	assert(bar.buttons[group] ~= nil);
+	assert(bar.buttons[group][index] ~= nil);
+	bar.buttons[group][index]:update(...);
+end
+
+local function bar_invalidate(bar)
+	for k,v in pairs(bar.buttons) do
+		for i,j in ipairs(v) do
+
+			if (j.autofill) then
+				if (bar.vertical) then
+					j.minw = bar.width;
+				else
+					j.minh = bar.height;
+				end
+			end
+
+			j:update();
+		end
+	end
+	bar:relayout();
+end
+
+local function bar_reanchor(bar, anchor, order, xpos, ypos, anchorp)
+	link_image(bar.anchor, anchor, anchorp);
+	move_image(bar.anchor, xpos, ypos);
+	order_image(bar.anchor, order);
+end
+
 -- work as a vertical or horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -409,9 +479,12 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		width = width,
 		height = height,
 		resize = bar_resize,
+		invalidate = bar_invalidate,
 		relayout = bar_relayout_horiz,
 		switch_state = bar_state,
 		add_button = bar_button,
+		update = bar_update,
+		reanchor = bar_reanchor,
 		hide = bar_hide,
 		show = bar_show,
 		move = bar_move,

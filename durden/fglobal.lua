@@ -508,14 +508,14 @@ end
 gf["mode_vertical"] = function()
 	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
-		wspace.insert = "vertical";
+		wspace.insert = "v";
 		wspace.wm:tile_update();
 	end
 end
 gf["mode_horizontal"] = function()
 	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
-		wspace.insert = "horizontal";
+		wspace.insert = "h";
 		wspace.wm:tile_update();
 	end
 end

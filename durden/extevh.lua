@@ -196,7 +196,7 @@ function(wnd, source, stat)
 		atbl:init(wnd, source);
 	end
 
-	wnd:load_config(wnd.config_tgt);
+--	wnd:load_config(wnd.config_tgt);
 end
 
 --  stateinf is used in the builtin/shared

@@ -11,6 +11,12 @@ local update_default_font;
 local argv_cmds = {};
 local ievcount = 0;
 
+-- replace the normal assert function one that can provide a traceback
+local oldass = assert;
+function assert(...)
+	oldass(..., debug.traceback("assertion failed", 2));
+end
+
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
@@ -211,7 +217,6 @@ update_default_font = function(key, val)
 		disp.font_sf = rfhf;
 		disp:resize(disp.width, disp.height, sz);
 		disp:rebuild_border();
-		disp:invalidate_statusbar();
 	end
 
 -- also propagate to each window so that it may push descriptors and
