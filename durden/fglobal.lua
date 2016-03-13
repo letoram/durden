@@ -244,7 +244,6 @@ gf["rebind_basic"] = function(chain)
 end
 
 sf["wnd_tobg"] = function(wnd)
-	print("sf", wnd);
 	local disp = active_display();
 	local wnd = disp.selected;
 	local space = disp.spaces[disp.space_ind];

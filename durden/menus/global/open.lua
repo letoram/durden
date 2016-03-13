@@ -134,14 +134,17 @@ local function target_submenu()
 			kind = "action",
 			label = v
 		};
-		if (#cfgs > 1) then
-			nent.submenu = true;
-			nent.handler = function() return target_cfgmenu(v, cfgs); end
-		else
-			nent.handler = function() launch(v, cfgs[1]); end
-		end
 
-		table.insert(res, nent);
+		if (#cfgs > 0) then
+			if (#cfgs > 1) then
+				nent.submenu = true;
+				nent.handler = function() return target_cfgmenu(v, cfgs); end
+			else
+				nent.handler = function() launch(v, cfgs[1]); end
+			end
+			table.insert(res, nent);
+		end
+-- here we ignore bad targets (no configs defined)
 	end
 	return res;
 end

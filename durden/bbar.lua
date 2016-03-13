@@ -149,14 +149,7 @@ local function setup_vids(wm, ctx, lbsz, time)
 	order_image(progress, 1);
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
-	local pos = gconfig_get("lbar_position");
-
-	if (pos == "bottom") then
-		move_image(bar, 0, wm.height - lbsz);
-	elseif (pos == "center") then
-		move_image(bar, 0, math.floor(0.5*(wm.height-lbsz*2)));
-	else
-	end
+	move_image(bar, 0, math.floor(0.5*(wm.height-lbsz*2)));
 end
 
 --
