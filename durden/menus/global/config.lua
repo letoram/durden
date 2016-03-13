@@ -1,3 +1,14 @@
+local hint_lut = {
+	none = 0,
+	mono = 1,
+	light = 2,
+	normal = 3,
+	subpixel = 4 -- need to specify +1 in the case of rotated display
+};
+
+local hint_rlut = {};
+for k,v in pairs(hint_lut) do hint_rlut[v] = k; end
+
 local durden_font = {
 	{
 		name = "durden_font_sz",
@@ -13,10 +24,20 @@ local durden_font = {
 		name = "durden_font_hinting",
 		label = "Hinting",
 		kind = "value",
-		validator = gen_valid_num(0, 3);
-		initial = function() return gconfig_get("font_hint"); end,
+		set = {"none", "mono", "light", "normal", "subpixel"},
+		initial = function() return hint_rlut[gconfig_get("font_hint")]; end,
 		handler = function(ctx, val)
-			gconfig_set("font_hint", tonumber(val));
+			gconfig_set("font_hint", hint_lut[val]);
+		end
+	},
+	{
+		name = "durden_font_shift",
+		label = "Shift",
+		kind = "value",
+		validator = gen_valid_num(-100, 100),
+		initial = function() return gconfig_get("font_shift"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_shift", tonumber(val));
 		end
 	},
 	{
@@ -31,6 +52,20 @@ local durden_font = {
 		initial = function() return gconfig_get("font_def"); end,
 		handler = function(ctx, val)
 			gconfig_set("font_def", val);
+		end
+	},
+	{
+		name = "durden_font_suppl",
+		label = "Fallback",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		initial = function() return gconfig_get("font_fb"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_fb", val);
 		end
 	}
 };

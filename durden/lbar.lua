@@ -102,6 +102,7 @@ local function update_completion_set(wm, ctx, set)
 	if (not set) then
 		return;
 	end
+	local pad = gconfig_get("lbar_pad");
 
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
@@ -136,7 +137,8 @@ local function update_completion_set(wm, ctx, set)
 		ctx.cofs = 1;
 	end
 
--- very very messy positioning, relinking etc
+-- very very messy positioning, relinking etc. can probably replace all
+-- this mess with just using uiprim_bar and buttons in center area
 	local regw = image_surface_properties(ctx.text_anchor).width;
 	local step = math.ceil(0.5 + regw / 3);
 	local ctxw = 2 * step;
@@ -192,7 +194,7 @@ local function update_completion_set(wm, ctx, set)
 			exit = true;
 		end
 
-		local txt, lines, txt_w, txt_h = render_text(
+		local txt, lines, txt_w, txt_h, asc = render_text(
 			str and str or (#msgs > 0 and msgs or ""));
 
 		image_tracetag(txt, "lbar_text" ..tostring(i));
@@ -238,7 +240,7 @@ local function update_completion_set(wm, ctx, set)
 			resize_image(ctx.ccursor, w, lbarsz);
 		end
 
-		move_image(txt, ofs, 0.5 * (lbarsz - active_display().font_sf * txt_h));
+		move_image(txt, ofs, pad + gconfig_get("font_shift") + wm.scalef);
 		ofs = ofs + (crop and w or txt_w) + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
@@ -254,14 +256,16 @@ local function setup_string(wm, ictx, str)
 		return ictx;
 	end
 
-	local lbarh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	local shift = math.ceil(gconfig_get("font_shift") * wm.scalef);
+	local pad = gconfig_get("lbar_pad");
+
 	ictx.text = tvid;
 	image_tracetag(ictx.text, "lbar_inpstr");
 	show_image(ictx.text);
 	link_image(ictx.text, ictx.text_anchor);
 	image_inherit_order(ictx.text, true);
-	local texth = texth * active_display().font_sf;
-	move_image(ictx.text, ictx.textofs, math.ceil(0.5 * (lbarh - texth)));
+
+	move_image(ictx.text, ictx.textofs, pad + shift);
 
 	return tvid;
 end
@@ -369,9 +373,8 @@ local function lbar_label(lbar, lbl)
 	end
 
 	local wm = active_display();
-	local sf = wm.font_sf;
 
-	local id, lines, w, h = render_text({wm.font_delta ..
+	local id, lines, w, h, asc = render_text({wm.font_delta ..
 		gconfig_get("lbar_labelstr"), lbl});
 
 	lbar.labelid = id;
@@ -386,9 +389,9 @@ local function lbar_label(lbar, lbl)
 	order_image(id, 1);
 
 	local pad = gconfig_get("lbar_pad");
-	local sz = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	local sz = gconfig_get("font_shift") * wm.scalef;
 -- relinking / delinking on changes every time
-	move_image(lbar.labelid, pad, math.ceil(0.5 * (sz - sf * h)));
+	move_image(lbar.labelid, pad, pad + sz);
 	lbar.textofs = w + sz + pad;
 	update_caret(lbar);
 end

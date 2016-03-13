@@ -8,6 +8,7 @@
 EVENT_SYNCH = {};
 
 local update_default_font;
+
 local argv_cmds = {};
 local ievcount = 0;
 
@@ -18,6 +19,8 @@ function assert(...)
 end
 
 function durden(argv)
+	switch_default_texfilter(FILTER_NONE);
+
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
@@ -102,6 +105,7 @@ function durden(argv)
 	gconfig_listen("font_def", "deffonth", update_default_font);
 	gconfig_listen("font_sz", "deffonth", update_default_font);
 	gconfig_listen("font_hint", "font_hint", update_default_font);
+	gconfig_listen("font_fb", "font_fb", update_default_font);
 
 -- preload cursor states
 	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
@@ -176,38 +180,27 @@ update_default_font = function(key, val)
 	local font = (key and key == "font_def") and val or gconfig_get("font_def");
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
+	local fbf = (key and key == "font_fb") and val or gconfig_get("font_fb");
+
 	system_defaultfont(font, sz, hint);
+
+-- with the default font reset, also load a fallback one
+	if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
+		system_defaultfont(fbf, sz, hint, true);
+	end
 
 -- centering vertically on fonth will look poor on fonts that has a
 -- pronounced ascent / descent and we have no exposed function to get access
 -- to more detailed font metrics, so lets go rough..
-	local vid, lines, w, fonth = render_text("\\f,0\\#ffffff gijy1!`");
+	local vid, lines, w, fonth, asc = render_text("\\f,0\\#ffffff gijy1!`");
 	local rfh = fonth;
 	local props = image_surface_properties(vid);
-
-	image_access_storage(vid, function(tbl, w, h)
-		for y=h-1,0,-1 do
-			local rowv = 0;
-			for x=0,w-1 do
-				rowv = rowv + tbl:get(x, y, 1);
-			end
-			if (rowv ~= 0) then
-				break;
-			else
-				rfh = y;
-			end
-		end
-	end);
 	delete_image(vid);
-
--- and not to break on mixed DPI multidisplay, we go with factors
-	local rfhf = (rfh > 0 and rfh or fonth) / fonth;
 
 	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
 	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
 	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
 	gconfig_set("lbar_caret_h", fonth);
-	gconfig_set("font_defsf", rfhf);
 
 	if (not all_displays_iter) then
 		return;

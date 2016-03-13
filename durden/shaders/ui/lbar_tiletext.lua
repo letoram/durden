@@ -10,9 +10,8 @@ varying vec2 texco;
 void main()
 {
 	vec4 txv = texture2D(map_tu0, texco).rgba;
-	float luma = (txv.r + txv.g + txv.b) / 3.0;
-	gl_FragColor = vec4(col.r * luma,
-		col.g * luma, col.b * luma, txv.a * obj_opacity);
+	gl_FragColor = vec4(col.rgb * txv.rgb,
+		txv.a * col.a * obj_opacity);
 }
 ]],
 	uniforms = {
