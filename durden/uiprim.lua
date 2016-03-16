@@ -5,7 +5,7 @@
 -- UI elements that were incidentally developed as part of durden.
 --
 local function button_labelupd(btn, lbl)
-	local txt, lineh, w, h;
+	local txt, lineh, w, h, asc;
 	local fontstr, offsetf = btn.fontfn();
 
 -- keep this around so we can update if the fontfn changes
@@ -24,9 +24,9 @@ local function button_labelupd(btn, lbl)
 		end
 
 		if (btn.lbl) then
-			txt, lineh, w, h = render_text(btn.lbl, lbl);
+			txt, lineh, w, h, asc = render_text(btn.lbl, lbl);
 		else
-			txt, lineh, w, h = render_text(lbl);
+			txt, lineh, w, h, asc = render_text(lbl);
 		end
 
 		if (not valid_vid(txt)) then
@@ -37,7 +37,7 @@ local function button_labelupd(btn, lbl)
 			delete_image(btn.lbl);
 		end
 		btn.lbl = txt;
-		btn.yshift = h - (h * offsetf);
+		btn.yshift = -offsetf;
 
 -- just resize / relayout
 	elseif (not valid_vid(lbl)) then

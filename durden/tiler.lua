@@ -2457,7 +2457,7 @@ local function tiler_scalef(wm, newf, disptbl)
 end
 
 local function tiler_fontres(wm)
-	return wm.font_delta .. "\\#ffffff", wm.font_sf;
+	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("font_shift");
 end
 
 function tiler_create(width, height, opts)
