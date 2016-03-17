@@ -40,12 +40,27 @@ function(id, newv)
 		{col[1], col[2], col[3], newv}, nil, "term-alpha");
 end);
 
--- globally apply changes to terminal font and terminal font sz
+-- globally apply changes to terminal font and terminal font sz,
+-- share fallback- font system wide though.
 gconfig_listen("term_font", "aterm",
 function(id, newv)
 	for wnd in all_windows("terminal") do
 		wnd.font_block = false;
-		wnd:update_font(-1, -1, newv);
+		local tbl = {newv};
+		local fbf = gconfig_get("font_fb");
+		if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
+			tbl[2] = fbf;
+		end
+		wnd:update_font(-1, -1, tbl);
+		wnd.font_block = true;
+	end
+end);
+
+gconfig_listen("term_font_hint", "aterm",
+function(id, newv)
+	for wnd in all_windows("terminal") do
+		wnd.font_block = false;
+		wnd:update_font(-1, newv);
 		wnd.font_block = true;
 	end
 end);

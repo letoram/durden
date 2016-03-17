@@ -1,4 +1,4 @@
-local hint_lut = {
+hint_lut = {
 	none = 0,
 	mono = 1,
 	light = 2,
@@ -6,8 +6,8 @@ local hint_lut = {
 	subpixel = 4 -- need to specify +1 in the case of rotated display
 };
 
-local hint_rlut = {};
-for k,v in pairs(hint_lut) do hint_rlut[v] = k; end
+TERM_HINT_RLUT = {};
+for k,v in pairs(hint_lut) do TERM_HINT_RLUT[v] = k; end
 
 local durden_font = {
 	{
@@ -25,7 +25,7 @@ local durden_font = {
 		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return hint_rlut[gconfig_get("font_hint")]; end,
+		initial = function() return TERM_HINT_RLUT[gconfig_get("font_hint")]; end,
 		handler = function(ctx, val)
 			gconfig_set("font_hint", hint_lut[val]);
 		end
@@ -228,7 +228,7 @@ local config_terminal_font = {
 		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return hint_rlut[
+		initial = function() return TERM_HINT_RLUT[
 		gconfig_get("term_font_hint")]; end,
 		handler = function(ctx, val)
 			gconfig_set("term_font_hint", hint_lut[val]);

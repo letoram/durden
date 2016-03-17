@@ -1105,7 +1105,17 @@ local function wnd_font(wnd, sz, hint, font)
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		wnd.last_font = {sz, hint, font};
 		if (font) then
-			target_fonthint(wnd.external, font, sz * FONT_PT_SZ, hint);
+			local dtbl = {};
+			if (type(font) == "table") then
+				dtbl = font;
+			else
+				dtbl[1] = font;
+			end
+
+			target_fonthint(wnd.external, dtbl[1], sz * FONT_PT_SZ, hint);
+			for i=2,#dtbl do
+				target_fonthint(wnd.external, dtbl[i], sz * FONT_PT_SZ, hint, true);
+			end
 		else
 			target_fonthint(wnd.external, sz * FONT_PT_SZ, hint);
 		end

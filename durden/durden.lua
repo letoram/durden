@@ -176,7 +176,6 @@ argv_cmds["safety_timer"] = function()
 end
 
 update_default_font = function(key, val)
-	local newfont=(key and key == "font_def" and val ~= gconfig_get("font_def"));
 	local font = (key and key == "font_def") and val or gconfig_get("font_def");
 	local sz = (key and key == "font_sz") and val or gconfig_get("font_sz");
 	local hint = (key and key == "font_hint") and val or gconfig_get("font_hint");
@@ -186,7 +185,7 @@ update_default_font = function(key, val)
 
 -- with the default font reset, also load a fallback one
 	if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
-		system_defaultfont(fbf, sz, hint, true);
+		system_defaultfont(fbf, sz, hint, 1);
 	end
 
 -- centering vertically on fonth will look poor on fonts that has a
