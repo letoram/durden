@@ -29,10 +29,10 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
--- SECURITY: set to empty or "" to disable these features
+-- SECURITY: set to :disabled to disable these features
 	extcon_path = "durden",
-	status_path = "<durden_status",
-	control_path = "<durden_control",
+	status_path = "durden_status",
+	control_path = "durden_control",
 
 -- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
 -- performance footprint etc. but prevents certain features like selective

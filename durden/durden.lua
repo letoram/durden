@@ -83,22 +83,22 @@ function durden(argv)
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
-	if (cp ~= nil and string.len(cp) > 0) then
+	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
 		durden_new_connection();
 	end
 
 -- unsetting these values will prevent all external communication that is not
 -- using the nonauth- connection or regular input devices
 	local sbar_fn = gconfig_get("status_path");
-	if (sbar_fn ~= nil and string.len(sbar_fn) > 0) then
+	if (sbar_fn ~= nil and string.len(sbar_fn) > 0 and sbar_fn ~= ":disabled") then
 		zap_resource(sbar_fn);
-		STATUS_CHANNEL = open_nonblock(sbar_fn);
+		STATUS_CHANNEL = open_nonblock("<" .. sbar_fn);
 	end
 
 	local cchan_fn = gconfig_get("control_path");
-	if (cchan_fn ~= nil and string.len(cchan_fn) > 0) then
+	if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") then
 		zap_resource(cchan_fn);
-		CONTROL_CHANNEL = open_nonblock(cchan_fn);
+		CONTROL_CHANNEL = open_nonblock("<" .. cchan_fn);
 	end
 
 -- add hooks for changes to all default  font properties
