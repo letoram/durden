@@ -14,12 +14,18 @@ function spawn_terminal()
 	local lstr = string.format(
 		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:width=%d:height=%d:ppcm=%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
-		gconfig_get("term_font_hint"), gconfig_get("term_font"),
+		TERM_HINT_RLUT[tonumber(gconfig_get("term_font_hint"))],
+		gconfig_get("term_font"),
 		wnd.width, wnd.height, ppcm, gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
 			("env=ARCAN_CONNPATH="..cp) or ""
 	);
+
+	local fbf = gconfig_get("font_fb");
+	if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
+		lstr = lstr .. string.format(":font_fb=[ARCAN_FONTPATH]/%s", fbf);
+	end
 
 	if (not gconfig_get("term_autosz")) then
 		lstr = lstr .. string.format(":width=%d:height=%d", wnd.width, wnd.height);

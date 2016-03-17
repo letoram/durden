@@ -53,7 +53,6 @@ it to an input device, UI element like a button or even a timer.
 
 UI directed configuration is made through global and target menus, accessible
 using meta1+g for global and meta1+t for target (if a window is selected).
->>>>>>> Stashed changes
 
 The menus are navigated by default using the arrow keys and enter to select and
 you can filter the list of shown items by typing. meta1+escape to go back one
