@@ -567,7 +567,7 @@ function suppl_run_value(ctx, mask)
 	local hintstr = string.format("%s %s %s",
 		ctx.label and ctx.label or "",
 		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
-			and ctx.initial() or ctx.initial) .. " ] ") or "",
+			and tostring(ctx.initial()) or ctx.initial) .. " ] ") or "",
 		ctx.hint and ((type(ctx.hint) == "function"
 		and ctx.hint() or ctx.hint) .. ":") or ""
 	);

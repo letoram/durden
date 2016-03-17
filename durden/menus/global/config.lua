@@ -227,10 +227,11 @@ local config_terminal_font = {
 		name = "terminal_font_hinting",
 		label = "Hinting",
 		kind = "value",
-		set = {"light", "mono", "none"},
-		initial = function() return gconfig_get("term_font_hint"); end,
+		set = {"none", "mono", "light", "normal", "subpixel"},
+		initial = function() return hint_rlut[
+		gconfig_get("term_font_hint")]; end,
 		handler = function(ctx, val)
-			gconfig_set("term_hint", tonumber(val));
+			gconfig_set("term_font_hint", hint_lut[val]);
 		end
 	},
 -- should replace with some "font browser" but we don't have asynch font
