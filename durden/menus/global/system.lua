@@ -20,10 +20,10 @@ local exit_query = {
 
 local ef = function() end;
 local idle_wakeup = ef;
-local idle_setup = function(val)
+local idle_setup = function(val, failed)
 	active_display():set_input_lock(ef);
 	timer_add_idle("idle_wakeup", 10, true, ef, function()
-		idle_wakeup(val);
+		idle_wakeup(val, failed);
 	end);
 end
 
@@ -35,7 +35,7 @@ local function idle_restore()
 	active_display():set_input_lock();
 end
 
-idle_wakeup = function(key)
+idle_wakeup = function(key, failed)
 	local bar = active_display():lbar(
 		function(ctx, msg, done, lastset)
 			if (not done) then
@@ -45,14 +45,15 @@ idle_wakeup = function(key)
 			if (msg == key) then
 				idle_restore();
 			else
-				idle_setup(key);
+				idle_setup(key, failed + 1);
 			end
 			iostatem_restore();
 		end,
-		{}, {label = "Key:", password_mask = true}
+		{}, {label = string.format(
+			"Key (%d Failed Attempts):", failed), password_mask = true}
 	);
 	bar.on_cancel = function()
-		idle_setup(key);
+		idle_setup(key, failed);
 	end
 end
 
@@ -68,7 +69,7 @@ local function lock_value(ctx, val)
 		hide_image(d.anchor);
 	end
 
-	idle_setup(val);
+	idle_setup(val, 0);
 end
 
 local reset_query = {
