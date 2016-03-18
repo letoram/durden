@@ -60,6 +60,7 @@ local defaults = {
 	mouse_remember_position = false,
 	mouse_factor = 1.0,
 	mouse_autohide = false,
+	mouse_reveal = true,
 	mouse_dblclick_step = 12,
 	mouse_hidetime = 40,
 	mouse_hovertime = 40,

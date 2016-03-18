@@ -130,6 +130,7 @@ function iostatem_devcount()
 			i = i + 1;
 		end
 	end
+	return i;
 end
 
 function iostatem_init()

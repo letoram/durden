@@ -202,6 +202,22 @@ end
 -- this can be overridden to cache previous queries
 mouse_pickfun = pick_items;
 
+local function def_reveal()
+	for i=1,20 do
+		local surf = color_surface(16, 16, 0, 255, 0);
+		show_image(surf);
+		local seed = math.random(80) - 40;
+		order_image(surf, 65534);
+		local intime = math.random(50);
+		local mx, my = mouse_xy();
+		move_image(surf, mx, my);
+		nudge_image(surf, math.random(150) - 75,
+			math.random(150) - 75, intime);
+		expire_image(surf, intime);
+		blend_image(surf, 0.0, intime);
+	end
+end
+
 local function linear_find(table, label)
 	for a,b in pairs(table) do
 		if (b == label) then return a end
@@ -663,6 +679,16 @@ local function mbh(hists, state)
 	mstate.btns[3] = state[3];
 end
 
+function mouse_reveal_hook(state)
+	if (type(state) == "function") then
+		mstate.reveal_hook = state;
+	elseif (state) then
+		mstate.reveal_hook = def_reveal;
+	else
+		mstate.reveal_hook = nil;
+	end
+end
+
 function mouse_input(x, y, state, noinp)
 	if (mstate.hidden and (x ~= 0 or y ~= 0)) then
 
@@ -670,6 +696,10 @@ function mouse_input(x, y, state, noinp)
 			instant_image_transform(mstate.cursor);
 			blend_image(mstate.cursor, 1.0, 10);
 			mstate.hidden = false;
+		end
+
+		if (mstate.reveal_hook) then
+			mstate.reveal_hook();
 		end
 
 	elseif (mstate.hidden) then
