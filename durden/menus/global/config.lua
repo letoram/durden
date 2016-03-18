@@ -197,17 +197,73 @@ local durden_system = {
 		name = "system_connpath",
 		label = "Connection Path",
 		kind = "value",
-		validator = function(num) return true; end,
+		hint = "(a..Z_)",
+		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("extcon_path");
-			return path == "" and "[disabled]" or path;
+			return path == ":disabled" and "[disabled]" or path;
 		end,
 		handler = function(ctx, val)
 			if (valid_vid(INCOMING_ENDPOINT)) then
 				delete_image(INCOMING_ENDPOINT);
 				INCOMING_ENDPOINT = nil;
 			end
+			if (string.len(val) == 0) then
+				val = ":disabled";
+			else
+				durden_new_connection();
+			end
 			gconfig_set("extcon_path", val);
-			durden_new_connection();
+		end
+	},
+	{
+		name = "system_controlpipe",
+		label = "Control Pipe",
+		kind = "value",
+		hint = "(a..Z_)",
+		default = true,
+		validator = strict_fname_valid,
+		initial = function() local path = gconfig_get("control_path");
+			return path == ":disabled" and "[disabled]" or path;
+		end,
+		handler = function(ctx, val)
+			if (CONTROL_CHANNEL) then
+				CONTROL_CHANNEL:close();
+				zap_resource(gconfig_get("control_path"));
+				CONTROL_CHANNEL = nil;
+			end
+
+			if (string.len(val) == 0) then
+				val = ":disabled";
+			else
+				COMMAND_CHANNEL = open_nonblock("<" .. val);
+			end
+			gconfig_set("control_path", val);
+		end
+	},
+	{
+		name = "system_statuspipe",
+		label = "Status Pipe",
+		kind = "value",
+		default = true,
+		hint = "(a..Z_)",
+		validator = strict_fname_valid,
+		initial = function() local path = gconfig_get("status_path");
+			return path == ":disabled" and "[disabled]" or path;
+		end,
+		handler = function(ctx, val)
+			if (STATUS_CHANNEL) then
+				STATUS_CHANNEL:close();
+				zap_resource(gconfig_get("status_path"));
+				STATUS_CHANNEL = nil;
+			end
+
+			if (string.len(val) == 0) then
+				val = ":disabled";
+			else
+				STATUS_CHANNEL = open_nonblock("<" .. val);
+			end
+
+			gconfig_set("status_path", val);
 		end
 	}
 };

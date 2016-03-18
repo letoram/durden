@@ -79,7 +79,7 @@ end
 function string.utf8len(src, ofs)
 	local i = 0;
 	local rawlen = string.len(src);
-	ofs = ofs < 1 and 1 or ofs
+	ofs = ofs < 1 and 1 or ofs;
 
 	while (ofs <= rawlen) do
 		local kind = utf8kind( string.byte(src, ofs) );
@@ -123,7 +123,19 @@ function string.delete_at(src, ofs)
 end
 
 function string.trim(s)
-  return (s:gsub("^%s*(.-)%s*$", "%1"))
+  return (s:gsub("^%s*(.-)%s*$", "%1"));
+end
+
+-- to ensure "special" names e.g. connection paths for target alloc,
+-- or for connection pipes where we want to make sure the user can input
+-- no matter keylayout etc.
+strict_fname_valid = function(val)
+	for i in string.gmatch(val, "%W") do
+		if (i ~= '_') then
+			return false;
+		end
+	end
+	return true;
 end
 
 function string.utf8back(src, ofs)
