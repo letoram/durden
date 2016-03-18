@@ -1,10 +1,12 @@
 --
 -- wrapper for _input_event that tracks device states for repeat-rate control
--- only support the last translated device at the moment, plan is to expand
--- with configurable repeatability for all digital devices.
+-- and for "uncommon" devices that fall outside the normal keyboard/mouse
+-- setup, that require separate lookup and translation, including state-
+-- toggle on a per window (save/restore) basis etc.
 --
 
 local devstate = {};
+local devices = {};
 
 -- returns a table that can be used to restore the input state, used
 -- for context switching between different windows or input targets.
@@ -84,7 +86,50 @@ function iostatem_tick()
 		end
 	end
 
--- scan devstate.devices
+-- scan devstate.devices and emitt similar events for the auto-
+-- repeat toggles there
+end
+
+function iostatem_added(iotbl)
+	local dev = devices[iotbl.devid];
+	if (not dev) then
+-- locate last saved device settings etc.
+		devices[iotbl.devid] = {
+			devid = iotbl.devid,
+			translated = iotbl.translated
+		};
+	else
+-- keeping this around for devices and platforms that generate a new
+-- ID for each insert/removal will slooowly leak (unlikely though)
+		if (dev.lost) then
+			dev.lost = false;
+-- re-run possible device filtering settings
+		else
+			warning("added existing device, likely platform bug.");
+		end
+	end
+end
+
+function iostatem_removed(iotbl)
+	local dev = devices[iotbl.devid];
+	if (dev) then
+		devices[iotbl.devid].lost = true;
+-- protection against keyboard behaving differently when lost/found
+		if (devices[iotbl.devid].translated) then
+			meta_guard_reset();
+		end
+	else
+		warning("remove unknown device, likely platform bug.");
+	end
+end
+
+function iostatem_devcount()
+	local i = 0;
+	for k,v in pairs(devices) do
+		if (not devices[iotbl.devid].lost) then
+			i = i + 1;
+		end
+	end
 end
 
 function iostatem_init()

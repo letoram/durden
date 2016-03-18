@@ -39,6 +39,7 @@ function durden(argv)
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("wnd_settings.lua")(); -- per window settings persistence
+	system_load("iopipes.lua")(); -- status and command channels
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 
 -- functions exposed to user through menus, binding and scripting
@@ -85,20 +86,6 @@ function durden(argv)
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
 		durden_new_connection();
-	end
-
--- unsetting these values will prevent all external communication that is not
--- using the nonauth- connection or regular input devices
-	local sbar_fn = gconfig_get("status_path");
-	if (sbar_fn ~= nil and string.len(sbar_fn) > 0 and sbar_fn ~= ":disabled") then
-		zap_resource(sbar_fn);
-		STATUS_CHANNEL = open_nonblock("<" .. sbar_fn);
-	end
-
-	local cchan_fn = gconfig_get("control_path");
-	if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") then
-		zap_resource(cchan_fn);
-		CONTROL_CHANNEL = open_nonblock("<" .. cchan_fn);
 	end
 
 -- add hooks for changes to all default  font properties
@@ -349,78 +336,6 @@ function durden_new_connection(source, status)
 	end
 end
 
---
--- text/line command protocol for doing status bar updates, etc.
--- as this grows, move into its own separate module.
---
-local function poll_status_channel()
-	local line = STATUS_CHANNEL:read();
-	if (line == nil or string.len(line) == 0) then
-		return;
-	end
-
-	local cmd = string.split(line, ":");
-	cmd = cmd == nil and {} or cmd;
-	local fmt = string.format("%s \\#ffffff", gconfig_get("font_str"));
-
-	if (cmd[1] == "status_1") then
--- escape control characters so we don't get nasty \f etc. commands
-		local vid = render_text({fmt, msg});
-		if (valid_vid(vid)) then
-			active_display():update_statusbar({}, vid);
-		end
-	else
-		dispatch_symbol(cmd[1]);
-	end
-end
-
-local function poll_control_channel()
-	local line = CONTROL_CHANNEL:read();
-	if (line == nil or string.len(line) == 0) then
-		return;
-	end
-
-	local elem = string.split(line, ":");
-
--- hotplug event
-	if (elem[1] == "rescan_displays") then
-		video_displaymodes();
-		return;
-	end
-
-	if (#elem ~= 2) then
-		warning("broken command received on control channel, expected 2 args");
-		return;
-	end
-
-	if (elem[1] == "screenshot") then
-		local rt = active_display(true);
-		if (valid_vid(rt)) then
-			save_screenshot(elem[2], FORMAT_PNG, rt);
-			active_display():message("saved screenshot");
-		end
-
-	elseif (DEBUGLEVEL > 0 and elem[1] == "snapshot") then
-		system_snapshot("debug/" .. elem[2]);
-		active_display():message("saved debug snapshot");
-	else
-		if (not allowed_commands(elem[2])) then
-			warning("unknown/disallowed command: " .. elem[2]);
-			return;
-		end
-
-		if (elem[1] == "command") then
-			dispatch_symbol(elem[2]);
-		elseif (elem[1] == "global") then
-			dispatch_symbol("!/" .. elem[2]);
-		elseif (elem[1] == "target") then
-			dispatch_symbol("#/" .. elem[2]);
-		else
-			warning("unknown command namespace: " .. elem[1]);
-		end
-	end
-end
-
 local mid_c = 0;
 local mid_v = {0, 0};
 
@@ -455,6 +370,11 @@ function durden_normal_input(iotbl, fromim)
 	if (iotbl.kind == "status") then
 		active_display():message(string.format("%d:%d %s",
 			iotbl.devid, iotbl.subid, iotbl.action));
+		if (iotbl.action == "added") then
+			iostatem_added(iotbl);
+		elseif (iotbl.action == "removed") then
+			iostatem_removed(iotbl);
+		end
 		return;
 	end
 
@@ -556,22 +476,17 @@ function durden_locked_input(iotbl)
 
 	timer_reset_idle();
 
--- notranslate option will still forward to WM
+-- notranslate option will still forward to WM and allows meta- guard to work,
+-- but nothing else. So it should not be possible to set lock, plug/unplug
+-- keyboard, hammer for meta-state and then get rid if locked state.
 	local ok, outsym, iotbl = dispatch_translate(iotbl, true);
 end
-
 
 durden_input = durden_normal_input;
 
 function durden_shutdown()
 	SYMTABLE:store_translation();
 	gconfig_shutdown();
-	if (STATUS_CHANNEL) then
-		zap_resource(gconfig_get("status_path"));
-	end
-	if (CONTROL_CHANNEL) then
-		zap_resource(gconfig_get("control_path"));
-	end
 end
 
 local function flush_pending()
@@ -604,15 +519,4 @@ function durden_clock_pulse(n)
 	flush_pending();
 	mouse_tick(1);
 	display_tick();
-
--- don't do this too often, no reason to..
-	if (CLOCK % 4 == 0) then
-		if (STATUS_CHANNEL) then
-			poll_status_channel();
-		end
-
-		if (CONTROL_CHANNEL) then
-			poll_control_channel();
-		end
-	end
 end
