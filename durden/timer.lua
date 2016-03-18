@@ -87,8 +87,9 @@ function timer_list(group, active)
 	local res = {};
 	for i,j in ipairs(groups) do
 		for k,l in ipairs(j) do
-			if (active == nil or ((active == true and not l.suspended) or
-				(active == false and l.suspended))) then
+			if (not l.hidden and (
+				active == nil or ((active == true and not l.suspended) or
+				(active == false and l.suspended)))) then
 				table.insert(res, l.name);
 			end
 		end
@@ -160,7 +161,7 @@ end
 -- [trigger] is the required callback that will be invoked,
 -- [wtrigger] is an optional callback that will be triggered when we
 -- move out of idle state.
-local function add(dst, name, delay, once, trigger, wtrigger)
+local function add(dst, name, delay, once, trigger, wtrigger, hidden)
 	assert(name);
 	assert(delay);
 	assert(trigger and type(trigger) == "function");
@@ -180,17 +181,18 @@ local function add(dst, name, delay, once, trigger, wtrigger)
 			wakeup = wtrigger
 		};
 	end
+	res.hidden = hidden;
 	table.insert(dst, res);
 	return res;
 end
 
-function timer_add_idle(name, delay, once, trigger, wtrigger)
-	local grp = add(idle_timers, name, delay, once, trigger, wtrigger);
+function timer_add_idle(name, delay, once, trigger, wtrigger, hidden)
+	local grp = add(idle_timers, name, delay, once, trigger, wtrigger, hidden);
 	grp.kind = "idle";
 end
 
-function timer_add_periodic(name, delay, once, trigger)
-	local grp = add(timers, name, delay, once, trigger);
+function timer_add_periodic(name, delay, once, trigger, hidden)
+	local grp = add(timers, name, delay, once, trigger, hidden);
 	grp.count = delay;
 	grp.kind = "periodic";
 end

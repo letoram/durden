@@ -218,12 +218,6 @@ local bind_menu = {
 		label = "Unbind",
 		handler = grab_global_function("unbind_combo")
 	},
-	{
-		name = "input_bind_utf8",
-		kind = "action",
-		label = "UTF-8",
-		handler = grab_global_function("bind_utf8")
-	}
 };
 
 return {
@@ -247,6 +241,24 @@ return {
 		label = "Mouse",
 		submenu = true,
 		handler = mouse_menu
+	},
+	{
+		name = "input_devices_menu",
+		kind = "action",
+		label = "Devices",
+		submenu = true,
+		eval = function()
+			return iostatem_devcount() > 0;
+		end,
+		handler = odev_menu
+	},
+	{
+		name = "rescan_devices",
+		kind = "action",
+		label = "Rescan",
+		handler = function()
+			inputanalog_query(); -- sideeffect, actually rescans on some platforms
+		end
 	}
 };
 
