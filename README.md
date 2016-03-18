@@ -22,6 +22,9 @@ Durden is Licensed in the 3-clause BSD format that can be found in the
 licensing file. The included terminal font, Hack-Bold is (c) Chris Simpkins
 and licensed under the Apache-2.0 license.
 
+The includede fallback font, Emoji-One is provided free (cc-by 4.0 attribution)
+by http://emojione.com
+
 Starting / Configuring
 =====
 
