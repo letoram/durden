@@ -110,6 +110,8 @@ function durden(argv)
 	dispatch_load();
 	iostatem_init();
 
+	mouse_reveal_hook(gconfig_get("mouse_reveal"));
+
 -- hook some API functions for debugging purposes
 	if (DEBUGLEVEL > 0) then
 		local oti = target_input;

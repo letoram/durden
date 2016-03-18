@@ -62,6 +62,19 @@ local mouse_menu = {
 		end
 	},
 	{
+		name = "mouse_reveal",
+		kind = "value",
+		label = "Reveal/Hide",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("mouse_reveal") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_reveal", val == LBL_YES);
+			mouse_reveal_hook(val == LBL_YES);
+		end
+	},
+	{
 		name = "mouse_hardlock",
 		kind = "value",
 		label = "Hard Lock",
