@@ -74,7 +74,7 @@ return {
 		handler = filtermodes
 	},
 	{
-		name = "Opacity",
+		name = "target_opacity",
 		label = "Opacity",
 		kind = "value",
 		hint = "(0..1)",
@@ -86,6 +86,18 @@ return {
 				blend_image(wnd.border, opa);
 				blend_image(wnd.canvas, opa);
 			end
+		end
+	},
+	{
+		name = "screenshot",
+		label = "Screenshot",
+		kind = "value",
+		hint = "(full path)",
+		validator = function(val)
+			return string.len(val) > 0 and not resource(val);
+		end,
+		handler = function(ctx, val)
+			save_screenshot(val, FORMAT_PNG, active_display().selected.canvas);
 		end
 	},
 	{
