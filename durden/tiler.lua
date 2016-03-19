@@ -162,7 +162,9 @@ local function wnd_deselect(wnd, nopick)
 
 	local x, y = mouse_xy();
 	if (image_hit(wnd.canvas, x, y) and wnd.cursor == "hidden") then
+		mouse_hidemask(true);
 		mouse_show();
+		mouse_hidemask(false);
 	end
 
 	local state = wnd.suspended and "suspended" or "inactive";
@@ -333,7 +335,9 @@ local function wnd_select(wnd, source)
 			px = wnd.mouse[1];
 			py = wnd.mouse[2];
 		end
+		mouse_hidemask(true);
 		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
+		mouse_hidemask(false);
 		mouse_moved = true;
 	end
 	mouse_state().last_hover = CLOCK;
@@ -1889,7 +1893,9 @@ local canvas_mh = {
 	end,
 
 	out = function(ctx)
+		mouse_hidemask(true);
 		mouse_show();
+		mouse_hidemask(false);
 	end,
 
 	button = function(ctx, vid, ...)
@@ -2416,7 +2422,9 @@ local function tiler_activate(wm)
 	if (wm.deactivated) then
 		local deact = wm.deactivated;
 		wm.deactivated = nil;
+		mouse_hidemask(true);
 		mouse_absinput(deact.mx, deact.my, true);
+		mouse_hidemask(false);
 		if (deact.wnd) then
 			deact.wnd:select();
 		end

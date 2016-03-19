@@ -690,7 +690,7 @@ function mouse_reveal_hook(state)
 end
 
 function mouse_input(x, y, state, noinp)
-	if (mstate.hidden and (x ~= 0 or y ~= 0)) then
+	if (not mstate.revmask and mstate.hidden and (x ~= 0 or y ~= 0)) then
 
 		if (mstate.native == nil) then
 			instant_image_transform(mstate.cursor);
@@ -977,6 +977,10 @@ end
 function mouse_autohide()
 	mstate.autohide = not mstate.autohide;
 	return mstate.autohide;
+end
+
+function mouse_hidemask(st)
+	mstate.revmask = st;
 end
 
 function mouse_show()
