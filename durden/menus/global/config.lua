@@ -164,7 +164,8 @@ local durden_workspace = {
 		label = "Autodelete",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
-		initial = function() return tostring(gconfig_get("ws_autodestroy")); end,
+		initial = function() return
+			gconfig_get("ws_autodestroy") and LBL_YES or LBL_NO end,
 		handler = function(ctx, val)
 			gconfig_set("ws_autodestroy", val == LBL_YES);
 		end
@@ -184,7 +185,8 @@ local durden_workspace = {
 		label = "Autoadopt",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
-		eval = function() return gconfig_get("display_simple") == false; end,
+		eval = function() return gconfig_get("display_simple")
+			and LBL_YES or LBL_NO; end,
 		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
 		handler = function(ctx, val)
 			gconfig_set("ws_autoadopt", val == LBL_YES);

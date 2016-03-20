@@ -186,6 +186,9 @@ are being implemented, we have the following list:
   -  [x] External Command Interface
 - [ ] Input
   - [ ] Gaming Devices
+    - [x] Basic Support (maps, scan, plug/unplug)
+    - [ ] Axis Remapping
+    - [ ] Axis Filtering
     - [ ] Analog Calibration
     - [ ] Autofire
   - [ ] Touchpads/screens

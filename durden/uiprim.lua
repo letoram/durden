@@ -87,7 +87,7 @@ local function button_labelupd(btn, lbl)
 	btn.h = h;
 
 -- finally make the visual changes
-	image_tracetag(btn.lbl, btn.name .. "_label");
+	image_tracetag(btn.lbl, btn.lbl_tag);
 	resize_image(btn.bg, btn.w, btn.h);
 	link_image(btn.lbl, btn.bg);
 	image_mask_set(btn.lbl, MASK_UNPICKABLE);
@@ -192,7 +192,7 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 		show = button_show,
 		constrain = button_constrain
 	};
-
+	res.lbl_tag = res.name .. "_label";
 	if (not bgshname) then
 		res.bg = null_surface(1, 1);
 	else

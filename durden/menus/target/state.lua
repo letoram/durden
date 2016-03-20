@@ -48,8 +48,9 @@ return {
 	{
 		name = "state_save",
 		label = "Save",
-		kind = "action",
+		kind = "value",
 		submenu = true,
+		initial = "kuksaft",
 		handler = function()
 			warning("missing: query state name");
 			return {};
@@ -57,6 +58,16 @@ return {
 		eval = function()
 			local wnd = active_display().selected;
 			return active_display().selected.stateinf ~= nil;
+		end
+	},
+	{
+		name = "state_update",
+		label = "State",
+		submenu = true,
+		eval = function()
+		end,
+		handler = function(ctx, v)
+			warning("enumerate states");
 		end
 	},
 	{

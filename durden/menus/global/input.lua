@@ -138,6 +138,151 @@ local function bind_utf8()
 	end);
 end
 
+local function gen_axismenu(devid, subid, pref)
+
+end
+
+local function gen_analogmenu(v, pref)
+	local res = {};
+	local state = inputanalog_query(v.devid, 100);
+
+	local i = 0;
+	while (true) do
+		local state = inputanalog_query(v.devid, i);
+		if (not state.subid) then
+			break;
+		end
+
+-- this can be very exhausting for a device that exposes many axes, but we have
+-- no mechanism for identifying or labeling these in any relevant layer. The
+-- fallback would be a database, but that's quite a bad solution. Indeed, this
+-- interface should only really be used for binding specific settings in edge
+-- cases that require it, but this is really a problem that calls for a
+-- 'analog- monitor-UI' where we map samples arriving, allowing pick/drag to
+-- change values
+		table.insert(res, {
+			label = tostring(i),
+			name = pref .. "_ax_" .. tostring(i),
+			kind = "action",
+			submenu = true,
+			handler = function() return gen_axismenu(v, pref); end
+		});
+		i = i + 1;
+	end
+
+	return res;
+end
+
+local function gen_bmenu(v, pref)
+	local res = {
+		{
+			label = "Global Action",
+			name = pref .. "_global",
+			kind = "action",
+			handler = function()
+-- launch filtered bind that resolves to dig_id_subid
+			end
+		},
+		{
+			label = "Target Action",
+			name = pref .. "_target",
+			kind = "action",
+			handler = function()
+-- launch filtered bind that resolves to dig_id_subid
+			end
+		},
+		{
+			label = "",
+			name = pref .. "UTF-8",
+			kind = "action",
+			handler = function()
+-- launch filtered bind, set iostatem_ translate emit
+			end
+		},
+		{
+			label = "",
+			name = pref .. "Label",
+			kind = "value",
+			initial = "BUTTON1",
+			validator = strict_fname_valid,
+			handler = function(ctx, val)
+-- launch filtered bind, set iostatem_ label
+			end
+		}
+	};
+end
+
+local function gen_smenu(v, pref)
+	return
+		{
+			label = "Slot",
+			name = pref .. "slotv",
+			kind = "value",
+			validator = gen_valid_num(1, 8),
+			initial = tostring(v.slot),
+			handler = function(ctx, val)
+				v.slot = tonumber(val);
+			end
+		};
+end
+
+local function dev_menu(v)
+	local pref = string.format("dev_%d_", v.devid);
+	local res = {
+		{
+			name = pref .. "bind",
+			label = "Bind",
+			handler = function() return gen_bmenu(v, pref .. "_bind"); end,
+			kind = "action",
+			submenu = true
+		},
+		{
+			name = pref .. "always_on",
+			label = "Always On",
+			kind = "value",
+			set = {LBL_YES, LBL_NO},
+			initial = function()
+				return v.force_analog and LBL_YES or LBL_NO;
+			end,
+		},
+		gen_smenu(v, pref)
+	};
+	local state = inputanalog_query(v.devid);
+
+-- might have disappeared while waiting
+	if (not state) then
+		return;
+	else
+		table.insert(res, {
+			name = pref .. "analog",
+			label = "Analog",
+			submenu = true,
+			kind = "action",
+			eval = function() return #gen_analogmenu(v, pref) > 0; end,
+			handler = function()
+				return gen_analogmenu(v, pref .. "alog_");
+			end
+		});
+	end
+
+	return res;
+end
+
+local function gen_devmenu(v)
+	local res = {};
+	for k,v in iostatem_devices() do
+		table.insert(res, {
+			name = string.format("dev_%d_main", v.devid),
+			label = v.label,
+			kind = "action",
+			hint = string.format("(id %d, slot %d)", v.devid, v.slot),
+			submenu = true,
+			handler = function() return dev_menu(v); end
+		});
+	end
+	return res;
+end
+
 local keymaps_menu = {
 	{
 		name = "keymap_switch",
@@ -176,7 +321,6 @@ local keyb_menu = {
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_period", val);
-			iostatem_repeat(val, nil);
 		end
 	},
 	{
@@ -188,7 +332,6 @@ local keyb_menu = {
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_delay", val);
-			iostatem_repeat(nil, val);
 		end
 	},
 	{
@@ -263,16 +406,15 @@ return {
 		eval = function()
 			return iostatem_devcount() > 0;
 		end,
-		handler = odev_menu
+		handler = gen_devmenu;
 	},
 	{
 		name = "rescan_devices",
 		kind = "action",
 		label = "Rescan",
 		handler = function()
-			inputanalog_query(); -- sideeffect, actually rescans on some platforms
+-- sideeffect, actually rescans on some platforms
+			inputanalog_query(nil, nil, true);
 		end
 	}
 };
-
-

@@ -519,7 +519,11 @@ local function seth(ctx, instr, done, lastv)
 		menu_hook = nil;
 		fun(table.concat(cpath.path, "/") .. "=" .. instr);
 	else
-		ctx.handler(ctx, instr);
+		if (ctx.handler) then
+			ctx.handler(ctx, instr);
+		else
+			warning("broken menu entry");
+		end
 	end
 	cpath:reset();
 end
@@ -693,7 +697,12 @@ end
 --  + any data the handler might need
 --
 function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
-	if (ctx == nil or ctx.list == nil or #ctx.list == 0) then
+	if (ctx == nil or ctx.list == nil or type(ctx.list) ~= "table") then
+		cpath:reset();
+		return;
+	end
+
+	if (#ctx.list == 0) then
 		cpath:reset();
 		return;
 	end

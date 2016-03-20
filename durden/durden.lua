@@ -240,16 +240,12 @@ end
 local function sel_input(wnd)
 	local cnt = 0;
 	SYMTABLE:translation_overlay(wnd.u8_translation);
-	iostatem_repeat(
-		wnd.kbd_period and wnd.kbd_period or
-		gconfig_get("kbd_period"), wnd.kbd_delay and wnd.kbd_delay or
-		gconfig_get("kbd_delay")
-	);
+	iostatem_restore(wnd.iostatem);
 end
 
 local function desel_input(wnd)
 	SYMTABLE:translation_overlay({});
-	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
+	wnd.iostatem = iostatem_save();
 	mouse_switch_cursor("default");
 end
 
@@ -363,6 +359,18 @@ local function mousemotion(iotbl)
 	end
 end
 
+-- shared between the other input forms (normal, locked, ...)
+local function status_handler(iotbl)
+	active_display():message(string.format("%d:%d %s",
+		iotbl.devid, iotbl.subid, iotbl.action));
+
+	if (iotbl.action == "added") then
+		iostatem_added(iotbl);
+	elseif (iotbl.action == "removed") then
+		iostatem_removed(iotbl);
+	end
+end
+
 function durden_normal_input(iotbl, fromim)
 -- we track all iotbl events in full debug mode
 	if (DEBUGLEVEL > 2 and active_display().debug_console) then
@@ -370,23 +378,19 @@ function durden_normal_input(iotbl, fromim)
 	end
 
 	if (iotbl.kind == "status") then
-		active_display():message(string.format("%d:%d %s",
-			iotbl.devid, iotbl.subid, iotbl.action));
-		if (iotbl.action == "added") then
-			iostatem_added(iotbl);
-		elseif (iotbl.action == "removed") then
-			iostatem_removed(iotbl);
-		end
+		status_handler(iotbl);
 		return;
 	end
 
 	ievcount = ievcount + 1;
 
--- first we feed into the simulated repeat state manager, this will
--- invoke the callback handler and set fromim if it is a repeated/held
--- input.
+-- iostate manager takes care of mapping or translating 'game' devices,
+-- stateful "per window" tracking and "autofire" or "repeat" injections
+-- but tries to ignore mouse devices.
 	if (not fromim) then
-		iostatem_input(iotbl);
+		if (iostatem_input(iotbl)) then
+			return;
+		end
 	end
 
 -- since we have some kind of input event, reset our idle timers
@@ -436,6 +440,11 @@ end
 -- see 'select_region_*' global functions + some button to align
 -- with selected window (if any, like m1 and m2)
 function durden_regionsel_input(iotbl)
+	if (iotbl.kind == "status") then
+		status_handler(iotbl);
+		return;
+	end
+
 	if (iotbl.translated and iotbl.active) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 
@@ -472,6 +481,11 @@ end
 -- no keyrepeat, only forward to timer and wm, used for the
 -- system/lock=key state.
 function durden_locked_input(iotbl)
+	if (iotbl.kind == "status") then
+		status_handler(iotbl);
+		return;
+	end
+
 	if (not iotbl.translated) then
 		return;
 	end
