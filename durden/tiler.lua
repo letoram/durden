@@ -461,6 +461,13 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_out");
 
+-- hack so that deselect event is sent but not all other state changes trigger
+	if (space.selected and not noanim) then
+		local sel = space.selected;
+		wnd_deselect(space.selected);
+		space.selected = sel;
+	end
+
 -- notify windows that they can take things slow
 	for k,v in ipairs(space.wm.windows) do
 		if (v.space == space) then
@@ -1344,7 +1351,13 @@ local function wnd_reassign(wnd, ind, ninv)
 -- weights aren't useful for new space, reset
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
-	wnd:deselect();
+
+-- edge condition, if oldspace had more children, the select event would
+-- have caused a deselect already - but deselect can only be called once
+-- or iostatem_ saving will be messed up.
+	if (#oldspace.children == 0) then
+		wnd:deselect();
+	end
 
 -- subtle resize in order to propagate resize events while still hidden
 	if (not(newspace.selected and newspace.selected.fullscreen)) then

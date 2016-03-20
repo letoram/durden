@@ -187,6 +187,17 @@ function(wnd, source, stat)
 	wnd.source_audio = stat.source_audio;
 	wnd.atype = atbl.atype;
 
+-- should always be true but ..
+	if (active_display().selected == wnd) then
+		if (atbl.props.kbd_period) then
+			iostatem_repeat(atbl.props.kbd_period);
+		end
+
+		if (atbl.props.kbd_delay) then
+			iostatem_repeat(nil, atbl.props.kbd_delay);
+		end
+	end
+
 -- specify default shader by properties (e.g. no-alpha, fft) or explicit name
 	if (atbl.default_shader) then
 		shader_setup(wnd.canvas, unpack(atbl.default_shader));

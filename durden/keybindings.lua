@@ -203,7 +203,8 @@ local function track_label(iotbl, keysym, hook_handler)
 		metam = true;
 	end
 
-	local lutsym = "" .. (meta_1_state == true and "m1_" or "") ..
+	local lutsym = "" ..
+		(meta_1_state == true and "m1_" or "") ..
 		(meta_2_state == true and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
@@ -218,31 +219,47 @@ local function track_label(iotbl, keysym, hook_handler)
 	return false, lutsym;
 end
 
--- only for digital events, notice the difference between OUTSYM and LUTSYM,
--- where OUTSYM will be prefixed with altgr_ lalt_ lshift_ style modifiers
--- and LUTSYM will be prefixed with m1_ m2_.
--- UI features and bindings should use m1_, m2_
+--
+-- Central input management / routing / translation outside of
+-- mouse handlers and iostatem_ specific translation and patching.
+--
+-- definitions:
+-- SYM = internal SYMTABLE level symble
+-- LUTSYM = prefix with META1 or META2 (m1, m2) state (or device data)
+-- OUTSYM = prefix with normal modifiers (ALT+x, etc.)
+-- LABEL = more abstract and target specific identifier
+--
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym;
 	local sel = active_display().selected;
 
--- apply keymap (or possibly local keymap)
-	if (iotbl.translated) then
-		if (sel and sel.symtable) then
+-- apply keymap (or possibly local keymap), note that at this stage,
+-- iostatem_ has converted any digital inputs that are active to act
+-- like translated
+	if (iotbl.translated or iotbl.dsym) then
+		if (iotbl.dsym) then
+			sym = iotbl.dsym;
+			outsym = sym;
+		elseif (sel and sel.symtable) then
 			sym, outsym = sel.symtable:patch(iotbl);
 		else
 			sym, outsym = SYMTABLE:patch(iotbl);
 		end
+-- generate durden specific meta- tracking or apply binding hooks
+		ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
+
+	elseif (iotbl.analog) then
+		if (active_display().input_alock) then
+			ok = active_display().input_alock(iotbl);
+		end
 	else
--- FIXME: apply special mouse /game-dev related translations
+-- miss handling of other sensors and touch devices here
 	end
 
-	if (not sym) then
+	if (not lutsym) then
 		return false, nil, iotbl;
 	end
 
--- generate durden specific meta- tracking or apply binding hooks
-	local ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
 	if (ok or nodispatch) then
 		return true, lutsym, iotbl, tbl[lutsym];
 	end
@@ -263,12 +280,12 @@ function dispatch_translate(iotbl, nodispatch)
 		end
 		ok = true;
 -- or an input handler unique for the window
-	elseif (sel.key_input) then
+	elseif (not iotbl.analog and sel.key_input) then
 		sel:key_input(outsym, iotbl);
 		ok = true;
 	else
 -- for label bindings, we go with the non-internal view of modifiers
-		iotbl.label = sel.labels[outsym];
+		iotbl.label = sel.labels[outsym] and sel.labels[outsym] or iotbl.label;
 	end
 
 	return ok, outsym, iotbl;

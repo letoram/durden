@@ -87,7 +87,7 @@ local defaults = {
 
 -- default keyboard repeat rate for all windows, some archetypes have
 -- default overrides and individual windows can have strong overrides
-	kbd_period = 60,
+	kbd_period = 2,
 	kbd_delay = 300,
 
 -- built-in terminal defaults

@@ -44,6 +44,7 @@ local function destroy(wm, ictx)
 	end
 	pending = {};
 
+	iostatem_restore(ictx.iostate);
 -- our lbar
 	local ictx = wm.input_ctx;
 	local time = gconfig_get("lbar_transition");
@@ -72,9 +73,7 @@ end
 
 local function accept_cancel(wm, accept)
 	local ictx = wm.input_ctx;
-	if (not ictx.no_destroy) then
-		destroy(wm, ictx);
-	end
+	destroy(wm, ictx);
 
 	if (accept) then
 		local base = ictx.inp.msg;
@@ -506,13 +505,9 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		set_label = lbar_label,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		no_destroy = opts.no_destroy,
 		helpers = {{}, {}, {}},
 		destroy = function()
 			accept_cancel(active_display(), false);
-			if (opts.no_destroy) then
-				destroy(wm, wm.input_ctx);
-			end
 		end,
 		helper_tags = lbar_helper,
 		cofs = 1,
@@ -522,6 +517,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret = car,
 		caret_y = carety,
 		cleanup = opts.cleanup,
+		iostate = iostatem_save(),
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};

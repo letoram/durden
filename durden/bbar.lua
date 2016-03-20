@@ -66,8 +66,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 	end
 end
 
--- for the cases where we accept both a meta - key binding or a regular press,
--- typically odd / weird cases like game devices
+-- for the cases where we accept both a meta - key binding or a regular press
 local function bbar_input_keyorcombo(wm, sym, iotbl, lutsym, mstate)
 	if (sym == SYSTEM_KEYS["meta_1"] or sym == SYSTEM_KEYS["meta_2"]) then
 		return;

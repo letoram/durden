@@ -150,8 +150,8 @@ local kbd_menu = {
 		initial = function() return tostring(0); end,
 		hint = "cps (0:disabled - 100)",
 		validator = gen_valid_num(0, 100);
-		handler = function()
-			warning("set repeat rate");
+		handler = function(ctx, num)
+			iostatem_repeat(tonumber(num));
 		end
 	},
 	{
@@ -160,8 +160,8 @@ local kbd_menu = {
 		kind = "value",
 		initial = function() return tostring(0); end,
 		hint = "ms (0:disable - 1000)",
-		handler = function()
-			warning("set repeat delay");
+		handler = function(ctx, num)
+			iostatem_repeat(nil, tonumber(num));
 		end
 	},
 };
