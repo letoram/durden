@@ -729,6 +729,10 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 -- this was initially written to be independent, that turned out to be a
 -- terrible design decision.
 	local bar = wm:lbar(lbar_fun, ctx, opts);
+	if (not bar) then
+		return;
+	end
+
 	if (not bar.on_cancel) then
 		bar.on_cancel = menu_cancel;
 	end

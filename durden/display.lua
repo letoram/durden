@@ -103,6 +103,11 @@ end
 
 local known_dispids = {};
 
+local function get_ppcm(pw_cm, ph_cm, dw, dh)
+	return (math.sqrt(dw * dw + dh * dh) /
+		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
+end
+
 function durden_display_state(action, id)
 	if (displays.simple) then
 		return;
@@ -148,10 +153,7 @@ function durden_display_state(action, id)
 			subpx = subpx == "unknown" and "RGB" or subpx;
 
 			if (wmm > 0 and hmm > 0) then
-				wmm = 0.1 * wmm;
-				hmm = 0.1 * hmm;
-				ppcm = (math.sqrt(dw * dw + dh * dh) /
-					math.sqrt(wmm * wmm + hmm * hmm));
+				ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
 			end
 		end
 
@@ -328,11 +330,13 @@ function display_ressw(name, mode)
 		return;
 	end
 
+	disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
+		0.1 * mode.phy_height_mm, mode.width, mode.height);
+
 	run_display_action(disp, function()
 		video_displaymodes(disp.id, mode.modeid);
-		local wuf = disp.tiler.width / mode.width;
-		local huf = disp.tiler.height / mode.height;
 		disp.tiler:resize(mode.width, mode.height);
+		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
 	end);

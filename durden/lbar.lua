@@ -38,12 +38,13 @@ local function update_caret(ictx, mask)
 	end
 end
 
+local active_lbar = nil;
 local function destroy(wm, ictx)
 	for i,v in ipairs(pending) do
 		mouse_droplistener(v);
 	end
 	pending = {};
-
+	active_lbar = nil;
 	iostatem_restore(ictx.iostate);
 -- our lbar
 	local ictx = wm.input_ctx;
@@ -445,6 +446,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		time = 0;
 	end
 	PENDING_FADE = nil;
+	if (active_lbar) then
+		warning("tried to spawn multiple lbars");
+		return;
+	end
 
 	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
 	shader_setup(bg, "ui", "lbarbg");
@@ -531,5 +536,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	if (wm.debug_console) then
 		wm.debug_console:system_event("lbar activated");
 	end
+	active_lbar = wm.input_ctx;
 	return wm.input_ctx;
 end
