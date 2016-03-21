@@ -268,6 +268,8 @@ function dispatch_translate(iotbl, nodispatch)
 		if (iotbl.active) then
 			dispatch_symbol(tbl[lutsym]);
 		end
+-- don't want to run repeat for valid bindings
+		iostatem_reset_repeat();
 		return true, lutsym, iotbl;
 	elseif (not sel) then
 		return false, lutsym, iotbl;

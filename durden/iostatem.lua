@@ -100,6 +100,11 @@ function iostatem_input(iotbl)
 	end
 end
 
+function iostatem_reset_repeat()
+	devstate.iotbl = nil;
+	devstate.counter = 0;
+end
+
 -- for the _current_ context, set delay in ms, period in ticks/ch
 function iostatem_repeat(period, delay)
 	if (period ~= nil) then
@@ -266,6 +271,7 @@ function iostatem_init()
 	set_delay(nil, gconfig_get("kbd_delay"));
 	gconfig_listen("kbd_period", "iostatem", set_period);
 	gconfig_listen("kbd_delay", "iostatem", set_delay);
+	devstate.counter = def_delay;
 	local list = glob_resource("devmaps/*.lua", DEVMAP_DOMAIN);
 
 -- glob for all devmaps, make sure they match the platform and return

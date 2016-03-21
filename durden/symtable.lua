@@ -531,7 +531,7 @@ symtable.patch = function(tbl, iotbl)
 -- other symbols are described relative to the internal sdl symbols
 	local sym = tbl[iotbl.keysym];
 	if (not sym) then
-		return;
+		sym = "UNKN" .. tostring(iotbl.subid);
 	end
 	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
