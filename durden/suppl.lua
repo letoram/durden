@@ -592,7 +592,7 @@ function suppl_run_value(ctx, mask)
 	local res;
 	if (ctx.set) then
 		res = active_display():lbar(seth,
-			ctx, {label = hintstr, force_completion = true});
+			ctx, {label = hintstr, force_completion = true, prefill = ctx.prefill});
 	else
 -- or a "normal" run with custom input and validator feedback
 		res = active_display():lbar(normh, ctx, {

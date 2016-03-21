@@ -4,6 +4,22 @@ local function shared_reset(wnd)
 	end
 end
 
+local function gen_load_menu()
+	local res = {};
+	local lst = glob_resource("*", APPL_STATE_RESOURCE);
+	for i,v in ipairs(lst) do
+		table.insert(res, {
+			label = v,
+			name = "load_" .. util.hash(v),
+			kind = "action",
+			handler = function(ctx)
+				restore_target(active_display().selected.external, v);
+			end
+		});
+	end
+	return res;
+end
+
 local function find_sibling(wnd)
 -- enumerate all windows, if stateinf exist and stateids match
 -- and we are not ourself, then we have a sibling...
@@ -35,14 +51,14 @@ return {
 	},
 	{
 		name = "state_load",
-		label = "Restore",
+		label = "Load",
 		kind = "action",
 		submenu = true,
 		eval = function()
-			warning("glob state: state_prefix");
+			return (#glob_resource("*", APPL_STATE_RESOURCE)) > 0;
 		end,
 		handler = function(ctx, v)
-			warning("grab wnd, target_load from resname");
+			return gen_load_menu();
 		end
 	},
 	{
@@ -50,10 +66,11 @@ return {
 		label = "Save",
 		kind = "value",
 		submenu = true,
-		initial = "kuksaft",
-		handler = function()
-			warning("missing: query state name");
-			return {};
+		initial = "",
+		validator = function(str) return str and string.len(str) > 0; end,
+		prefill = "testy_test",
+		handler = function(ctx, val)
+			snapshot_target(active_display().selected.external, val);
 		end,
 		eval = function()
 			local wnd = active_display().selected;

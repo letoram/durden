@@ -61,6 +61,11 @@ local function lock_value(ctx, val)
 -- don't go through the normal input lock as events could then
 -- still be forwarded to the selected window, input should trigger
 -- lbar that, on escape, immediately jumps into idle state.
+	if (durden_input == durden_locked_input) then
+		warning("already in locked state, ignoring");
+		return;
+	end
+
 	durden_input = durden_locked_input;
 	iostatem_save();
 

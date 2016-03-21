@@ -19,8 +19,6 @@ function assert(...)
 end
 
 function durden(argv)
-	switch_default_texfilter(FILTER_NONE);
-
 	system_load("mouse.lua")(); -- mouse gestures
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
@@ -103,6 +101,7 @@ function durden(argv)
 	mouse_add_cursor("rz_left", load_image("cursor/rz_left.png"), 0, 0); -- 0, 5);
 	mouse_add_cursor("rz_right", load_image("cursor/rz_right.png"), 0, 0); -- 13, 5);
 	mouse_add_cursor("rz_up", load_image("cursor/rz_up.png"), 0, 0); -- 5, 0);
+	switch_default_texfilter(FILTER_NONE);
 
 	audio_gain(BADID, gconfig_get("global_gain"));
 
@@ -256,7 +255,7 @@ function durden_prelaunch()
 	return active_display():add_window(nsurf);
 end
 
-function durden_launch(vid, title, prefix, wnd)
+function durden_launch(vid, prefix, title, wnd)
 	if (not valid_vid(vid)) then
 		return;
 	end
@@ -268,8 +267,8 @@ function durden_launch(vid, title, prefix, wnd)
 	wnd.u8_translation = {};
 
 -- window aesthetics
-	wnd:set_title(title and title or "?");
 	wnd:set_prefix(prefix);
+	wnd:set_title(title and title or "?");
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);
