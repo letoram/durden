@@ -214,6 +214,7 @@ local function wm_update_mode(wm)
 	if (modestr == "tile") then
 		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
 	end
+--	wm.sbar_ws["left"]:fullscreen();
 	wm.sbar_ws["left"]:update(modestr);
 end
 
@@ -884,7 +885,7 @@ local function workspace_set(space, mode)
 -- enforce titlebar changes (some modes need them to work..)
 	local lst = linearize(space);
 	for k,v in ipairs(lst) do
-		v:set_title(v.title_text, false);
+		v:set_title();
 	end
 
 	space:resize();
@@ -1367,6 +1368,7 @@ local function wnd_reassign(wnd, ind, ninv)
 		end
 	end
 
+	tiler_statusbar_update(wnd.wm);
 	oldspace:resize();
 end
 
@@ -1429,16 +1431,15 @@ local function wnd_grow(wnd, w, h)
 end
 
 local function wnd_title(wnd, message, skipresize)
-	if (wnd.title_prefix) then
-		if (message and string.len(message) > 0) then
-			message = wnd.title_prefix .. ":" .. message;
-		else
-			message = wnd.title_prefix;
-		end
+	if (message ~= nil and string.len(message) > 0) then
+		wnd.title_text = message;
+	end
+
+	if (wnd.title_prefix and string.len(wnd.title_prefix) > 0) then
+		message = string.format("%s:%s", wnd.title_prefix,
+			wnd.title_text and wnd.title_text or " ");
 	else
-		if (not message) then
-			message = " ";
-		end
+		message = wnd.title_text and wnd.title_text or " ";
 	end
 
 	local tbh = tbar_geth(wnd);
@@ -1695,7 +1696,7 @@ end
 
 local function wnd_prefix(wnd, prefix)
 	wnd.title_prefix = prefix and prefix or "";
-	wnd:set_title(wnd.title_text and wnd.title_text or "");
+	wnd:set_title();
 end
 
 local function wnd_addhandler(wnd, ev, fun)
@@ -1759,8 +1760,6 @@ local function wnd_migrate(wnd, tiler)
 	wnd:assign_ws(dsp, true);
 
 -- rebuild border and titlebar to account for changes in font/scale
-	local tt = wnd.title_text;
-	wnd.title_text = nil;
 	wnd:set_title(tt);
 	if (wnd.last_font) then
 		wnd:update_font(unpack(wnd.last_font));
@@ -2197,6 +2196,8 @@ local function tiler_switchws(wm, ind)
 	else
 		wm.selected = nil;
 	end
+
+	tiler_statusbar_update(wm);
 end
 
 local function tiler_swapws(wm, ind2)
@@ -2477,13 +2478,14 @@ local function tiler_scalef(wm, newf, disptbl)
 	wm:rebuild_border();
 
 	for k,v in ipairs(wm.windows) do
-		v:set_title(v.title_text and v.title_text or "");
+		v:set_title();
 		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
 			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
 		end
 	end
 
 	wm:resize(wm.width, wm.height);
+	wm.statusbar:invalidate();
 end
 
 local function tiler_fontres(wm)

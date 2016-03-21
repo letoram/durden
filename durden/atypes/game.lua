@@ -1,11 +1,10 @@
 --
 -- Game archetype, settings and menus specific for game- frameserver
--- session (e.g. synchronization mode, state transfers, a/v filtering,
--- latency and buffering compensation, core options, debug features,
--- special input workarounds)
+-- session - primarily display hints and synchronization control
 --
 
 local skiptbl = {};
+
 skiptbl["Automatic"] = 0;
 skiptbl["None"] = -1;
 skiptbl["Skip 1"] = 1;
@@ -13,11 +12,64 @@ skiptbl["Skip 2"] = 2;
 skiptbl["Skip 3"] = 3;
 skiptbl["Skip 4"] = 4;
 
+local skipset = {"Automatic", "None", "Skip 1", "Skip 2", "Skip 3", "Skip 4"};
+for k,v in ipairs(skipset) do
+	assert(skiptbl[v] ~= nil);
+end
+
 -- preaudio
 -- framealign
 -- target_framemode(vid, skipval, align, preaudio, jitterstep, jitterxfer)
 -- target_postfilter(hue, sat, contrast[1], bright, gamma, sharp[2],
 -- fast-forward (val)
+
+local function update_synch(ctx)
+	local cs = ctx.synch;
+	if (not cs) then
+		warning("atype/game, update_synch fields missing");
+		return;
+	end
+
+	if (valid_vid(ctx.external, TYPE_FRAMESERVER)) then
+		target_framemode(ctx.external, skiptbl[cs.skipmode],
+			cs.framealign, cs.preaudio, cs.jitterstep, cs.jitterxfer);
+	end
+end
+
+local synch_menu = {
+	{
+	name = "gamewnd_synchmode",
+	label = "Mode",
+	kind = "value",
+	set = skipset,
+	initial = function(ctx) return ctx.synch.skipmode; end,
+	handler = function(ctx, val)
+		ctx.synch.skipmode = val;
+		update_synch(ctx);
+	end
+	},
+	{
+	name = "gamewnd_preaud",
+	label = "Preaudio",
+	kind = "value",
+	initial = function(ctx) return tostring(ctx.synch.preaudio); end,
+	validator = gen_valid_num(0, 8),
+	handler = function(ctx, val)
+
+	end
+	},
+	{
+	name = "framealign",
+	label = "Framealign",
+	kind = "value",
+	initial = function() return "0"; end,
+	validator = gen_valid_num(0, 14),
+	handler = function(ctx, val)
+		ctx.synch.framealign = tonumber(cal);
+		update_synch(ctx);
+	end
+	}
+};
 
 local retrosub = {
 	{
@@ -31,6 +83,13 @@ local retrosub = {
 			durden_launch(vid, "game:debug", "");
 		end
 	end
+	},
+	{
+	name = "gamewnd_syncopt",
+	label = "Synchronization",
+	kind = "action",
+	submenu = true,
+	handler = synch_menu
 	}
 };
 
@@ -44,7 +103,6 @@ return {
 	kind = "action",
 	submenu = true,
 	handler = retrosub
-	}
 	},
 -- props witll be projected upon the window during setup (unless there
 -- are overridden defaults)
@@ -57,4 +115,12 @@ return {
 		clipboard_block = true,
 		font_block = true
 	},
+-- current defaults, safe values match the synchronization menu above
+		synch = {
+			preaudio = 1,
+			skipmode = "None",
+			framealign = 8,
+			jitterstep = 0,
+			jitterxfer = 0
+		}
 };
