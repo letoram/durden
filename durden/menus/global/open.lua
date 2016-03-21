@@ -150,7 +150,6 @@ local function target_submenu()
 			end
 			table.insert(res, nent);
 		end
--- here we ignore bad targets (no configs defined)
 	end
 	return res;
 end

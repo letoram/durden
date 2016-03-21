@@ -2460,11 +2460,11 @@ end
 local function recalc_fsz(wm)
 	local fsz = gconfig_get("font_sz") * wm.scalef - gconfig_get("font_sz");
 	local int, fract = math.modf(fsz);
-	int = int + ((fract > 0.75) and 1 or - 1);
+	int = int + ((fract > 0.75) and 1 or 0);
 	wm.font_deltav = int;
 	if (int > 0) then
 		wm.font_delta = "\\f,+" .. tostring(int);
-	elseif (int < 0) then
+	elseif (int <= 0) then
 		wm.font_delta = "\\f," .. tostring(int);
 	end
 end
@@ -2489,7 +2489,8 @@ local function tiler_scalef(wm, newf, disptbl)
 end
 
 local function tiler_fontres(wm)
-	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("font_shift");
+	return wm.font_delta .. "\\#ffffff", wm.scalef;
+--	* gconfig_get("font_shift");
 end
 
 function tiler_create(width, height, opts)
