@@ -68,6 +68,17 @@ return {
 		end
 	},
 	{
+		name = "window_delete_protect",
+		label = "Delete Protect",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function() return active_display().selected.delete_protect and
+			LBL_YES or LBL_NO; end,
+		handler = function(ctx, val)
+			active_display().selected.delete_protect = val == LBL_YES;
+		end
+	},
+	{
 		name = "window_migrate_display",
 		label = "Migrate",
 		kind = "action",

@@ -37,7 +37,7 @@ local function button_labelupd(btn, lbl)
 			delete_image(btn.lbl);
 		end
 		btn.lbl = txt;
-		btn.yshift = -offsetf;
+		btn.yshift = offsetf;
 
 -- just resize / relayout
 	elseif (not valid_vid(lbl)) then

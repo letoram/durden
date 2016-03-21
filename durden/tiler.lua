@@ -53,6 +53,10 @@ end
 
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
+	if (wnd.delete_protect) then
+		return;
+	end
+
 	if (wm.debug_console) then
 		wm.debug_console:system_event("lost " .. wnd.name);
 	end
@@ -132,12 +136,6 @@ local function wnd_destroy(wnd)
 
 -- rebuild layout
 	space:resize();
-
--- reset meta-state tracker, this might lead to some presses
--- not registering correctly, but also act as a safe-guard against
--- someone about to delete a window when it just closed, leading to
--- possible windows being lost
-	dispatch_meta_reset();
 end
 
 local function wnd_message(wnd, message, timeout)
@@ -612,7 +610,7 @@ local function switch_fullscreen(space, to, ndir)
 		for k,v in ipairs(space) do
 			hide_image(space.anchor);
 		end
-		show_image(space.selected.anchor);
+			show_image(space.selected.anchor);
 	else
 		show_image(space.wm.statusbar);
 		workspace_deactivate(space, false, ndir);
@@ -785,6 +783,7 @@ local function set_fullscreen(space)
 	space.switch_hook = switch_fullscreen;
 
 	dw:resize(dw.wm.width, dw.wm.height);
+	move_image(dw.canvas, 0, 0);
 	move_image(dw.anchor, 0, 0);
 end
 
@@ -1176,7 +1175,7 @@ local function wnd_resize(wnd, neww, newh, force)
 
 	resize_image(wnd.border, wnd.width, wnd.effective_h + wnd.border_w*2 + tbh);
 
-	if (wnd.centered and not wnd.space.mdoe == "float") then
+	if (wnd.centered and wnd.space.mode ~= "float") then
 		if (wnd.fullscreen) then
 			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
