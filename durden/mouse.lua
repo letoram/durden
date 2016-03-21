@@ -485,12 +485,16 @@ local function mouse_drag(x, y)
 		warning(string.format("mouse_drag(%d, %d)", x, y));
 	end
 
+	local hitc = 0;
 	for key, val in pairs(mstate.drag.list) do
 		local res = linear_find_vid(mstate.handlers.drag, val, "drag");
 		if (res) then
 			res:drag(val, x, y);
+			hitc = hitc + 1;
 		end
 	end
+
+	return hitc;
 end
 
 local function rmbhandler(hists, press)
@@ -743,12 +747,14 @@ function mouse_input(x, y, state, noinp)
 	local hists = mouse_pickfun(mstate.x, mstate.y, mstate.pickdepth, 1);
 
 	if (mstate.drag) then
-		mouse_drag(x, y);
+		local hitc = mouse_drag(x, y);
 		if (state ~= nil) then
 			mbh(hists, state);
 		end
 		mstate.in_handler = false;
-		return;
+		if (hitc > 0) then
+			return;
+		end
 	end
 
 -- drop ones no longer selected, do out before over as many handlers will
