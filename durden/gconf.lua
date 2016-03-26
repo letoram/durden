@@ -9,6 +9,7 @@
 LBL_YES = "yes";
 LBL_NO = "no";
 LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
+LBL_BIND_COMBINATION_REP = "Press and hold or repeat- press, %s to Abort";
 LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Abort";
 LBL_METAGUARD = "Query Rebind in %d keypresses";
 LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b  in %.2f second, %s to Abort";
@@ -125,6 +126,7 @@ local defaults = {
 
 -- binding bar
 	bind_waittime = 30,
+	bind_repeat = 5,
 
 -- sbar
 	sbar_pad = 2,

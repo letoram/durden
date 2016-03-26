@@ -46,6 +46,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 	if (iotbl.active) then
 		if (not ctx.psym or ctx.psym ~= sym) then
 			local res = ctx.cb(lutsym, false, lutsym2, iotbl);
+-- allow handle hook to show invalid or conflicting input
 			if (type(res) == "string") then
 				ctx.psym = nil;
 				ctx:label(string.format("%s%s\\t%s%s", gconfig_get("lbar_errstr"),
@@ -54,14 +55,29 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 				ctx.psym = sym;
 				ctx.psym2 = lutsym2;
 				ctx.iotbl = iotbl;
+				ctx.rpress_c = ctx.rpress;
 				ctx:data(ctx.psym .. (lutsym2 and '+' .. lutsym2 or ""));
 				ctx.clock = ctx.clock_start;
+				ctx:set_progress(0);
 			end
 		end
 	else
-		ctx:set_progress(0);
-		ctx:data("");
-		ctx.psym = nil;
+		local cdiff = (ctx.clock and ctx.clock_start)
+			and ctx.clock_start - ctx.clock or 0;
+
+		if (cdiff < 10 and ctx.rpress and ctx.psym and ctx.psym == sym) then
+			ctx.rpress_c = ctx.rpress_c - 1;
+			if (ctx.rpress_c == 0) then
+				drop_bbar(wm);
+				ctx.cb(ctx.psym, true, lutsym2, iotbl);
+			else
+				ctx:set_progress((ctx.rpress - ctx.rpress_c) / ctx.rpress);
+			end
+		else
+			ctx:set_progress(0);
+			ctx:data("");
+			ctx.psym = nil;
+		end
 		ctx.clock = nil;
 	end
 end
@@ -157,10 +173,13 @@ end
 -- time: number of ticks of continous press to accept (nil or 0 to disable)
 -- ok: sym to bind last immediately (nil to disable)
 -- cancel: sym to abort (call cb with nil, true), (nil to disable)
--- cb will be invoked with ((symbol or symstr), done) where done. Expected
+-- cb: will be invoked with ((symbol or symstr), done) where done. Expected
 -- to return (false) to abort, true if valid or an error string.
+-- rpress: if set, hold time can be circumvented by repeated press-releasing
+-- rpress number of times (number >0 to enable), used for binding buttons that
+-- can't be held.
 --
-function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
+function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 	local ctx = {
 		clock_fwd = _G[APPLID .. "_clock_pulse"],
 		cb = cb,
@@ -174,6 +193,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 		progress = progress,
 		set_progress = set_progress,
 		message = msg,
+		rpress = rpress,
 		iostate = iostatem_save(),
 		data_y = gconfig_get("lbar_sz") * wm.scalef
 	};
@@ -208,6 +228,9 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb)
 	return ctx;
 end
 
+--
+-- simplified bbar, used for recovering on failed metas
+--
 function tiler_tbar(wm, msg, timeout, action, cancel)
 	local ctx = {
 		clock_fwd = _G[APPLID .. "_clock_pulse"];

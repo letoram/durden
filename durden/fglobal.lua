@@ -332,7 +332,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	IN_CUSTOM_BIND = true; -- needed for some special options
 
 	local ctx = tiler_bbar(active_display(),
-		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		string.format(LBL_BIND_COMBINATION_REP, SYSTEM_KEYS["cancel"]),
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
@@ -354,7 +354,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 					active_display():message(nil);
 				end;
 			end
-		end
+		end, gconfig_get("bind_repeat")
 	);
 
 	ctx.on_cancel = function() IN_CUSTOM_BIND = false; end

@@ -232,11 +232,10 @@ function display_override_density(name, ppcm)
 	end
 
 -- it might be that the selected display is not currently the main one
-	local ind = displays.main;
-	switch_active_display(dispi);
-	disp.ppcm = ppcm;
-	disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
-	switch_active_display(ind);
+	run_display_action(disp, function()
+		disp.ppcm = ppcm;
+		disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
+	end);
 end
 
 function display_add(name, width, height, ppcm)

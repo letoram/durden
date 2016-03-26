@@ -122,6 +122,18 @@ local debug_menu = {
 		handler = function() does_not_exist(); end
 	},
 	{
+		name = "random_alert",
+		label = "Random Alert",
+		kind = "action",
+		handler = function()
+			timer_add_idle("random_alert" .. tostring(math.random(1000)),
+				math.random(1000), false, function()
+				local tiler = active_display();
+				tiler.windows[math.random(#tiler.windows)]:alert();
+			end);
+		end
+	},
+	{
 		name = "debug_stall",
 		label = "Frameserver Debugstall",
 		kind = "value",
