@@ -54,6 +54,11 @@ local function query_dispmenu(ind, name)
 	end
 end
 
+local function display_shader_menu(disp)
+	return {
+	};
+end
+
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -76,6 +81,16 @@ local function gen_disp_menu(disp)
 		initial = function() return tostring(disp.ppcm); end,
 		handler = function(ctx, val)
 			display_override_density(disp.name, tonumber(val));
+		end
+		},
+		{
+		name = "disp_menu_shader",
+		label = "Shader",
+		kind = "action",
+		submenu = true,
+		eval = function() return not display_simple(); end,
+		handler = function(ctx)
+			return display_shader_menu(disp.name);
 		end
 		},
 		{
