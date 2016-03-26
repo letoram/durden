@@ -267,6 +267,18 @@ local durden_system = {
 
 			gconfig_set("status_path", val);
 		end
+	},
+	{
+		name = "system_displaymode",
+		label = "Display Mode",
+		kind = "value",
+		set = {"Simple", "Normal"},
+		initial = function() return gconfig_get("display_simple") and
+			"Simple" or "Normal"; end,
+		handler = function(ctx, val)
+			gconfig_set("display_simple", val == "Simple");
+			active_display():message("Switching Displaymode, Reset Required.");
+		end
 	}
 };
 
@@ -283,7 +295,6 @@ local config_terminal_font = {
 	},
 	{
 		name = "terminal_font_hinting",
-		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[
@@ -338,7 +349,6 @@ return {
 		label = "Visual",
 		kind = "action",
 		submenu = true,
-		hint = "Visual:",
 		handler = durden_visual
 	},
 	{
@@ -346,7 +356,6 @@ return {
 		label = "Workspaces",
 		kind = "action",
 		submenu = true,
-		hint = "Config Workspaces:",
 		handler = durden_workspace
 	},
 	{

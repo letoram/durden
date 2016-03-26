@@ -422,6 +422,10 @@ function display_reorient(name, hint)
 	end
 end
 
+function display_simple()
+	return displays.simple;
+end
+
 function display_share(args, recfn)
 	local disp = displays[displays.main];
 	if (not valid_vid(disp.rt)) then

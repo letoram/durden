@@ -43,7 +43,6 @@ local toplevel = {
 		label = "Workspace",
 		kind = "action",
 		submenu = true,
-		hint = "Workspace:",
 		handler = system_load("menus/global/workspace.lua")()
 	},
 	{
@@ -51,7 +50,7 @@ local toplevel = {
 		label = "Display",
 		kind = "action",
 		submenu = true,
-		hint = "Displays:",
+		eval = function() return not display_simple() end,
 		handler = system_load("menus/global/display.lua")()
 	},
 	{
@@ -59,7 +58,6 @@ local toplevel = {
 		label = "Config",
 		kind = "action",
 		submenu = true,
-		hint = "Config:",
 		handler = system_load("menus/global/config.lua")()
 	},
 	{
@@ -67,7 +65,6 @@ local toplevel = {
 		label = "Audio",
 		kind = "action",
 		submenu = true,
-		hint = "Audio:",
 		handler = system_load("menus/global/audio.lua")()
 	},
 	{
@@ -75,7 +72,6 @@ local toplevel = {
 		label = "Input",
 		kind = "action",
 		submenu = true,
-		hint = "Input:",
 		handler = system_load("menus/global/input.lua")()
 	},
 	{
@@ -83,7 +79,6 @@ local toplevel = {
 		label = "System",
 		kind = "action",
 		submenu = true,
-		hint = "System:",
 		handler = system_load("menus/global/system.lua")()
 	},
 };
