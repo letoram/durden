@@ -42,10 +42,11 @@ local synch_menu = {
 	label = "Mode",
 	kind = "value",
 	set = skipset,
-	initial = function(ctx) return ctx.synch.skipmode; end,
+	initial = function(ctx) return active_display().selected.synch.skipmode; end,
 	handler = function(ctx, val)
-		ctx.synch.skipmode = val;
-		update_synch(ctx);
+		local wnd = active_display().selected;
+		wnd.synch.skipmode = val;
+		update_synch(wnd);
 	end
 	},
 	{
@@ -65,8 +66,9 @@ local synch_menu = {
 	initial = function() return "0"; end,
 	validator = gen_valid_num(0, 14),
 	handler = function(ctx, val)
-		ctx.synch.framealign = tonumber(cal);
-		update_synch(ctx);
+		local wnd = active_display().selected;
+		wnd.synch.framealign = tonumber(cal);
+		update_synch(wnd);
 	end
 	}
 };
@@ -106,6 +108,7 @@ return {
 	},
 -- props witll be projected upon the window during setup (unless there
 -- are overridden defaults)
+	},
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
@@ -113,8 +116,7 @@ return {
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
 		clipboard_block = true,
-		font_block = true
-	},
+		font_block = true,
 -- current defaults, safe values match the synchronization menu above
 		synch = {
 			preaudio = 1,
@@ -123,4 +125,5 @@ return {
 			jitterstep = 0,
 			jitterxfer = 0
 		}
+	}
 };

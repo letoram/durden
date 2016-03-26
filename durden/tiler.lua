@@ -1962,7 +1962,7 @@ local function wnd_create(wm, source, opts)
 -- scale factor is manipulated by the display manager in order to take pixel
 -- density into account, so when a window is migrated or similar -- scale
 -- factor may well change. Sizes are primarily defined relative to self or
--- active default font size though, and display manager changes font-sizea
+-- active default font size though, and display manager changes font-size
 -- during migration and display setup.
 
 -- properties that change visual behavior

@@ -12,13 +12,6 @@ local toplevel = {
 		handler = system_load("menus/global/open.lua")()
 	},
 	{
-		name = "launch",
-		label = "Launch",
-		kind = "action",
-		eval = function() return #(list_targets()) > 0; end,
-		handler = grab_global_function("query_launch")
-	},
-	{
 		name = "global_menu",
 		label = "Global Menu",
 		kind = "action",
