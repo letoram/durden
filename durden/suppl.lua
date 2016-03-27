@@ -201,7 +201,13 @@ function table.i_subsel(table, label, field)
 	local i = 1;
 
 	for k,v in ipairs(table) do
-		local match = string.lower(field and v[field] or v);
+		local match = field and v[field] or v;
+		if (type(match) ~= "string") then
+			warning("invalid entry in table subselect");
+			if (DEBUGLEVEL > 1) then print(debug.traceback()); end
+			break;
+		end
+		match = string.lower(match);
 		if (string.len(ll) == 0 or string.sub(match, 1, string.len(ll)) == ll) then
 			res[i] = v;
 			i = i + 1;
