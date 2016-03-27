@@ -39,7 +39,10 @@ to your home appl folder (/home/myuser/.arcan/appl/durden)
 Start arcan with the resource path set to whatever directory subtree you want
 to be able to access for assets when browsing for images, video etc.
 
-e.g. arcan -p /home/myser/content durden
+e.g. arcan -p /home/myuser/stuff durden
+
+There are numerous other ways for setting this up, see the Arcan wiki and
+manpages for other namespacing and configuration options.
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
 for the currently mapped defaults. If you don't press any of the META keys
@@ -50,9 +53,10 @@ Quick! meta1+enter - now you should get a terminal window.
 
 A big point with durden as a desktop environment is to make minimal distinction
 between static configuration and UI directed reconfiguration. The means for
-changing settings should look and feel 'the same' no matter if it means exposing
-configuration changes to external programs using a pipe- command channel, mapping
-it to an input device, UI element like a button or even a timer.
+changing settings should look and feel 'the same' no matter if it means
+exposing configuration changes to external programs using a pipe- command
+channel, mapping it to an input device, UI element like a button or even a
+timer.
 
 UI directed configuration is made through global and target menus, accessible
 using meta1+g for global and meta1+t for target (if a window is selected).
@@ -192,7 +196,7 @@ are being implemented, we have the following list:
     - [ ] Analog Calibration
     - [ ] Autofire
   - [ ] Touchpads/screens
-    - [ ] Calibration
+    - [ ] Calibration Tool
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
@@ -206,6 +210,7 @@ are being implemented, we have the following list:
   - [x] Mouse Lock to Window
   - [ ] Mouse Button Reordering
   - [ ] Meta + Mouse Button Binding
+	- [ ] Custom Gestures to action binding
   - [x] Focus-Follows-Mouse
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
@@ -240,7 +245,7 @@ are being implemented, we have the following list:
   - [ ] Cursor Drag - Event Region
     -  [x] Monitor region
     -  [x] Snapshot region
-    -  [ ] Record / VNC / OCR region
+    -  [ ] Record / VNC-serve / OCR-to-clipboard or voice synthesize region
   - [x] Automation
     -  [x] Fire-Once Timers
     -  [x] Idle-Timers
@@ -287,7 +292,7 @@ are being implemented, we have the following list:
   -     [x] support switching vertical / horizontal
   -     [ ] support switching LED layout hinting (RGB vs VRGB)
   - [x] Respect display DPI and use cm/font-pt as size
-  - [ ] Remember DPI / overrides / orientation
+  - [ ] Remember DPI / overrides / orientation between launches
   - [x] Power Management Controls
   - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
@@ -302,12 +307,13 @@ time-consuming hardcore development.
 
 Performance
 =====
-For lower power devices where multi-screen setups isn't needed,
-modify gconf.lua (or the corresponding database- fields if it has already
-been created and updated with all the keys) to disable 'display\_simple'.
+For lower power devices where multi-screen setups isn't needed, simple display
+mode might be needed. This can be accessed by modifying gconf.lua or while
+running through Config/System/Display Mode (requires a Reset to activate).
 
-Simple display mode disables some other features as well, e.g. orientation swap,
-recording / sharing and others.
+Simple display mode disables some other features as well, e.g. orientation
+swap, some forms of recording / sharing and others that build on the main
+surface being rendered to an off-screen buffer.
 
 While somewhat buggy, one might also want to try out mouse\_mode = "native"
 where cursor drawing is treated outside the normal rendering pipeline. This may

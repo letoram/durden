@@ -295,6 +295,7 @@ local config_terminal_font = {
 	},
 	{
 		name = "terminal_font_hinting",
+		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[
