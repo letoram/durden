@@ -509,7 +509,7 @@ end
 
 -- migrate window means:
 -- copy valuable properties, destroy then "add", including tiler.windows
-local function workspace_migrate(ws, newt)
+local function workspace_migrate(ws, newt, scalef, disptbl)
 	local oldt = ws.wm;
 	if (oldt == display) then
 		return;
@@ -548,6 +548,9 @@ local function workspace_migrate(ws, newt)
 		v.wm = newt;
 		table.insert(newt.windows, v);
 		table.remove_match(oldt.windows, v);
+		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
+			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
+		end
 	end
 	oldt.spaces[srci] = create_workspace(oldt, false);
 
@@ -1110,6 +1113,9 @@ end
 
 local function wnd_font(wnd, sz, hint, font)
 	if (wnd.font_block) then
+		if (type(wnd.font_block) == "function") then
+			wnd:font_block(sz, hint, font);
+		end
 		return;
 	end
 
@@ -1716,7 +1722,7 @@ local function wnd_dispmask(wnd, val, noflush)
 	end
 end
 
-local function wnd_migrate(wnd, tiler)
+local function wnd_migrate(wnd, tiler, disptbl)
 	if (tiler == wnd.wm) then
 		return;
 	end
@@ -1763,6 +1769,11 @@ local function wnd_migrate(wnd, tiler)
 	wnd:set_title(tt);
 	if (wnd.last_font) then
 		wnd:update_font(unpack(wnd.last_font));
+	end
+
+-- propagate pixel density information
+	if (disptbl and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_displayhint(wnd.external, 0, 0, wnd.dispmask, disptbl);
 	end
 end
 
@@ -2485,7 +2496,10 @@ local function tiler_scalef(wm, newf, disptbl)
 	end
 
 	wm:resize(wm.width, wm.height);
-	wm.statusbar:invalidate();
+
+--- invalidate to a new min-base
+	local sbsz = sbar_geth(wm);
+	wm.statusbar:invalidate(sbsz, sbsz);
 end
 
 local function tiler_fontres(wm)

@@ -293,6 +293,11 @@ end
 -- big caveat though, these are attached to WORLDID but in the multidisplay
 -- setup we have another attachment.
 function durden_adopt(vid, kind, title, parent, last)
+-- always ignore unknown ones as they are likely pending or external listening
+	if (kind == "unknown") then
+		return false;
+	end
+
 	local ap = display_attachment();
 	if (ap ~= nil) then
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
@@ -523,11 +528,16 @@ local function flush_pending()
 	end
 end
 
-function durden_clock_pulse(n)
-	local tt = iostatem_tick();
-	if (tt) then
-		for k,v in ipairs(tt) do
-			durden_input(v, true);
+function durden_clock_pulse(n, nt)
+-- if we experience stalls that give us multiple batched ticks
+-- we don't want to forward this to the iostatem_ as that can
+-- generate storms of repeats
+	if (nt == 1) then
+		local tt = iostatem_tick();
+		if (tt) then
+			for k,v in ipairs(tt) do
+				durden_input(v, true);
+			end
 		end
 	end
 

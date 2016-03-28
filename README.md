@@ -215,6 +215,7 @@ are being implemented, we have the following list:
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
+	- [ ] On-Screen Keyboard (custom button grid as window that don't focus)
   - [ ] Global forwards (specify binding to send to window regardless of focus)
   - [ ] Input state to LED binding (keymap, active bindings for RGB keyboards)
 - [ ] Internationalization

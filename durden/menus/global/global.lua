@@ -50,7 +50,6 @@ local toplevel = {
 		label = "Display",
 		kind = "action",
 		submenu = true,
-		eval = function() return not display_simple() end,
 		handler = system_load("menus/global/display.lua")()
 	},
 	{

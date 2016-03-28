@@ -2,7 +2,7 @@ local function orientation_menu(name)
 	return {
 		{
 			name = "disp_orent_toggle_hv",
-			eval = function() return gconfig_get("display_simple") == false; end,
+			eval = function() return not display_simple(); end,
 			label = "Toggle H/V",
 			kind = "action",
 			handler = function()
@@ -105,8 +105,7 @@ local function gen_disp_menu(disp)
 		name = "display_mapping",
 		label = "Orientation",
 		kind = "action",
-		eval = function() return gconfig_get("display_simple") == false and
-			disp.id ~= nil; end,
+		eval = function() return not display_simple() and disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
 		}
@@ -343,7 +342,7 @@ return {
 		name = "display_cycle",
 		label = "Cycle Active",
 		kind = "action",
-		eval = function() return gconfig_get("display_simple") == false; end,
+		eval = function() return not display_simple(); end,
 		handler = grab_global_function("display_cycle")
 	},
 	{

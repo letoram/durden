@@ -366,7 +366,7 @@ function display_migrate_wnd(wnd, dstname)
 		return;
 	end
 
-	wnd:migrate(dsp2.tiler);
+	wnd:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
 end
 
 -- migrate the ownership of a single workspace to another display
@@ -377,7 +377,7 @@ function display_migrate_ws(disp, dstname)
 	end
 
 	if (#disp.spaces[disp.space_ind].children > 0) then
-		disp.spaces[disp.space_ind]:migrate(dsp2.tiler);
+		disp.spaces[disp.space_ind]:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
 	end
 end
 
