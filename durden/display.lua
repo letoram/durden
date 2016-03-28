@@ -38,6 +38,12 @@ local function autohome_spaces(ndisp)
 	end
 end
 
+local function set_mouse_scalef()
+	local sf = gconfig_get("mouse_scalef");
+	mouse_cursor_sf(sf * displays[displays.main].tiler.scalef,
+		sf * displays[displays.main].tiler.scalef);
+end
+
 local function run_display_action(disp, cb)
 	local save = displays.main;
 	set_context_attachment(disp.rt);
@@ -55,10 +61,7 @@ local function switch_active_display(ind)
 	displays.main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
-	local sf = gconfig_get("mouse_scalef");
-	mouse_cursor_sf(sf * displays[ind].tiler.scalef,
-		sf * displays[ind].tiler.scalef);
--- system_defaultfont(gconfig_get("font_sz") * displays[ind].sf
+	set_mouse_scalef();
 end
 
 local function display_data(id)
@@ -235,6 +238,7 @@ function display_override_density(name, ppcm)
 	run_display_action(disp, function()
 		disp.ppcm = ppcm;
 		disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
+		set_mouse_scalef();
 	end);
 end
 
@@ -338,6 +342,7 @@ function display_ressw(name, mode)
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
+		set_mouse_scalef();
 	end);
 
 -- as the dimensions have changed

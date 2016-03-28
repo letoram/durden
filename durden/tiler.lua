@@ -1103,7 +1103,8 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
 	end
-	return math.floor(outw), math.floor(outh);
+
+	return math.ceil(outw), math.ceil(outh);
 end
 
 local function wnd_effective_resize(wnd, neww, newh, force)
@@ -1172,8 +1173,8 @@ local function wnd_resize(wnd, neww, newh, force)
 		return;
 	end
 
-	wnd.effective_w = neww;
-	wnd.effective_h = newh;
+	wnd.effective_w = math.ceil(neww);
+	wnd.effective_h = math.ceil(newh);
 
 -- now we know dimensions of the window in regards to its current tiling cell
 -- etc. so we can resize the border accordingly (or possibly cascade weights)
@@ -1195,14 +1196,64 @@ local function wnd_resize(wnd, neww, newh, force)
 	run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 end
 
+-- sweep all windows, calculate center-point distance,
+-- and weight based on desired direction (no diagonals)
+local function find_nearest(wnd, dx, dy, rec)
+	local lst = linearize(wnd.space);
+	local ddir = {};
+
+	local cp_xy = function(vid)
+		local props = image_surface_resolve_properties(vid);
+		return (props.x + 0.5 * props.width), (props.y + 0.5 * props.height);
+	end
+
+	local bp_x, bp_y = cp_xy(wnd.canvas);
+
+	for k,v in ipairs(lst) do
+		if (v ~= wnd) then
+			local cp_x, cp_y = cp_xy(v.canvas);
+			local dist = (bp_x - cp_x) * dx + (bp_y - cp_y) * dy;
+			table.insert(ddir, {dist, v});
+		end
+	end
+
+	if (#ddir == 0) then
+		return;
+	end
+
+	local shortest = ddir[1];
+	local shortest_same = nil;
+
+	for i=1,#ddir do
+		if (ddir[i][1] * dx * dy > 0) then
+			if (not shortest_same or math.abs(ddir[i][1]) <
+				math.abs(shortest_same[1])) then
+				shortest_same = ddir[i];
+			end
+		end
+
+		if (math.abs(ddir[i][1]) < math.abs(shortest[1])) then
+			shortest = ddir[i];
+		end
+	end
+
+	return shortest_same and shortest_same[2] or shortest[2];
+end
+
 local function wnd_next(mw, level)
 	if (mw.fullscreen) then
 		return;
 	end
 
--- we use three states; true, false or nil.
 	local mwm = mw.space.mode;
-	if (mwm == "tab" or mwm == "vtab" or mwm == "float") then
+	if (mwm == "float") then
+		wnd = level and find_nearest(mw, 1000, 1) or find_nearest(mw, 1, 1000);
+		if (wnd) then
+			wnd:select();
+			return;
+		end
+
+	elseif (mwm == "tab" or mwm == "vtab") then
 		local lst = linearize(mw.space);
 		local ind = table.find_i(lst, mw);
 		ind = ind == #lst and 1 or ind + 1;
@@ -1244,7 +1295,14 @@ local function wnd_prev(mw, level)
 	end
 
 	local mwm = mw.space.mode;
-	if (mwm == "tab" or mwm == "vtab" or mwm == "float") then
+	if (mwm == "float") then
+		wnd = level and find_nearest(mw, -1000, -1) or find_nearest(mw, -1, -1000);
+		if (wnd) then
+			wnd:select();
+			return;
+		end
+
+	elseif (mwm == "tab" or mwm == "vtab" or mwm == "float") then
 		local lst = linearize(mw.space);
 		local ind = table.find_i(lst, mw);
 		ind = ind == 1 and #lst or ind - 1;
