@@ -90,12 +90,13 @@ function iostatem_input(iotbl)
 					end
 				end
 			end
-		else
-			return true;
 		end
--- could also have a AD converter here by mapping ranges into button
--- presses and re-injecting them..
+
+-- only forward if asbolutely necessary (i.e. selected window explicitly accepts
+-- analog) as the input storms can saturate most event queues
+	return true;
 	else
+		print("iostatem, missing things", iotbl.kind);
 -- nothing for touch devices right now
 	end
 end
@@ -181,7 +182,7 @@ function iostatem_added(iotbl)
 			lookup = label_lookup[iotbl.label]
 				and label_lookup[iotbl.label] or {default_lh, default_ah},
 			force_analog = false,
-			translated = iotbl.translated
+			keyboard = iotbl.keyboard
 		};
 		dev = devices[iotbl.devid];
 		assign_slot(dev);
@@ -202,9 +203,9 @@ end
 function iostatem_removed(iotbl)
 	local dev = devices[iotbl.devid];
 	if (dev) then
-		devices[iotbl.devid].lost = true;
+		dev.lost = true;
 -- protection against keyboard behaving differently when lost/found
-		if (devices[iotbl.devid].translated) then
+		if (dev.keyboard) then
 			meta_guard_reset();
 		end
 	else

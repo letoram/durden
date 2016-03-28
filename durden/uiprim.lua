@@ -15,7 +15,6 @@ local function button_labelupd(btn, lbl)
 		btn.last_lbl = lbl;
 	end
 
--- allow string or prerendered, only update lbl on new content
 	if (type(lbl) == "string" or type(lbl) == "table") then
 		if (type(lbl) == "string") then
 			lbl = {fontstr, lbl};
@@ -246,8 +245,7 @@ local function bar_resize(bar, neww, newh)
 		return;
 	end
 
-	local domupd = (bar.vertical and neww ~= bar.width) or
-		(not bar.vertical and newh ~= bar.height);
+	local domupd = newh ~= bar.height;
 
 	bar.width = neww;
 	bar.height = newh;
@@ -337,16 +335,9 @@ local function bar_button(bar, align, bgshname, lblshname,
 
 -- autofill in the non-dominant axis
 	local fill = false;
-	if (not bar.vertical) then
-		if (not minh) then
-			minh = bar.height;
-			fill = true;
-		end
-	else
-		if (not minw) then
-			minw = bar.width;
-			fill = true;
-		end
+	if (not minh) then
+		minh = bar.height;
+		fill = true;
 	end
 
 	local btn = uiprim_button(bar.anchor, bgshname, lblshname,
@@ -441,15 +432,18 @@ local function bar_update(bar, group, index, ...)
 	bar.buttons[group][index]:update(...);
 end
 
-local function bar_invalidate(bar)
+local function bar_invalidate(bar, minw, minh)
 	for k,v in pairs(bar.buttons) do
 		for i,j in ipairs(v) do
 
 			if (j.autofill) then
-				if (bar.vertical) then
-					j.minw = bar.width;
-				else
-					j.minh = bar.height;
+				j.minh = bar.height;
+			else
+				if (minw and j.minw and j.minw > 0) then
+					j.minw = minw;
+				end
+				if (minh and j.minh and j.minh > 0) then
+					j.minh = minh;
 				end
 			end
 
@@ -465,7 +459,7 @@ local function bar_reanchor(bar, anchor, order, xpos, ypos, anchorp)
 	order_image(bar.anchor, order);
 end
 
--- work as a vertical or horizontal stack of uiprim_buttons,
+-- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 	assert(anchor);
