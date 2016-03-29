@@ -89,6 +89,12 @@ return {
 		end
 	},
 	{
+		name = "window_merge_collapse",
+		label = "Merge/Collapse",
+		kind = "action",
+		handler = grab_shared_function("mergecollapse")
+	},
+	{
 		name = "window_destroy",
 		label = "Destroy",
 		kind = "action",
