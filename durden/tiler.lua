@@ -1198,7 +1198,7 @@ end
 
 -- sweep all windows, calculate center-point distance,
 -- and weight based on desired direction (no diagonals)
-local function find_nearest(wnd, dx, dy, rec)
+local function find_nearest(wnd, wx, wy, rec)
 	local lst = linearize(wnd.space);
 	local ddir = {};
 
@@ -1209,35 +1209,24 @@ local function find_nearest(wnd, dx, dy, rec)
 
 	local bp_x, bp_y = cp_xy(wnd.canvas);
 
+-- only track distances for windows in the desired direction (wx, wy)
+	local shortest;
+
 	for k,v in ipairs(lst) do
 		if (v ~= wnd) then
 			local cp_x, cp_y = cp_xy(v.canvas);
-			local dist = (bp_x - cp_x) * dx + (bp_y - cp_y) * dy;
-			table.insert(ddir, {dist, v});
-		end
-	end
-
-	if (#ddir == 0) then
-		return;
-	end
-
-	local shortest = ddir[1];
-	local shortest_same = nil;
-
-	for i=1,#ddir do
-		if (ddir[i][1] * dx * dy > 0) then
-			if (not shortest_same or math.abs(ddir[i][1]) <
-				math.abs(shortest_same[1])) then
-				shortest_same = ddir[i];
+			cp_x = cp_x - bp_x;
+			cp_y = cp_y - bp_y;
+			local dist = math.sqrt(cp_x * cp_x + cp_y * cp_y);
+			if ((cp_x * wx > 0) or (cp_y * wy > 0)) then
+				if (not shortest or dist < shortest[2]) then
+					shortest = {v, dist};
+				end
 			end
 		end
-
-		if (math.abs(ddir[i][1]) < math.abs(shortest[1])) then
-			shortest = ddir[i];
-		end
 	end
 
-	return shortest_same and shortest_same[2] or shortest[2];
+	return (shortest and shortest[1] or nil);
 end
 
 local function wnd_next(mw, level)
@@ -1247,7 +1236,7 @@ local function wnd_next(mw, level)
 
 	local mwm = mw.space.mode;
 	if (mwm == "float") then
-		wnd = level and find_nearest(mw, 1000, 1) or find_nearest(mw, 1, 1000);
+		wnd = level and find_nearest(mw, 0, 1) or find_nearest(mw, 1, 0);
 		if (wnd) then
 			wnd:select();
 			return;
@@ -1296,7 +1285,7 @@ local function wnd_prev(mw, level)
 
 	local mwm = mw.space.mode;
 	if (mwm == "float") then
-		wnd = level and find_nearest(mw, -1000, -1) or find_nearest(mw, -1, -1000);
+		wnd = level and find_nearest(mw, 0, -1) or find_nearest(mw, -1, 0);
 		if (wnd) then
 			wnd:select();
 			return;
