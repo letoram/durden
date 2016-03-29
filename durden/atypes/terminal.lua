@@ -9,7 +9,17 @@ local res = {
 -- used to cut down on resize calls (as they are ** expensive in
 -- terminal land) vs just using shader based cropping.
 		message = function(wnd, source, tbl)
---		print("parse terminal font size from tbl", tbl.message);
+			local props = string.split(tbl.message, ":");
+			if (#props ~= 4) then
+				return;
+			end
+			if (props[1] == "cell_w" and props[3] == "cell_h") then
+				local cw = tonumber(props[2]);
+				local ch = tonumber(props[4]);
+				if (cw and ch and cw > 0 and ch > 0) then
+					wnd.sz_delta = {cw, ch};
+				end
+			end
 		end
 	},
 -- actions are exposed as target- menu

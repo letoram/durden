@@ -220,9 +220,9 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			local props = image_storage_properties(wnd.external);
 			if (not wnd.sz_delta or
-				(math.abs(props.width - neww) > wnd.sz_delta.width or
-			   math.abs(props.height - newh) > wnd.sz_delta.height)) then
-				target_displayhint(wnd.external, neww, newh, wnd.dispmask);
+				(math.abs(props.width - efw) > wnd.sz_delta[1] or
+			   math.abs(props.height - newh) > wnd.sz_delta[2])) then
+				target_displayhint(wnd.external, efw, efh, wnd.dispmask);
 			end
 		end
 
@@ -333,6 +333,11 @@ function durden_new_connection(source, status)
 			image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
 		end
 		if (status) then
+-- switch attachment immediately to new display
+			local ap = display_attachment();
+			if (ap ~= nil) then
+				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
+			end
 			durden_launch(source, "external", "");
 		end
 	end
