@@ -60,7 +60,7 @@ function grab_shared_function(funname)
 	return sf[funname];
 end
 
-function dispatch_symbol(sym, arg, src)
+function dispatch_symbol(sym, arg)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
 
@@ -461,6 +461,7 @@ end
 
 gf["global_gain"] = function(val)
 	allgain(val);
+	gconfig_set("global_gain", val);
 end
 
 -- separate toggle, we don't care about previously set gain value
