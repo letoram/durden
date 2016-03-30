@@ -33,5 +33,5 @@ function(subid)
 end,
 -- returns two arguments, label and sample scale factor
 function(subid)
-	return "AXIS" .. remap_tbl[subid] and remap_tbl[subid] or tostring(subid);
+	return "AXIS" .. remap_tbl[subid] and remap_tbl[subid] or tostring(subid), 1;
 end

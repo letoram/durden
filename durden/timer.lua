@@ -33,7 +33,7 @@ local function run_idle_timers()
 	end
 end
 
-function timer_tick()
+function timer_tick(...)
 	idle_count = idle_count + 1;
 	tick_count = tick_count + 1;
 
@@ -57,7 +57,7 @@ function timer_tick()
 		end
 	end
 
-	old_clock(a, b);
+	old_clock(...);
 end
 
 _G[clockkey] = timer_tick;
