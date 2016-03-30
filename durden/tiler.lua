@@ -139,7 +139,7 @@ local function wnd_destroy(wnd)
 end
 
 local function wnd_message(wnd, message, timeout)
-	print(message);
+	print("wnd_message", message);
 end
 
 local function wnd_deselect(wnd, nopick)
@@ -911,8 +911,8 @@ local function workspace_label(space, lbl)
 		ind = ind + 1;
 	until (ind > 10);
 
-	space.wm.sbar_ws[ind]:update((lbl and string.len(lbl) > 0)
-		and tostring(ind) .. ":" .. lbl or tostring(ind));
+	space.label = lbl;
+	tiler_statusbar_update(space.wm);
 end
 
 local function workspace_empty(wm, i)
@@ -2543,12 +2543,11 @@ local function tiler_scalef(wm, newf, disptbl)
 
 --- invalidate to a new min-base
 	local sbsz = sbar_geth(wm);
-	wm.statusbar:invalidate(sbsz, sbsz);
+	wm.statusbar:resize(wm.width, sbsz);
 end
 
 local function tiler_fontres(wm)
-	return wm.font_delta .. "\\#ffffff", wm.scalef;
---	* gconfig_get("font_shift");
+	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("font_shift");
 end
 
 function tiler_create(width, height, opts)
@@ -2633,10 +2632,13 @@ function tiler_create(width, height, opts)
 -- fill slot with system messages
 	res.sbar_ws["msg"] = res.statusbar:add_button("center",
 		"sbar_msg_bg", "sbar_msg_text", " ", pad, res.font_resfn, nil, sbsz);
+	res.sbar_ws["msg"].align_left = true;
 
 -- and a fixed size slot for external messages
 	res.sbar_ws["ext"] = res.statusbar:add_button("center",
 		"sbar_msg_bg", "sbar_msg_text", " ", pad, res.font_resfn, nil, sbsz);
+	res.sbar_ws["ext"].align_right = true;
+	res.sbar_ws["ext"]:hide();
 
 	res.width = width;
 	res.height = height;

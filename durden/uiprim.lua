@@ -55,7 +55,7 @@ local function button_labelupd(btn, lbl)
 		end
 		local props = image_surface_properties(lbl);
 		btn.lbl = lbl;
-		btn.yshift = 0;
+		btn.yshift = offsetf;
 		w = props.width;
 		h = props.height;
 	end
@@ -91,7 +91,15 @@ local function button_labelupd(btn, lbl)
 	link_image(btn.lbl, btn.bg);
 	image_mask_set(btn.lbl, MASK_UNPICKABLE);
 	image_clip_on(btn.lbl, CLIP_SHALLOW);
-	center_image(btn.lbl, btn.bg, ANCHOR_C, 0, btn.yshift);
+
+-- for some odd cases (center area on bar for instance),
+-- specific lalign on text may be needed
+	if (btn.align_left) then
+		local props = image_surface_properties(btn.lbl);
+		move_image(btn.lbl, 0, math.floor(0.5 * (btn.h - props.height) + btn.yshift));
+	else
+		center_image(btn.lbl, btn.bg, ANCHOR_C, 0, btn.yshift);
+	end
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -246,7 +254,6 @@ local function bar_resize(bar, neww, newh)
 	end
 
 	local domupd = newh ~= bar.height;
-
 	bar.width = neww;
 	bar.height = newh;
 	resize_image(bar.anchor, bar.width, bar.height);
@@ -302,15 +309,24 @@ local function bar_relayout_horiz(bar)
 		return 0;
 	end
 
-	local fair_sz = math.floor((rx -lx)/ #bar.buttons.center);
+	local nvis = #bar.buttons.center;
+	for i,v in ipairs(bar.buttons.center) do
+		if (v.hidden) then
+			nvis = nvis - 1;
+		end
+	end
+
+	local fair_sz = nvis > 0 and math.floor((rx -lx)/nvis) or 0;
 	for k,v in ipairs(bar.buttons.center) do
-		v.minw = fair_sz;
-		v.maxw = fair_sz;
-		v.minh = bar.height;
-		v.maxh = bar.height;
-		button_labelupd(v);
-		move_image(v.bg, lx, 0);
-		lx = lx + fair_sz;
+		if (not v.hidden) then
+			v.minw = fair_sz;
+			v.maxw = fair_sz;
+			v.minh = bar.height;
+			v.maxh = bar.height;
+			button_labelupd(v);
+			move_image(v.bg, lx, 0);
+			lx = lx + fair_sz;
+		end
 	end
 
 	return 0;

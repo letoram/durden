@@ -138,7 +138,7 @@ end
 defhtbl["message"] =
 function(wnd, source, stat)
 -- FIXME: no multipart concatenation
-	wnd:set_message(stat.v, gconfig_get("msg_timeout"));
+	wnd:set_message(stat.message, gconfig_get("msg_timeout"));
 end
 
 defhtbl["ident"] =
