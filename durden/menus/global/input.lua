@@ -218,6 +218,7 @@ local function gen_smenu(v, pref)
 			label = "Slot",
 			name = pref .. "slotv",
 			kind = "value",
+			hint = "index (1..10, 0 disable)",
 			validator = gen_valid_num(1, 8),
 			initial = tostring(v.slot),
 			handler = function(ctx, val)
@@ -268,9 +269,9 @@ local function dev_menu(v)
 	return res;
 end
 
-local function gen_devmenu(v)
+local function gen_devmenu(slotted)
 	local res = {};
-	for k,v in iostatem_devices() do
+	for k,v in iostatem_devices(slotted) do
 		table.insert(res, {
 			name = string.format("dev_%d_main", v.devid),
 			label = v.label,
@@ -316,11 +317,13 @@ local keyb_menu = {
 		label = "Repeat Period",
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_period")); end,
-		hint = "cps (0:disabled - 100)",
+		hint = "ticks/cycle (0:disabled - 50)",
+		note = "sets as new default, applies to new windows",
 		validator = gen_valid_num(0, 100);
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_period", val);
+			iostatem_repeat(val);
 		end
 	},
 	{
@@ -328,10 +331,12 @@ local keyb_menu = {
 		label = "Initial Delay",
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_delay")); end,
-		hint = "ms (0:disable - 1000)",
+		hint = "milliseconds (0:disable - 1000)",
+		note = "sets as new default, applies to new windows",
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_delay", val);
+			iostatem_repeat(nil, val);
 		end
 	},
 	{
@@ -401,12 +406,26 @@ return {
 	{
 		name = "input_devices_menu",
 		kind = "action",
-		label = "Devices",
+		label = "Slotted Devices",
 		submenu = true,
 		eval = function()
-			return iostatem_devcount() > 0;
+			return #gen_devmenu(true) > 0;
 		end,
-		handler = gen_devmenu;
+		handler = function()
+			return gen_devmenu(true);
+		end
+	},
+	{
+		name = "input_devices_menu",
+		kind = "action",
+		label = "All Devices",
+		submenu = true,
+		eval = function()
+			return #gen_devmenu() > 0;
+		end,
+		handler = function()
+			return gen_devmenu();
+		end
 	},
 	{
 		name = "rescan_devices",

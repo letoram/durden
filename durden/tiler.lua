@@ -210,6 +210,10 @@ local function output_mouse_devent(btl, wnd)
 end
 
 local function wm_update_mode(wm)
+	if (not wm.spaces[wm.space_ind]) then
+		return;
+	end
+
 	local modestr = wm.spaces[wm.space_ind].mode;
 	if (modestr == "tile") then
 		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
@@ -223,19 +227,12 @@ local function tiler_statusbar_update(wm)
 	wm.statusbar:resize(wm.width, statush);
 	wm.statusbar:move(0, wm.height - statush);
 
+	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
+		return;
+	end
 	wm_update_mode(wm);
-
-	local modestr = wm.spaces[wm.space_ind].mode;
-	if (modestr == "tile") then
-		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
-	end
-	wm.sbar_ws["left"]:update(modestr);
-
-	if(wm.spaces[wm.space_ind].mode == "fullscreen") then
-		wm.statusbar:hide();
-	else
-		wm.statusbar:show();
-	end
+	local space = wm.spaces[wm.space_ind];
+	wm.statusbar[space == "fullscreen" and "hide" or "show"](wm.statusbar);
 
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
@@ -2414,7 +2411,7 @@ local function tiler_message(tiler, msg, timeout)
 		timeout = gconfig_get("msg_timeout");
 	end
 
--- tiler.res_ws.message:update(msg, timeout);
+	tiler.sbar_ws["msg"]:update(msg == nil and "" or msg, timeout);
 end
 
 local function tiler_rebuild_border(tiler)

@@ -88,8 +88,8 @@ local defaults = {
 
 -- default keyboard repeat rate for all windows, some archetypes have
 -- default overrides and individual windows can have strong overrides
-	kbd_period = 3,
-	kbd_delay = 400,
+	kbd_period = 4,
+	kbd_delay = 300,
 
 -- built-in terminal defaults
 	term_autosz = true, -- will ignore cellw / cellh and use font testrender

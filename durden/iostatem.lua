@@ -10,6 +10,8 @@ local devices = {};
 local def_period = 0;
 local def_delay = 0;
 local DEVMAP_DOMAIN = APPL_RESOURCE;
+local rol_avg = 1;
+local evc = 1;
 
 -- specially for game devices, note that like with the other input platforms,
 -- the actual mapping for a device may vary with underlying input platform and,
@@ -39,11 +41,9 @@ function iostatem_save()
 	return odst;
 end
 
-function iostatem_state()
-	return (devstate.period and devstate.period or -1),
-		(devstate.delay and devstate.delay or -1),
-		devstate.counter
-	;
+function iostatem_debug()
+	return string.format("ctr: %d, dly: %d, rate: %d, inavg: %f, cin: %f",
+		devstate.counter, devstate.delay, devstate.period, rol_avg, evc);
 end
 
 function iostatem_restore(tbl)
@@ -54,18 +54,22 @@ function iostatem_restore(tbl)
 	devstate = tbl;
 	devstate.iotbl = nil;
 	devstate.counter = tbl.delay and tbl.delay or def_delay;
+	devstate.period = tbl.period and tbl.period or def_period;
+-- FIXME: toggle proper analog axes and filtering
 end
 
 -- just feed this function, will cache state as necessary
 function iostatem_input(iotbl)
 	local dev = devices[iotbl.devid];
+	evc = evc + 1;
+
 	if (iotbl.mouse) then
 		return;
 	end
 
 	if (iotbl.translated) then
 		if (not iotbl.active or SYMTABLE:is_modifier(iotbl)) then
-			devstate.counter = devstate.delay and devstate.delay or def_delay;
+			devstate.counter = devstate.delay ~= nil and devstate.delay or def_delay;
 			devstate.iotbl = nil;
 			return;
 		end
@@ -73,21 +77,19 @@ function iostatem_input(iotbl)
 		devstate.iotbl = iotbl;
 
 	elseif (iotbl.digital) then
-		if (dev) then
-			iotbl.dsym = tostring(iotbl.devid) .. "_" .. tostring(iotbl.subid);
+		if (dev.slot > 0) then
+			iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
 			iotbl.label = dev.lookup and
-				"PLAYER" .. tostring(dev.slot) .. "_" .. dev.lookup[1](iotbl.subid) or "";
+				"PLAYER"..tostring(dev.slot).."_"..dev.lookup[1](iotbl.subid) or "";
 		end
 
-	elseif (iotbl.analog and dev) then
-		if (dev.lookup) then
-			local ah, af = dev.lookup[2](iotbl.subid);
-			if (ah) then
-				iotbl.label = "PLAYER" .. tostring(dev.slot) .. "_" .. ah;
-				if (af ~= 1) then
-					for i=1,#iotbl.samples do
-						iotbl.samples[i] = iotbl.samples[i] * af;
-					end
+	elseif (iotbl.analog and dev and dev.slot > 0) then
+		local ah, af = dev.lookup[2](iotbl.subid);
+		if (ah) then
+			iotbl.label = "PLAYER" .. tostring(dev.slot) .. "_" .. ah;
+			if (af ~= 1) then
+				for i=1,#iotbl.samples do
+					iotbl.samples[i] = iotbl.samples[i] * af;
 				end
 			end
 		end
@@ -103,7 +105,7 @@ end
 
 function iostatem_reset_repeat()
 	devstate.iotbl = nil;
-	devstate.counter = 0;
+	devstate.counter = devstate.delay;
 end
 
 -- for the _current_ context, set delay in ms, period in ticks/ch
@@ -125,6 +127,9 @@ end
 -- returns a table of iotbls, process with ipairs and forward to
 -- normal input dispatch
 function iostatem_tick()
+	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
+	evc = 0;
+
 	if (devstate.counter == 0) then
 		return;
 	end
@@ -132,7 +137,7 @@ function iostatem_tick()
 	if (devstate.iotbl and devstate.period) then
 		devstate.counter = devstate.counter - 1;
 		if (devstate.counter == 0) then
-			devstate.counter = devstate.period and devstate.period or def_period;
+			devstate.counter = devstate.period;
 
 -- copy and add a release so the press is duplicated
 			local a = {};
@@ -185,7 +190,11 @@ function iostatem_added(iotbl)
 			keyboard = iotbl.keyboard
 		};
 		dev = devices[iotbl.devid];
-		assign_slot(dev);
+		if (label_lookup[iotbl.label]) then
+			assign_slot(dev);
+		else
+			dev.slot = 0;
+		end
 	else
 -- keeping this around for devices and platforms that generate a new
 -- ID for each insert/removal will slooowly leak (unlikely though)
@@ -194,8 +203,7 @@ function iostatem_added(iotbl)
 -- reset analog settings and possible load slot again
 			assign_slot(dev);
 		else
-			warning("added existing device, likely platform bug.");
-			dev.slot = 1;
+			warning("added existing device "..dev.label..", likely platform bug.");
 		end
 	end
 end
@@ -213,8 +221,26 @@ function iostatem_removed(iotbl)
 	end
 end
 
-function iostatem_devices()
-	return pairs(devices);
+local function get_devlist(eval)
+	local res = {};
+	for k,v in pairs(devices) do
+		if (eval(v)) then
+			table.insert(res, v);
+		end
+	end
+	return res;
+end
+
+function iostatem_devices(slotted)
+	local lst;
+	if (slotted) then
+		lst = get_devlist(function(a) return not a.lost and a.slot > 0; end);
+		table.sort(lst, function(a, b) return a.slot < b.slot; end);
+	else
+		lst = get_devlist(function(a) return not a.lost; end);
+		table.sort(lst, function(a,b) return a.devid < b.devid; end);
+	end
+		return ipairs(lst);
 end
 
 function iostatem_devcount()
