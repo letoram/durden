@@ -20,6 +20,7 @@ local res = {
 					wnd.sz_delta = {cw, ch};
 				end
 			end
+			return true;
 		end
 	},
 -- actions are exposed as target- menu
