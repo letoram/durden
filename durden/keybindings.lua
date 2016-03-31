@@ -230,7 +230,7 @@ end
 -- LABEL = more abstract and target specific identifier
 --
 function dispatch_translate(iotbl, nodispatch)
-	local ok, sym, outsym;
+	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
 
 -- apply keymap (or possibly local keymap), note that at this stage,

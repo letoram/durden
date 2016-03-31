@@ -737,7 +737,7 @@ symtable.save_keymap = function(tbl, name)
 
 	local wout = open_nonblock(dst, 1);
 	if (not wout) then
-		warning("symtable/save: couldn't open " .. fname .. " for writing.");
+		warning("symtable/save: couldn't open " .. name .. " for writing.");
 		return false;
 	end
 
