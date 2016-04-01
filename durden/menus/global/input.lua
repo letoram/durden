@@ -303,7 +303,6 @@ local keymaps_menu = {
 		name = "keymap_save",
 		label = "Save",
 		kind = "value",
-		hint = "(name)",
 		validator = function(val) return val and string.len(val) > 0; end,
 		handler = function(ctx, val)
 			SYMTABLE:save_keymap(val);

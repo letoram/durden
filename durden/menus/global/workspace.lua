@@ -140,7 +140,6 @@ return {
 		kind = "action",
 		eval = function() return active_display():active_spaces() > 1; end,
 		submenu = true,
-		hint = "Swap:",
 		handler = swap_ws_menu
 	},
 	{
@@ -163,7 +162,6 @@ return {
 		label = "Switch",
 		kind = "action",
 		submenu = true,
-		hint = "Switch To:",
 		handler = switch_ws_menu
 	},
 	{
@@ -171,7 +169,6 @@ return {
 		label = "Layout",
 		kind = "action",
 		submenu = true,
-		hint = "Layout:",
 		handler = workspace_layout_menu
 	},
 	{
@@ -179,7 +176,6 @@ return {
 		label = "Save",
 		kind = "action",
 		submenu = true,
-		hint = "Save Workspace:",
 		handler = save_ws
 	},
 	{
