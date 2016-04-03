@@ -127,6 +127,15 @@ used).
 
 will add a config 'myconfig' to 'mycore' with somefile as first argument.
 
+Menu Widgets
+====
+in the widget folder, there are a few short example scripts on hooks
+that are enabled when menu navigation reaches a certain state or the
+lbar/bbar are used for some things. This feature is intended to help
+developing quick features like notes and a calculator, but also when
+using features that becomes easier with 'cheat sheets' like an ASCII
+table.
+
 Statusbar / Command Channel
 ====
 
@@ -171,7 +180,7 @@ are being implemented, we have the following list:
   - [ ] Ws- switch time based on diff. in content brightness
   - [ ] Workspace color sample points mapped to external LEDs
   - [x] Workspace Event Notification
-  - [ ] Mouse Cursor Event Flash
+  - [x] Mouse Cursor Event Flash
   - [x] Font Customization
   - [ ] Color (UI Shader Uniform settings) Customization
   - [x] Per Window canvas shader control
@@ -215,8 +224,10 @@ are being implemented, we have the following list:
   - [x] Autohiding Mouse
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
-	- [ ] On-Screen Keyboard (custom button grid as window that don't focus)
-  - [ ] Global forwards (specify binding to send to window regardless of focus)
+  - [ ] On-Screen Keyboard (custom button grid as window that don't focus)
+  - [ ] Global forwards
+    - [ ] Specific Binding
+    - [ ] Specific Device
   - [ ] Input state to LED binding (keymap, active bindings for RGB keyboards)
 - [ ] Internationalization
   - [ ] Menu Translations
@@ -289,9 +300,10 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
-  - [ ] Change orientation (vertical / horizontal)
-  -     [x] support switching vertical / horizontal
-  -     [ ] support switching LED layout hinting (RGB vs VRGB)
+  - [ ] Change orientation
+  -     [x] vertical / horizontal
+  -     [ ] mirroring
+  -     [ ] led layout in hinting (RGB to VRGB)
   - [x] Respect display DPI and use cm/font-pt as size
   - [ ] Remember DPI / overrides / orientation between launches
   - [x] Power Management Controls
@@ -340,7 +352,7 @@ The menu-code that uses the lbar currently could trivially be switched over
 to use such popup-menu style navigation, though some icon field may need to
 be added.
 
-### widgets
+### external widgets
 Sweep the database at launch for a specific tag and launch them all at startup,
 attaching to a fixed size docklet "WindowMaker/NeXTStep style" or as part of the
 global/target menu screen.
@@ -359,7 +371,8 @@ to hide/reveal active windows.
 ### advanced keyboard - mouse navigation
 Offscreen, run edge detection/amplification, downscale and readback to get
 a 'navigation map' of continous regions that the mouse cursor can be centered
-to, allowing much faster keyboard control over mouse cursor.
+to, allowing much faster cursor positioning with keyboard and "sticky" regions
+with mouse navigation.
 
 Repository
 =====

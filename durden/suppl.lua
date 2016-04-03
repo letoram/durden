@@ -432,14 +432,10 @@ local function lbar_props()
 	return yp, barh, dir;
 end
 
-local function menu_path_append(ctx, new, lbl)
-	local path = ctx.path;
-	local helper = ctx.helper;
-
-	table.insert(path, new);
-	local res = table.concat(path, "/");
+local function hlp_add_btn(helper, lbl)
 	local yp, tileh, dir = lbar_props();
 	local pad = gconfig_get("lbar_pad");
+
 	local btn = uiprim_button(active_display().order_anchor,
 		"lbar_tile", "lbar_tiletext", lbl, pad,
 		active_display().font_resfn, 0, tileh
@@ -454,7 +450,21 @@ local function menu_path_append(ctx, new, lbl)
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("inactive");
 	end
-	table.insert(helper, {btn = btn, yofs = yofs, ofs = ofs + btn.w + 3 * pad});
+	table.insert(helper, {btn = btn, yofs = yofs, ofs = ofs + btn.w});
+end
+
+local function menu_path_append(ctx, new, lbl)
+	local path = ctx.path;
+	local helper = ctx.helper;
+
+	table.insert(path, new);
+	local res = table.concat(path, "/");
+	hlp_add_btn(ctx.helper, lbl);
+
+	if (DEBUGLEVEL > 1) then
+		print("menu path switch:", res);
+	end
+
 	return res;
 end
 
@@ -464,14 +474,20 @@ local function menu_path_pop(ctx)
 
 	table.remove(path, #path);
 	local res = table.concat(path, "/");
--- fixme, other animation
 	local as = gconfig_get("transition") * 0.5;
 	local hlp = helper[#helper];
 	if (not hlp) then
 		return res;
 	end
 
-	hlp.btn:destroy();
+	blend_image(hlp.btn.bg, 0.0, as);
+	if (as > 0) then
+		tag_image_transform(hlp.btn.bg,
+			MASK_OPACITY, function() hlp.btn:destroy(); end);
+	else
+		hlp.btn:destroy();
+	end
+
 	table.remove(helper, #helper);
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("active");
@@ -479,15 +495,41 @@ local function menu_path_pop(ctx)
 	return res;
 end
 
-local function menu_path_reset(ctx)
+local function menu_path_reset(ctx, prefix)
 	for k,v in ipairs(ctx.helper) do
 		v.btn:destroy();
 	end
 	ctx.helper = {};
+	ctx.helper.add = hlp_add_btn;
 	ctx.path = {};
 end
 
+local widgets = {};
+
+function suppl_widget_scan()
+	local res = glob_resource("widgets/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(res) do
+		local res = system_load("widgets/" .. v, false);
+		if (res) then
+			local ok, wtbl = pcall(res);
+-- would be a much needed feature to have a compact and elegant
+-- way of specifying a stronger contract on fields and types in
+-- place like this.
+			if (ok and wtbl and wtbl.name and type(wtbl.name) == "string" and
+				string.len(wtbl.name) > 0 and wtbl.paths and
+				type(wtbl.paths) == "table") then
+				widgets[wtbl.name] = wtbl;
+				warning("got widget:" .. v);
+			else
+				warning("widget " .. v .. " failed to load");
+			end
+		end
+	end
+end
+
 function menu_path_new()
+-- scan for menu widgets
+	suppl_widget_scan();
 	return {
 		helper = {},
 		path = {},
@@ -583,6 +625,64 @@ end
 
 function suppl_access_path()
 	return cpath;
+end
+
+--
+-- used to find and activate support widgets and tie to the set ctx
+--
+function suppl_widget_path(ctx, ident)
+	local match = {};
+	local fi = 0;
+
+	for k,v in pairs(widgets) do
+		for i,j in ipairs(v.paths) do
+			if (j == ident) then
+-- insertion sort the floaters so we can treat them special later
+				if (v.float) then
+					table.insert(match, 1, v);
+					fi = fi + 1;
+				else
+					table.insert(match, v);
+				end
+			end
+		end
+	end
+
+	local nm = #match;
+	if (nm == 0) then
+		return;
+	end
+
+-- create anchors linked to background for automatic deletion, as they
+-- are used for clipping, distribute in a fair away between top and bottom
+-- but with special treatment for floating widgets
+	local start = fi+1;
+	local ad = active_display();
+	local sub_sz = gconfig_get("lbar_sz") * ad.scalef;
+	local rh = ad.height * 0.5 - sub_sz;
+	local y2 = ad.height * 0.5 + sub_sz;
+
+	if (nm - fi > 0) then
+		local ndiv = (#match - fi) / 2;
+		local cellw = ndiv > 1 and ad.width / ndiv or ad.width;
+		local cx = 0;
+		local ay = 0;
+		while start <= nm do
+			local anch = null_surface(cellw, rh);
+			show_image(anch);
+			link_image(anch, ctx.anchor);
+			image_inherit_order(anch, true);
+			move_image(anch, cx, ay);
+			match[start].show(ctx, anch);
+			start = start + 1;
+			if (ay == 0) then
+				ay = y2;
+			else
+				ay = 0;
+				cx = cx + cellw;
+			end
+		end
+	end
 end
 
 function suppl_run_value(ctx, mask)
@@ -742,6 +842,7 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	if (not bar.on_cancel) then
 		bar.on_cancel = menu_cancel;
 	end
+
 	return bar;
 end
 

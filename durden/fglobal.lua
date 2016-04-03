@@ -278,21 +278,24 @@ end
 function fglobal_bind_u8(hook)
 	local bwt = gconfig_get("bind_waittime");
 	local tbhook = function(sym, done, sym2, iotbl)
-		if (done) then
-			active_display():lbar(
-			function(ctx, instr, done, lastv)
-				if (not done) then
-					return instr and string.len(instr) > 0 and str_to_u8(instr) ~= nil;
-				end
-
-				instr = str_to_u8(instr);
-				if (instr and utf8valid(instr)) then
-						hook(sym, instr, sym2, iotbl);
-				else
-					active_display():message("invalid utf-8 sequence specified");
-				end
-			end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
+		if (not done) then
+			return;
 		end
+
+		local bar = active_display():lbar(
+		function(ctx, instr, done, lastv)
+			if (not done) then
+				return instr and string.len(instr) > 0 and str_to_u8(instr) ~= nil;
+			end
+
+			instr = str_to_u8(instr);
+			if (instr and utf8valid(instr)) then
+					hook(sym, instr, sym2, iotbl);
+			else
+				active_display():message("invalid utf-8 sequence specified");
+			end
+		end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
+		suppl_widget_path(bar, "special:u8");
 	end;
 
 	tiler_bbar(active_display(),
