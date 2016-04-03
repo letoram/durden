@@ -334,7 +334,6 @@ return {
 		name = "synchronization_strategies",
 		label = "Synchronization",
 		kind = "action",
-		hint = "Synchronization:",
 		submenu = true,
 		handler = function() return query_synch(); end
 	},

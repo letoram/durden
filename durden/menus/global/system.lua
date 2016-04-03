@@ -149,7 +149,6 @@ local system_menu = {
 		label = "Shutdown",
 		kind = "action",
 		submenu = true,
-		hint = "Shutdown?",
 		handler = exit_query
 	},
 	{
@@ -157,7 +156,6 @@ local system_menu = {
 		label = "Reset",
 		kind = "action",
 		submenu = true,
-		hint = "Reset?",
 		handler = reset_query
 	},
 	{
@@ -177,7 +175,6 @@ if (DEBUGLEVEL > 0) then
 		label = "Debug",
 		kind = "action",
 		submenu = true,
-		hint = "Debug:",
 		handler = debug_menu,
 	});
 end
