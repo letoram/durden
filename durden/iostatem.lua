@@ -136,6 +136,7 @@ function iostatem_tick()
 
 	if (devstate.iotbl and devstate.period) then
 		devstate.counter = devstate.counter - 1;
+
 		if (devstate.counter == 0) then
 			devstate.counter = devstate.period;
 
