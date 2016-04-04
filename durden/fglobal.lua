@@ -332,7 +332,6 @@ end
 -- ignore: sfun, lbl, cctx
 gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	local bwt = gconfig_get("bind_waittime");
-	IN_CUSTOM_BIND = true; -- needed for some special options
 
 	local ctx = tiler_bbar(active_display(),
 		string.format(LBL_BIND_COMBINATION_REP, SYSTEM_KEYS["cancel"]),
@@ -345,6 +344,8 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 					active_display():message(res and res .. " unbound" or nil);
 				end);
 				active_display():message("select function to bind to " .. sym, -1);
+				IN_CUSTOM_BIND = true; -- needed for some special options
+
 				local ctx;
 				if (wnd == nil) then
 					ctx = gf["global_actions"]();
@@ -555,6 +556,7 @@ end
 local ign_input = function(iotbl)
 	local ok, sym, outsym, lutval = dispatch_translate(iotbl, true);
 	if (iotbl.active and lutval) then
+		lutval = lutval == "!input/input_toggle" and "input_lock_toggle" or lutval;
 		if (lutval == "input_lock_toggle" or lutval == "input_lock_off" or
 			lutval == "input_lock_on") then
 			gf[lutval]();

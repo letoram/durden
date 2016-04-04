@@ -42,7 +42,7 @@ function iostatem_save()
 end
 
 function iostatem_debug()
-	return string.format("ctr: %d, dly: %d, rate: %d, inavg: %f, cin: %f",
+	return string.format("ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
 		devstate.counter, devstate.delay, devstate.period, rol_avg, evc);
 end
 
