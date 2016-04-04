@@ -98,7 +98,6 @@ function iostatem_input(iotbl)
 -- analog) as the input storms can saturate most event queues
 	return true;
 	else
-		print("iostatem, missing things", iotbl.kind);
 -- nothing for touch devices right now
 	end
 end
