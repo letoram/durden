@@ -217,6 +217,21 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
+local function hb(ch)
+	local th = {"0", "1", "2", "3", "4", "5",
+		"6", "7", "8", "9", "a", "b", "c", "d", "e", "f"};
+
+	local fd = math.floor(ch/16);
+	local sd = ch - fd * 16;
+	return th[fd+1] .. th[sd+1];
+end
+
+function hexenc(instr)
+	return string.gsub(instr, "(.)", function(ch)
+		return hb(ch:byte(1));
+	end);
+end
+
 -- streaming is incomplete still in that we havn't set up mechanism for
 -- credential-store-fetch
 local function build_recargs(vsrc, asrc, streaming)
