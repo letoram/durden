@@ -119,8 +119,8 @@ local function target_cfgmenu(str, cfgs)
 	local res = {};
 	for k,v in ipairs(cfgs) do
 		table.insert(res,{
-			name = "target_launch_" .. tostring(util.hash(str))
-				.. "_" .. tostring(util.hash(v)),
+			name = "target_launch_" .. hexenc(util.hash(str))
+				.. "_" .. hexenc(util.hash(v)),
 			kind = "action",
 			label = v,
 			force_completion = true,
@@ -136,7 +136,7 @@ local function target_submenu()
 	for k,v in ipairs(targets) do
 		local cfgs = target_configurations(v);
 		local nent = {
-			name = "target_launch_" .. tostring(util.hash(v)),
+			name = "target_launch_" .. hexenc(util.hash(v)),
 			kind = "action",
 			label = v
 		};

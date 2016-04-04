@@ -208,6 +208,13 @@ update_default_font = function(key, val)
 	end
 end
 
+-- [uncomment for quick dimension debugging]
+-- local olddh = target_displayhint;
+-- function target_displayhint(...)
+-- 	print("target_displayhint", ...);
+--	olddh(...);
+-- end
+
 -- need these event handlers here since it ties together modules that should
 -- be separated code-wise, as we want tiler- and other modules to be reusable
 -- in less complex projects
@@ -219,7 +226,9 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	if (neww > 0 and newh > 0) then
 		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			local props = image_storage_properties(wnd.external);
-			if (not wnd.sz_delta or
+
+-- ignore resize- step limit (terminal) if we are not in drag resize
+			if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or
 			   math.abs(props.height - newh) > wnd.sz_delta[2])) then
 				target_displayhint(wnd.external, efw, efh, wnd.dispmask);
