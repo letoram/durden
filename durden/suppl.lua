@@ -248,6 +248,7 @@ function suppl_setup_rec(wnd, val)
 
 	local nsurf = null_surface(pw, ph);
 	image_sharestorage(svid, nsurf);
+	show_image(nsurf);
 	local varr = {nsurf};
 
 	local db = alloc_surface(pw, ph);
@@ -258,8 +259,8 @@ function suppl_setup_rec(wnd, val)
 	end
 
 	local argstr, srate = build_recargs(varr, aarr, false);
-	local res = define_recordtarget(db, val, argstr, varr, aarr,
-		RENDERTARGET_NODETACH, RENDERTARGET_SCALE, srate,
+	define_recordtarget(db, val, argstr, varr, aarr,
+		RENDERTARGET_DETACH, RENDERTARGET_SCALE, srate,
 		function(source, stat)
 			if (stat.kind == "terminated") then
 				delete_image(source);
@@ -267,7 +268,7 @@ function suppl_setup_rec(wnd, val)
 		end
 	);
 
-	if (not valid_vid(res)) then
+	if (not valid_vid(db)) then
 		delete_image(db);
 		delete_image(nsurf);
 		warning("setup_rec, failed to spawn recordtarget");
@@ -275,8 +276,8 @@ function suppl_setup_rec(wnd, val)
 	end
 
 -- link the recordtarget with the source for automatic deletion
-	link_image(res, svid);
-	return res;
+	link_image(db, svid);
+	return db;
 end
 
 function drop_keys(matchstr)
