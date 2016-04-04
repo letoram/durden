@@ -217,6 +217,68 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
+-- streaming is incomplete still in that we havn't set up mechanism for
+-- credential-store-fetch
+local function build_recargs(vsrc, asrc, streaming)
+	local argstr = string.format("vcodec=%s:fps=%.3f:vpreset=%d:container=%s",
+		gconfig_get("enc_vcodec"), gconfig_get("enc_fps"),
+		gconfig_get("enc_vpreset"), streaming and "stream" or
+		gconfig_get("enc_container")
+	);
+
+	if (not asrc or #asrc == 0) then
+		argstr = argstr .. ":noaudio";
+	end
+
+	return argstr, gconfig_get("enc_srate");
+end
+
+function suppl_setup_rec(wnd, val)
+	local svid = type(wnd) == "table" and wnd.external or wnd;
+	local aarr = {};
+
+	if (not valid_vid(svid)) then
+		return;
+	end
+
+-- work around link_image constraint
+	local props = image_storage_properties(svid);
+	local pw = props.width + props.width % 2;
+	local ph = props.height + props.height % 2;
+
+	local nsurf = null_surface(pw, ph);
+	image_sharestorage(svid, nsurf);
+	local varr = {nsurf};
+
+	local db = alloc_surface(pw, ph);
+	if (not valid_vid(db)) then
+		delete_image(nsurf);
+		warning("setup_rec, couldn't allocate output buffer");
+		return;
+	end
+
+	local argstr, srate = build_recargs(varr, aarr, false);
+	local res = define_recordtarget(db, val, argstr, varr, aarr,
+		RENDERTARGET_NODETACH, RENDERTARGET_SCALE, srate,
+		function(source, stat)
+			if (stat.kind == "terminated") then
+				delete_image(source);
+			end
+		end
+	);
+
+	if (not valid_vid(res)) then
+		delete_image(db);
+		delete_image(nsurf);
+		warning("setup_rec, failed to spawn recordtarget");
+		return;
+	end
+
+-- link the recordtarget with the source for automatic deletion
+	link_image(res, svid);
+	return res;
+end
+
 function drop_keys(matchstr)
 	local rst = {};
 	for i,v in ipairs(match_keys(matchstr)) do

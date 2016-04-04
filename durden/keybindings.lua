@@ -93,12 +93,12 @@ function dispatch_reset(save)
 	tbl["m1_m2_0"] = "assign_ws10";
 	tbl["m1_p"] = "debug_testwnd_bar";
 
+if (DEBUGLEVEL > 0) then
 -- there is also input_ignore_on and input_ignore_off, these are
 -- not exposed as menus
-tbl["m1_m2_SYSREQ"] = "input_lock_toggle";
-tbl["m1_m2_INSERT"] = "input_lock_toggle";
+		tbl["m1_m2_SYSREQ"] = "input_lock_toggle";
+		tbl["m1_m2_INSERT"] = "input_lock_toggle";
 
-if (DEBUGLEVEL > 0) then
 		tbl["m1_m2_p"] = "debug_dump_state";
 	end
 

@@ -25,6 +25,8 @@ local function get_disp(name)
 end
 
 local function autohome_spaces(ndisp)
+	local migrated = false;
+
 	for i, disp in ipairs(displays) do
 		local tiler = disp.tiler;
 		if (tiler and tiler ~= ndisp.tiler) then
@@ -32,6 +34,7 @@ local function autohome_spaces(ndisp)
 				if (tiler.spaces[i] and tiler.spaces[i].home and
 					tiler.spaces[i].home == ndisp.name) then
 					tiler.spaces[i]:migrate(ndisp.tiler);
+					migrated = true;
 				end
 			end
 		end
@@ -252,6 +255,7 @@ function display_add(name, width, height, ppcm)
 	if (found) then
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
+
 	else
 		set_context_attachment(WORLDID);
 		local nd = {
@@ -275,7 +279,12 @@ function display_add(name, width, height, ppcm)
 		set_context_attachment(displays[displays.main].rt);
 	end
 
+-- this also takes care of spaces that are saved as preferring a certain disp.
 	autohome_spaces(found);
+
+	if (found.last_m) then
+		display_ressw(name, found.last_m);
+	end
 	return found;
 end
 
@@ -333,6 +342,8 @@ function display_ressw(name, mode)
 		return;
 	end
 
+-- track this so we can recover if the display is lost, readded and homed to def.
+	disp.last_m = mode;
 	disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
 		0.1 * mode.phy_height_mm, mode.width, mode.height);
 

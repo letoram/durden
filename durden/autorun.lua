@@ -18,13 +18,20 @@ if (DEBUGLEVEL > 1) then
 		local m1, m2 = dispatch_meta();
 		local total, used = current_context_usage();
 
-		local wndapp = "";
+		local wndapp = "none";
 		local wnd = active_display().selected;
+		if (wnd) then
+			local sp = image_storage_properties(wnd.canvas);
+			wndapp = string.format("gain: %.2f, w/h: %.2f/%.2f, effw/h: %.2f, " ..
+				"%.2f s_w/h: %.2f, %.2f, type: %s", wnd.gain, wnd.width, wnd.height,
+				wnd.effective_w, wnd.effective_h, sp.width, sp.height, wnd.atype and
+				wnd.atype or "unknown");
+		end
 
 -- mstate, keyboardstate, clipboard mode, global gain
 
 		active_display():message(string.format(
-			"[SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)] %s",
+			"[SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)] wnd:[%s]",
 			used, total, mouse_handlercount(), m1 and 1 or 0, m2 and 1 or 0,
 			iostatem_debug(), wndapp
 		));

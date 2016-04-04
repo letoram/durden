@@ -434,5 +434,13 @@ return {
 -- sideeffect, actually rescans on some platforms
 			inputanalog_query(nil, nil, true);
 		end
+	},
+-- don't want this visible as accidental trigger would lock you out
+	{
+		name = "input_toggle",
+		kind = "action",
+		label = "Toggle Lock",
+		handler = grab_global_function("input_lock_toggle"),
+		invisible = true
 	}
 };
