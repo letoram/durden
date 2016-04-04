@@ -306,7 +306,8 @@ local region_menu = {
 	{
 		name = "display_region_record",
 		label = "Record",
-		eval = function() return false; end,
+		eval = function() return string.match(
+			FRAMESERVER_MODES, "encode") ~= nil; end,
 		kind = "action",
 		handler = function()
 			do_regsel(255, 0, 255, function(x1, y1, x2, y2)

@@ -115,6 +115,13 @@ local durden_visual = {
 		end
 	},
 	{
+		name = "config_shaders",
+		label = "Shaders",
+		kind = "action",
+		submenu = true,
+		handler = system_load("menus/global/shaders.lua")()
+	},
+	{
 		name = "config_mouse_scale",
 		label = "Mouse Scale",
 		kind = "value",

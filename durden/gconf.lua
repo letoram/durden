@@ -30,6 +30,13 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
+-- default encoder setting, used by suppl when building string
+	enc_fps = 30,
+	enc_srate = -1,
+	enc_vcodec = "H264",
+	enc_vpreset = 8,
+	enc_container = "mkv",
+
 -- SECURITY: set to :disabled to disable these features
 	extcon_path = "durden",
 	status_path = "durden_status",

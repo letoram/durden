@@ -100,6 +100,39 @@ return {
 			save_screenshot(val, FORMAT_PNG, active_display().selected.canvas);
 		end
 	},
+-- there are tons of controls that could possibly be added here,
+-- the better solution is probably to allow a record-tool window with
+-- all the knobs needed for mixing, adding / dropping sources etc.
+	{
+		name = "record",
+		label = "Record",
+		kind = "value",
+		hint = "(full path)",
+		validator = function(val)
+			return string.len(val) > 0 and not resource(val);
+		end,
+		eval = function() return string.match(
+			FRAMESERVER_MODES, "encode") ~= nil and not valid_vid(
+				active_display().selected.in_record);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd.in_record = suppl_setup_rec(wnd, val);
+		end
+	},
+	{
+		name = "stop_record",
+		label = "Stop Record",
+		kind = "action",
+		validator = function(val)
+			return valid_vid(active_display().selected.in_record);
+		end,
+		handler = function()
+			local wnd = active_display().selected;
+			delete_image(wnd.in_record);
+			wnd.in_record = nil;
+		end
+	},
 	{
 		name = "target_shader",
 		label = "Shader",
