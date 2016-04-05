@@ -166,6 +166,15 @@ function dispatch_load()
 	end
 end
 
+function dispatch_list()
+	local res = {};
+	for k,v in pairs(tbl) do
+		table.insert(res, k .. "  " .. v);
+	end
+	table.sort(res);
+	return res;
+end
+
 function dispatch_custom(key, val, nomb, wnd, global)
 	local old = tbl[key];
 	local pref = wnd and "custs_" or "custg_";

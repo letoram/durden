@@ -457,7 +457,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		name = "bg_cancel",
 		own = function(ctx, vid) return vid == bg; end,
 		click = function() accept_cancel(wm, false); end
-		};
+	};
 	mouse_addlistener(ph, {"click"});
 	table.insert(pending, ph);
 

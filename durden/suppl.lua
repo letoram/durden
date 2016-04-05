@@ -597,7 +597,6 @@ function suppl_widget_scan()
 				string.len(wtbl.name) > 0 and wtbl.paths and
 				type(wtbl.paths) == "table") then
 				widgets[wtbl.name] = wtbl;
-				warning("got widget:" .. v);
 			else
 				warning("widget " .. v .. " failed to load");
 			end
@@ -706,9 +705,12 @@ function suppl_access_path()
 end
 
 --
--- used to find and activate support widgets and tie to the set ctx
+-- used to find and activate support widgets and tie to the set [ctx]:tbl,
+-- [anchor]:vid will be used for deletion (and should be 0,0 world-space)
+-- [ident]:str matches path/special:function to match against widget
+-- paths and [reserved]:num is the number of center- used pixels to avoid.
 --
-function suppl_widget_path(ctx, ident)
+function suppl_widget_path(ctx, anchor, ident, reserved)
 	local match = {};
 	local fi = 0;
 
@@ -717,9 +719,11 @@ function suppl_widget_path(ctx, ident)
 			if (j == ident) then
 -- insertion sort the floaters so we can treat them special later
 				if (v.float) then
-					table.insert(match, 1, v);
+					table.insert(match, 1, {v, 1});
 					fi = fi + 1;
 				else
+-- FIXME: need support for a query interface to determine if the widget
+-- wants to split into multicolumns managed separately
 					table.insert(match, v);
 				end
 			end
@@ -736,7 +740,7 @@ function suppl_widget_path(ctx, ident)
 -- but with special treatment for floating widgets
 	local start = fi+1;
 	local ad = active_display();
-	local sub_sz = gconfig_get("lbar_sz") * ad.scalef;
+	local sub_sz = reserved;
 	local rh = ad.height * 0.5 - sub_sz;
 	local y2 = ad.height * 0.5 + sub_sz;
 
@@ -748,8 +752,9 @@ function suppl_widget_path(ctx, ident)
 		while start <= nm do
 			local anch = null_surface(cellw, rh);
 			show_image(anch);
-			link_image(anch, ctx.anchor);
+			link_image(anch, anchor);
 			image_inherit_order(anch, true);
+			image_mask_set(anch, MASK_UNPICKABLE);
 			move_image(anch, cx, ay);
 			match[start].show(ctx, anch);
 			start = start + 1;
