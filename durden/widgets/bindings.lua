@@ -6,7 +6,6 @@ local function probe(ctx, yh)
 	ctx.lst = dispatch_list();
 	local fd = active_display().font_delta;
 	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
-	print(yh, th);
 	ctx.group_sz = math.floor(yh / th);
 	ctx.group_sz = ctx.group_sz > #ctx.lst and #ctx.lst or ctx.group_sz;
 	return math.ceil(#ctx.lst / ctx.group_sz);
