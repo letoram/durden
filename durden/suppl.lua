@@ -195,6 +195,12 @@ function table.find_i(table, r)
 	end
 end
 
+function table.insert_unique_i(tbl, i, v)
+	if (not table.find_i(tbl, v)) then
+		table.insert(tbl, i, v);
+	end
+end
+
 function table.i_subsel(table, label, field)
 	local res = {};
 	local ll = label and string.lower(label) or "";
