@@ -1,13 +1,5 @@
 -- just cycle this to make it easier to distinguish
 -- individual lines
-local palette = {
-	"\\#43abc9",
-	"\\#b5c689",
-	"\\#efd469",
-	"\\#f58b4c",
-	"\\#cd594a"
-};
-
 local neutral = "\\#999999";
 
 return {
@@ -36,9 +28,9 @@ return {
 				pref = "";
 			end
 
-			table.insert(out, pref .. fd .. palette[cind]);
+			table.insert(out, pref .. fd .. HC_PALETTE[cind]);
 			table.insert(out, lstr);
-			cind = cind == #palette and 1 or (cind + 1);
+			cind = cind == #HC_PALETTE and 1 or (cind + 1);
 		end
 
 		local tbl, heights, outw, outh, asc = render_text(out);

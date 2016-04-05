@@ -16,6 +16,14 @@ LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b  in %.2f second, %s to Abort";
 LBL_METAGUARD_BASIC = "Rebind \\bbasic keys\\!b  in %.2f seconds, %s to Abort";
 LBL_METAGUARD_MENU = "Rebind \\bmenu\\!b  binding in %.2f seconds, %s to Abort";
 
+HC_PALETTE = {
+	"\\#43abc9",
+	"\\#b5c689",
+	"\\#efd469",
+	"\\#f58b4c",
+	"\\#cd594a"
+};
+
 local defaults = {
 	msg_timeout = 100,
 	tbar_timeout = 200,

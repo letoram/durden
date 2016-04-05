@@ -12,7 +12,7 @@ return {
 	void main()
 	{
 		float alpha = texture2D(map_tu0, texco).a;
-		gl_FragColor = vec4(color.rgb, alpha);
+		gl_FragColor = vec4(color.rgb, alpha * obj_opacity);
 	}
 ]],
 	uniforms = {

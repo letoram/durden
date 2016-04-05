@@ -6,7 +6,7 @@ return {
 	uniform float border;
 	uniform float thickness;
 	uniform float obj_opacity;
-	uniform vec3 color;
+	uniform vec4 color;
 	uniform vec2 obj_output_sz;
 	varying vec2 texco;
 
@@ -28,7 +28,7 @@ return {
 		)
 			discard;
 
-		gl_FragColor = vec4(color.rgb, obj_opacity);
+		gl_FragColor = vec4(color.rgb, color.a * obj_opacity);
 	}
 ]],
 	uniforms = {
@@ -48,14 +48,14 @@ return {
 		},
 		color = {
 			label = 'Color',
-			utype = 'fff',
-			default = {1.0, 1.0, 1.0}
+			utype = 'ffff',
+			default = {1.0, 1.0, 1.0, 1.0}
 		}
 	},
 	states = {
-		suspended = {uniforms = { color = {0.6, 0.0, 0.0} } },
-		active = { uniforms = { color = {0.235, 0.4078, 0.53} } },
-		inactive = { uniforms = { color = {0.109, 0.21, 0.349} } },
-		alert = { uniforms = { color = {1.0, 0.54, 0.0} } },
+		suspended = {uniforms = { color = {0.6, 0.0, 0.0, 0.9} } },
+		active = { uniforms = { color = {0.235, 0.4078, 0.53, 0.9} } },
+		inactive = { uniforms = { color = {0.109, 0.21, 0.349, 0.6} } },
+		alert = { uniforms = { color = {1.0, 0.54, 0.0, 0.9} } },
 	}
 };
