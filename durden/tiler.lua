@@ -770,7 +770,7 @@ local function set_fullscreen(space)
 	dw.centered = true;
 
 -- hide all images + statusbar
-	hide_image(dw.wm.statusbar);
+	dw.wm.statusbar:hide();
 	local wnds = linearize(space);
 	for k,v in ipairs(wnds) do
 		hide_image(v.anchor);

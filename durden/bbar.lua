@@ -13,15 +13,19 @@ local function drop_bbar(wm)
 	wm:set_input_lock();
 	local time = gconfig_get("transition");
 	local bar = wm.input_ctx.bar;
+	local anchor = wm.input_ctx.anchor;
 	blend_image(bar, 0.0, time, INTERP_EXPINOUT);
+	blend_image(anchor, 0.0, time, INTERP_EXPINOUT);
 	if (time > 0) then
 		PENDING_FADE = bar;
 		expire_image(bar, time + 1);
+		expire_image(anchor, time + 1);
 		tag_image_transform(bar, MASK_OPACITY, function()
 			PENDING_FADE = nil;
 		end);
 	else
 		delete_image(bar);
+		delete_image(anchor);
 	end
 	if (wm.input_ctx.on_cancel) then
 		wm.input_ctx:on_cancel();
@@ -153,8 +157,11 @@ end
 local function setup_vids(wm, ctx, lbsz, time)
 	local bar = color_surface(wm.width, lbsz, unpack(gconfig_get("lbar_bg")));
 	local progress = color_surface(1, lbsz, unpack(gconfig_get("lbar_caret_col")));
+
 	ctx.bar = bar;
 	ctx.progress = progress;
+	ctx.anchor = null_surface(wm.width, wm.height);
+	show_image(ctx.anchor);
 
 	image_tracetag(bar, "bar");
 	link_image(bar, wm.order_anchor);
