@@ -23,9 +23,9 @@ local function clipboard_add(ctx, source, msg, multipart)
 -- in a separate global history that we can grab from at will
 	if (string.len(msg) < 1024) then
 		for k in string.gmatch(msg, "%a+://[^%s]+") do
-			table.insert(ctx.urls, k);
+			table.insert_unique_i(ctx.urls, 1, k);
 			if (#ctx.urls > 10) then
-				table.remove(ctx.urls, 1);
+				table.remove(ctx.urls, #ctx.urls);
 			end
 		end
 	end
@@ -51,14 +51,14 @@ local function clipboard_add(ctx, source, msg, multipart)
 		end
 	end
 
-	table.insert(ctx.locals[source], 1, msg);
+	table.insert_unique_i(ctx.locals[source], 1, msg);
 	if (#ctx.locals[source] > ctx.history_size) then
 		table.remove(ctx.locals[source], #ctx.locals[source]);
 	end
 end
 
 local function clipboard_setglobal(ctx, msg)
-	table.insert(ctx.globals, 1, msg);
+	table.insert_unique_i(ctx.globals, 1, msg);
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
 	end
