@@ -361,7 +361,8 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 		end, gconfig_get("bind_repeat")
 	);
 
-	suppl_widget_path(ctx, ctx.anchor, "special:custg", ctx.data_y*2);
+	local lbsz = 2 * active_display().scalef * gconfig_get("lbar_sz");
+	suppl_widget_path(ctx, ctx.anchor, "special:custg", lbsz);
 	ctx.on_cancel = function() IN_CUSTOM_BIND = false; end
 end
 

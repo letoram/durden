@@ -3,7 +3,7 @@ local function list_timers(tag, hfun, group, active)
 	local res = {};
 	for k,v in ipairs(names) do
 		table.insert(res, {
-			name = "timer_" .. tag .. "v",
+			name = "t_" .. tag .. "v",
 			label = v,
 			handler = function() hfun(v); end,
 			kind = "action"
@@ -59,7 +59,7 @@ end
 
 local function query_timer_name(cb, doublefun)
 	suppl_run_value({
-		name = "timer_add_customv_name",
+		name = "add_cv",
 		hint = "(Name)",
 		kind = "value",
 		validator = function(val)
@@ -89,7 +89,7 @@ end
 
 local timer_add = {
 	{
-		name = "timer_add_periodic",
+		name = "add_period",
 		label = "Periodic",
 		hint = "(Period, seconds)",
 		kind = "value",
@@ -109,7 +109,7 @@ local timer_add = {
 		end
 	},
 	{
-		name = "timer_add_once",
+		name = "add_once",
 		label = "Once",
 		hint = "(Delay, seconds)",
 		kind = "value",
@@ -129,7 +129,7 @@ local timer_add = {
 		end
 	},
 	{
-		name = "timer_add_idle",
+		name = "add_idle",
 		hint = "(Idle time, seconds)",
 		label = "Idle",
 		kind = "value",
@@ -143,7 +143,7 @@ local timer_add = {
 		end
 	},
 	{
-		name = "timer_add_idle_once",
+		name = "add_idle_once",
 		hint = "(Idle time, seconds)",
 		label = "Idle-Once",
 		kind = "value",
@@ -160,7 +160,7 @@ local timer_add = {
 
 return {
 	{
-		name = "timer_list_delete",
+		name = "delete",
 		label = "Delete",
 		kind = "action",
 		submenu = true,
@@ -170,7 +170,7 @@ return {
 		end
 	},
 	{
-		name = "timer_list_suspend",
+		name = "suspend",
 		label = "Suspend",
 		kind = "action",
 		submenu = true,
@@ -181,7 +181,7 @@ return {
 		end
 	},
 	{
-		name = "timer_list_resume",
+		name = "resume",
 		label = "Resume",
 		kind = "action",
 		submenu = true,
@@ -192,21 +192,21 @@ return {
 		end
 	},
 	{
-		name = "timer_add",
+		name = "add",
 		label = "Add",
 		kind = "action",
 		submenu = true,
 		handler = timer_add
 	},
 	{
-		name = "timer_block_idle",
+		name = "block_idle",
 		label = "Block Idle",
 		kind = "action",
 		eval = function() return timer_mask_idle() == false; end,
 		handler = function() timer_mask_idle(true); end
 	},
 	{
-		name = "timer_unblock_idle",
+		name = "unblock_idle",
 		label = "Unblock Idle",
 		kind = "action",
 		eval = function() return timer_mask_idle() == true; end,

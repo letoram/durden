@@ -1,7 +1,7 @@
 local function orientation_menu(name)
 	return {
 		{
-			name = "disp_orent_toggle_hv",
+			name = "toggle_hv",
 			eval = function() return not display_simple(); end,
 			label = "Toggle H/V",
 			kind = "action",
@@ -19,7 +19,7 @@ local function query_synch()
 -- dynamically populated so we don't expose this globally at the moment
 		for k,v in ipairs(lst) do
 			res[k] = {
-				name = "set_synch_" .. tostring(k),
+				name = "synch_" .. tostring(k),
 				label = v,
 				kind = "action",
 				handler = function(ctx)
@@ -42,7 +42,7 @@ local function query_dispmenu(ind, name)
 				got_dynamic = true;
 			else
 				table.insert(mtbl, {
-					name = "set_res_" .. tostring(k),
+					name = "mode_" .. tostring(k),
 					label = string.format("%d*%d, %d bits @%d Hz",
 						v.width, v.height, v.depth, v.refresh),
 					kind = "action",
@@ -62,7 +62,7 @@ end
 local function gen_disp_menu(disp)
 	return {
 		{
-		name = "disp_menu_" .. tostring(disp.name) .. "state",
+		name = "state",
 		eval = function() return disp.id ~= nil and disp.primary ~= true; end,
 		label = "Toggle On/Off",
 		kind = "action",
@@ -73,7 +73,7 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
-		name = "disp_menu_density_override",
+		name = "density",
 		label = "Pixel Density",
 		kind = "value",
 		hint = "(px/cm)",
@@ -84,7 +84,7 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
-		name = "disp_menu_shader",
+		name = "shader",
 		label = "Shader",
 		kind = "action",
 		submenu = true,
@@ -94,7 +94,7 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
-		name = "disp_menu_" .. tostring(disp.name) .. "state",
+		name = "resolution",
 		label = "Resolution",
 		kind = "action",
 		submenu = true,
@@ -102,7 +102,7 @@ local function gen_disp_menu(disp)
 		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
-		name = "display_mapping",
+		name = "orient",
 		label = "Orientation",
 		kind = "action",
 		eval = function() return not display_simple() and disp.id ~= nil; end,
@@ -116,14 +116,14 @@ local function query_displays()
 	local res = {};
 	local v = active_display(false, true);
 	table.insert(res, {
-		name = "disp_menu_current",
+		name = "current",
 		label = "Current",
 		kind = "action",
 		submenu = true,
 		handler = function() return gen_disp_menu(v); end
 	});
 	table.insert(res, {
-		name = "disp_menu_all_off",
+		name = "all_off",
 		label = "All Off",
 		kind = "action",
 		invisible = true,
@@ -132,7 +132,7 @@ local function query_displays()
 		end
 	});
 	table.insert(res, {
-		name = "disp_menu_all_suspend",
+		name = "all_suspend",
 		label = "All Suspend",
 		kind = "action",
 		invisible = true,
@@ -141,7 +141,7 @@ local function query_displays()
 		end
 	});
 	table.insert(res, {
-		name = "disp_menu_all_standby",
+		name = "all_standby",
 		label = "All Standby",
 		kind = "action",
 		invisible = true,
@@ -150,7 +150,7 @@ local function query_displays()
 		end
 	});
 	table.insert(res, {
-		name = "disp_menu_all_on",
+		name = "all_on",
 		label = "All On",
 		kind = "action",
 		invisible = true,
@@ -161,7 +161,7 @@ local function query_displays()
 	for k,v in pairs(all_displays()) do
 		if (string.len(v.name) > 0) then
 			table.insert(res, {
-				name = "disp_menu_" .. tostring(k),
+				name = "disp_" .. tostring(k),
 				label = v.name,
 				kind = "action",
 				submenu = true,
@@ -262,7 +262,7 @@ end
 
 local region_menu = {
 	{
-		name = "display_region_imgwnd",
+		name = "snapshot",
 		label = "Snapshot",
 		kind = "action",
 		handler = function()
@@ -272,7 +272,7 @@ local region_menu = {
 		end,
 	},
 	{
-		name = "display_region_monitor",
+		name = "monitor",
 		label = "Monitor",
 		kind = "action",
 		handler = function()
@@ -282,7 +282,7 @@ local region_menu = {
 		end,
 	},
 	{
-		name = "display_region_ocr",
+		name = "ocr",
 		label = "OCR",
 		kind = "action",
 		eval = function() return false; end,
@@ -293,7 +293,7 @@ local region_menu = {
 		end
 	},
 	{
-		name = "display_region_remote",
+		name = "remote",
 		label = "Remote",
 		kind = "action",
 		eval = function() return false; end,
@@ -304,7 +304,7 @@ local region_menu = {
 		end
 	},
 	{
-		name = "display_region_record",
+		name = "record",
 		label = "Record",
 		eval = function() return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil; end,
@@ -319,34 +319,34 @@ local region_menu = {
 
 return {
 	{
-		name = "display_rescan",
+		name = "rescan",
 		label = "Rescan",
 		kind = "action",
 		handler = function() video_displaymodes(); end
 	},
 	{
-		name = "display_list",
+		name = "list",
 		label = "Displays",
 		kind = "action",
 		submenu = true,
 		handler = function() return query_displays(); end
 	},
 	{
-		name = "synchronization_strategies",
+		name = "synch",
 		label = "Synchronization",
 		kind = "action",
 		submenu = true,
 		handler = function() return query_synch(); end
 	},
 	{
-		name = "display_cycle",
+		name = "cycle",
 		label = "Cycle Active",
 		kind = "action",
 		eval = function() return not display_simple(); end,
 		handler = grab_global_function("display_cycle")
 	},
 	{
-		name = "display_region",
+		name = "region",
 		label = "Region",
 		kind = "action",
 		submenu = true,

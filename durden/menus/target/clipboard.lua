@@ -48,7 +48,7 @@ local function clipboard_histgen(wnd, lst)
 	local res = {};
 	for k, v in ipairs(lst) do
 		table.insert(res, {
-			name = "clipboard_lhist_" .. tostring(k),
+			name = "hist_" .. tostring(k),
 			label = string.format("%d:%s", k, string.sub(shorten(v), 1, 20)),
 			kind = "action",
 			handler = function()
@@ -76,7 +76,7 @@ local function clipboard_urls()
 	local res = {};
 	for k,v in ipairs(CLIPBOARD.urls) do
 		table.insert(res, {
-			name = "clipboard_url" .. tostring(k),
+			name = "url_" .. tostring(k),
 			label = shorten(v),
 			kind = "action",
 			handler = function()
@@ -95,7 +95,7 @@ register_shared("paste_global", clipboard_paste);
 
 return {
 	{
-		name = "clipboard_paste",
+		name = "paste",
 		label = "Paste",
 		kind = "action",
 		eval = function() return valid_vid(
@@ -104,7 +104,7 @@ return {
 		handler = clipboard_paste
 	},
 	{
-		name = "clipboard_paste_local",
+		name = "lpaste",
 		label = "Paste-Local",
 		kind = "action",
 		eval = function()
@@ -114,7 +114,7 @@ return {
 		handler = clipboard_paste_local
 	},
 	{
-		name = "clipboard_local_history",
+		name = "lhist",
 		label = "History-Local",
 		kind = "action",
 		eval = function()
@@ -125,7 +125,7 @@ return {
 		handler = clipboard_local_history
 	},
 	{
-		name = "clipboard_global_history",
+		name = "hist",
 		label = "History",
 		kind = "action",
 		submenu = true,
@@ -136,7 +136,7 @@ return {
 		handler = clipboard_history
 	},
 	{
-		name = "clipboard_paste_url",
+		name = "url",
 		label = "URLs",
 		kind = "action",
 		submenu = true,
@@ -148,7 +148,7 @@ return {
 		handler = clipboard_urls
 	},
 	{
-		name = "clipboard_paste_mode",
+		name = "mode",
 		label = "Mode",
 		kind = "action",
 		submenu = true,
@@ -161,7 +161,7 @@ return {
 			for k,v in ipairs(CLIPBOARD:pastemodes()) do
 				local f, l = CLIPBOARD:pastemodes(v);
 				table.insert(res, {
-					name = "clipboard_paste_mode_" .. v,
+					name =  v,
 					handler = function()
 						local wnd = active_display().selected;
 						wnd.pastefilter = f;

@@ -2,7 +2,7 @@ local function switch_ws_menu()
 	local spaces = {};
 	for i=1,10 do
 		spaces[i] = {
-			name = "switch_ws" .. tostring(i),
+			name = "switch_" .. tostring(i),
 			kind = "action",
 			label = tostring(i),
 			handler = grab_global_function("switch_ws" .. tostring(i)),
@@ -14,7 +14,7 @@ end
 
 local workspace_layout_menu = {
 	{
-		name = "layout_float",
+		name = "float",
 		kind = "action",
 		label = "Float",
 		handler = function()
@@ -23,7 +23,7 @@ local workspace_layout_menu = {
 		end
 	},
 	{
-		name = "layout_tile_h",
+		name = "tile_h",
 		kind = "action",
 		label = "Tile-Horiz",
 		handler = function()
@@ -34,7 +34,7 @@ local workspace_layout_menu = {
 		end
 	},
 	{
-		name = "layout_tile_v",
+		name = "tile_v",
 		kind = "action",
 		label = "Tile-Vert",
 		handler = function()
@@ -45,7 +45,7 @@ local workspace_layout_menu = {
 		end
 	},
 	{
-		name = "layout_tab",
+		name = "tab",
 		kind = "action",
 		label = "Tabbed",
 		handler = function()
@@ -54,7 +54,7 @@ local workspace_layout_menu = {
 		end
 	},
 	{
-		name = "layout_vtab",
+		name = "vtab",
 		kind = "action",
 		label = "Tabbed Vertical",
 		handler = function()
@@ -75,7 +75,7 @@ end
 
 local save_ws = {
 	{
-		name = "workspace_save_shallow",
+		name = "shallow",
 		label = "Shallow",
 		kind = "action",
 		handler = grab_global_function("save_space_shallow")
@@ -109,7 +109,7 @@ local function swap_ws_menu()
 	for i=1,10 do
 		if (active_display().space_ind ~= i and active_display().spaces[i] ~= nil) then
 			table.insert(res, {
-				name = "workspace_swap",
+				name = "swap_" .. tostring(i),
 				label = tostring(i),
 				kind = "action",
 				handler = function()
@@ -123,19 +123,19 @@ end
 
 return {
 	{
-		name = "workspace_background",
+		name = "bg",
 		label = "Background",
 		kind = "action",
 		handler = set_ws_background,
 	},
 	{
-		name = "workspace_rename",
+		name = "rename",
 		label = "Rename",
 		kind = "action",
 		handler = grab_global_function("rename_space")
 	},
 	{
-		name = "workspace_swap",
+		name = "swap",
 		label = "Swap",
 		kind = "action",
 		eval = function() return active_display():active_spaces() > 1; end,
@@ -143,7 +143,7 @@ return {
 		handler = swap_ws_menu
 	},
 	{
-		name = "workspace_migrate",
+		name = "migrate",
 		label = "Migrate Display",
 		kind = "action",
 		handler = grab_global_function("migrate_ws_bydspname"),
@@ -152,34 +152,34 @@ return {
 		end
 	},
 	{
-		name = "workspace_name",
+		name = "name",
 		label = "Find Workspace",
 		kind = "action",
 		handler = function() grab_global_function("switch_ws_byname")(); end
 	},
 	{
-		name = "workspace_switch",
+		name = "switch",
 		label = "Switch",
 		kind = "action",
 		submenu = true,
 		handler = switch_ws_menu
 	},
 	{
-		name = "workspace_layout",
+		name = "layout",
 		label = "Layout",
 		kind = "action",
 		submenu = true,
 		handler = workspace_layout_menu
 	},
 	{
-		name = "workspace_save",
+		name = "save",
 		label = "Save",
 		kind = "action",
 		submenu = true,
 		handler = save_ws
 	},
 	{
-		name = "workspace_wnd",
+		name = "wnd",
 		label = "Tagged Window",
 		kind = "action",
 		handler = function() grab_global_function("switch_wnd_bytag")(); end

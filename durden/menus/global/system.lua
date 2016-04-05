@@ -1,12 +1,12 @@
 local exit_query = {
 {
-	name = "shutdown_no",
+	name = "no",
 	label = "No",
 	kind = "action",
 	handler = function() end
 },
 {
-	name = "shutdown_yes",
+	name = "yes",
 	label = "Yes",
 	kind = "action",
 	dangerous = true,
@@ -79,13 +79,13 @@ end
 
 local reset_query = {
 	{
-		name = "reset_no",
+		name = "no",
 		label = "No",
 		kind = "action",
 		handler = function() end
 	},
 	{
-		name = "reset_yes",
+		name = "yes",
 		label = "Yes",
 		kind = "action",
 		dangerous = true,
@@ -109,20 +109,20 @@ end
 
 local debug_menu = {
 	{
-		name = "query_dump",
+		name = "dump",
 		label = "Dump",
 		kind = "action",
 		handler = query_dump
 	},
 	-- for testing fallback application handover
 	{
-		name = "debug_broken",
+		name = "broken",
 		label = "Broken Call (Crash)",
 		kind = "action",
 		handler = function() does_not_exist(); end
 	},
 	{
-		name = "random_alert",
+		name = "alert",
 		label = "Random Alert",
 		kind = "action",
 		handler = function()
@@ -134,12 +134,12 @@ local debug_menu = {
 		end
 	},
 	{
-		name = "debug_stall",
+		name = "stall",
 		label = "Frameserver Debugstall",
 		kind = "value",
 		eval = function() return frameserver_debugstall ~= nil; end,
 		validator = gen_valid_num(0, 100),
-		handler = function(ctx,val) frameserver_debugstall(tonumber(val)); end
+		handler = function(ctx,val) frameserver_debugstall(tonumber(val)*10); end
 	}
 };
 

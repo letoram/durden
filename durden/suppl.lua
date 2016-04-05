@@ -714,6 +714,11 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 	local match = {};
 	local fi = 0;
 
+	local ad = active_display();
+	local sub_sz = 0.5 * reserved;
+	local rh = ad.height * 0.5 - sub_sz;
+	local y2 = ad.height * 0.5 + sub_sz;
+
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
 			if (j == ident) then
@@ -722,9 +727,13 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 					table.insert(match, 1, {v, 1});
 					fi = fi + 1;
 				else
--- FIXME: need support for a query interface to determine if the widget
--- wants to split into multicolumns managed separately
-					table.insert(match, v);
+
+-- or query for the number of columns needed assuming a certain height
+					local nc = v.probe and v.probe(ctx, rh) or 1;
+					for n=1,nc do
+						table.insert(match, {v, n});
+					end
+
 				end
 			end
 		end
@@ -739,10 +748,6 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 -- are used for clipping, distribute in a fair away between top and bottom
 -- but with special treatment for floating widgets
 	local start = fi+1;
-	local ad = active_display();
-	local sub_sz = reserved;
-	local rh = ad.height * 0.5 - sub_sz;
-	local y2 = ad.height * 0.5 + sub_sz;
 
 	if (nm - fi > 0) then
 		local ndiv = (#match - fi) / 2;
@@ -756,7 +761,7 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
 			move_image(anch, cx, ay);
-			match[start].show(ctx, anch);
+			match[start][1].show(ctx, anch, match[start][2]);
 			start = start + 1;
 			if (ay == 0) then
 				ay = y2;

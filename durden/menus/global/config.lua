@@ -11,7 +11,7 @@ for k,v in pairs(hint_lut) do TERM_HINT_RLUT[v] = k; end
 
 local durden_font = {
 	{
-		name = "durden_font_sz",
+		name = "size",
 		label = "Size",
 		kind = "value";
 		validator = gen_valid_num(1, 100),
@@ -21,7 +21,7 @@ local durden_font = {
 		end
 	},
 	{
-		name = "durden_font_hinting",
+		name = "hinting",
 		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
@@ -31,7 +31,7 @@ local durden_font = {
 		end
 	},
 	{
-		name = "durden_font_shift",
+		name = "shift",
 		label = "Shift",
 		kind = "value",
 		validator = gen_valid_num(-100, 100),
@@ -41,7 +41,7 @@ local durden_font = {
 		end
 	},
 	{
-		name = "durden_font_name",
+		name = "name",
 		label = "Font",
 		kind = "value",
 		set = function()
@@ -55,7 +55,7 @@ local durden_font = {
 		end
 	},
 	{
-		name = "durden_font_suppl",
+		name = "fbfont",
 		label = "Fallback",
 		kind = "value",
 		set = function()
@@ -74,14 +74,14 @@ local durden_visual = {
 -- thickness is dependent on area, make sure the labels and
 -- constraints update dynamically
 	{
-		name = "default_font",
+		name = "font",
 		label = "Font",
 		kind = "action",
 		submenu = true,
 		handler = durden_font
 	},
 	{
-		name = "border_thickness",
+		name = "border_vsz",
 		label = "Border Thickness",
 		kind = "value",
 		hint = function() return
@@ -115,14 +115,14 @@ local durden_visual = {
 		end
 	},
 	{
-		name = "config_shaders",
+		name = "shaders",
 		label = "Shaders",
 		kind = "action",
 		submenu = true,
 		handler = system_load("menus/global/shaders.lua")()
 	},
 	{
-		name = "config_mouse_scale",
+		name = "mouse_scale",
 		label = "Mouse Scale",
 		kind = "value",
 		hint = "(0.1 .. 10.0)",
@@ -133,7 +133,7 @@ local durden_visual = {
 		end
 	},
 	{
-		name = "transition_speed",
+		name = "anim_speed",
 		label = "Animation Speed",
 		kind = "value",
 		hint = "(1..100)",
@@ -144,7 +144,7 @@ local durden_visual = {
 		end
 	},
 	{
-		name = "transition_in",
+		name = "anim_in",
 		label = "In-Animation",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
@@ -154,7 +154,7 @@ local durden_visual = {
 		end
 	},
 	{
-		name = "transition_out",
+		name = "anim_out",
 		label = "Out-Animation",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
@@ -167,7 +167,7 @@ local durden_visual = {
 
 local durden_workspace = {
 	{
-		name = "durden_ws_autodel",
+		name = "autodel",
 		label = "Autodelete",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
@@ -178,7 +178,7 @@ local durden_workspace = {
 		end
 	},
 	{
-		name = "durden_ws_defmode",
+		name = "defmode",
 		label = "Default Mode",
 		kind = "value",
 		set = {"tile", "tab", "vtab", "float"},
@@ -188,7 +188,7 @@ local durden_workspace = {
 		end
 	},
 	{
-		name = "durden_ws_autoadopt",
+		name = "adopt",
 		label = "Autoadopt",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
@@ -203,7 +203,7 @@ local durden_workspace = {
 
 local durden_system = {
 	{
-		name = "system_connpath",
+		name = "cpath",
 		label = "Connection Path",
 		kind = "value",
 		hint = "(a..Z_)",
@@ -225,7 +225,7 @@ local durden_system = {
 		end
 	},
 	{
-		name = "system_controlpipe",
+		name = "ctrlpipe",
 		label = "Control Pipe",
 		kind = "value",
 		hint = "(a..Z_)",
@@ -250,7 +250,7 @@ local durden_system = {
 		end
 	},
 	{
-		name = "system_statuspipe",
+		name = "statpipe",
 		label = "Status Pipe",
 		kind = "value",
 		default = true,
@@ -276,7 +276,7 @@ local durden_system = {
 		end
 	},
 	{
-		name = "system_displaymode",
+		name = "dispmode",
 		label = "Display Mode",
 		kind = "value",
 		set = {"Simple", "Normal"},
@@ -291,7 +291,7 @@ local durden_system = {
 
 local config_terminal_font = {
 	{
-		name = "terminal_font_sz",
+		name = "font_sz",
 		label = "Size",
 		kind = "value",
 		validator = gen_valid_num(1, 100),
@@ -301,7 +301,7 @@ local config_terminal_font = {
 		end
 	},
 	{
-		name = "terminal_font_hinting",
+		name = "font_hint",
 		label = "Hinting",
 		kind = "value",
 		set = {"none", "mono", "light", "normal", "subpixel"},
@@ -314,7 +314,7 @@ local config_terminal_font = {
 -- should replace with some "font browser" but we don't have asynch font
 -- loading etc. and no control over cache size
 	{
-		name = "terminal_font_name",
+		name = "font_name",
 		label = "Name",
 		kind = "value",
 		set = function()
@@ -332,7 +332,7 @@ local config_terminal_font = {
 
 local config_terminal = {
 	{
-		name = "terminal_bgalpha",
+		name = "alpha",
 		label = "Background Alpha",
 		kind = "value",
 		hint = "(0..1)",
@@ -343,7 +343,7 @@ local config_terminal = {
 		end
 	},
 	{
-		name = "terminal_font",
+		name = "font",
 		label = "Font",
 		kind = "action",
 		submenu = true,
@@ -353,35 +353,35 @@ local config_terminal = {
 
 return {
 	{
-		name = "config_visual",
+		name = "visual",
 		label = "Visual",
 		kind = "action",
 		submenu = true,
 		handler = durden_visual
 	},
 	{
-		name = "config_workspaces",
+		name = "wspaces",
 		label = "Workspaces",
 		kind = "action",
 		submenu = true,
 		handler = durden_workspace
 	},
 	{
-		name = "config_timers",
+		name = "timers",
 		label = "Timers",
 		kind = "action",
 		submenu = true,
 		handler = system_load("menus/global/timer.lua")()
 	},
 	{
-		name = "config_system",
+		name = "system",
 		label = "System",
 		kind = "action",
 		submenu = true,
 		handler = durden_system
 	},
 	{
-		name = "config_terminal",
+		name = "terminal",
 		label = "Terminal",
 		kind = "action",
 		submenu = true,

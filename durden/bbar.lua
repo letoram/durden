@@ -31,6 +31,9 @@ local function drop_bbar(wm)
 		wm.input_ctx:on_cancel();
 	end
 	iostatem_restore(wm.input_ctx.iostate);
+	if (not wm.hidden_sb) then
+		wm.statusbar:show();
+	end
 	wm.input_ctx = nil;
 end
 
@@ -171,7 +174,7 @@ local function setup_vids(wm, ctx, lbsz, time)
 	order_image(progress, 1);
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
-	move_image(bar, 0, math.floor(0.5*(wm.height-lbsz*2)));
+	move_image(bar, 0, math.floor(0.5*(wm.height-lbsz)));
 end
 
 --
@@ -232,6 +235,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 		((key == false or key == nil)) and bbar_input_combo or bbar_input_keyorcombo);
 	wm.input_ctx = ctx;
 	ctx:label(msg);
+	wm.statusbar:hide();
 	return ctx;
 end
 

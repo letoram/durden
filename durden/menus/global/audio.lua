@@ -1,12 +1,12 @@
 return {
 	{
-		name = "toggle_audio",
+		name = "toggle",
 		label = "Toggle On/Off",
 		kind = "action",
 		handler = grab_global_function("toggle_audio")
 	},
 	{
-		name = "global_gain",
+		name = "volume",
 		label = "Global Gain",
 		kind = "action",
 		hint = "(0..1)",
@@ -20,7 +20,7 @@ return {
 		end
 	},
 	{
-		name = "gain_pos10",
+		name = "vol_p10",
 		label = "+10%",
 		kind = "action",
 		handler = function()
@@ -28,7 +28,7 @@ return {
 		end
 	},
 	{
-		name = "gain_neg10",
+		name = "vol_n10",
 		label = "-10%",
 		kind = "action",
 		handler = function()
