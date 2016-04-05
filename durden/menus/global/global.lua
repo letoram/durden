@@ -12,7 +12,7 @@ local toplevel = {
 		handler = system_load("menus/global/open.lua")()
 	},
 	{
-		name = "global_menu",
+		name = "global",
 		label = "Global Menu",
 		kind = "action",
 		invisible = true,
@@ -21,7 +21,7 @@ local toplevel = {
 		end,
 	},
 	{
-		name = "target_menu",
+		name = "target",
 		label = "Window Menu",
 		kind = "action",
 		invisible = true,

@@ -46,6 +46,10 @@ local function destroy(wm, ictx)
 	pending = {};
 	active_lbar = nil;
 	iostatem_restore(ictx.iostate);
+	if (not wm.hidden_sb) then
+		wm.statusbar:show();
+	end
+
 -- our lbar
 	local ictx = wm.input_ctx;
 	local time = gconfig_get("lbar_transition");
@@ -528,6 +532,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	};
 	lbar_input(wm, "", {active = true,
 		kind = "digital", translated = true, devid = 0, subid = 0});
+
+	wm.statusbar:hide();
 
 	if (opts.label) then
 		wm.input_ctx:set_label(opts.label);

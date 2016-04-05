@@ -1,6 +1,6 @@
 local mouse_menu = {
 	{
-		name = "mouse_sensitivity",
+		name = "scale",
 		kind = "value",
 		label = "Sensitivity",
 		hint = function() return "(0.01..10)"; end,
@@ -18,7 +18,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_hover_delay",
+		name = "hover",
 		kind = "value",
 		label = "Hover Delay",
 		hint = function() return "10..80"; end,
@@ -36,7 +36,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_remember_position",
+		name = "save_pos",
 		kind = "value",
 		label = "Remember Position",
 		set = {LBL_YES, LBL_NO},
@@ -49,7 +49,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_autohide",
+		name = "hide",
 		kind = "value",
 		label = "Autohide",
 		set = {LBL_YES, LBL_NO},
@@ -62,7 +62,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_reveal",
+		name = "reveal",
 		kind = "value",
 		label = "Reveal/Hide",
 		set = {LBL_YES, LBL_NO},
@@ -75,7 +75,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_hardlock",
+		name = "lock",
 		kind = "value",
 		label = "Hard Lock",
 		set = {LBL_YES, LBL_NO},
@@ -88,7 +88,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_hide_delay",
+		name = "hide_delay",
 		kind = "value",
 		label = "Autohide Delay",
 		hint = function() return "40..400"; end,
@@ -106,7 +106,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "mouse_focus",
+		name = "focus",
 		kind = "value",
 		label = "Focus Event",
 		set = {"click", "motion", "hover", "none"},
@@ -123,7 +123,7 @@ local function list_keymaps()
 	local kmm = {};
 	for k,v in ipairs(km) do
 		table.insert(kmm, {
-			name = "keymap_" .. tostring(k),
+			name = "map_" .. tostring(k),
 			kind = "action",
 			label = v,
 			handler = function() SYMTABLE:load_keymap(v); end

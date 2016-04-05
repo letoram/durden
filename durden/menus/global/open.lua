@@ -119,7 +119,7 @@ local function target_cfgmenu(str, cfgs)
 	local res = {};
 	for k,v in ipairs(cfgs) do
 		table.insert(res,{
-			name = "target_launch_" .. hexenc(util.hash(str))
+			name = "launch_" .. hexenc(util.hash(str))
 				.. "_" .. hexenc(util.hash(v)),
 			kind = "action",
 			label = v,
@@ -136,7 +136,7 @@ local function target_submenu()
 	for k,v in ipairs(targets) do
 		local cfgs = target_configurations(v);
 		local nent = {
-			name = "target_launch_" .. hexenc(util.hash(v)),
+			name = "launch_" .. hexenc(util.hash(v)),
 			kind = "action",
 			label = v
 		};
@@ -181,7 +181,7 @@ return {
 	handler = browse_internal
 },
 {
-	name = "uriopen_remote",
+	name = "remote",
 	label = "Remote Desktop",
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
@@ -198,7 +198,7 @@ return {
 	end;
 },
 {
-	name = "uriopen_decode",
+	name = "decode",
 	label = "Media URL",
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
@@ -211,7 +211,7 @@ return {
 	end
 },
 {
-	name = "uriopen_terminal",
+	name = "terminal",
 	label = "Terminal",
 	kind = "value",
 	hint = "(append arguments)",
@@ -224,7 +224,7 @@ return {
 	end
 },
 {
-	name = "uriopen_avfeed",
+	name = "avfeed",
 	label = "AV Feed",
 	kind = "value",
 	default = "(append arguments)",
@@ -239,7 +239,7 @@ return {
 	end
 },
 {
-	name = "uriopen_target",
+	name = "target",
 	label = "Target",
 	submenu = true,
 	kind = "action",

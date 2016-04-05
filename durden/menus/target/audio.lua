@@ -17,25 +17,25 @@ end
 
 return {
 	{
-		name = "target_audio",
+		name = "toggle",
 		label = "Toggle On/Off",
 		kind = "action",
 		handler = grab_shared_function("toggle_audio")
 	},
 	{
-		name = "gain_add10",
+		name = "vol_p10",
 		label = "+10%",
 		kind = "action",
 		handler = function() gain_stepv(0.1); end
 	},
 	{
-		name = "gain_sub10",
+		name = "vol_n10",
 		label = "-10%",
 		kind = "action",
 		handler = function() gain_stepv(-0.1); end
 	},
 	{
-		name ="target_audio_gain",
+		name ="vol_set",
 		label = "Gain",
 		hint = "(0..1)",
 		kind = "value",

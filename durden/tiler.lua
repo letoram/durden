@@ -41,7 +41,9 @@ local function tbar_geth(wnd)
 end
 
 local function sbar_geth(wm)
-	return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+	return (wm.spaces[wm.space_ind] and
+		wm.spaces[wm.space_ind].mode == "fullscreen") and 0 or
+		math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 end
 
 local function run_event(wnd, event, ...)
@@ -224,7 +226,9 @@ end
 
 local function tiler_statusbar_update(wm)
 	local statush = sbar_geth(wm);
-	wm.statusbar:resize(wm.width, statush);
+	if (statush > 0) then
+		wm.statusbar:resize(wm.width, statush);
+	end
 	wm.statusbar:move(0, wm.height - statush);
 
 	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
@@ -605,7 +609,8 @@ local function switch_fullscreen(space, to, ndir)
 	end
 
 	if (to) then
-		hide_image(space.wm.statusbar);
+		space.wm.statusbar:hide();
+		space.wm.hidden_sb = true;
 		workspace_activate(space, false, ndir);
 		local lst = linearize(space);
 		for k,v in ipairs(space) do
@@ -613,14 +618,16 @@ local function switch_fullscreen(space, to, ndir)
 		end
 			show_image(space.selected.anchor);
 	else
-		show_image(space.wm.statusbar);
+		space.wm.statusbar:show();
+		space.wm.hidden_sb = false;
 		workspace_deactivate(space, false, ndir);
 	end
 end
 
 local function drop_fullscreen(space, swap)
 	workspace_activate(space, true);
-	show_image(space.wm.statusbar);
+	space.wm.statusbar:show();
+	space.wm.hidden_sb = false;
 
 	if (not space.selected) then
 		return;
@@ -771,6 +778,7 @@ local function set_fullscreen(space)
 
 -- hide all images + statusbar
 	dw.wm.statusbar:hide();
+	dw.wm.hidden_sb = true;
 	local wnds = linearize(space);
 	for k,v in ipairs(wnds) do
 		hide_image(v.anchor);
@@ -821,7 +829,8 @@ end
 
 local function set_tile(space)
 	local wm = space.wm;
-	show_image(wm.statusbar);
+	wm.statusbar:show();
+	wm.statusbar.hidden_sb = false;
 	level_resize(space, 0, 0, wm.width, wm.height - sbar_geth(wm));
 end
 
