@@ -384,8 +384,8 @@ local function level_resize(level, x, y, w, h, node)
 			level_resize(node, x, y + node.h, node.w, h - node.h);
 		end
 
-		node:resize(node.w, node.h);
 		move_image(node.anchor, node.x, node.y);
+		node:resize(node.w, node.h);
 
 		x = x + node.w;
 		w = w - node.w;
@@ -772,9 +772,11 @@ local function set_fullscreen(space)
 
 -- keep a copy of properties we may want to change during fullscreen
 	dw.fs_copy = {
-		centered = dw.centered
+		centered = dw.centered,
+		fullscreen = false
 	};
 	dw.centered = true;
+	dw.fullscreen = true;
 
 -- hide all images + statusbar
 	dw.wm.statusbar:hide();
@@ -791,9 +793,9 @@ local function set_fullscreen(space)
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
 
-	dw:resize(dw.wm.width, dw.wm.height);
 	move_image(dw.canvas, 0, 0);
 	move_image(dw.anchor, 0, 0);
+	dw:resize(dw.wm.width, dw.wm.height);
 end
 
 local function set_float(space)
@@ -1100,6 +1102,8 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		outh = hr < wr and maxw / ar or maxh;
 	end
 
+	outw = math.floor(outw);
+	outh = math.floor(outh);
 	resize_image(src, outw, outh);
 	if (wnd.autocrop) then
 		local ip = image_storage_properties(src);
@@ -1110,7 +1114,7 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		image_texfilter(src, wnd.filtermode);
 	end
 
-	return math.ceil(outw), math.ceil(outh);
+	return outw, outh;
 end
 
 local function wnd_effective_resize(wnd, neww, newh, force)
@@ -1154,10 +1158,6 @@ local function wnd_resize(wnd, neww, newh, force)
 	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
 
-	local tbh = tbar_geth(wnd);
-
-	resize_image(wnd.anchor, neww, newh);
-	wnd.titlebar:resize(neww - wnd.border_w * 2, tbh);
 	wnd.width = neww;
 	wnd.height = newh;
 
@@ -1187,14 +1187,24 @@ local function wnd_resize(wnd, neww, newh, force)
 	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
 
-	resize_image(wnd.border, wnd.width, wnd.effective_h + wnd.border_w*2 + tbh);
+	local bw = wnd.border_w;
+	local tbh = tbar_geth(wnd);
+	local size_decor = function(w, h)
+		resize_image(wnd.anchor, w, h);
+		wnd.titlebar:move(bw, bw);
+		wnd.titlebar:resize(w - bw - bw, tbh);
+		resize_image(wnd.border, w, h);
+	end
 
+-- still up for experimentation, but this method favors the canvas size rather
+-- than the allocated tile size
+	size_decor(wnd.effective_w + bw + bw, wnd.effective_h + tbh + bw + bw);
 	if (wnd.centered and wnd.space.mode ~= "float") then
 		if (wnd.fullscreen) then
 			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
 		else
-			move_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
+			nudge_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
 				math.floor(0.5*(newh - wnd.effective_h)));
 		end
 	end
