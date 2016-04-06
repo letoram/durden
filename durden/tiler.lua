@@ -257,6 +257,42 @@ local function tiler_statusbar_update(wm)
 	end
 end
 
+local function tiler_statusbar_build(wm)
+	local sbsz = sbar_geth(wm);
+	wm.statusbar = uiprim_bar(
+		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
+	local pad = gconfig_get("sbar_pad");
+	wm.sbar_ws = {};
+
+-- add_button(left, pretile, label etc.)
+	wm.sbar_ws["left"] = wm.statusbar:add_button("left", "sbar_item_bg",
+		"sbar_item", "mode", pad, wm.font_resfn, nil, sbsz);
+
+-- pre-allocate buffer slots, but keep hidden
+	for i=1,10 do
+		wm.sbar_ws[i] = wm.statusbar:add_button("left", "sbar_item_bg",
+			"sbar_item", tostring(i), pad, wm.font_resfn, sbsz, nil,
+			{
+				click = function(btn)
+					wm:switch_ws(i);
+				end,
+				rclick = click
+			}
+		);
+		wm.sbar_ws[i]:hide();
+	end
+-- fill slot with system messages
+	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
+		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz);
+	wm.sbar_ws["msg"].align_left = true;
+
+-- and a fixed size slot for external messages
+	wm.sbar_ws["ext"] = wm.statusbar:add_button("center",
+		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz);
+	wm.sbar_ws["ext"].align_right = true;
+	wm.sbar_ws["ext"]:hide();
+end
+
 -- we need an overlay anchor that is only used for ordering, this to handle
 -- that windows may appear while the overlay is active
 local function wm_order(wm)
@@ -2501,8 +2537,6 @@ local function tiler_resize(wm, neww, newh)
 	for k,v in pairs(wm.spaces) do
 		v:resize(neww, newh);
 	end
-	wm.statusbar:resize(neww, sbar_geth(wm));
-	wm.statusbar:move(0, wm.height - sbar_geth(wm));
 end
 
 local function tiler_activate(wm)
@@ -2547,6 +2581,7 @@ end
 -- everything from decorations to rendered text which will cascade to different
 -- window sizes etc.
 local function tiler_scalef(wm, newf, disptbl)
+	local rupd = wm.scalef ~= newf;
 	wm.scalef = newf;
 	recalc_fsz(wm);
 	wm:rebuild_border();
@@ -2560,9 +2595,12 @@ local function tiler_scalef(wm, newf, disptbl)
 
 	wm:resize(wm.width, wm.height);
 
---- invalidate to a new min-base
-	local sbsz = sbar_geth(wm);
-	wm.statusbar:resize(wm.width, sbsz);
+-- easier doing things like this than fixing the other dimensioning edgecases
+	if (rupd) then
+		wm.statusbar:destroy();
+		tiler_statusbar_build(wm);
+		wm:tile_update();
+	end
 end
 
 local function tiler_fontres(wm)
@@ -2619,48 +2657,13 @@ function tiler_create(width, height, opts)
 	};
 
 	res.font_resfn = function() return tiler_fontres(res); end
-
+	res.height = height;
+	res.width = width;
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load
 	recalc_fsz(res);
+	tiler_statusbar_build(res);
 
-	local sbsz = sbar_geth(res);
-	local pad = gconfig_get("sbar_pad");
-
-	res.statusbar = uiprim_bar(
-		res.order_anchor, ANCHOR_UL, width, sbsz, "statusbar");
-	res.sbar_ws = {};
-
--- add_button(left, pretile, label etc.)
-	res.sbar_ws["left"] = res.statusbar:add_button("left", "sbar_item_bg",
-		"sbar_item", "mode", pad, res.font_resfn, nil, sbsz);
-
--- pre-allocate buffer slots, but keep hidden
-	for i=1,10 do
-		res.sbar_ws[i] = res.statusbar:add_button("left", "sbar_item_bg",
-			"sbar_item", tostring(i), pad, res.font_resfn, sbsz, nil,
-			{
-				click = function(btn)
-					res:switch_ws(i);
-				end,
-				rclick = click
-			}
-		);
-		res.sbar_ws[i]:hide();
-	end
--- fill slot with system messages
-	res.sbar_ws["msg"] = res.statusbar:add_button("center",
-		"sbar_msg_bg", "sbar_msg_text", " ", pad, res.font_resfn, nil, sbsz);
-	res.sbar_ws["msg"].align_left = true;
-
--- and a fixed size slot for external messages
-	res.sbar_ws["ext"] = res.statusbar:add_button("center",
-		"sbar_msg_bg", "sbar_msg_text", " ", pad, res.font_resfn, nil, sbsz);
-	res.sbar_ws["ext"].align_right = true;
-	res.sbar_ws["ext"]:hide();
-
-	res.width = width;
-	res.height = height;
 	res.min_width = 32;
 	res.min_height = 32;
 	image_tracetag(res.anchor, "tiler_anchor");

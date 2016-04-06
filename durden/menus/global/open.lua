@@ -6,17 +6,17 @@ function spawn_terminal()
 -- we want the dimensions in beforehand so we can pass them immediately
 -- and in that way avoid the cost of a _resize() + signal cycle
 	local wnd = durden_prelaunch();
-	wnd:set_title("");
+	wnd:set_title("prelaunch");
 
 	local ppcm = tostring(active_display(true, true).ppcm);
 	local ppcm = string.gsub(ppcm, ',', '.');
 
 	local lstr = string.format(
-		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:width=%d:height=%d:ppcm=%s:"..
+		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:ppcm=%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		TERM_HINT_RLUT[tonumber(gconfig_get("term_font_hint"))],
 		gconfig_get("term_font"),
-		wnd.width, wnd.height, ppcm, gconfig_get("term_font_sz"),
+		ppcm, gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
 			("env=ARCAN_CONNPATH="..cp) or ""
@@ -27,8 +27,12 @@ function spawn_terminal()
 		lstr = lstr .. string.format(":font_fb=[ARCAN_FONTPATH]/%s", fbf);
 	end
 
-	if (not gconfig_get("term_autosz")) then
-		lstr = lstr .. string.format(":width=%d:height=%d", wnd.width, wnd.height);
+-- we can't use the effective_w,h fields yet because the scalemode do
+-- not apply (chicken and egg problem)
+	if (gconfig_get("term_autosz")) then
+		neww = wnd.width - wnd.pad_left - wnd.pad_right;
+		newh = wnd.height- wnd.pad_top - wnd.pad_bottom;
+		lstr = lstr .. string.format(":width=%d:height=%d", neww, newh);
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
