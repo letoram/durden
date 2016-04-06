@@ -9,18 +9,19 @@ local function button_labelupd(btn, lbl)
 	local fontstr, offsetf = btn.fontfn();
 
 -- keep this around so we can update if the fontfn changes
+	local append = true;
 	if (lbl == nil) then
 		lbl = btn.last_lbl;
-	else
-		btn.last_lbl = lbl;
+		append = false;
 	end
 
 	if (type(lbl) == "string" or type(lbl) == "table") then
 		if (type(lbl) == "string") then
 			lbl = {fontstr, lbl};
-		else
+		elseif (append) then
 			lbl[1] = fontstr .. lbl[1];
 		end
+		btn.last_lbl = lbl;
 
 		if (btn.lbl) then
 			txt, lineh, w, h, asc = render_text(btn.lbl, lbl);
@@ -39,16 +40,6 @@ local function button_labelupd(btn, lbl)
 		btn.yshift = offsetf;
 
 -- just resize / relayout
-	elseif (not valid_vid(lbl)) then
-		if (not btn.lbl) then
-			warning("button_labelupd() with broken lbl");
-			return;
-		end
-
-		local props = image_surface_properties(btn.lbl);
-		w = props.width;
-		h = props.height;
-
 	else
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
 			delete_image(btn.lbl);
@@ -259,9 +250,9 @@ local function bar_resize(bar, neww, newh)
 
 	if (domupd) then
 		bar:invalidate();
+	else
+		bar:relayout();
 	end
-
-	bar:relayout();
 end
 
 local function bar_relayout_horiz(bar)
