@@ -112,6 +112,7 @@ return {
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
+		centered = true,
 		scalemode = "aspect",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,

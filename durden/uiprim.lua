@@ -247,9 +247,8 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 end
 
 local function bar_resize(bar, neww, newh)
-	assert(neww and neww > 0);
-	assert(newh and newh > 0);
-	if (neww == bar.width and newh == bar.height) then
+	if (not neww or neww <= 0 or not newh or newh <= 0) or
+		(neww == bar.width and newh == bar.height) then
 		return;
 	end
 

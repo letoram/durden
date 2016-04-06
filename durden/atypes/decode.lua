@@ -23,6 +23,7 @@ local rtbl = {
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
+		centered = true,
 		scalemode = "aspect",
 		filtermode = FILTER_BILINEAR,
 		clipboard_block = true,
