@@ -264,6 +264,7 @@ local function bar_relayout_horiz(bar)
 		for k,v in ipairs(bar.buttons.left) do
 			local w, h = v:dimensions();
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
+			yp = yp < 0 and 0 or yp;
 			afn(v.bg, lx, yp);
 			lx = lx + w;
 		end
@@ -273,6 +274,7 @@ local function bar_relayout_horiz(bar)
 			local w, h = v:dimensions();
 			rx = rx - w;
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
+			yp = yp < 0 and 0 or yp;
 			afn(v.bg, rx, yp);
 		end
 		return lx, rx;

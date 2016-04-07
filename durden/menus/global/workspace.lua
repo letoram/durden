@@ -146,6 +146,7 @@ return {
 		name = "migrate",
 		label = "Migrate Display",
 		kind = "action",
+		submenu = true,
 		handler = grab_global_function("migrate_ws_bydspname"),
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;

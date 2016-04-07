@@ -546,7 +546,7 @@ end
 
 -- migrate window means:
 -- copy valuable properties, destroy then "add", including tiler.windows
-local function workspace_migrate(ws, newt, scalef, disptbl)
+local function workspace_migrate(ws, newt, disptbl)
 	local oldt = ws.wm;
 	if (oldt == display) then
 		return;
