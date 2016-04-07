@@ -261,7 +261,7 @@ local function tiler_statusbar_build(wm)
 	local sbsz = sbar_geth(wm);
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
-	local pad = gconfig_get("sbar_pad");
+	local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	wm.sbar_ws = {};
 
 -- add_button(left, pretile, label etc.)
@@ -585,9 +585,17 @@ local function workspace_migrate(ws, newt, scalef, disptbl)
 		v.wm = newt;
 		table.insert(newt.windows, v);
 		table.remove_match(oldt.windows, v);
+-- send new display properties
 		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
 			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
 		end
+
+-- special handling for titlebar
+		for j in v.titlebar:all_buttons() do
+			j.fontfn = newt.font_resfn;
+		end
+		v.titlebar:invalidate();
+		v:set_title(tt);
 	end
 	oldt.spaces[srci] = create_workspace(oldt, false);
 
@@ -613,6 +621,8 @@ local function workspace_migrate(ws, newt, scalef, disptbl)
 
 	local olddisp = active_display();
 	set_context_attachment(newt.rtgt_id);
+
+-- enforce layout and dimension changes as needed
 	ws:resize();
 	if (valid_vid(ws.label_id)) then
 		delete_image(ws.label_id);
@@ -1865,6 +1875,10 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	wnd:assign_ws(dsp, true);
 
 -- rebuild border and titlebar to account for changes in font/scale
+	for i in wnd.titlebar:all_buttons() do
+		i.fontfn = tiler.font_resfn;
+	end
+	wnd.titlebar:invalidate();
 	wnd:set_title(tt);
 	if (wnd.last_font) then
 		wnd:update_font(unpack(wnd.last_font));
@@ -2137,7 +2151,7 @@ local function wnd_create(wm, source, opts)
 	res.titlebar:move(bw, bw);
 
 	res.titlebar:add_button("center", nil, "titlebar_text",
-		" ", gconfig_get("sbar_pad"), res.wm.font_resfn);
+		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
 	res.titlebar:hide();
 
 	if (wm.spaces[wm.space_ind] == nil) then
@@ -2569,19 +2583,28 @@ local function recalc_fsz(wm)
 	local fsz = gconfig_get("font_sz") * wm.scalef - gconfig_get("font_sz");
 	local int, fract = math.modf(fsz);
 	int = int + ((fract > 0.75) and 1 or 0);
+	if (int ~= int or int == 0/0 or int == -1/0 or int == 1/0) then
+		int = 0;
+	end
+
 	wm.font_deltav = int;
+	wm.font_ascofs = gconfig_get("font_shift");
+
+-- since ascent etc. may be different at different sizes, render a test line
+-- and set the "per tiler" shift here
+
 	if (int > 0) then
 		wm.font_delta = "\\f,+" .. tostring(int);
 	elseif (int <= 0) then
 		wm.font_delta = "\\f," .. tostring(int);
 	end
+
 end
 
 -- the tiler is now on a display with a new scale factor, this means redoing
 -- everything from decorations to rendered text which will cascade to different
 -- window sizes etc.
 local function tiler_scalef(wm, newf, disptbl)
-	local rupd = wm.scalef ~= newf;
 	wm.scalef = newf;
 	recalc_fsz(wm);
 	wm:rebuild_border();
@@ -2596,15 +2619,13 @@ local function tiler_scalef(wm, newf, disptbl)
 	wm:resize(wm.width, wm.height);
 
 -- easier doing things like this than fixing the other dimensioning edgecases
-	if (rupd) then
-		wm.statusbar:destroy();
-		tiler_statusbar_build(wm);
-		wm:tile_update();
-	end
+	wm.statusbar:destroy();
+	tiler_statusbar_build(wm);
+	wm:tile_update();
 end
 
 local function tiler_fontres(wm)
-	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("font_shift");
+	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("sbar_tpad");
 end
 
 function tiler_create(width, height, opts)

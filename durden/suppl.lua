@@ -518,7 +518,7 @@ end
 
 local function hlp_add_btn(helper, lbl)
 	local yp, tileh, dir = lbar_props();
-	local pad = gconfig_get("lbar_pad");
+	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
 
 	local btn = uiprim_button(active_display().order_anchor,
 		"lbar_tile", "lbar_tiletext", lbl, pad,

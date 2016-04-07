@@ -119,7 +119,9 @@ local defaults = {
 
 -- input bar graphics
 	lbar_dim = 0.8,
-	lbar_pad = 2,
+	lbar_tpad = 2,
+	lbar_bpad = 2,
+	lbar_spacing = 10,
 	lbar_sz = 12, -- dynamically recalculated on font changes
 	lbar_transition = 10,
 	lbar_bg = {0x33, 0x33, 0x33},
@@ -144,14 +146,16 @@ local defaults = {
 	bind_repeat = 5,
 
 -- sbar
-	sbar_pad = 2,
+	sbar_tpad = 2,
+	sbar_bpad = 2,
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
 
 -- titlebar
-  tbar_pad = 0,
 	tbar_sz = 12, -- dynamically recalculated on font changes
+	tbar_tpad = 2,
+	tbar_bpad = 2,
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
 	pretiletext_color = "\\#ffffff ",

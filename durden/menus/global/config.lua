@@ -70,6 +70,37 @@ local durden_font = {
 	}
 };
 
+local function relay_alldisp()
+end
+
+local durden_bars = {
+	{
+		name = "sb_top",
+		label = "Pad Top",
+		kind = "value",
+		initial = function() return gconfig_get("sbar_tpad"); end,
+		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_tpad", tonumber(val));
+			gconfig_set("tbar_tpad", tonumber(val));
+			gconfig_set("lbar_tpad", tonumber(val));
+		end
+	},
+	{
+		name = "sb_bottom",
+		label = "Pad Bottom",
+		kind = "value",
+		initial = function() return gconfig_get("sbar_bpad"); end,
+		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_bpad", tonumber(val));
+			gconfig_set("tbar_bpad", tonumber(val));
+			gconfig_set("lbar_bpad", tonumber(val));
+		end
+	}
+}
+;
+
 local durden_visual = {
 -- thickness is dependent on area, make sure the labels and
 -- constraints update dynamically
@@ -79,6 +110,13 @@ local durden_visual = {
 		kind = "action",
 		submenu = true,
 		handler = durden_font
+	},
+	{
+		name = "statusbar",
+		label = "Bars",
+		kind = "action",
+		submenu = true,
+		handler = durden_bars
 	},
 	{
 		name = "border_vsz",
