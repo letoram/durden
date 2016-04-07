@@ -349,9 +349,10 @@ function display_ressw(name, mode)
 
 	run_display_action(disp, function()
 		video_displaymodes(disp.id, mode.modeid);
-		disp.tiler:resize(mode.width, mode.height);
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
+		disp.tiler.width = mode.width;
+		disp.tiler.height = mode.height;
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 		set_mouse_scalef();
 	end);
@@ -428,8 +429,10 @@ function display_reorient(name, hint)
 	end
 
 	run_display_action(disp, function()
-		disp.tiler:resize(neww, newh);
 		map_video_display(disp.rt, disp.id, disp.maphint);
+		disp.tiler.width = neww;
+		disp.tiler.height = newh;
+		disp.tiler:update_scalef(disp.tiler.scalef);
 	end);
 
 -- as the dimensions have changed

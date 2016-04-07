@@ -37,7 +37,6 @@ local function button_labelupd(btn, lbl)
 			delete_image(btn.lbl);
 		end
 		btn.lbl = txt;
-		btn.yshift = offsetf;
 
 -- just resize / relayout
 	else
@@ -46,7 +45,6 @@ local function button_labelupd(btn, lbl)
 		end
 		local props = image_surface_properties(lbl);
 		btn.lbl = lbl;
-		btn.yshift = offsetf;
 		w = props.width;
 		h = props.height;
 	end
@@ -85,12 +83,10 @@ local function button_labelupd(btn, lbl)
 
 -- for some odd cases (center area on bar for instance),
 -- specific lalign on text may be needed
-	if (btn.align_left) then
-		local props = image_surface_properties(btn.lbl);
-		move_image(btn.lbl, 0, math.floor(0.5 * (btn.h - props.height) + btn.yshift));
-	else
-		center_image(btn.lbl, btn.bg, ANCHOR_C, 0, btn.yshift);
-	end
+	local xofs = btn.align_left and 0 or
+		(0.5 * (btn.w - image_surface_properties(btn.lbl).width));
+
+	move_image(btn.lbl, xofs, offsetf);
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -170,6 +166,7 @@ local ind = 0;
 function uiprim_button(anchor, bgshname, lblshname, lbl,
 	pad, fontfn, minw, minh, mouseh)
 	ind = ind + 1;
+	assert(pad);
 	local res = {
 		lblfmt = "\\f,0\\#ffffff",
 		bgsh = bgshname,
@@ -465,6 +462,27 @@ local function bar_reanchor(bar, anchor, order, xpos, ypos, anchorp)
 	order_image(bar.anchor, order);
 end
 
+local function bar_iter(bar)
+	local tbl = {};
+	for k,v in pairs(bar.buttons) do
+		for i,r in ipairs(v) do
+			table.insert(tbl, r);
+		end
+	end
+
+	local c = #tbl;
+	local i = 0;
+
+	return function()
+		i = i + 1;
+		if (i <= c) then
+			return tbl[i];
+		else
+			return nil;
+		end
+	end
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -492,6 +510,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		add_button = bar_button,
 		update = bar_update,
 		reanchor = bar_reanchor,
+		all_buttons = bar_iter,
 		hide = bar_hide,
 		show = bar_show,
 		move = bar_move,

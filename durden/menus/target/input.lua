@@ -173,7 +173,7 @@ end
 local mouse_menu = {
 	{
 		name = "target_mouse_lock",
-		label = "Mouse Lock",
+		label = "Lock",
 		kind = "value",
 		set = {"Disabled", "Constrain", "Center"},
 		initial = function()
@@ -193,7 +193,7 @@ local mouse_menu = {
 	},
 	{
 		name = "target_mouse_cursor",
-		label = "Cursor Mode",
+		label = "Cursor",
 		kind = "value",
 		set = {"default", "hidden"},
 		initial = function()

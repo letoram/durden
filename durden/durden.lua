@@ -177,16 +177,16 @@ update_default_font = function(key, val)
 	end
 
 -- centering vertically on fonth will look poor on fonts that has a
--- pronounced ascent / descent and we have no exposed function to get access
--- to more detailed font metrics, so lets go rough..
+-- pronounced ascent / descent and with scale factors etc. it is a lot of tedium
+-- to try and probe the metrics. Go with user-definable top and bottom padding.
 	local vid, lines, w, fonth, asc = render_text("\\f,0\\#ffffff gijy1!`");
 	local rfh = fonth;
 	local props = image_surface_properties(vid);
 	delete_image(vid);
 
-	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_pad") * 2);
-	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_pad") * 2);
-	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_pad") * 2);
+	gconfig_set("sbar_sz", fonth + gconfig_get("sbar_tpad") + gconfig_get("sbar_bpad"));
+	gconfig_set("tbar_sz", fonth + gconfig_get("tbar_tpad") + gconfig_get("tbar_bpad"));
+	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_tpad") + gconfig_get("lbar_bpad"));
 	gconfig_set("lbar_caret_h", fonth);
 
 	if (not all_displays_iter) then

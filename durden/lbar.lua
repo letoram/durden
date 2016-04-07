@@ -106,7 +106,7 @@ local function update_completion_set(wm, ctx, set)
 	if (not set) then
 		return;
 	end
-	local pad = gconfig_get("lbar_pad");
+	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
@@ -244,7 +244,7 @@ local function update_completion_set(wm, ctx, set)
 			resize_image(ctx.ccursor, w, lbarsz);
 		end
 
-		move_image(txt, ofs, pad + gconfig_get("font_shift") + wm.scalef);
+		move_image(txt, ofs, pad);
 		ofs = ofs + (crop and w or txt_w) + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
@@ -260,8 +260,7 @@ local function setup_string(wm, ictx, str)
 		return ictx;
 	end
 
-	local shift = math.ceil(gconfig_get("font_shift") * wm.scalef);
-	local pad = gconfig_get("lbar_pad");
+	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 
 	ictx.text = tvid;
 	image_tracetag(ictx.text, "lbar_inpstr");
@@ -269,7 +268,7 @@ local function setup_string(wm, ictx, str)
 	link_image(ictx.text, ictx.text_anchor);
 	image_inherit_order(ictx.text, true);
 
-	move_image(ictx.text, ictx.textofs, pad + shift);
+	move_image(ictx.text, ictx.textofs, pad);
 
 	return tvid;
 end
@@ -392,11 +391,10 @@ local function lbar_label(lbar, lbl)
 	image_inherit_order(id, true);
 	order_image(id, 1);
 
-	local pad = gconfig_get("lbar_pad");
-	local sz = gconfig_get("font_shift") * wm.scalef;
+	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 -- relinking / delinking on changes every time
-	move_image(lbar.labelid, pad, pad + sz);
-	lbar.textofs = w + sz + pad;
+	move_image(lbar.labelid, pad, pad);
+	lbar.textofs = w + gconfig_get("lbar_spacing") * wm.scalef;
 	update_caret(lbar);
 end
 
@@ -487,7 +485,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	show_image(car);
 	image_inherit_order(car, true);
 	link_image(car, bar);
-	local carety = gconfig_get("lbar_pad");
+	local carety = gconfig_get("lbar_tpad") * wm.scalef;
 
 -- we support up to 4 helper regions (depending on bar position):
 -- h1 [ show current path, clickable to navigate back ]
