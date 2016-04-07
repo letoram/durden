@@ -286,7 +286,13 @@ end
 
 local keymaps_menu = {
 	{
-		name = "keymap_switch",
+		name = "bind_utf8",
+		label = "Bind UTF-8",
+		kind = "action",
+		handler = bind_utf8,
+	},
+	{
+		name = "switch",
 		label = "Load",
 		kind = "action",
 		eval = function() return #(SYMTABLE:list_keymaps()) > 0; end,
@@ -294,16 +300,20 @@ local keymaps_menu = {
 		submenu = true
 	},
 	{
-		name = "keymap_bind_utf8",
-		label = "Bind UTF-8",
-		kind = "action",
-		handler = bind_utf8,
-	},
-	{
-		name = "keymap_save",
+		name = "save",
 		label = "Save",
 		kind = "value",
-		validator = function(val) return val and string.len(val) > 0; end,
+		validator = function(val) return val and string.len(val) > 0 and
+			not resource("keymaps/" .. val .. ".lua", SYMTABLE_DOMAIN); end,
+		handler = function(ctx, val)
+			SYMTABLE:save_keymap(val);
+		end
+	},
+	{
+		name = "replace",
+		label = "Replace",
+		kind = "value",
+		set = function() return SYMTABLE:list_keymaps(true); end,
 		handler = function(ctx, val)
 			SYMTABLE:save_keymap(val);
 		end

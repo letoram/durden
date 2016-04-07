@@ -20,7 +20,7 @@
 -- the higher-level [label] remapping is not performed here.
 
 -- modify to use other namespace
-local SYMTABLE_DOMAIN = APPL_RESOURCE;
+SYMTABLE_DOMAIN = APPL_RESOURCE;
 
 -- for legacy reasons, we provide an sdl compatible symtable
 local symtable = {};
@@ -726,6 +726,16 @@ symtable.translation_overlay = function(tbl, combotbl)
 	end
 end
 
+local function decompose(str)
+	local tbl = {};
+	local len = string.len(str);
+	for i=1,len do
+		local bv = string.byte(str, i);
+		table.insert(tbl, "string.char(" .. tostring(bv) .. ")");
+	end
+	return table.concat(tbl, "..");
+end
+
 -- store the current utf-8 keymap + added translations into a
 -- file (ignore the overlay)
 symtable.save_keymap = function(tbl, name)
@@ -748,8 +758,9 @@ symtable.save_keymap = function(tbl, name)
 		for k,v in pairs(tbl.keymap.map) do
 			wout:write(string.format("res.map[\"%s\"] = {};\n", k));
 			for i,j in pairs(v) do
+				local str = decompose(j);
 				wout:write(string.format(
-					"res.map[\"%s\"][%d] = [[%s]];\n", k, tonumber(i), tostring(j)));
+					"res.map[\"%s\"][%d] = %s;\n", k, tonumber(i), str));
 			end
 		end
 	end
