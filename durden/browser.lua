@@ -5,6 +5,7 @@
 -- existing resources.
 
 local last_path = {};
+local last_min = 0;
 
 local function match_ext(v, tbl)
 	if (tbl == nil) then
@@ -66,6 +67,7 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 -- ideal as this may be I/O operations stalling heavily on weird filesystems
 -- so we need an asynch glob_resource and all the problems that come there.
 	last_path = ctx.path;
+	last_min = ctx.minlen;
 	local path = table.concat(ctx.path, "/");
 	if (ctx.paths[path] == nil) then
 		ctx.paths[path] = glob_resource(path .. "/*", ctx.namespace);
@@ -97,7 +99,11 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 end
 
 function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
-	pathtbl = pathtbl and pathtbl or last_path;
+	if (not pathtbl) then
+		pathtbl = last_path;
+		tblmin = last_min;
+	end
+
 	local dup = {};
 	for k,v in ipairs(pathtbl) do dup[k] = v; end
 	active_display():lbar(browse_cb, {
