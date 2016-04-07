@@ -76,6 +76,10 @@ local function wnd_destroy(wnd)
 		wnd.space:tile();
 	end
 
+	if (wm.deactivated and wm.deactivated.wnd == wnd) then
+		wm.deactivated.wnd = nil;
+	end
+
 	mouse_droplistener(wnd.handlers.mouse.border);
 	mouse_droplistener(wnd.handlers.mouse.canvas);
 
@@ -1887,6 +1891,17 @@ local function wnd_migrate(wnd, tiler, disptbl)
 -- propagate pixel density information
 	if (disptbl and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_displayhint(wnd.external, 0, 0, wnd.dispmask, disptbl);
+	end
+
+-- special handling, will be next selected
+	if (tiler.deactivated and not tiler.deactivated.wnd) then
+		tiler.deactivated.wnd = wnd;
+	elseif (not tiler.deactivated) then
+		tiler.deactivated = {
+			wnd = wnd,
+			mx = 0.5 * tiler.width,
+			my = 0.5 * tiler.height
+		};
 	end
 end
 
