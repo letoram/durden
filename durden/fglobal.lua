@@ -160,7 +160,7 @@ sf["migrate_wnd_bydspname"] = function()
 
 	for k,v in ipairs(dsp) do
 		table.insert(res, {
-			name = "wnd_migrate_disp",
+			name = "migrate_" .. tostring(k),
 			label = v,
 			kind = "action",
 			handler = function()
@@ -174,11 +174,20 @@ end
 
 gf["migrate_ws_bydspname"] = function()
 	local dsp = displays_alive(true);
-	if (#dsp > 0) then
-		active_display():lbar(tiler_lbarforce(dsp, function(cfstr)
-			display_migrate_ws(active_display(), cfstr);
-		end));
+	local res = {};
+
+	for i,v in ipairs(dsp) do
+		table.insert(res, {
+			name = "migrate_" .. tostring(i),
+			label = v,
+			kind = "action",
+			handler = function()
+				display_migrate_ws(active_display(), v);
+			end
+		});
 	end
+
+	return res;
 end
 
 gf["display_cycle"] = function() display_cycle_active(); end
