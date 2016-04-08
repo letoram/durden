@@ -165,13 +165,16 @@ local function setup_vids(wm, ctx, lbsz, time)
 	ctx.progress = progress;
 	ctx.anchor = null_surface(wm.width, wm.height);
 	show_image(ctx.anchor);
+	link_image(ctx.anchor, wm.order_anchor);
 
 	image_tracetag(bar, "bar");
 	link_image(bar, wm.order_anchor);
 	link_image(progress, bar);
 	image_inherit_order(bar, true);
 	image_inherit_order(progress, true);
+	image_inherit_order(ctx.anchor, true);
 	order_image(progress, 1);
+	order_image(ctx.anchor, 1);
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
 	move_image(bar, 0, math.floor(0.5*(wm.height-lbsz)));
