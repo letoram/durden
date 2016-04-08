@@ -43,7 +43,7 @@ local function build_unbindmenu()
 	local wnd = active_display().selected;
 	for k,v in pairs(wnd.labels) do
 		table.insert(res, {
-			name = "target_input_" .. v,
+			name = "input_" .. v,
 			label = k .. "=>" .. v,
 			kind = "action",
 			handler = function()
@@ -63,7 +63,7 @@ local function build_bindmenu(wide)
 	local res = {};
 	for k,v in ipairs(wnd.input_labels) do
 		table.insert(res, {
-			name = "target_input_" .. v[1],
+			name = "input_" .. v[1],
 			label = v[1],
 			kind = "action",
 			handler = function()
@@ -94,7 +94,7 @@ local label_menu = {
 	},
 -- not finished yet, part of the whole "settings per target" problem
 	{
-		name = "target_input_localbind",
+		name = "localbind",
 		label = "Temporary-Bind",
 		kind = "action",
 		hint = "Action:",
@@ -102,7 +102,7 @@ local label_menu = {
 		handler = function() return build_bindmenu(true); end
 	},
 	{
-		name = "target_input_globalbind",
+		name = "globalbind",
 		label = "Class-Bind",
 		kind = "action",
 		eval = function() return false; end,
@@ -111,7 +111,7 @@ local label_menu = {
 		handler = function() return build_bindmenu(false); end
 	},
 	{
-		name = "target_input_labelunbind",
+		name = "labelunbind",
 		label = "Unbind",
 		kind = "action",
 		hint = "Unbind",
@@ -122,7 +122,7 @@ local label_menu = {
 
 local kbd_menu = {
 	{
-		name = "target_bind_utf8",
+		name = "utf8",
 		kind = "action",
 		label = "Bind UTF-8",
 		eval = function(ctx)
@@ -132,19 +132,19 @@ local kbd_menu = {
 		handler = grab_shared_function("bind_utf8")
 	},
 	{
-		name = "target_input_bindcustom",
+		name = "bindcustom",
 		label = "Bind Custom",
 		kind = "action",
 		handler = grab_shared_function("bind_custom"),
 	},
 	{
-		name = "target_input_unbind",
+		name = "unbind",
 		label = "Unbind",
 		kind = "action",
 		handler = grab_shared_function("unbind_custom")
 	},
 	{
-		name = "target_keyboard_repeat",
+		name = "repeat",
 		label = "Repeat Period",
 		kind = "value",
 		initial = function() return tostring(0); end,
@@ -155,7 +155,7 @@ local kbd_menu = {
 		end
 	},
 	{
-		name = "target_keyboard_delay",
+		name = "delay",
 		label = "Initial Delay",
 		kind = "value",
 		initial = function() return tostring(0); end,
@@ -172,7 +172,7 @@ end
 
 local mouse_menu = {
 	{
-		name = "target_mouse_lock",
+		name = "lock",
 		label = "Lock",
 		kind = "value",
 		set = {"Disabled", "Constrain", "Center"},
@@ -192,7 +192,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "target_mouse_cursor",
+		name = "cursor",
 		label = "Cursor",
 		kind = "value",
 		set = {"default", "hidden"},
@@ -211,7 +211,7 @@ local mouse_menu = {
 		end
 	},
 	{
-		name = "target_mouse_rlimit",
+		name = "rlimit",
 		label = "Rate Limit",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
@@ -230,7 +230,7 @@ local mouse_menu = {
 
 return {
 	{
-		name = "target_input_labels",
+		name = "labels",
 		label = "Labels",
 		kind = "action",
 		submenu = true,
@@ -241,14 +241,14 @@ return {
 		handler = label_menu
 	},
 	{
-		name = "target_input_keyboard",
+		name = "keyboard",
 		label = "Keyboard",
 		kind = "action",
 		submenu = true,
 		handler = kbd_menu
 	},
 	{
-		name = "target_input_mouse",
+		name = "mouse",
 		label = "Mouse",
 		kind = "action",
 		submenu = true,

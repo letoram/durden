@@ -12,7 +12,7 @@ local function list_values(wnd, ind, optslot, trigfun)
 				trigfun(wnd, ind, optslot, v);
 			end,
 			label = v,
-			name = "coreopt_val_" .. v,
+			name = "val_" .. v,
 			kind = "action"
 		});
 	end
@@ -24,7 +24,7 @@ local function list_coreopts(wnd, trigfun)
 	for k,v in ipairs(wnd.coreopt) do
 		if (#v.values > 0 and v.description) then
 			table.insert(res, {
-				name = "coreopt_" .. v.description,
+				name = "opt_" .. v.description,
 				label = v.description,
 				kind = "action",
 				submenu = true,
@@ -39,7 +39,7 @@ end
 
 return {
 	{
-		name = "coreopt_set",
+		name = "set",
 		label = "Set",
 		kind = "action",
 		submenu = true,

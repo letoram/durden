@@ -91,6 +91,8 @@ function durden(argv)
 	gconfig_listen("font_sz", "deffonth", update_default_font);
 	gconfig_listen("font_hint", "font_hint", update_default_font);
 	gconfig_listen("font_fb", "font_fb", update_default_font);
+	gconfig_listen("lbar_tpad", "padupd", update_default_font);
+	gconfig_listen("lbar_bpad", "padupd", update_default_font);
 
 -- preload cursor states
 	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);

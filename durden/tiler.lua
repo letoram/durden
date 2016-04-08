@@ -1021,7 +1021,7 @@ local function workspace_background(ws, bgsrc, generalize)
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
-		show_image(ws.background);
+		blend_image(ws.background, 1.0, gconfig_get("transition"));
 		if (valid_vid(src)) then
 			image_sharestorage(src, ws.background);
 		end
@@ -1047,7 +1047,7 @@ local function workspace_background(ws, bgsrc, generalize)
 			delete_image(src);
 		end
 	end);
-		new_vid(vid);
+--		new_vid(vid);
 	elseif (type(bgsrc) == "number" and valid_vid(bgsrc)) then
 		new_vid(bgsrc);
 		ws.background_name = nil;
@@ -2366,7 +2366,7 @@ local function tiler_swapws(wm, ind2)
 		wm.spaces[ind2].label_id = nil;
 	end
 
-	tile_upd(wm);
+	wm:tile_update();
 end
 
 local function wnd_swap(w1, w2, deep)

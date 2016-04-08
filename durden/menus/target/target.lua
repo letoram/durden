@@ -16,21 +16,21 @@ end
 
 local shared_actions = {
 	{
-		name = "shared_input",
+		name = "input",
 		label = "Input",
 		submenu = true,
 		kind = "action",
 		handler = system_load("menus/target/input.lua")()
 	},
 	{
-		name = "shared_state",
+		name = "state",
 		label = "State",
 		submenu = true,
 		kind = "action",
 		handler = system_load("menus/target/state.lua")()
 	},
 	{
-		name = "shared_clipboard",
+		name = "clipboard",
 		label = "Clipboard",
 		submenu = true,
 		kind = "action",
@@ -41,7 +41,7 @@ local shared_actions = {
 		handler = system_load("menus/target/clipboard.lua")()
 	},
 	{
-		name = "shared_options",
+		name = "options",
 		label = "Options",
 		submenu = true,
 		kind = "action",
@@ -52,7 +52,7 @@ local shared_actions = {
 		handler = system_load("menus/target/coreopts.lua")()
 	},
 	{
-		name = "shared_audio",
+		name = "audio",
 		label = "Audio",
 		submenu = true,
 		kind = "action",
@@ -62,14 +62,14 @@ local shared_actions = {
 		handler = system_load("menus/target/audio.lua")()
 	},
 	{
-		name = "shared_video",
+		name = "video",
 		label = "Video",
 		kind = "action",
 		submenu = true,
 		handler = system_load("menus/target/video.lua")()
 	},
 	{
-		name = "shared_window",
+		name = "window",
 		label = "Window",
 		kind = "action",
 		submenu = true,

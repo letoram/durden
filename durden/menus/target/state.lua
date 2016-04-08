@@ -27,7 +27,7 @@ end
 
 return {
 	{
-		name = "shared_suspend",
+		name = "suspend",
 		label = "Suspend",
 		kind = "action",
 		handler = function()
@@ -35,7 +35,7 @@ return {
 		end
 	},
 	{
-		name = "shared_resume",
+		name = "resume",
 		label = "Resume",
 		kind = "action",
 		handler = function()
@@ -50,7 +50,7 @@ return {
 		handler = shared_reset
 	},
 	{
-		name = "state_load",
+		name = "load",
 		label = "Load",
 		kind = "action",
 		submenu = true,
@@ -62,7 +62,7 @@ return {
 		end
 	},
 	{
-		name = "state_save",
+		name = "save",
 		label = "Save",
 		kind = "value",
 		submenu = true,
@@ -75,32 +75,6 @@ return {
 		eval = function()
 			local wnd = active_display().selected;
 			return active_display().selected.stateinf ~= nil;
-		end
-	},
-	{
-		name = "state_update",
-		label = "State",
-		submenu = true,
-		eval = function()
-		end,
-		handler = function(ctx, v)
-			warning("enumerate states");
-		end
-	},
-	{
-		name = "state_import",
-		label = "Import",
-		kind = "action",
-		handler = function()
-			local wnd = active_display().selected;
-			local subid = find_sibling(wnd);
-			if (subid) then
-			else
-				wnd:message("Couldn't import state, sibling missing.");
-			end
-		end,
-		eval = function()
-			return find_sibling();
 		end
 	}
 };
