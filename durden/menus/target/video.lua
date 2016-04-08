@@ -16,19 +16,19 @@ end
 
 local filtermodes = {
 	{
-		name = "target_filter_none",
+		name = "none",
 		label = "None",
 		kind = "action",
 		handler = function() set_filterm(FILTER_NONE); end
 	},
 	{
-		name = "target_filter_linear",
+		name = "linear",
 		label = "Linear",
 		kind = "action",
 		handler = function() set_filterm(FILTER_LINEAR); end
 	},
 	{
-		name = "target_filter_bilinear",
+		name = "bilinear",
 		label = "Bilinear",
 		kind = "action",
 		handler = function() set_filterm(FILTER_BILINEAR); end
@@ -37,19 +37,19 @@ local filtermodes = {
 
 local scalemodes = {
 	{
-		name = "target_scale_normal",
+		name = "normal",
 		label = "Normal",
 		kind = "action",
 		handler = function() set_scalef("normal"); end
 	},
 	{
-		name = "target_scale_stretch",
+		name = "stretch",
 		label = "Stretch",
 		kind = "action",
 		handler = function() set_scalef("stretch"); end
 	},
 	{
-		name = "target_scale_aspect",
+		name = "aspect",
 		label = "Aspect",
 		kind = "action",
 		handler = function() set_scalef("aspect"); end
@@ -58,7 +58,7 @@ local scalemodes = {
 
 return {
 	{
-		name = "target_scaling",
+		name = "scaling",
 		label = "Scaling",
 		kind = "action",
 		hint = "Scale Mode:",
@@ -66,27 +66,12 @@ return {
 		handler = scalemodes
 	},
 	{
-		name = "target_filtering",
+		name = "filtering",
 		label = "Filtering",
 		kind = "action",
 		hint = "Basic Filter:",
 		submenu = true,
 		handler = filtermodes
-	},
-	{
-		name = "target_opacity",
-		label = "Opacity",
-		kind = "value",
-		hint = "(0..1)",
-		validator = gen_valid_num(0, 1),
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			if (wnd) then
-				local opa = tonumber(val);
-				blend_image(wnd.border, opa);
-				blend_image(wnd.canvas, opa);
-			end
-		end
 	},
 	{
 		name = "screenshot",
@@ -134,7 +119,7 @@ return {
 		end
 	},
 	{
-		name = "target_shader",
+		name = "shader",
 		label = "Shader",
 		kind = "value",
 		set = function() return shader_list({"effect", "simple"}); end,

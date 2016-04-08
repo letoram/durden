@@ -1,24 +1,30 @@
 local swap_menu = {
 	{
-		name = "window_swap_up",
+		name = "up",
 		label = "Up",
 		kind = "action",
 		handler = grab_global_function("swap_up")
 	},
 	{
-		name = "window_swap_down",
+		name = "merge_collapse",
+		label = "Merge/Collapse",
+		kind = "action",
+		handler = grab_shared_function("mergecollapse")
+	},
+	{
+		name = "down",
 		label = "Down",
 		kind = "action",
 		handler = grab_global_function("swap_down")
 	},
 	{
-		name = "window_swap_left",
+		name = "left",
 		label = "Left",
 		kind = "action",
 		handler = grab_global_function("swap_left")
 	},
 	{
-		name = "window_swap_right",
+		name = "right",
 		label = "Right",
 		kind = "action",
 		handler = grab_global_function("swap_right")
@@ -27,7 +33,7 @@ local swap_menu = {
 
 return {
 	{
-		name = "window_prefix",
+		name = "tag",
 		label = "Tag",
 		kind = "value",
 		validator = function() return true; end,
@@ -39,20 +45,20 @@ return {
 		end
 	},
 	{
-		name = "window_swap",
+		name = "swap",
 		label = "Swap",
 		kind = "action",
 		submenu = true,
 		handler = swap_menu
 	},
 	{
-		name = "window_reassign_byname",
+		name = "reassign_name",
 		label = "Reassign",
 		kind = "action",
 		handler = grab_shared_function("reassign_wnd_bywsname");
 	},
 	{
-		name = "window_tobackground",
+		name = "canvas_to_bg",
 		label = "Workspace-Background",
 		kind = "action",
 		handler = grab_shared_function("wnd_tobg");
@@ -68,7 +74,22 @@ return {
 		end
 	},
 	{
-		name = "window_delete_protect",
+		name = "target_opacity",
+		label = "Opacity",
+		kind = "value",
+		hint = "(0..1)",
+		validator = gen_valid_num(0, 1),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			if (wnd) then
+				local opa = tonumber(val);
+				blend_image(wnd.border, opa);
+				blend_image(wnd.canvas, opa);
+			end
+		end
+	},
+	{
+		name = "delete_protect",
 		label = "Delete Protect",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
@@ -79,7 +100,7 @@ return {
 		end
 	},
 	{
-		name = "window_migrate_display",
+		name = "migrate_display",
 		label = "Migrate",
 		kind = "action",
 		submenu = true,
@@ -89,13 +110,7 @@ return {
 		end
 	},
 	{
-		name = "window_merge_collapse",
-		label = "Merge/Collapse",
-		kind = "action",
-		handler = grab_shared_function("mergecollapse")
-	},
-	{
-		name = "window_destroy",
+		name = "destroy",
 		label = "Destroy",
 		kind = "action",
 		handler = grab_shared_function("destroy")
