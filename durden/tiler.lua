@@ -287,7 +287,12 @@ local function tiler_statusbar_build(wm)
 	end
 -- fill slot with system messages
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
-		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz);
+		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz, nil,
+		{
+			click = function(btn)
+				btn:update("");
+			end
+		});
 	wm.sbar_ws["msg"].align_left = true;
 
 -- and a fixed size slot for external messages
@@ -334,7 +339,7 @@ local function wnd_select(wnd, source)
 	if (wnd.wm.selected == wnd) then
 		if (wnd.mouse_lock) then
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
-				wnd.mouse_lock or nil);
+				wnd.mouse_lock or nil, wnd.mouse_lock_center);
 		end
 		return;
 	end
@@ -1133,7 +1138,6 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	local outh = 1;
 
 	if (wnd.scalemode == "normal" and not force) then
--- explore: modify texture coordinates and provide scrollbars
 		if (props.width > 0 and props.height > 0) then
 			outw = props.width < maxw and props.width or maxw;
 			outh = props.height < maxh and props.height or maxh;
@@ -1593,7 +1597,8 @@ local function convert_mouse_xy(wnd, x, y)
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
 	local res = {};
-	local sprop = image_storage_properties(wnd.external);
+	local sprop = image_storage_properties(
+		valid_vid(wnd.external) and wnd.external or wnd.canvas);
 	local aprop = image_surface_resolve_properties(wnd.canvas);
 	local sfx = sprop.width / aprop.width;
 	local sfy = sprop.height / aprop.height;
@@ -2142,6 +2147,7 @@ local function wnd_create(wm, source, opts)
 		collapse = wnd_collapse,
 		prev = wnd_prev,
 		move =wnd_move,
+		mousemotion = wnd_mousemotion,
 		grow = wnd_grow
 	};
 

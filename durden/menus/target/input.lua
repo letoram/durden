@@ -166,8 +166,11 @@ local kbd_menu = {
 	},
 };
 
-local function mouse_lockfun(x, y, rx, ry, wnd)
-	print("forward input to target:", x, y, rx, ry, wnd);
+local function mouse_lockfun(rx, ry, x, y, wnd)
+	if (wnd) then
+		wnd.mousemotion({tag = wnd}, x, y);
+		print(x, y);
+	end
 end
 
 local mouse_menu = {
@@ -184,10 +187,12 @@ local mouse_menu = {
 			local wnd = active_display().selected;
 			if (val == "Disabled") then
 				wnd.mouse_lock = nil;
+				wnd.mouse_lock_center = false;
 				mouse_lockto(nil, nil);
 			else
-				wnd.mouse_lock = val;
-				mouse_lockto(wnd.canvas, mouse_lockfun, val == "Center", wnd);
+				wnd.mouse_lock = mouse_lockfun;
+				wnd.mouse_lock_center = val == "Center";
+				mouse_lockto(wnd.canvas, nil, wnd.mouse_lock_center, wnd);
 			end
 		end
 	},

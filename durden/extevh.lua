@@ -207,6 +207,9 @@ function(wnd, source, stat)
 		atbl:init(wnd, source);
 	end
 
+	if (stat.title and string.len(stat.title) > 0) then
+		wnd:set_title(stat.title, true);
+	end
 --	wnd:load_config(wnd.config_tgt);
 end
 

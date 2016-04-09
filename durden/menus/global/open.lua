@@ -4,9 +4,10 @@ function spawn_terminal()
 	local cp = gconfig_get("extcon_path");
 
 -- we want the dimensions in beforehand so we can pass them immediately
--- and in that way avoid the cost of a _resize() + signal cycle
+-- and in that way avoid the cost of a _resize() + signal cycle. To avoid
+-- an initial 'flash' before background etc. is applied, we preset one.
 	local wnd = durden_prelaunch();
-	wnd:set_title("prelaunch");
+	wnd:set_title("Terminal");
 
 	local ppcm = tostring(active_display(true, true).ppcm);
 	local ppcm = string.gsub(ppcm, ',', '.');
