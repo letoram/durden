@@ -210,13 +210,6 @@ update_default_font = function(key, val)
 	end
 end
 
--- [uncomment for quick dimension debugging]
--- local olddh = target_displayhint;
--- function target_displayhint(...)
--- 	print("target_displayhint", ...);
---	olddh(...);
--- end
-
 -- need these event handlers here since it ties together modules that should
 -- be separated code-wise, as we want tiler- and other modules to be reusable
 -- in less complex projects
@@ -349,7 +342,7 @@ function durden_new_connection(source, status)
 			if (ap ~= nil) then
 				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
 			end
-			durden_launch(source, "external", "");
+			durden_launch(source, "", "external");
 		end
 	end
 end

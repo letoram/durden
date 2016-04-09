@@ -130,6 +130,8 @@ local function lock_constrain()
 			local cpx = math.floor(props.x + 0.5 * props.width);
 			local cpy = math.floor(props.y + 0.5 * props.height);
 			input_samplebase(mstate.dev, cpx, cpy);
+			mstate.x = cpx;
+			mstate.y = cpy;
 		else
 			mstate.x = mstate.x < ul_x and ul_x or mstate.x;
 			mstate.y = mstate.y < ul_y and ul_y or mstate.y;
@@ -605,7 +607,7 @@ local function mouse_lockh(relx, rely)
 	if (not valid_vid(mstate.lockvid)) then
 		mouse_lockto();
 	elseif (mstate.lockfun) then
-		mstate.lockfun(relx, rely, rx, ry, mstate.lockstate);
+		mstate.lockfun(relx, rely, x, y, mstate.lockstate);
 	end
 end
 

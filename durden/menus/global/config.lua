@@ -250,6 +250,7 @@ local durden_system = {
 			return path == ":disabled" and "[disabled]" or path;
 		end,
 		handler = function(ctx, val)
+			gconfig_set("extcon_path", val);
 			if (valid_vid(INCOMING_ENDPOINT)) then
 				delete_image(INCOMING_ENDPOINT);
 				INCOMING_ENDPOINT = nil;
@@ -259,7 +260,6 @@ local durden_system = {
 			else
 				durden_new_connection();
 			end
-			gconfig_set("extcon_path", val);
 		end
 	},
 	{
