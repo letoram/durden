@@ -362,11 +362,11 @@ local function mousemotion(iotbl)
 			mouse_input(0, iotbl.samples[2]);
 		end
 	else
-		mid_v[iotbl.subid+1] = iotbl.samples[sofs];
+		mid_v[iotbl.subid+1] = iotbl.samples[1];
 		mid_c = mid_c + 1;
 
 		if (mid_c == 2) then
-			inp_fun(mid_v[1], mid_v[2]);
+			mouse_absinput(mid_v[1], mid_v[2]);
 			mid_c = 0;
 		end
 	end
