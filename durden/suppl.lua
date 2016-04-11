@@ -239,8 +239,9 @@ function hexenc(instr)
 end
 
 -- streaming is incomplete still in that we havn't set up mechanism for
--- credential-store-fetch
-local function build_recargs(vsrc, asrc, streaming)
+-- credential-store-fetch and we really need a better way to define all the
+-- possible arguments.
+function suppl_build_recargs(vsrc, asrc, streaming)
 	local argstr = string.format("vcodec=%s:fps=%.3f:vpreset=%d:container=%s",
 		gconfig_get("enc_vcodec"), gconfig_get("enc_fps"),
 		gconfig_get("enc_vpreset"), streaming and "stream" or
@@ -254,9 +255,113 @@ local function build_recargs(vsrc, asrc, streaming)
 	return argstr, gconfig_get("enc_srate");
 end
 
+function suppl_region_select(r, g, b, handler)
+	local col = color_surface(1, 1, r, g, b);
+	blend_image(col, 0.2);
+	iostatem_save();
+	mouse_select_begin(col);
+	durden_input = durden_regionsel_input;
+	DURDEN_REGIONSEL_TRIGGER = handler;
+end
+
+local function build_rt_reg(drt, x1, y1, w, h, srate)
+	if (w <= 0 or h <= 0) then
+		return;
+	end
+
+-- grab in worldspace, translate
+	local props = image_surface_resolve_properties(drt);
+	x1 = x1 - props.x;
+	y1 = y1 - props.y;
+
+	local dst = alloc_surface(w, h);
+	if (not valid_vid(dst)) then
+		warning("build_rt: failed to create intermediate");
+		return;
+	end
+	local cont = null_surface(w, h);
+	if (not valid_vid(cont)) then
+		delete_image(dst);
+		return;
+	end
+
+	image_sharestorage(drt, cont);
+
+-- convert to surface coordinates
+	local s1 = x1 / props.width;
+	local t1 = y1 / props.height;
+	local s2 = (x1+w) / props.width;
+	local t2 = (y1+h) / props.height;
+
+	local txcos = {s1, t1, s2, t1, s2, t2, s1, t2};
+	image_set_txcos(cont, txcos);
+	show_image({cont, dst});
+
+	local shid = image_shader(drt);
+	if (shid) then
+		image_shader(cont, shid);
+	end
+	return dst, {cont};
+end
+
+
+function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
+	local w = x2 - x1;
+	local h = y2 - y1;
+
+-- check sample points if we match a single vid or we need to
+-- use the aggregate surface and restrict to the behaviors of rt
+	local drt = active_display(true);
+	local i1 = pick_items(x1, y1, 1, true, drt);
+	local i2 = pick_items(x2, y1, 1, true, drt);
+	local i3 = pick_items(x1, y2, 1, true, drt);
+	local i4 = pick_items(x2, y2, 1, true, drt);
+	local img = drt;
+
+-- a possibly better option would be to generate subslices of each
+-- window in the set and dynamically manage the rendertarget, but that
+-- is for later
+	if (#i1 == 0 or #i2 == 0 or #i3 == 0 or #i4 == 0 or
+		i1[1] ~= i2[1] or i1[1] ~= i3[1] or i1[1] ~= i4[1]) then
+		rendertarget_forceupdate(drt);
+	else
+		img = i1[1];
+	end
+
+	local dvid, grp = build_rt_reg(img, x1, y1, w, h);
+	if (not valid_vid(dvid)) then
+		return;
+	end
+
+	if (nodef) then
+		return dvid, grp;
+	end
+
+	define_rendertarget(dvid, grp,
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, static and 0 or -1);
+
+-- just render once, store and drop the rendertarget as they are costly
+	if (static) then
+		rendertarget_forceupdate(dvid);
+		local dsrf = null_surface(w, h);
+		image_sharestorage(dvid, dsrf);
+		delete_image(dvid);
+		dvid = dsrf;
+	end
+
+	return dvid, grp, {};
+end
+
 function suppl_setup_rec(wnd, val)
-	local svid = type(wnd) == "table" and wnd.external or wnd;
+	local svid = wnd;
 	local aarr = {};
+
+	if (type(wnd) == "table") then
+		svid = wnd.external;
+		if (wnd.source_audio) then
+			table.insert(aarr, wnd.source_audio);
+		end
+	end
 
 	if (not valid_vid(svid)) then
 		return;
@@ -279,9 +384,10 @@ function suppl_setup_rec(wnd, val)
 		return;
 	end
 
-	local argstr, srate = build_recargs(varr, aarr, false);
+	local argstr, srate = suppl_build_recargs(varr, aarr, false);
+
 	define_recordtarget(db, val, argstr, varr, aarr,
-		RENDERTARGET_DETACH, RENDERTARGET_SCALE, srate,
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
 		function(source, stat)
 			if (stat.kind == "terminated") then
 				delete_image(source);
@@ -296,6 +402,14 @@ function suppl_setup_rec(wnd, val)
 		return;
 	end
 
+-- useful for debugging, spawn a new window that shares
+-- the contents of the allocated surface
+--	local ns = null_surface(pw, ph);
+--	image_sharestorage(db, ns);
+--	show_image(ms);
+--  local wnd =	active_display():add_window(ns);
+--  wnd:set_tile("record-test");
+--
 -- link the recordtarget with the source for automatic deletion
 	link_image(db, svid);
 	return db;

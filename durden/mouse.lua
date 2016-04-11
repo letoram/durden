@@ -1165,12 +1165,17 @@ function mouse_select_end(handler)
 		mouse_hide();
 	end
 
-	delete_image(mstate.lockvid);
+	if (valid_vid(mstate.lockvid)) then
+		delete_image(mstate.lockvid);
+	end
+
 	mstate.lockfun = mstate.in_select.lockfun;
 	mstate.lockvid = mstate.in_select.lockvid;
 
 	for i,v in ipairs(mstate.in_select.autodelete) do
-		delete_image(v);
+		if (valid_vid(v)) then
+			delete_image(v);
+		end
 	end
 
 	if (handler) then

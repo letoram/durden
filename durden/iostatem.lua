@@ -63,7 +63,8 @@ function iostatem_input(iotbl)
 	local dev = devices[iotbl.devid];
 	evc = evc + 1;
 
-	if (iotbl.mouse) then
+-- !dev shouldn't happen but may be an input platform bug
+	if (not dev or iotbl.mouse) then
 		return;
 	end
 

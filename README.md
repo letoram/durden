@@ -237,7 +237,8 @@ are being implemented, we have the following list:
   - [ ] Per-Keyboard Layout
   - [x] Custom Unicode Binding (global and per window)
 - [ ] Program Save-State Management
-  - [ ] Dynamic state change support
+  - [x] Save/Load
+	- [ ] Dynamic state change support
   - [ ] State transfer between windows
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
@@ -255,9 +256,23 @@ are being implemented, we have the following list:
   - [ ] Popup Windows
   - [ ] Move window to float/hidden that can be toggled to cursor position
   - [ ] Cursor Drag - Event Region
-    -  [x] Monitor region
-    -  [x] Snapshot region
-    -  [ ] Record / VNC-serve / OCR-to-clipboard or voice synthesize region
+    - [x] Monitor region
+    - [x] Snapshot region
+    - [ ] Recording
+		  -  [x] Single Target (A/V)
+			-  [x] Visual Region (V)
+		  -  [ ] Controllable A/V mixing
+			-  [ ] Sync/Gain controls
+			-  [ ] Video Filtering
+			-  [ ] Streaming Destination
+		- [ ] VNC Server
+			-  [x] Passive
+			-  [ ] Input mapping
+		- [ ] Abstract Encode
+		  -  [ ] OCR
+			-  [ ] Text to Speech
+			-  [ ] Speech Recognition
+			-  [ ] Dictionary / Translation
   - [x] Automation
     -  [x] Fire-Once Timers
     -  [x] Idle-Timers
@@ -313,6 +328,7 @@ are being implemented, we have the following list:
   - [ ] Redshift Color Temperature
   - [ ] Advanced scaling effects (xBR, ...)
   - [x] Lockscreen
+		- [ ] Autosuspend game/media on Lock
 
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
