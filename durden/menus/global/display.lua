@@ -172,102 +172,18 @@ local function query_displays()
 	return res;
 end
 
-local do_regsel = function(r, g, b, handler)
-	local col = color_surface(1, 1, r, g, b);
-	blend_image(col, 0.2);
-	iostatem_save();
-	mouse_select_begin(col);
-	durden_input = durden_regionsel_input;
-	DURDEN_REGIONSEL_TRIGGER = handler;
-end
-
-local function build_rt_reg(drt, x1, y1, w, h, srate)
-	if (w <= 0 or h <= 0) then
-		return;
-	end
-
--- grab in worldspace, translate
-	local props = image_surface_resolve_properties(drt);
-	x1 = x1 - props.x;
-	y1 = y1 - props.y;
-
-	local dst = alloc_surface(w, h);
-	if (not valid_vid(dst)) then
-		warning("build_rt: failed to create intermediate");
-		return;
-	end
-	local cont = null_surface(w, h);
-	if (not valid_vid(cont)) then
-		delete_image(dst);
-		return;
-	end
-
-	image_sharestorage(drt, cont);
-
--- convert to surface coordinates
-	local s1 = x1 / props.width;
-	local t1 = y1 / props.height;
-	local s2 = (x1+w) / props.width;
-	local t2 = (y1+h) / props.height;
-
-	local txcos = {s1, t1, s2, t1, s2, t2, s1, t2};
-	image_set_txcos(cont, txcos);
-	show_image({cont, dst});
-
-	local shid = image_shader(drt);
-	if (shid) then
-		image_shader(cont, shid);
-	end
-
-	define_rendertarget(dst,{cont},
-		RENDERTARGET_DETACH,RENDERTARGET_NOSCALE, srate);
-	return dst;
-end
-
-local function regimg_setup(x1, y1, x2, y2, static, title)
-	local w = x2 - x1;
-	local h = y2 - y1;
-
--- check sample points if we match a single vid or we need to
--- use the aggregate surface and restrict to the behaviors of rt
-	local drt = active_display(true);
-	local i1 = pick_items(x1, y1, 1, true, drt);
-	local i2 = pick_items(x2, y1, 1, true, drt);
-	local i3 = pick_items(x1, y2, 1, true, drt);
-	local i4 = pick_items(x2, y2, 1, true, drt);
-	local img = drt;
-	if (#i1 == 0 or #i2 == 0 or #i3 == 0 or #i4 == 0 or
-		i1[1] ~= i2[1] or i1[1] ~= i3[1] or i1[1] ~= i4[1]) then
-		rendertarget_forceupdate(drt);
-	else
-		img = i1[1];
-	end
-	img = build_rt_reg(img, x1, y1, w, h, static and 0 or -1);
-
-	if (valid_vid(img)) then
-		rendertarget_forceupdate(img);
-
-		if (static) then
-			local dsrf = null_surface(w, h);
-			image_sharestorage(img, dsrf);
-			delete_image(img);
-			img = dsrf;
-		end
-
-		show_image(img);
-		local wnd = active_display():add_window(img, {scalemode = "stretch"});
-		wnd:set_title(title);
-	end
-end
-
+local record_handler = system_load("menus/global/record.lua")();
 local region_menu = {
 	{
 		name = "snapshot",
 		label = "Snapshot",
 		kind = "action",
 		handler = function()
-			do_regsel(255, 0, 0, function(x1, y1, x2, y2)
-				regimg_setup(x1, y1, x2, y2, true, "Snapshot");
+			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
+				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
+				show_image(dvid);
+				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
+				wnd:set_title("Snapshot" .. tostring(CLOCK));
 			end)
 		end,
 	},
@@ -276,45 +192,70 @@ local region_menu = {
 		label = "Monitor",
 		kind = "action",
 		handler = function()
-			do_regsel(0, 255, 0, function(x1, y1, x2, y2)
-				regimg_setup(x1, y1, x2, y2, false, "Monitor");
+			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
+				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
+				show_image(dvid);
+				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 			end)
 		end,
 	},
+-- OCR is slightly ineffective now as the frameserver is spawned per invocation
+-- and then killed, it doesn't lie dormant and just receive a push due to the
+-- resize operation. It could be remanaged by fine-controlling the rendertarget
+-- and using stepframe however. Another interesting addition to this feature
+-- would be the inclusion of text to speech on an audio source.
 	{
 		name = "ocr",
 		label = "OCR",
 		kind = "action",
 		eval = function() return false; end,
 		handler = function()
-			do_regsel(0, 255, 255, function(x1, y1, x2, y2)
-				print("display_region_ocr");
+			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
+				local dvid, grp = suppl_region_setup(x1, y1, x2, y2, true, false);
+				if (not valid_vid(dvid)) then
+					return;
+				end
+				define_recordtarget(dvid, grp, "protocol=ocr", grp, {},
+					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
+				function(source, stat)
+					if (stat.kind == "message") then
+-- aggregate and push into global clipboard
+					elseif (stat.kind == "terminated") then
+						delete_image(source);
+					else
+					end
+				end);
+				rendertarget_forceupdate(dvid);
 			end);
 		end
 	},
+-- also need to become more complicated for an 'action connection' rather
+-- than 'passive streaming over VNC'
 	{
-		name = "remote",
-		label = "Remote",
+		name = "share",
+		label = "Share",
 		kind = "action",
-		eval = function() return false; end,
-		handler = function()
-			do_regsel(255, 255, 0, function(x1, y1, x2, y2)
-				print("display_region_remote");
-			end);
-		end
+		eval = function() return string.match(
+			FRAMESERVER_MODES, "encode") ~= nil;
+		end,
+		handler = system_load("menus/global/remoting.lua")();
 	},
 	{
 		name = "record",
 		label = "Record",
-		eval = function() return string.match(
-			FRAMESERVER_MODES, "encode") ~= nil; end,
-		kind = "action",
-		handler = function()
-			do_regsel(255, 0, 255, function(x1, y1, x2, y2)
-				print("display_region_record");
-			end);
+		kind = "value",
+		hint = "(full path)",
+		validator = function(val)
+			return string.len(val) > 0 and not resource(val);
 		end,
-	},
+		eval = function() return string.match(
+			FRAMESERVER_MODES, "encode") ~= nil;
+		end,
+		handler =
+		function(ctx, val)
+			record_handler(val);
+		end
+	}
 };
 
 return {

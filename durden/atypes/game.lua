@@ -17,12 +17,6 @@ for k,v in ipairs(skipset) do
 	assert(skiptbl[v] ~= nil);
 end
 
--- preaudio
--- framealign
--- target_framemode(vid, skipval, align, preaudio, jitterstep, jitterxfer)
--- target_postfilter(hue, sat, contrast[1], bright, gamma, sharp[2],
--- fast-forward (val)
-
 local function update_synch(ctx)
 	local cs = ctx.synch;
 	if (not cs) then

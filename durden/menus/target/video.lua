@@ -109,7 +109,7 @@ return {
 		name = "stop_record",
 		label = "Stop Record",
 		kind = "action",
-		validator = function(val)
+		eval = function(val)
 			return valid_vid(active_display().selected.in_record);
 		end,
 		handler = function()
