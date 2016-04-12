@@ -312,16 +312,21 @@ function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 -- check sample points if we match a single vid or we need to
 -- use the aggregate surface and restrict to the behaviors of rt
 	local drt = active_display(true);
+	local tiler = active_display();
+
 	local i1 = pick_items(x1, y1, 1, true, drt);
 	local i2 = pick_items(x2, y1, 1, true, drt);
 	local i3 = pick_items(x1, y2, 1, true, drt);
 	local i4 = pick_items(x2, y2, 1, true, drt);
 	local img = drt;
+	local in_float = (tiler.spaces[tiler.space_ind].mode == "float");
 
 -- a possibly better option would be to generate subslices of each
 -- window in the set and dynamically manage the rendertarget, but that
 -- is for later
-	if (#i1 == 0 or #i2 == 0 or #i3 == 0 or #i4 == 0 or
+	if (
+		in_float or
+		#i1 == 0 or #i2 == 0 or #i3 == 0 or #i4 == 0 or
 		i1[1] ~= i2[1] or i1[1] ~= i3[1] or i1[1] ~= i4[1]) then
 		rendertarget_forceupdate(drt);
 	else
