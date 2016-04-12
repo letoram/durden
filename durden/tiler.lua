@@ -2068,7 +2068,6 @@ local canvas_mh = {
 
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
-
 	local bw = gconfig_get("borderw");
 	local res = {
 		anchor = null_surface(1, 1),
@@ -2110,8 +2109,6 @@ local function wnd_create(wm, source, opts)
 -- during migration and display setup.
 
 -- properties that change visual behavior
-		width = wm.min_width,
-		height = wm.min_height,
 		border_w = gconfig_get("borderw"),
 		dispmask = 0,
 		name = "wnd_" .. tostring(ent_count),
@@ -2158,6 +2155,13 @@ local function wnd_create(wm, source, opts)
 	local space = wm.spaces[wm.space_ind];
 	res.space_ind = wm.space_ind;
 	res.space = space;
+	if (space.mode == "float") then
+		res.width = math.floor(wm.width * gconfig_get("float_defw"));
+		res.height = math.floor(wm.height * gconfig_get("float_defh"));
+	else
+		res.width = opts.width and opts.width or wm.min_width;
+		res.height = opts.height and opts.height or wm.min_height;
+	end
 
 	ent_count = ent_count + 1;
 	image_tracetag(res.anchor, "wnd_anchor");
@@ -2248,9 +2252,8 @@ local function wnd_create(wm, source, opts)
 	res.block_mouse = opts.block_mouse;
 
 	if (res.space.mode == "float") then
-		warning("mouse initial state in float is weird");
 		move_image(res.anchor, mouse_xy());
-		res:resize(wm.min_width, wm.min_height);
+		res:resize(res.width, res.height);
 	end
 
 	return res;

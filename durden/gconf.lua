@@ -38,6 +38,11 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
+-- default window dimensions (relative tiler size) for windows
+-- created in float mode with unknown starting size
+	float_defw = 0.3,
+	float_defh = 0.2,
+
 -- default encoder setting, used by suppl when building string
 	enc_fps = 30,
 	enc_srate = -1,

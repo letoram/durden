@@ -196,6 +196,9 @@ local region_menu = {
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
 				show_image(dvid);
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
+				if (wnd) then
+					wnd:set_title("Monitor");
+				end
 			end)
 		end,
 	},
