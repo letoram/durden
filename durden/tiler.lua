@@ -717,7 +717,7 @@ local function drop_tab(space)
 	space.reassign_hook = nil;
 end
 
-local function drop_float(space, swap)
+local function drop_float(space)
 	space.in_float = false;
 
 	local lst = linearize(space);
@@ -2566,14 +2566,31 @@ local function tiler_input_lock(wm, dst)
 	wm.input_lock = dst;
 end
 
-local function tiler_resize(wm, neww, newh)
+local function tiler_resize(wm, neww, newh, norz)
+-- special treatment for workspaces with float, we "fake" drop/set float
+	for i=1,10 do
+		if (wm.spaces[i] and wm.spaces[i].mode == "float") then
+			drop_float(wm.spaces[i]);
+		end
+	end
+
 	wm.width = neww;
 	wm.height = newh;
+
 	if (valid_vid(wm.rtgt_id)) then
 		image_resize_storage(wm.rtgt_id, neww, newh);
 	end
-	for k,v in pairs(wm.spaces) do
-		v:resize(neww, newh);
+
+	for i=1,10 do
+		if (wm.spaces[i] and wm.spaces[i].mode == "float") then
+			set_float(wm.spaces[i]);
+		end
+	end
+
+	if (not norz) then
+		for k,v in pairs(wm.spaces) do
+			v:resize(neww, newh);
+		end
 	end
 end
 
