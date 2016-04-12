@@ -514,6 +514,7 @@ end
 
 symtable.u8lut = {};
 symtable.u8basic = {};
+symtable.symlut = {};
 
 symtable.patch = function(tbl, iotbl)
 	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
@@ -529,7 +530,8 @@ symtable.patch = function(tbl, iotbl)
 		end
 
 -- other symbols are described relative to the internal sdl symbols
-	local sym = tbl[iotbl.keysym];
+	local sym = tbl.symlut[iotbl.keysym] and
+		tbl.symlut[iotbl.keysym] or tbl[iotbl.keysym];
 	if (not sym) then
 		sym = "UNKN" .. tostring(iotbl.subid);
 	end
@@ -635,11 +637,6 @@ symtable.store_translation = function(tbl)
 	store_key(out);
 end
 
--- can be quite slow with many keymaps so want to cache results,
--- and prefer load_keymap call instead if the desired one is already
--- known.
-local symtable_cache = {};
-
 local function tryload(km)
 	local res = system_load("keymaps/" .. km, 0);
 	if (not res) then
@@ -647,34 +644,26 @@ local function tryload(km)
 		return;
 	end
 
-	local okstate, res = pcall(res);
+	local okstate, map = pcall(res);
 	if (not okstate) then
 		warning("execution error loading keymap: " .. km);
 		return;
 	end
-	if (res and type(res) == "table"
-		and res.name and string.len(res.name) > 0) then
+	if (map and type(map) == "table"
+		and map.name and string.len(map.name) > 0) then
 
-		if (res.platform_flt and not res.platform_flt()) then
+		if (map.platform_flt and not map.platform_flt()) then
 			warning("platform filter rejected keymap: " .. km);
 			return nil;
 		end
 
-		symtable_cache[km] = res;
-		res.dctind = 0;
-		return res;
+		map.dctind = 0;
+		return map;
 	end
 end
 
 symtable.list_keymaps = function(tbl, cached)
 	local res = {};
-	if (cached) then
-		for k,v in pairs(symtable_cache) do
-			table.insert(res, v.name);
-		end
-		return res;
-	end
-
 	local list = glob_resource("keymaps/*.lua", SYMTABLE_DOMAIN);
 
 	if (list and #list > 0) then
@@ -695,13 +684,7 @@ symtable.load_keymap = function(tbl, km)
 		local res = tryload(km);
 		if (tryload(km)) then
 			symtable.keymap = res;
-			return true;
-		end
-	end
-
-	for k,v in pairs(symtable_cache) do
-		if (v.name == km) then
-			symtable.keymap = v;
+			symtable.symlut = res.symmap and res.symmap or {};
 			return true;
 		end
 	end
@@ -726,16 +709,6 @@ symtable.translation_overlay = function(tbl, combotbl)
 	end
 end
 
-local function decompose(str)
-	local tbl = {};
-	local len = string.len(str);
-	for i=1,len do
-		local bv = string.byte(str, i);
-		table.insert(tbl, "string.char(" .. tostring(bv) .. ")");
-	end
-	return table.concat(tbl, "..");
-end
-
 -- store the current utf-8 keymap + added translations into a
 -- file (ignore the overlay)
 symtable.save_keymap = function(tbl, name)
@@ -752,17 +725,20 @@ symtable.save_keymap = function(tbl, name)
 	end
 
 	wout:write(string.format("local res = { name = [[%s]], ", name));
-	wout:write("dctbl = {}, map = { plain = {} } };\n");
+	wout:write("dctbl = {}, symmap = {}, map = { plain = {} } };\n");
 
 	if (tbl.keymap) then
 		for k,v in pairs(tbl.keymap.map) do
 			wout:write(string.format("res.map[\"%s\"] = {};\n", k));
 			for i,j in pairs(v) do
-				local str = decompose(j);
 				wout:write(string.format(
-					"res.map[\"%s\"][%d] = %s;\n", k, tonumber(i), str));
+					"res.map[\"%s\"][%d] = %q;\n", k, tonumber(i), j));
 			end
 		end
+	end
+
+	for k,v in pairs(tbl.symlut) do
+		wout:write(string.format("res.symmap[%d] = %q;\n", k, v));
 	end
 
 	wout:write("return res;\n");

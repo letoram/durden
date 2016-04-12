@@ -31,16 +31,6 @@ local durden_font = {
 		end
 	},
 	{
-		name = "shift",
-		label = "Shift",
-		kind = "value",
-		validator = gen_valid_num(-100, 100),
-		initial = function() return gconfig_get("font_shift"); end,
-		handler = function(ctx, val)
-			gconfig_set("font_shift", tonumber(val));
-		end
-	},
-	{
 		name = "name",
 		label = "Font",
 		kind = "value",

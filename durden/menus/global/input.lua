@@ -138,8 +138,13 @@ local function bind_utf8()
 	end);
 end
 
-local function gen_axismenu(devid, subid, pref)
+local function bind_keysym()
+-- this is for local UI keybindings, iterate SYMTABLE by pair to
+-- get completion set, then bind to corresponding iotbl.keysym <-!
+end
 
+local function gen_axismenu(devid, subid, pref)
+	return {};
 end
 
 local function gen_analogmenu(v, pref)
@@ -290,6 +295,31 @@ local keymaps_menu = {
 		label = "Bind UTF-8",
 		kind = "action",
 		handler = bind_utf8,
+	},
+	{
+		name = "bind_sym",
+		label = "Bind Keysym",
+		kind = "value",
+		set = function()
+			local res = {};
+			for k,v in pairs(SYMTABLE) do
+				if (type(k) == "number") then
+					table.insert(res, v);
+				end
+			end
+			return res;
+		end,
+		handler = function(ctx, val)
+			local bwt = gconfig_get("bind_waittime");
+			tiler_bbar(active_display(),
+				string.format(LBL_BIND_KEYSYM, val, SYSTEM_KEYS["cancel"]),
+				true, bwt, nil, SYSTEM_KEYS["cancel"],
+				function(sym, done, sym2, iotbl)
+					if (done) then
+						SYMTABLE.symlut[iotbl.keysym] = val;
+					end
+				end);
+		end
 	},
 	{
 		name = "switch",

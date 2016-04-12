@@ -3,37 +3,64 @@
 local tsupp = system_load("widgets/support/text.lua")();
 
 local function probe(ctx, yh)
-	ctx.lst = dispatch_list();
-	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
-	ctx.group_sz = math.floor(yh / th);
-	ctx.group_sz = ctx.group_sz > #ctx.lst and #ctx.lst or ctx.group_sz;
-	return math.ceil(#ctx.lst / ctx.group_sz);
-end
+	local lst = dispatch_list();
 
-local function show(ctx, anchor, ofs)
-	local lst = ctx.lst;
-	local len = 0;
-	local lenstr = "";
+-- group based on meta key presses
+	local m1g = {};
+	local m2g = {};
+	local m1m2g = {};
+	local miscg = {};
 
--- could possibly be smarter and sort by length and arrange so that
--- the rightmost column gets the longest ones (highest chance for clipping)
--- or simply crop the path here
 	for k,v in ipairs(lst) do
-		if (string.len(v) > len) then
-			lenstr = v;
-			len = string.len(v);
+		if (string.match(v, "m1_m2")) then
+			table.insert(m1m2g, v);
+		elseif (string.match(v, "m1_")) then
+			table.insert(m1g, v);
+		elseif (string.match(v, "m2_")) then
+			table.insert(m2g, v);
+		else
+			table.insert(miscg, v);
 		end
 	end
 
-	if (len == 0) then
-		return;
+-- split based on number of rows that fit
+	local gc = 0;
+	local fd = active_display().font_delta;
+	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
+	local ul = math.floor(yh / th);
+
+-- slice a table based on the maximum number of rows in the column
+	local ct = {};
+	local stepg = function(g)
+		local ofs = 1;
+		local nt = {};
+
+		while (ofs < #g) do
+			table.insert(nt, g[ofs]);
+			if (#nt == ul) then
+				table.insert(ct, nt);
+				nt = {};
+			end
+			ofs = ofs + 1;
+		end
+
+		if (#nt > 0) then
+			table.insert(ct, nt);
+		end
 	end
 
-	local si = 1 + (ofs - 1) * ctx.group_sz;
-	local ul = si + ctx.group_sz - 1;
-	ul = ul > #lst and #lst or ul;
-	tsupp.show(ctx, anchor, lst, si, ul);
+-- finally add all to the group cache
+	stepg(m1g);
+	stepg(m2g);
+	stepg(m1m2g);
+	stepg(miscg);
+	ctx.group_cache = ct;
+
+	return #ctx.group_cache;
+end
+
+local function show(ctx, anchor, ofs)
+	tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
 end
 
 local function destroy(ctx)

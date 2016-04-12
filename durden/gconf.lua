@@ -9,6 +9,7 @@
 LBL_YES = "yes";
 LBL_NO = "no";
 LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
+LBL_BIND_KEYSYM = "Press and hold single key to bind keysym %s, %s to Abort";
 LBL_BIND_COMBINATION_REP = "Press and hold or repeat- press, %s to Abort";
 LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Abort";
 LBL_METAGUARD = "Query Rebind in %d keypresses";
@@ -31,7 +32,6 @@ local defaults = {
 	font_fb = "emoji.ttf",
 	font_sz = 12,
 	font_hint = 2,
-	font_shift = 0,
 	font_str = "",
 	text_color = "\\#aaaaaa",
 	label_color = "\\#ffff00",

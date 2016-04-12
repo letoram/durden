@@ -2609,7 +2609,6 @@ local function recalc_fsz(wm)
 	end
 
 	wm.font_deltav = int;
-	wm.font_ascofs = gconfig_get("font_shift");
 
 -- since ascent etc. may be different at different sizes, render a test line
 -- and set the "per tiler" shift here
