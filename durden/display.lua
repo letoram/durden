@@ -351,8 +351,7 @@ function display_ressw(name, mode)
 		video_displaymodes(disp.id, mode.modeid);
 		image_set_txcos_default(disp.rt);
 		map_video_display(disp.rt, disp.id, disp.maphint);
-		disp.tiler.width = mode.width;
-		disp.tiler.height = mode.height;
+		disp.tiler:resize(mode.width, mode.height, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 		set_mouse_scalef();
 	end);
