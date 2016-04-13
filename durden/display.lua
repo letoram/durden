@@ -218,7 +218,8 @@ function display_manager_init()
 		displays[1].rt = displays[1].tiler:set_rendertarget(true);
 		displays[1].maphint = HINT_NONE;
 		show_image(displays[1].rt);
-		shader_setup(displays[1].rt, "display", gconfig_get("display_shader"));
+		shader_setup(displays[1].rt, "display",
+			gconfig_get("display_shader"), displays[1].name);
 		switch_active_display(1);
 	end
 end
@@ -243,6 +244,16 @@ function display_override_density(name, ppcm)
 		disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
 		set_mouse_scalef();
 	end);
+end
+
+function display_shader(name, key)
+	local disp, dispi = get_disp(name);
+	if (not disp or not valid_vid(disp.rt)) then
+		return;
+	end
+
+	shader_setup(disp.rt, "display", key, disp.name);
+--	set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
 end
 
 function display_add(name, width, height, ppcm)

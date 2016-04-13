@@ -54,11 +54,6 @@ local function query_dispmenu(ind, name)
 	end
 end
 
-local function display_shader_menu(disp)
-	return {
-	};
-end
-
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -86,11 +81,14 @@ local function gen_disp_menu(disp)
 		{
 		name = "shader",
 		label = "Shader",
-		kind = "action",
-		submenu = true,
+		kind = "value",
 		eval = function() return not display_simple(); end,
-		handler = function(ctx)
-			return display_shader_menu(disp.name);
+		set = function() return shader_list({"display"}); end,
+		handler = function(ctx, val)
+			local key = shader_getkey(val, {"display"});
+			if (key ~= nil) then
+				display_shader(disp.name, key);
+			end
 		end
 		},
 		{
