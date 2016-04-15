@@ -1035,6 +1035,7 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	end
 
 	if (not found) then
+		cpath:reset();
 		return;
 	end
 
