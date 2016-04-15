@@ -40,10 +40,14 @@ local function tbar_geth(wnd)
 		(wnd.wm.scalef * gconfig_get("tbar_sz"));
 end
 
-local function sbar_geth(wm)
-	return (wm.spaces[wm.space_ind] and
-		wm.spaces[wm.space_ind].mode == "fullscreen") and 0 or
-		math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+local function sbar_geth(wm, ign)
+	if (ign) then
+		return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+	else
+		return (wm.spaces[wm.space_ind] and
+			wm.spaces[wm.space_ind].mode == "fullscreen") and 0 or
+			math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+	end
 end
 
 local function run_event(wnd, event, ...)
@@ -262,7 +266,7 @@ local function tiler_statusbar_update(wm)
 end
 
 local function tiler_statusbar_build(wm)
-	local sbsz = sbar_geth(wm);
+	local sbsz = sbar_geth(wm, true);
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
