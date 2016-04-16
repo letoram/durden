@@ -73,24 +73,51 @@ local function set_uniform(dstid, name, typestr, vals, source)
 	return true;
 end
 
+local function setup_shader(shader, name, group)
+	if (shader.shid) then
+		return true;
+	end
+
+	local dvf = (shader.vert and
+		type(shader.vert == "table") and shader.vert[SHADER_LANGUAGE])
+		and shader.vert[SHADER_LANGUAGE] or shader.vert;
+
+	local dff = (shader.frag and
+		type(shader.frag == "table") and shader.frag[SHADER_LANGUAGE])
+		and shader.frag[SHADER_LANGUAGE] or shader.frag;
+
+	shader.shid = build_shader(dvf, dff, group.."_"..name);
+	if (not shader.shid) then
+		warning("building shader failed for " .. group.."_"..name);
+	return false;
+	end
+-- this is not very robust, bad written shaders will yield fatal()
+	for k,v in pairs(shader.uniforms) do
+		set_uniform(shader.shid, k, v.utype, v.default, name .. "-" .. k);
+	end
+	return true;
+end
+
+-- for display, state is actually the display name
+local function dsetup(shader, dst, group, name, state)
+	if (not setup_shader(shader, dst, name)) then
+		return;
+	end
+
+	if (not shader.states) then
+		shader.states = {};
+	end
+
+	if (not shader.states[state]) then
+		shader.states[state] = shader_ugroup(shader.shid);
+	end
+	image_shader(dst, shader.states[state]);
+end
+
 local function ssetup(shader, dst, group, name, state)
 	if (not shader.shid) then
-		local dvf = (shader.vert and
-		type(shader.vert == "table") and shader.vert[SHADER_LANGUAGE])
-				and shader.vert[SHADER_LANGUAGE] or shader.vert;
-		local dff = (shader.frag and
-			type(shader.frag == "table") and shader.frag[SHADER_LANGUAGE])
-				and shader.frag[SHADER_LANGUAGE] or shader.frag;
+		setup_shader(shader, name, group);
 
-		shader.shid = build_shader(dvf, dff, group.."_"..name);
-		if (not shader.shid) then
-		warning("building shader failed for " .. group.."_"..name);
-			return;
-		end
--- this is not very robust, bad written shaders will yield fatal()
-		for k,v in pairs(shader.uniforms) do
-			set_uniform(shader.shid, k, v.utype, v.default, name .. "-" .. k);
-		end
 -- states inherit shaders, define different uniform values
 		if (shader.states) then
 			for k,v in pairs(shader.states) do
@@ -102,7 +129,6 @@ local function ssetup(shader, dst, group, name, state)
 				end
 			end
 		end
-
 	end
 -- now the shader exists, apply
 	local shid = ((state and shader.states and shader.states[state]) and
@@ -110,12 +136,116 @@ local function ssetup(shader, dst, group, name, state)
 	image_shader(dst, shid);
 end
 
+-- all the boiler plate needed to figure out the types a uniform has,
+-- generate the corresponding menu entry and with validators for type
+-- and range, taking locale and separators into accoutn.
+local bdelim = (tonumber("1,01") == nil) and "." or ",";
+local rdelim = (bdelim == ".") and "," or ".";
+
+-- note: boolean and 4x4 matrices are currently ignored
+local utype_lut = {
+i = 1, f = 1, ff = 1, fff = 1, ffff = 1
+};
+
+local function unpack_typestr(typestr, val, lowv, highv)
+	string.gsub(val, rdelim, bdelim);
+	local rtbl = string.split(val, ' ');
+	for i=1,#rtbl do
+		rtbl[i] = tonumber(i);
+		if (not rtbl[i]) then
+			return;
+		end
+		if (lowv and rtbl[i] < lowv) then
+			return;
+		end
+		if (highv and rtbl[i] > highv) then
+			return;
+		end
+	end
+	return rtbl;
+end
+
+local function gen_typestr_valid(utype, lowv, highv, defaultv)
+	return function(val)
+		local tbl = unpack_typestr(utype, val, lowv, highv);
+		return tbl ~= nil and #tbl == string.len(utype);
+	end
+end
+
+local function smenu(shdr, grp, name)
+	if (not shdr.uniforms) then
+		return;
+	end
+
+	local found = false;
+	for k,v in pairs(shdr.uniforms) do
+		if (not v.ignore) then
+			found = true;
+			break;
+		end
+	end
+	if (not found) then
+		return;
+	end
+
+	local res = {
+	};
+
+	local add_stateref = function(res, name, uniforms, shid)
+		for k,v in pairs(uniforms) do
+			if (not v.ignore) then
+			table.insert(res, {
+				name = k,
+				label = v.label,
+				kind = "value",
+-- note: should also show low/high range
+				hint = (type(v.default) == "table" and
+					table.concat(v.default, " ")) or tostring(v.default),
+				eval = function()
+					return utype_lut[v.utype] ~= nil;
+				end,
+				validator = gen_typestr_valid(v.utype, v.low, v.high, v.default),
+				handler = function(ctx, val)
+					shader_uniform(shid, k, v.utype, unpack(
+						unpack_typestr(v.utype, val, v.low, v.high)));
+				end
+			});
+			end
+		end
+	end
+
+	if (shdr.states) then
+		for k,v in pairs(shdr.states) do
+			if (v.shid) then
+				table.insert(res, {
+					name = "state_" .. k,
+					label = k,
+					kind = "action",
+					submenu = true,
+					handler = function()
+						local res = {};
+						add_stateref(res, k, shdr.uniforms, v.shid);
+						return res;
+					end
+				});
+			end
+		end
+	else
+		add_stateref(res, "default", shdr.uniforms, shdr.shid);
+	end
+
+	return res;
+end
+
 local fmtgroups = {
-	ui = ssetup,
-	effect = function() warning("effect incomplete"); end,
-	display = ssetup,
-	audio = ssetup,
-	simple = ssetup
+	ui = {ssetup, smenu},
+	effect = {
+		function() warning("effect incomplete"); end,
+		function() return {}; end,
+	},
+	display = {dsetup, dmenu},
+	audio = {ssetup, smenu},
+	simple = {ssetup, smenu}
 };
 
 function shader_setup(dst, group, name, state)
@@ -133,7 +263,25 @@ function shader_setup(dst, group, name, state)
 		return dst;
 	end
 
-	return fmtgroups[group](shdrtbl[group][name], dst, group, name, state);
+	return fmtgroups[group][1](shdrtbl[group][name], dst, group, name, state);
+end
+
+function shader_uform_menu(name, group)
+	if (not fmtgroups[group]) then
+		warning("shader_setup called with unknown group " .. group);
+		return dst;
+	end
+
+	if (not shdrtbl[group] or not shdrtbl[group][name]) then
+		warning(string.format(
+			"shader_setup called with unknown group(%s) or name (%s) ",
+			group and group or "nil",
+			name and name or "nil"
+		));
+		return dst;
+	end
+
+	return fmtgroups[group][2](shdrtbl[group][name], group, name);
 end
 
 -- update shader [sname] in group [domain] for the uniform [uname],

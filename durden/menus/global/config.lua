@@ -147,7 +147,7 @@ local durden_visual = {
 		label = "Shaders",
 		kind = "action",
 		submenu = true,
-		handler = system_load("menus/global/shaders.lua")()
+		handler = system_load("menus/global/shaders.lua")();
 	},
 	{
 		name = "mouse_scale",

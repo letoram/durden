@@ -97,7 +97,9 @@ local testwnd_spawn = function(bar)
 			VRESW * 0.1, VRESH * 0.1);
 		show_image(img);
 
-		durden_launch(img, "test_window_" .. tostring(test_gc));
+		local wnd = durden_launch(img, "test_window_" .. tostring(test_gc));
+		wnd.scalemode = "stretch";
+		wnd:resize();
 		test_gc = test_gc + 1;
 	end
 end

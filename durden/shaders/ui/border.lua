@@ -35,6 +35,7 @@ return {
 		border = {
 			label = 'Area Width',
 			utype = 'f',
+			ignore = true,
 			default = gconfig_get("borderw"),
 			low = 0.1,
 			high = 40.0
@@ -42,6 +43,7 @@ return {
 		thickness = {
 			label = 'Thickness',
 			utype = 'f',
+			ignore = true,
 			default = (gconfig_get("borderw") - gconfig_get("bordert")),
 			low = 0.1,
 			high = 20.0

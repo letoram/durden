@@ -1,6 +1,6 @@
 return {
 	version = 1,
-	label = "lbar tile",
+	label = "Tile",
 	frag = [[
 uniform vec4 col_bg;
 uniform float obj_opacity;
