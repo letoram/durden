@@ -55,4 +55,5 @@ void main()
 	float i = float(intens > uv.y);
 	gl_FragColor = vec4(i2c(intens) * i, obj_opacity);
 }]],
+	uniforms = {}
 };

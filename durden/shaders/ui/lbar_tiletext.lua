@@ -1,6 +1,6 @@
 return {
 	version = 1,
-	label = "lbar tile-text",
+	label = "Tile-Text",
 	frag = [[
 uniform sampler2D map_tu0;
 uniform vec4 col;
