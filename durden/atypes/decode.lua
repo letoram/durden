@@ -11,11 +11,11 @@ local rtbl = {
 -- special case, FFT packed in video stream and unpacked by shader,
 		streaminfo = function(wnd, source, tbl)
 			if (tbl.lang == "AUD") then
-				wnd.shaderflt = {"fft"};
+				wnd.shaderflt = {"audio"};
 				wnd.scalemode = "stretch";
 				local lst = shader_list(wnd.shaderflt);
 				if (#lst > 0) then
-					shader_setup(wnd, shader_getkey(lst[1]));
+					shader_setup(wnd.canvas, "audio", shader_getkey(lst[1]));
 				end
 			end
 		end
