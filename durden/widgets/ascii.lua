@@ -35,7 +35,7 @@ local function show(ctx, anchor, ofs)
 	local ul = si + ctx.group_sz - 1;
 	local ap = image_surface_resolve_properties(anchor);
 	ul = ul > #tbl and #tbl or ul;
-	tsupp.show(ctx, anchor, tbl, si, ul, tw);
+	return tsupp.show(ctx, anchor, tbl, si, ul, tw);
 end
 
 local function destroy(ctx)

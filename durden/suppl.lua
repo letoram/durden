@@ -842,7 +842,7 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 	local ad = active_display();
 	local sub_sz = 0.5 * reserved;
 	local rh = ad.height * 0.5 - sub_sz;
-	local y2 = ad.height * 0.5 + sub_sz;
+	local y2 = math.floor(ad.height * 0.5 + sub_sz - 1);
 
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
@@ -885,15 +885,22 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 			link_image(anch, anchor);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
-			move_image(anch, cx, ay);
-			match[start][1].show(ctx, anch, match[start][2]);
+			local w, h = match[start][1].show(ctx, anch, match[start][2]);
 			start = start + 1;
-			if (ay == 0) then
-				ay = y2;
+
+-- position and slide only if we get a hint on dimensions consumed
+			if (w and h) then
+				move_image(anch, cx, ay == 0 and rh - h or y2);
+				if (ay == 0) then
+					ay = y2;
+				else
+					ay = 0;
+					cx = cx + cellw;
+				end
 			else
-				ay = 0;
-				cx = cx + cellw;
+				delete_image(anch);
 			end
+
 		end
 	end
 end

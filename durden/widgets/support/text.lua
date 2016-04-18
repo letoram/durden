@@ -54,8 +54,7 @@ return {
 			image_clip_on(backdrop, CLIP_SHALLOW);
 			image_mask_set(tbl, MASK_UNPICKABLE);
 			image_mask_set(backdrop, MASK_UNPICKABLE);
-			return true;
+			return bdw, bdh;
 		end
-		return false;
 	end
 };
