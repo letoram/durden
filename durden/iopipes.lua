@@ -22,6 +22,7 @@ local function poll_status_channel()
 		return;
 	end
 
+	print("got cmd:", line);
 	local cmd = string.split(line, ":");
 	cmd = cmd == nil and {} or cmd;
 	local fmt = string.format("%s \\#ffffff", gconfig_get("font_str"));

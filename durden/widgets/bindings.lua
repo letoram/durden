@@ -26,7 +26,7 @@ local function probe(ctx, yh)
 -- split based on number of rows that fit
 	local gc = 0;
 	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
+	local tw, th = text_dimensions(fd .. "m1_m2 0000");
 	local ul = math.floor(yh / th);
 
 -- slice a table based on the maximum number of rows in the column
@@ -60,7 +60,7 @@ local function probe(ctx, yh)
 end
 
 local function show(ctx, anchor, ofs)
-	tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
+	return tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
 end
 
 local function destroy(ctx)

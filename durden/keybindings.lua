@@ -169,7 +169,7 @@ end
 function dispatch_list()
 	local res = {};
 	for k,v in pairs(tbl) do
-		table.insert(res, k .. "  " .. v);
+		table.insert(res, k .. "=" .. v);
 	end
 	table.sort(res);
 	return res;
