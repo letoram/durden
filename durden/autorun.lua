@@ -14,6 +14,7 @@
 -- hack timer patched when some state need to be monitored as part of debugging,
 -- can be safely removed / ignored of course
 if (DEBUGLEVEL > 1) then
+	local periodic_msg = "";
 	timer_add_periodic("debugstat", 1, false, function()
 		local m1, m2 = dispatch_meta();
 		local total, used = current_context_usage();
@@ -28,12 +29,15 @@ if (DEBUGLEVEL > 1) then
 				wnd.atype or "unknown", wnd.pastemode and wnd.pastemode or "unknown");
 		end
 
--- dump a bunch of global states1 for easier debugging
-		active_display():message(string.format(
+		local new_msg = string.format(
 			"wnd: [%s],CB:%d,[SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)]",
 			wndapp, IN_CUSTOM_BIND and 1 or 0,
 			used, total, mouse_handlercount(), m1 and 1 or 0, m2 and 1 or 0,
 			iostatem_debug()
-		));
+		);
+		if (new_msg ~= periodic_msg) then
+			active_display():message(new_msg);
+			periodic_msg = new_msg;
+		end
 	end);
 end
