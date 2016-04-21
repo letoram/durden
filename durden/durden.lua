@@ -373,7 +373,7 @@ local function mousemotion(iotbl)
 end
 
 -- shared between the other input forms (normal, locked, ...)
-local function status_handler(iotbl)
+function durden_iostatus_handler(iotbl)
 	active_display():message(string.format("%d:%d %s",
 		iotbl.devid, iotbl.subid, iotbl.action));
 
@@ -391,7 +391,7 @@ function durden_normal_input(iotbl, fromim)
 	end
 
 	if (iotbl.kind == "status") then
-		status_handler(iotbl);
+		durden_iostatus_handler(iotbl);
 		return;
 	end
 
@@ -454,7 +454,7 @@ end
 -- with selected window (if any, like m1 and m2)
 function durden_regionsel_input(iotbl)
 	if (iotbl.kind == "status") then
-		status_handler(iotbl);
+		durden_iostatus_handler(iotbl);
 		return;
 	end
 
@@ -495,7 +495,7 @@ end
 -- system/lock=key state.
 function durden_locked_input(iotbl)
 	if (iotbl.kind == "status") then
-		status_handler(iotbl);
+		durden_iostatus_handler(iotbl);
 		return;
 	end
 
