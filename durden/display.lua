@@ -171,6 +171,7 @@ function durden_display_state(action, id)
 			ddisp.id = 0;
 			ddisp.name = name;
 			ddisp.primary = true;
+			shader_setup(ddisp.rt, "display", ddisp.shader, name);
 		else
 			ddisp = display_add(name, dw, dh, ppcm);
 			ddisp.id = id;
@@ -210,16 +211,17 @@ function display_manager_init()
 
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
-	displays[1].tiler.name = "default";
+	local ddisp = displays[1];
+	ddisp.tiler.name = "default";
 
 -- simple mode does not permit us to do much of the fun stuff, like different
 -- color etc. correction shaders or rotate/fit/...
 	if (not displays.simple) then
-		displays[1].rt = displays[1].tiler:set_rendertarget(true);
-		displays[1].maphint = HINT_NONE;
-		show_image(displays[1].rt);
-		shader_setup(displays[1].rt, "display",
-			gconfig_get("display_shader"), displays[1].name);
+		ddisp.rt = ddisp.tiler:set_rendertarget(true);
+		ddisp.maphint = HINT_NONE;
+		ddisp.shader = gconfig_get("display_shader");
+		show_image(ddisp.rt);
+		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 	end
 end
@@ -252,8 +254,13 @@ function display_shader(name, key)
 		return;
 	end
 
-	shader_setup(disp.rt, "display", key, disp.name);
---	set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
+	if (key) then
+		shader_setup(disp.rt, "display", key, disp.name);
+		--set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
+		disp.shader = key;
+	end
+
+	return disp.shader;
 end
 
 function display_add(name, width, height, ppcm)
@@ -279,6 +286,7 @@ function display_add(name, width, height, ppcm)
 		table.insert(displays, nd);
 		nd.tiler.name = name;
 		nd.ind = #displays;
+-- FIXME: load display default shader and settings
 
 -- this will rebuild tiler with all its little things attached to rt
 		nd.rt = nd.tiler:set_rendertarget(true);

@@ -1,6 +1,6 @@
 return {
 	version = 1,
-	label = "Statusbar Tile",
+	label = "Statusbar(Tile)",
 	frag = [[
 uniform float border;
 uniform vec3 col_border;

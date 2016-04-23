@@ -15,7 +15,9 @@ return {
 		color = {
 			label = 'Color',
 			utype = 'ffff',
-			default = {0.1, 0.1, 0.1, 1.0}
+			default = {0.1, 0.1, 0.1, 1.0},
+			low = 0,
+			high = 1.0
 		}
 	},
 	states = {

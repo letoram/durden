@@ -1,7 +1,7 @@
 -- used for text labels and similar items on statusbar that need to
 -- inherit visibility but not subject itself to that alpha
 return {
-	label = "Statusbar Item",
+	label = "Statusbar(TileText)",
 	version = 1,
 	frag =
 [[
