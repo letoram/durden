@@ -8,7 +8,7 @@ return {
 			utype = "fff",
 			default = {2.2, 2.2, 2.2},
 			low = 0.1,
-			high = 3.0,
+			high = 3.0
 		}
 	},
 	frag =

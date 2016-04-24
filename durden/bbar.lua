@@ -108,7 +108,9 @@ local function bbar_input_combo(wm, sym, iotbl, lutsym, mstate)
 		return;
 	end
 
-	if (string.match(lutsym, "m%d_") ~= nil or sym == wm.input_ctx.cancel) then
+-- only require +meta+ for translated devices
+	if (not iotbl.translated or
+		string.match(lutsym, "m%d_") ~= nil or sym == wm.input_ctx.cancel) then
 		return bbar_input_key(wm, lutsym, iotbl, lutsym);
 	else
 		wm.input_ctx:set_progress(0);
