@@ -42,7 +42,8 @@ function iostatem_save()
 end
 
 function iostatem_debug()
-	return string.format("ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
+	return string.format("st: %d, ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
+		devstate.iotbl and "1" or "0",
 		devstate.counter, devstate.delay, devstate.period, rol_avg, evc);
 end
 
@@ -59,12 +60,24 @@ function iostatem_restore(tbl)
 end
 
 -- just feed this function, will cache state as necessary
+local badseq = 1;
 function iostatem_input(iotbl)
 	local dev = devices[iotbl.devid];
 	evc = evc + 1;
 
 -- !dev shouldn't happen but may be an input platform bug
-	if (not dev or iotbl.mouse) then
+-- add a placeholder device so that we will at least 'work' normally
+	if (not dev) then
+		local lbl = "unkn_bad_" .. badseq;
+		badseq = badseq + 1;
+		local oldlbl = iotbl.label;
+		iotbl.label = lbl;
+		iostatem_added(iotbl);
+		iotbl.label = oldlbl;
+	end
+
+-- currently mouse state management is handled elsewhere (durden+tiler.lua)
+	if (iotbl.mouse) then
 		return;
 	end
 
@@ -207,6 +220,7 @@ function iostatem_added(iotbl)
 			warning("added existing device "..dev.label..", likely platform bug.");
 		end
 	end
+	return devices[iotbl.devid];
 end
 
 function iostatem_removed(iotbl)
