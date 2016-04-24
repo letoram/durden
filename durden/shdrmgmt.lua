@@ -111,6 +111,7 @@ local function dsetup(shader, dst, group, name, state)
 	if (not shader.states[state]) then
 		shader.states[state] = shader_ugroup(shader.shid);
 	end
+	print(dst, "gets shader", shader.states[state]);
 	image_shader(dst, shader.states[state]);
 end
 
@@ -151,7 +152,7 @@ local function unpack_typestr(typestr, val, lowv, highv)
 	string.gsub(val, rdelim, bdelim);
 	local rtbl = string.split(val, ' ');
 	for i=1,#rtbl do
-		rtbl[i] = tonumber(i);
+		rtbl[i] = tonumber(rtbl[i]);
 		if (not rtbl[i]) then
 			return;
 		end
@@ -169,6 +170,31 @@ local function gen_typestr_valid(utype, lowv, highv, defaultv)
 	return function(val)
 		local tbl = unpack_typestr(utype, val, lowv, highv);
 		return tbl ~= nil and #tbl == string.len(utype);
+	end
+end
+
+local function add_stateref(res, uniforms, shid)
+	for k,v in pairs(uniforms) do
+		if (not v.ignore) then
+			table.insert(res, {
+			name = k,
+			label = v.label,
+			kind = "value",
+			hint = (type(v.default) == "table" and
+				table.concat(v.default, " ")) or tostring(v.default),
+			eval = function()
+				return utype_lut[v.utype] ~= nil;
+			end,
+			validator = gen_typestr_valid(v.utype, v.low, v.high, v.default),
+			handler = function(ctx, val)
+				print("set", shid, k, v.utype, unpack(unpack_typestr(
+					v.utype, val, v.low, v.high)));
+
+				shader_uniform(shid, k, v.utype, unpack(
+					unpack_typestr(v.utype, val, v.low, v.high)));
+			end
+		});
+		end
 	end
 end
 
@@ -191,29 +217,6 @@ local function smenu(shdr, grp, name)
 	local res = {
 	};
 
-	local add_stateref = function(res, name, uniforms, shid)
-		for k,v in pairs(uniforms) do
-			if (not v.ignore) then
-			table.insert(res, {
-				name = k,
-				label = v.label,
-				kind = "value",
--- note: should also show low/high range
-				hint = (type(v.default) == "table" and
-					table.concat(v.default, " ")) or tostring(v.default),
-				eval = function()
-					return utype_lut[v.utype] ~= nil;
-				end,
-				validator = gen_typestr_valid(v.utype, v.low, v.high, v.default),
-				handler = function(ctx, val)
-					shader_uniform(shid, k, v.utype, unpack(
-						unpack_typestr(v.utype, val, v.low, v.high)));
-				end
-			});
-			end
-		end
-	end
-
 	if (shdr.states) then
 		for k,v in pairs(shdr.states) do
 			if (v.shid) then
@@ -224,7 +227,7 @@ local function smenu(shdr, grp, name)
 					submenu = true,
 					handler = function()
 						local res = {};
-						add_stateref(res, k, shdr.uniforms, v.shid);
+						add_stateref(res, shdr.uniforms, v.shid);
 						return res;
 					end
 				});
@@ -234,6 +237,34 @@ local function smenu(shdr, grp, name)
 		add_stateref(res, "default", shdr.uniforms, shdr.shid);
 	end
 
+	return res;
+end
+
+local function dmenu(shdr, grp, name, state)
+	local res = {};
+	if (not shdr.uniforms) then
+		return res;
+	end
+
+	if (not shdr.states[state]) then
+		warning("display shader does not have matching display");
+		return res;
+	end
+
+	local found = false;
+	for k,v in pairs(shdr.uniforms) do
+		if (not v.ignore) then
+			found = true;
+			break;
+		end
+	end
+
+	if (not found) then
+		return res;
+	end
+
+	print("destination:", shdr.states[state]);
+	add_stateref(res, shdr.uniforms, shdr.states[state]);
 	return res;
 end
 
@@ -250,6 +281,7 @@ local fmtgroups = {
 
 function shader_setup(dst, group, name, state)
 	if (not fmtgroups[group]) then
+		group = group and group or "no group";
 		warning("shader_setup called with unknown group " .. group);
 		return dst;
 	end
@@ -266,10 +298,10 @@ function shader_setup(dst, group, name, state)
 	return fmtgroups[group][1](shdrtbl[group][name], dst, group, name, state);
 end
 
-function shader_uform_menu(name, group)
+function shader_uform_menu(name, group, state)
 	if (not fmtgroups[group]) then
 		warning("shader_setup called with unknown group " .. group);
-		return dst;
+		return {};
 	end
 
 	if (not shdrtbl[group] or not shdrtbl[group][name]) then
@@ -278,10 +310,10 @@ function shader_uform_menu(name, group)
 			group and group or "nil",
 			name and name or "nil"
 		));
-		return dst;
+		return {};
 	end
 
-	return fmtgroups[group][2](shdrtbl[group][name], group, name);
+	return fmtgroups[group][2](shdrtbl[group][name], group, name, state);
 end
 
 -- update shader [sname] in group [domain] for the uniform [uname],

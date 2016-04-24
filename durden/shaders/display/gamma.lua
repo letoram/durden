@@ -2,7 +2,6 @@ return {
 	version = 1,
 	label = "Gamma",
 	filter = "none",
--- needed to have txcos that is relative to orig. size
 	uniforms = {
 		exponent = {
 			label = "Exponent",

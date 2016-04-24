@@ -1,6 +1,6 @@
 return {
 	version = 1,
-	label = "Tile-Text",
+	label = "Launchbar(TileText)",
 	frag = [[
 uniform sampler2D map_tu0;
 uniform vec4 col;

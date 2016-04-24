@@ -84,11 +84,24 @@ local function gen_disp_menu(disp)
 		kind = "value",
 		eval = function() return not display_simple(); end,
 		set = function() return shader_list({"display"}); end,
+		hint = function() return "(" .. display_shader(disp.name) .. ")"; end,
 		handler = function(ctx, val)
 			local key = shader_getkey(val, {"display"});
 			if (key ~= nil) then
 				display_shader(disp.name, key);
 			end
+		end
+		},
+		{
+		name = "shset",
+		label = "Shader Settings",
+		kind = "action",
+		submenu = true,
+		eval = function() return not display_simple() and #shader_uform_menu(
+			display_shader(disp.name),"display", disp.name) > 0; end,
+		handler = function()
+			return shader_uform_menu(display_shader(disp.name),
+				"display", disp.name);
 		end
 		},
 		{

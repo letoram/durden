@@ -1,5 +1,5 @@
 return {
-	label = "Launchbar-Background",
+	label = "Launchbar(Background)",
 	version = 1,
 	frag =
 [[
@@ -15,7 +15,9 @@ return {
 		color = {
 			label = 'Color',
 			utype = 'ffff',
-			default = {0.0, 0.0, 0.0, 0.8}
+			default = {0.0, 0.0, 0.0, 0.8},
+			low = 0.0,
+			high = 1.0
 		}
 	},
 	states = {

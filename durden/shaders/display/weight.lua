@@ -2,10 +2,12 @@ return {
 	version = 1,
 	label = "Weighted",
 	filter = "none",
--- needed to have txcos that is relative to orig. size
 	uniforms = {
 		weights = {
+			label = "Weights",
 			utype = "fff",
+			low = 0.0,
+			high = 100.0,
 			default = {1.0, 1.0, 1.0}
 		}
 	},
