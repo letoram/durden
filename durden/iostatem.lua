@@ -235,8 +235,7 @@ function iostatem_removed(iotbl)
 	if (dev) then
 		dev.lost = true;
 -- protection against keyboard behaving differently when lost/found
-		print("DEVICE LOST IS KEYBOARD", dev.keyboard, dev.translated);
-		if (dev.keyboard) then
+		if (iotbl.devkind == "keyboard") then
 			meta_guard_reset();
 		end
 	else

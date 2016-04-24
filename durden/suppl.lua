@@ -1050,9 +1050,8 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
-	opts.label = label;
+	opts.label = type(label) == "function" and label() or label;
 	ctx.wm = wm;
-
 -- this was initially written to be independent, that turned out to be a
 -- terrible design decision.
 	local bar = wm:lbar(lbar_fun, ctx, opts);
