@@ -568,6 +568,11 @@ end
 -- figure out of we are running a symbol that maps to input_lock_* functions
 local ign_input = function(iotbl)
 	local ok, sym, outsym, lutval = dispatch_translate(iotbl, true);
+	if (iotbl.kind == "status") then
+		durden_iostatus_handler(iotbl);
+		return;
+	end
+
 	if (iotbl.active and lutval) then
 		lutval = lutval == "!input/input_toggle" and "input_lock_toggle" or lutval;
 		if (lutval == "input_lock_toggle" or lutval == "input_lock_off" or
