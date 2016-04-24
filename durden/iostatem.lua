@@ -72,13 +72,20 @@ function iostatem_input(iotbl)
 		badseq = badseq + 1;
 		local oldlbl = iotbl.label;
 		iotbl.label = lbl;
-		iostatem_added(iotbl);
+		dev = iostatem_added(iotbl);
 		iotbl.label = oldlbl;
 	end
 
 -- currently mouse state management is handled elsewhere (durden+tiler.lua)
+-- but we simulate a fake 'joystick' device here to allow meta + mouse to be
+-- bound while retaining normal mouse behavior
 	if (iotbl.mouse) then
-		return;
+		local m1, m2 = dispatch_meta();
+		if (iotbl.digital and (m1 or m2)) then
+			iotbl.mouse = nil;
+		else
+			return;
+		end
 	end
 
 	if (iotbl.translated) then
@@ -91,8 +98,8 @@ function iostatem_input(iotbl)
 		devstate.iotbl = iotbl;
 
 	elseif (iotbl.digital) then
+		iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
 		if (dev.slot > 0) then
-			iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
 			iotbl.label = dev.lookup and
 				"PLAYER"..tostring(dev.slot).."_"..dev.lookup[1](iotbl.subid) or "";
 		end
@@ -228,6 +235,7 @@ function iostatem_removed(iotbl)
 	if (dev) then
 		dev.lost = true;
 -- protection against keyboard behaving differently when lost/found
+		print("DEVICE LOST IS KEYBOARD", dev.keyboard, dev.translated);
 		if (dev.keyboard) then
 			meta_guard_reset();
 		end

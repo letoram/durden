@@ -111,7 +111,6 @@ local function dsetup(shader, dst, group, name, state)
 	if (not shader.states[state]) then
 		shader.states[state] = shader_ugroup(shader.shid);
 	end
-	print(dst, "gets shader", shader.states[state]);
 	image_shader(dst, shader.states[state]);
 end
 
@@ -187,9 +186,6 @@ local function add_stateref(res, uniforms, shid)
 			end,
 			validator = gen_typestr_valid(v.utype, v.low, v.high, v.default),
 			handler = function(ctx, val)
-				print("set", shid, k, v.utype, unpack(unpack_typestr(
-					v.utype, val, v.low, v.high)));
-
 				shader_uniform(shid, k, v.utype, unpack(
 					unpack_typestr(v.utype, val, v.low, v.high)));
 			end
@@ -234,7 +230,7 @@ local function smenu(shdr, grp, name)
 			end
 		end
 	else
-		add_stateref(res, "default", shdr.uniforms, shdr.shid);
+		add_stateref(res, shdr.uniforms, shdr.shid);
 	end
 
 	return res;
@@ -263,7 +259,6 @@ local function dmenu(shdr, grp, name, state)
 		return res;
 	end
 
-	print("destination:", shdr.states[state]);
 	add_stateref(res, shdr.uniforms, shdr.states[state]);
 	return res;
 end

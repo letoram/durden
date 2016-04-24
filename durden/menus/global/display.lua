@@ -101,7 +101,11 @@ local function gen_disp_menu(disp)
 			display_shader(disp.name),"display", disp.name) > 0; end,
 		handler = function()
 			return shader_uform_menu(display_shader(disp.name),
-				"display", disp.name);
+				"display", disp.name,
+-- callback on update
+			function(uniform, val)
+				display_shader_uniform(disp.name, uniform, val);
+			end);
 		end
 		},
 		{

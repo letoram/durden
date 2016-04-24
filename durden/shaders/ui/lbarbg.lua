@@ -19,7 +19,5 @@ return {
 			low = 0.0,
 			high = 1.0
 		}
-	},
-	states = {
 	}
 };

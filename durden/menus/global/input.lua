@@ -315,7 +315,7 @@ local keymaps_menu = {
 				string.format(LBL_BIND_KEYSYM, val, SYSTEM_KEYS["cancel"]),
 				true, bwt, nil, SYSTEM_KEYS["cancel"],
 				function(sym, done, sym2, iotbl)
-					if (done) then
+					if (done and iotbl.keysym) then
 						SYMTABLE.symlut[iotbl.keysym] = val;
 					end
 				end);

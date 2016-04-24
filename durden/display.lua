@@ -248,6 +248,12 @@ function display_override_density(name, ppcm)
 	end);
 end
 
+-- override the default shader setting to packval, that can be expanded
+-- upon display identification and shader setup
+function display_shader_uniform(name, uniform, packval)
+	print("update uniform persistance", name, uniform, packval);
+end
+
 function display_shader(name, key)
 	local disp, dispi = get_disp(name);
 	if (not disp or not valid_vid(disp.rt)) then
