@@ -197,8 +197,7 @@ update_default_font = function(key, val)
 
 	for disp in all_displays_iter() do
 		disp.font_sf = rfhf;
-		disp:rebuild_border();
-		disp:resize(disp.width, disp.height, sz);
+		disp:update_scalef(disp.scalef);
 	end
 
 -- also propagate to each window so that it may push descriptors and
