@@ -150,28 +150,17 @@ return {
 	{
 		name = "mode",
 		label = "Mode",
-		kind = "action",
-		submenu = true,
+		kind = "value",
 		initial = function()
 			local wnd = active_display().selected;
-			return wnd.pastemode;
+			return wnd.pastemode and wnd.pastemode or "";
 		end,
-		handler = function()
-			local res = {};
-			for k,v in ipairs(CLIPBOARD:pastemodes()) do
-				local f, l = CLIPBOARD:pastemodes(v);
-				table.insert(res, {
-					name =  v,
-					handler = function()
-						local wnd = active_display().selected;
-						wnd.pastefilter = f;
-						wnd.pastemode = l;
-					end,
-					kind = "action",
-					label = l
-				});
-			end
-			return res;
-		end,
+		set = CLIPBOARD:pastemodes(),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local f, l = CLIPBOARD:pastemodes(val);
+			wnd.pastemode = l;
+			wnd.pastefilter = f;
+		end
 	}
 }

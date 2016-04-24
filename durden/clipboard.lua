@@ -93,16 +93,21 @@ local pastemodes = {
 function clipboard_pastemodes(ctx, key)
 	local res = {};
 
+-- try match by index, else match by labelstr else default
 	if (key) then
-		if (pastemodes[key]) then
-			return pastemodes[key][2], pastemodes[key][1];
-		else
-			return pastemodes["normal"][2], pastemodes["normal"][1];
+		local ent = pastemodes[key] and pastemodes[key] or pastemodes[1];
+		for k,v in pairs(pastemodes) do
+			if (v[1] == key) then
+				ent = v;
+				break;
+			end
 		end
+
+		return ent[2], ent[1];
 	end
 
 	for k,v in pairs(pastemodes) do
-		table.insert(res, k);
+		table.insert(res, v[1]);
 	end
 	table.sort(res);
 	return res;

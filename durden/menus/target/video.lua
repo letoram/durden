@@ -61,7 +61,6 @@ return {
 		name = "scaling",
 		label = "Scaling",
 		kind = "action",
-		hint = "Scale Mode:",
 		submenu = true,
 		handler = scalemodes
 	},
@@ -69,7 +68,6 @@ return {
 		name = "filtering",
 		label = "Filtering",
 		kind = "action",
-		hint = "Basic Filter:",
 		submenu = true,
 		handler = filtermodes
 	},

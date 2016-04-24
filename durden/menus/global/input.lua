@@ -138,11 +138,6 @@ local function bind_utf8()
 	end);
 end
 
-local function bind_keysym()
--- this is for local UI keybindings, iterate SYMTABLE by pair to
--- get completion set, then bind to corresponding iotbl.keysym <-!
-end
-
 local function gen_axismenu(devid, subid, pref)
 	return {};
 end
@@ -170,6 +165,7 @@ local function gen_analogmenu(v, pref)
 			name = pref .. "_ax_" .. tostring(i),
 			kind = "action",
 			submenu = true,
+			eval = function() return false; end,
 			handler = function() return gen_axismenu(v, pref); end
 		});
 		i = i + 1;
@@ -239,6 +235,7 @@ local function dev_menu(v)
 			name = pref .. "bind",
 			label = "Bind",
 			handler = function() return gen_bmenu(v, pref .. "_bind"); end,
+			eval = function() return false; end,
 			kind = "action",
 			submenu = true
 		},
@@ -395,25 +392,25 @@ local keyb_menu = {
 
 local bind_menu = {
 	{
-		name = "input_rebind_basic",
+		name = "basic",
 		kind = "action",
 		label = "Basic",
 		handler = grab_global_function("rebind_basic")
 	},
 	{
-		name = "input_rebind_custom",
+		name = "custom",
 		kind = "action",
 		label = "Custom",
 		handler = grab_global_function("bind_custom")
 	},
 	{
-		name = "input_rebind_meta",
+		name = "meta",
 		kind = "action",
 		label = "Meta",
 		handler = grab_global_function("rebind_meta")
 	},
 	{
-		name = "input_unbind",
+		name = "unbind",
 		kind = "action",
 		label = "Unbind",
 		handler = grab_global_function("unbind_combo")
@@ -422,28 +419,28 @@ local bind_menu = {
 
 return {
 	{
-		name = "input_bind_menu",
+		name = "bind",
 		kind = "action",
 		label = "Bind",
 		submenu = true,
 		handler = bind_menu
 	},
 	{
-		name = "input_keyboard_menu",
+		name = "keyboard",
 		kind = "action",
 		label = "Keyboard",
 		submenu = true,
 		handler = keyb_menu
 	},
 	{
-		name = "input_mouse_menu",
+		name = "mouse",
 		kind = "action",
 		label = "Mouse",
 		submenu = true,
 		handler = mouse_menu
 	},
 	{
-		name = "input_devices_menu",
+		name = "slotted",
 		kind = "action",
 		label = "Slotted Devices",
 		submenu = true,
@@ -455,7 +452,7 @@ return {
 		end
 	},
 	{
-		name = "input_devices_menu",
+		name = "alldev",
 		kind = "action",
 		label = "All Devices",
 		submenu = true,
@@ -467,7 +464,7 @@ return {
 		end
 	},
 	{
-		name = "rescan_devices",
+		name = "rescan",
 		kind = "action",
 		label = "Rescan",
 		handler = function()
