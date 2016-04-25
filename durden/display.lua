@@ -114,6 +114,10 @@ local function get_ppcm(pw_cm, ph_cm, dw, dh)
 		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
 end
 
+function display_count()
+	return #displays;
+end
+
 function display_event_handler(action, id)
 	local ddisp, newh;
 	if (displays.simple) then

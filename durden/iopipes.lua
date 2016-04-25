@@ -12,29 +12,186 @@ if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") th
 	CONTROL_CHANNEL = open_nonblock("<" .. cchan_fn);
 end
 
+-- grammar:
+-- | element splits group
+-- %{ ... } gives formatting command
+-- %% escape %
 --
--- text/line command protocol for doing status bar updates, etc.
--- as this grows, move into its own separate module.
+-- handled formatting commands:
+--  Frrggbb - set foreground color
+--  F- - set default color
+--  S+, S-, Sf, Sl, Sn - switch tiler/display
 --
+-- ignored formatting commands:
+--  l [ align left, not supported   ]
+--  r [ align right, not supported  ]
+--  c [ align center, not supported ]
+--  Brrggbb - set background color, not supported (engine limit)
+--  Urrggbb - set underline color, not supported (engine limit)
+--  A:oblogout: and empty A - bind command, not supported
+--
+-- most of these are limited as there are in-durden ways of achieving same res.
+--
+local function process_fmt(tok, i, disp)
+	local col;
+
+-- can support more here (e.g. embed glyph, bold/italic)
+	while (tok[i] and tok[i].fmt) do
+		if (string.len(tok[i].msg) > 0) then
+			if tok[i].msg == "F-" then
+				col = gconfig_get("text_color");
+			elseif string.match(tok[i].msg, "F%x%x%x%x%x%x") then
+				col = "\\#"  .. string.sub(tok[i].msg, 2);
+			elseif string.match(tok[i].msg, "S%d") then
+				disp = tostring(string.sub(tok[i].msg, 2));
+			elseif tok[i].msg == "S+" then
+				disp = disp + 1;
+				disp = disp > display_count() and 1+(display_count() % disp) or disp;
+			elseif tok[i].msg == "S-" then
+				disp = disp - 1;
+				disp = disp <= 0 and display_count() or disp;
+			elseif tok[i].msg == "Sf" then
+				disp = 1;
+			elseif tok[i].msg == "Sl" then
+				disp = display_count();
+			else
+				if (DEBUGLEVEL > 0) then
+					print("status parse, ignoring bad format " .. tok[i].msg);
+				end
+			end
+		end
+
+		i = i + 1;
+	end
+
+	return i, disp, col;
+end
+
+local function status_parse(line)
+	local tok = {};
+
+	local cs = "";
+	local i = 1;
+	local in_p = false;
+	local in_g = false;
+
+-- first tokenize
+	while i <= string.len(line) do
+		local ni = string.utf8forward(line, i);
+		if (not ni) then
+			break;
+		end
+		local ch = string.sub(line, i, ni-1);
+
+-- handle %% %{
+		if (ch == '%') then
+			if (in_g) then
+				warning("status-channel parse, malformed input (pct in fmt-cmd)");
+				return {};
+			end
+
+			if (in_p) then
+				cs = cs .. '%';
+				in_p = false;
+
+			elseif (not in_g) then
+				in_p = true;
+			end
+
+		elseif (in_p and ch ~= '{') then
+			warning("status-channel parse, malformed input (pct to npct/bracket)");
+			return {};
+
+-- handle transition msg%{ to fmt group state
+		elseif (in_p) then
+			in_g = true;
+			in_p = false;
+			if (string.len(cs) > 0) then
+				table.insert(tok, {fmt = false, msg = cs});
+				cs = "";
+			end
+
+-- handle transition fmt-group -> default
+		elseif (in_g and ch == '}') then
+			in_g = false;
+			if (string.len(cs) == 0) then
+				warning("status-channel parse, malformed input (empty fmt group)");
+				return {};
+			end
+			table.insert(tok, {fmt = true, msg = cs});
+			cs = "";
+
+		else
+			cs = cs .. ch;
+		end
+
+		i = ni;
+	end
+
+-- handle EoS state
+	if (not in_g and not in_p) then
+		table.insert(tok, {fmt = false, msg = cs});
+	end
+
+-- now parse tok and convert into array of format strings per display
+	local disp = 1;
+	local res = { { } };
+	local i = 1;
+
+-- we use the escaped form of render-text so %2==1 entries are treated as fmtstr
+	while i <= #tok do
+		local fmt = nil;
+
+		if (string.len(tok[i].msg) > 0) then -- ignore empty
+			if (tok[i].fmt) then
+				i, disp, fmt = process_fmt(tok, i, disp);
+				if (not res[disp]) then
+					res[disp] = {};
+				end
+
+				if (fmt) then
+					if (#res[disp] % 2 == 0) then
+						table.insert(res[disp], "");
+					end
+					table.insert(res[disp], fmt);
+				end
+			else
+				if (#res[disp] % 2 == 1) then
+					table.insert(res[disp], "");
+				end
+				table.insert(res[disp], tok[i].msg);
+			end
+		else
+			i = i + 1;
+		end
+	end
+
+-- now res is a table indexed with display identifiers and with proper fmtstrs
+	return res;
+end
+
 local function poll_status_channel()
 	local line = STATUS_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
 		return;
 	end
 
-	print("got cmd:", line);
-	local cmd = string.split(line, ":");
-	cmd = cmd == nil and {} or cmd;
-	local fmt = string.format("%s \\#ffffff", gconfig_get("font_str"));
+-- generate render_text compatible tables based on input line and add to
+-- the suitable statusbar for each display.
+	local lst = status_parse(line);
 
-	if (cmd[1] == "status_1") then
--- escape control characters so we don't get nasty \f etc. commands
-		local vid = render_text({fmt, msg});
-		if (valid_vid(vid)) then
-			active_display():update_statusbar({}, vid);
+	local ind = 1;
+	for disp in all_displays_iter() do
+		if (lst[ind]) then
+			if (#(disp.statusbar.right) == 0) then
+				disp.statusbar:add_button("right", "statusbar_bg",
+				"statusbar_msg", lst[ind], gconfig_get("sbar_tpad") * disp.scalef,
+				disp.font_resfn);
+			else
+				disp.statusbar:update("right", 1, lst[ind]);
+			end
 		end
-	else
-		dispatch_symbol(cmd[1]);
+		ind = ind + 1;
 	end
 end
 
