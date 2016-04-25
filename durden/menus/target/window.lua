@@ -113,6 +113,8 @@ return {
 		name = "destroy",
 		label = "Destroy",
 		kind = "action",
-		handler = grab_shared_function("destroy")
+		handler = function()
+			grab_shared_function("destroy")();
+		end
 	}
 };

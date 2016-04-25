@@ -296,7 +296,9 @@ function dispatch_translate(iotbl, nodispatch)
 		ok = true;
 	else
 -- for label bindings, we go with the non-internal view of modifiers
-		iotbl.label = sel.labels[outsym] and sel.labels[outsym] or iotbl.label;
+		if (sel.labels) then
+			iotbl.label = sel.labels[outsym] and sel.labels[outsym] or iotbl.label;
+		end
 	end
 
 	return ok, outsym, iotbl;

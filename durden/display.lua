@@ -114,7 +114,8 @@ local function get_ppcm(pw_cm, ph_cm, dw, dh)
 		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
 end
 
-function durden_display_state(action, id)
+function display_event_handler(action, id)
+	local ddisp, newh;
 	if (displays.simple) then
 		return;
 	end
@@ -163,8 +164,6 @@ function durden_display_state(action, id)
 			end
 		end
 
--- default display is treated differently
-		local ddisp;
 		if (id == 0) then
 			map_video_display(displays[1].rt, 0, displays[1].maphint);
 			ddisp = displays[1];
@@ -173,7 +172,7 @@ function durden_display_state(action, id)
 			ddisp.primary = true;
 			shader_setup(ddisp.rt, "display", ddisp.shader, name);
 		else
-			ddisp = display_add(name, dw, dh, ppcm);
+			ddisp, newh = display_add(name, dw, dh, ppcm);
 			ddisp.id = id;
 			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
 			ddisp.primary = false;
@@ -192,6 +191,8 @@ function durden_display_state(action, id)
 		known_dispids[id] = nil;
 		display_remove(name);
 	end
+
+	return newh;
 end
 
 function display_all_mode(mode)
@@ -224,6 +225,8 @@ function display_manager_init()
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 	end
+
+	return displays[1].tiler;
 end
 
 function display_attachment()
@@ -271,6 +274,8 @@ end
 
 function display_add(name, width, height, ppcm)
 	local found = get_disp(name);
+	local new = nil;
+
 	width = width < MAX_SURFACEW and width or MAX_SURFACEW;
 	height = height < MAX_SURFACEH and height or MAX_SURFACEH;
 
@@ -292,6 +297,7 @@ function display_add(name, width, height, ppcm)
 		table.insert(displays, nd);
 		nd.tiler.name = name;
 		nd.ind = #displays;
+		new = nd.tiler;
 -- FIXME: load display default shader and settings
 
 -- this will rebuild tiler with all its little things attached to rt
@@ -310,7 +316,7 @@ function display_add(name, width, height, ppcm)
 	if (found.last_m) then
 		display_ressw(name, found.last_m);
 	end
-	return found;
+	return found, new;
 end
 
 -- linear search all spaces in all displays except disp and

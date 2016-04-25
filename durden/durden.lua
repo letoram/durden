@@ -7,9 +7,20 @@
 -- tick for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
-local update_default_font;
+local wnd_create_handler, update_default_font;
 
 local argv_cmds = {};
+
+-- track custom buttons that should be added to each window
+local tbar_btns = {
+--	{
+--		dir = "left",
+--		cmd = "#/window/destroy",
+--		lbl = string.char(0xe2) .. string.char(0x9c) .. string.char(0x96)
+--	}
+};
+
+-- count initial delay before idle shutdown
 local ievcount = 0;
 
 -- replace the normal assert function one that can provide a traceback
@@ -77,7 +88,9 @@ function durden(argv)
 -- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
 		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
 	end
-	display_manager_init();
+
+	local nt = display_manager_init();
+	nt.on_wnd_create = wnd_create_handler;
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution through configured database and browse
@@ -236,6 +249,32 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 end
 
+-- tiler does not automatically add any buttons to the statusbar, or take
+-- other tracking actions based on window creation so we do that here
+wnd_create_handler = function(wm, wnd)
+	for k,v in ipairs(tbar_btns) do
+		wnd.titlebar:add_button(v.dir, "titlebar_iconbg",
+			"titlebar_icon", v.lbl, gconfig_get("sbar_tpad") * wm.scalef,
+			wm.font_resfn, nil, nil, {
+				click = function(btn)
+					local old_sel = wm.selected;
+					wm.selected = wnd;
+					dispatch_symbol(v.cmd);
+					if (wm.selected) then
+						wm.selected = old_sel;
+					end
+				end,
+				over = function(btn)
+					btn:switch_state("alert");
+				end,
+				out = function(btn)
+					btn:switch_state(wm.selected == wnd and "active" or "inactive");
+				end
+			}
+		);
+	end
+end
+
 -- there is a ton of "per window" input state when it comes to everything from
 -- active translation tables, to diacretic traversals, to repeat-rate and
 -- active analog/digital devices.
@@ -380,6 +419,13 @@ function durden_iostatus_handler(iotbl)
 		iostatem_added(iotbl);
 	elseif (iotbl.action == "removed") then
 		iostatem_removed(iotbl);
+	end
+end
+
+function durden_display_state(action, id)
+	local new_wm = display_event_handler(action, id);
+	if (new_wm) then
+		new_wm.on_wnd_create = wnd_create_handler;
 	end
 end
 

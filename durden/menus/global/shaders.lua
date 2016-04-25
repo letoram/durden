@@ -12,7 +12,6 @@ local function build_list()
 				submenu = true,
 				kind = "action",
 				handler = function()
-					for k,v in pairs(rv[1]) do print(k,v); end
 					return rv;
 				end
 			});

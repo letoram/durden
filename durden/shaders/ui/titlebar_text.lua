@@ -25,6 +25,7 @@ return {
 		}
 	},
 	states = {
+		active = { uniforms = { color = {1.0, 1.0, 1.0} } },
 		inactive = { uniforms = { color = {0.8, 1.0, 0.8} } },
 	}
 };
