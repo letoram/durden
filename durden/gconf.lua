@@ -143,7 +143,6 @@ local defaults = {
 	lbar_errstr = "\\#ff4444 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,
-	lbar_label_col = {0xff, 0xff, 0x00},
 	lbar_caret_col = {0x00, 0xff, 0x00},
 	lbar_seltextstr = "\\#ffffff ",
 	lbar_seltextbg = {0x44, 0x66, 0x88},
@@ -240,7 +239,7 @@ end
 function gconfig_shutdown()
 	local ktbl = {};
 	for k,v in pairs(defaults) do
-		if (type(ktbl[k]) ~= "table") then
+		if (type(v) ~= "table") then
 			ktbl[k] = tostring(v);
 		end
 	end

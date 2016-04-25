@@ -2260,6 +2260,7 @@ local function wnd_create(wm, source, opts)
 		res:resize(res.width, res.height);
 	end
 
+	wm:on_wnd_create(res);
 	return res;
 end
 
@@ -2719,6 +2720,9 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
+
+-- unique event handlers
+		on_wnd_create = function() end
 	};
 
 	res.font_resfn = function() return tiler_fontres(res); end

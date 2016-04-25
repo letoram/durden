@@ -63,6 +63,23 @@ local durden_font = {
 local function relay_alldisp()
 end
 
+local tb_buttons = {
+	{
+		name = "add_left",
+		label = "Add(Left)",
+		kind = "action",
+		handler = function()
+			local bar = active_display():lbar(
+				function(ctx, instr, done, lastv)
+-- missing: select subpath, actually adding the buttons,
+-- altering wnd_create, applying to existing windows,
+-- allowing subpath select that takes either global or target path..
+-- but then it works for both wnd_title and statusbar
+			end, ctx, {label = "specify byte-sequence:"});
+		end
+	},
+};
+
 local durden_bars = {
 	{
 		name = "sb_top",
@@ -87,6 +104,13 @@ local durden_bars = {
 			gconfig_set("tbar_bpad", tonumber(val));
 			gconfig_set("lbar_bpad", tonumber(val));
 		end
+	},
+	{
+		name = "tb_buttons",
+		label = "Titlebar(Buttons)",
+		kind = "action",
+		submenu = true,
+		handler = tb_buttons
 	}
 }
 ;

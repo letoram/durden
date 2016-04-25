@@ -57,7 +57,15 @@ function grab_global_function(funname)
 end
 
 function grab_shared_function(funname)
-	return sf[funname];
+	if (sf[funname]) then
+		return function()
+			if (active_display().selected) then
+				sf[funname](active_display().selected);
+			end
+		end
+	else
+		return function() warning("missing shared function " .. funname); end
+	end
 end
 
 function dispatch_symbol(sym, arg)
@@ -79,9 +87,7 @@ function dispatch_symbol(sym, arg)
 	end
 
 	if (sf[sym] and ms) then
-		if (ms) then
 			sf[sym](ms, arg);
-		end
 	elseif (gf[sym]) then
 		gf[sym](arg);
 	else
