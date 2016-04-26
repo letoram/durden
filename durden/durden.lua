@@ -560,6 +560,7 @@ durden_input = durden_normal_input;
 
 function durden_shutdown()
 	SYMTABLE:store_translation();
+	display_manager_shutdown();
 	gconfig_shutdown();
 end
 

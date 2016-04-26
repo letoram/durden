@@ -118,6 +118,50 @@ function display_count()
 	return #displays;
 end
 
+local function display_load(display)
+	local pref = "disp_" .. hexenc(display.name) .. "_";
+	local keys = match_keys(pref .. "%");
+	for i,v in ipairs(keys) do
+		local ind = string.find(v, "=");
+		if (ind) then
+			local key = string.sub(string.sub(v, 1, ind-1), string.len(pref) + 1);
+			local val = string.sub(v, ind+1);
+			if (key == "ppcm") then
+				if (tonumber(val)) then
+					display_override_density(display.name, tonumber(val));
+				end
+			elseif (key == "map") then
+				if (tonumber(val)) then
+					display_reorient(display.name, tonumber(val));
+				end
+			elseif (key == "shader") then
+				display_shader(display.name, val);
+			else
+				warning("unknown stored display setting with key " .. key);
+			end
+		end
+	end
+end
+
+function display_manager_shutdown()
+	local ktbl = {};
+	for i,v in ipairs(displays) do
+		local pref = "disp_" .. hexenc(v.name) .. "_";
+		if (v.ppcm_override) then
+			ktbl[pref .. "ppcm"] = v.ppcm;
+		end
+		if (v.maphint) then
+			ktbl[pref .. "map"] = v.maphint;
+		end
+		if (v.shader) then
+			ktbl[pref .. "shader"] = v.shader;
+-- MISSING: pack/unpack shader arguments
+		end
+	end
+-- MISSING: mode settings
+	store_key(ktbl);
+end
+
 function display_event_handler(action, id)
 	local ddisp, newh;
 	if (displays.simple) then
@@ -175,6 +219,7 @@ function display_event_handler(action, id)
 			ddisp.name = name;
 			ddisp.primary = true;
 			shader_setup(ddisp.rt, "display", ddisp.shader, name);
+			display_load(ddisp);
 		else
 			ddisp, newh = display_add(name, dw, dh, ppcm);
 			ddisp.id = id;
@@ -211,6 +256,7 @@ function display_manager_init()
 		w = VRESW,
 		h = VRESH,
 		name = "default",
+		id = 0,
 		ppcm = VPPCM,
 	};
 
@@ -228,6 +274,7 @@ function display_manager_init()
 		show_image(ddisp.rt);
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
+		display_load(displays[1]);
 	end
 
 	return displays[1].tiler;
@@ -250,6 +297,7 @@ function display_override_density(name, ppcm)
 -- it might be that the selected display is not currently the main one
 	run_display_action(disp, function()
 		disp.ppcm = ppcm;
+		disp.ppcm_override = ppcm;
 		disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
 		set_mouse_scalef();
 	end);
@@ -302,7 +350,7 @@ function display_add(name, width, height, ppcm)
 		nd.tiler.name = name;
 		nd.ind = #displays;
 		new = nd.tiler;
--- FIXME: load display default shader and settings
+		display_load(ddisp);
 
 -- this will rebuild tiler with all its little things attached to rt
 		nd.rt = nd.tiler:set_rendertarget(true);
