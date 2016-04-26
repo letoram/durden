@@ -165,12 +165,17 @@ local function setup_vids(wm, ctx, lbsz, time)
 
 	ctx.bar = bar;
 	ctx.progress = progress;
-	ctx.anchor = null_surface(wm.width, wm.height);
-	show_image(ctx.anchor);
-	link_image(ctx.anchor, wm.order_anchor);
+	local time = gconfig_get("lbar_transition");
+	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
+	shader_setup(bg, "ui", "lbarbg");
+	link_image(bg, wm.order_anchor);
+	image_inherit_order(bg, true);
+	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
+	order_image(bg, 1);
+	ctx.anchor = bg;
 
 	image_tracetag(bar, "bar");
-	link_image(bar, wm.order_anchor);
+	link_image(bar, bg);
 	link_image(progress, bar);
 	image_inherit_order(bar, true);
 	image_inherit_order(progress, true);
