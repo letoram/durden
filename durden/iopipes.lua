@@ -121,6 +121,12 @@ local function status_parse(line)
 			table.insert(tok, {fmt = true, msg = cs});
 			cs = "";
 
+		elseif (ch == '|') then
+			if (not in_g and not in_p) then
+				table.insert(tok, {fmt = false, msg = cs});
+			end
+			cs = "";
+			table.insert(tok, {newgrp = true, msg = ""});
 		else
 			cs = cs .. ch;
 		end
@@ -133,12 +139,13 @@ local function status_parse(line)
 		table.insert(tok, {fmt = false, msg = cs});
 	end
 
--- now parse tok and convert into array of format strings per display
+-- now parse tok and convert into array of groups of format tables indexed by
+-- desired destination display
 	local disp = 1;
-	local res = { { } };
+	local res = { { { } } };
 	local i = 1;
 
--- we use the escaped form of render-text so %2==1 entries are treated as fmtstr
+-- we use the escaped form of render-text so %2==0 entries are treated as fmtstr
 	while i <= #tok do
 		local fmt = nil;
 
@@ -147,20 +154,27 @@ local function status_parse(line)
 				i, disp, fmt = process_fmt(tok, i, disp);
 				if (not res[disp]) then
 					res[disp] = {};
+					res[disp][1] = {};
 				end
 
 				if (fmt) then
-					if (#res[disp] % 2 == 0) then
-						table.insert(res[disp], "");
+					if (#res[disp] % 2 == 1) then
+						table.insert(res[disp][#res[disp]], "");
 					end
-					table.insert(res[disp], fmt);
+					table.insert(res[disp][#res[disp]], fmt);
 				end
 			else
-				if (#res[disp] % 2 == 1) then
-					table.insert(res[disp], "");
+				if (#res[disp] % 2 == 0) then
+					table.insert(res[disp][#res[disp]], "");
 				end
-				table.insert(res[disp], tok[i].msg);
+				table.insert(res[disp][#res[disp]], tok[i].msg);
+				i = i + 1;
 			end
+		elseif (tok[i].newgrp) then
+			if (#res[disp][#res[disp]] > 0) then
+				res[disp][#res[disp]+1] = {};
+			end
+			i = i + 1;
 		else
 			i = i + 1;
 		end
@@ -183,15 +197,25 @@ local function poll_status_channel()
 	local ind = 1;
 	for disp in all_displays_iter() do
 		if (lst[ind]) then
-			if (#(disp.statusbar.right) == 0) then
-				disp.statusbar:add_button("right", "statusbar_bg",
-				"statusbar_msg", lst[ind], gconfig_get("sbar_tpad") * disp.scalef,
-				disp.font_resfn);
-			else
-				disp.statusbar:update("right", 1, lst[ind]);
+			for i=#lst[ind],1,-1 do
+				local di = #lst[ind]-i+1;
+				local btn = disp.statusbar.buttons.right[di];
+				if (btn == nil) then
+				disp.statusbar:add_button("right", "sbar_msg_bg",
+					"sbar_msg_text", lst[ind][i] and lst[ind][i] or "",
+					gconfig_get("sbar_tpad") * disp.scalef,
+					disp.font_resfn
+				);
+				else
+					local cw = btn.last_label_w;
+					disp.statusbar:update("right", di, lst[ind][i] and lst[ind][i] or "");
+					if ((not btn.minw or btn.minw == 0 and cw) or (cw and cw > btn.minw)) then
+						btn:constrain(nil, cw, nil, nil, nil);
+					end
+				end
 			end
+			ind = ind + 1;
 		end
-		ind = ind + 1;
 	end
 end
 

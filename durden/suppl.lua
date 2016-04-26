@@ -674,7 +674,6 @@ end
 local function menu_path_pop(ctx)
 	local path = ctx.path;
 	local helper = ctx.helper;
-
 	table.remove(path, #path);
 	local res = table.concat(path, "/");
 	local as = gconfig_get("transition") * 0.5;
@@ -705,6 +704,7 @@ local function menu_path_reset(ctx, prefix)
 	ctx.helper = {};
 	ctx.helper.add = hlp_add_btn;
 	ctx.path = {};
+	ctx.domain = "";
 end
 
 local widgets = {};
@@ -729,12 +729,23 @@ function suppl_widget_scan()
 	end
 end
 
+-- [path] needs to be a table of {name, label} pairs
+local function menu_path_force(ctx, path)
+	ctx:reset();
+
+	for i,v in ipairs(path) do
+		ctx:append(v[1], v[2]);
+	end
+end
+
 function menu_path_new()
 -- scan for menu widgets
 	suppl_widget_scan();
 	return {
+		domain = "",
 		helper = {},
 		path = {},
+		force = menu_path_force,
 		reset = menu_path_reset,
 		pop = menu_path_pop,
 		append = menu_path_append
@@ -746,7 +757,7 @@ local cpath = menu_path_new();
 local function menu_cancel(wm)
 	local m1, m2 = dispatch_meta();
 	if (m1) then
-		launch_menu_path(active_display(), LAST_ACTIVE_MENU, cpath:pop());
+		launch_menu_path(active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
 	else
 		cpath:reset();
 		iostatem_restore();
@@ -1048,9 +1059,16 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 
 	fcomp = fcomp == nil and true or false;
 
+	if (opts and opts.domain) then
+		cpath.domain = opts.domain;
+	end
+
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
 	opts.label = type(label) == "function" and label() or label;
+	if (opts.domain) then
+		cpath.domain = opts.domain;
+	end
 	ctx.wm = wm;
 -- this was initially written to be independent, that turned out to be a
 -- terrible design decision.
@@ -1058,6 +1076,12 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	if (not bar) then
 		return;
 	end
+
+-- activate any path triggered widget
+	suppl_widget_path(bar, bar.anchor,
+		(cpath.domain and cpath.domain or "") ..
+		table.concat(cpath.path, "/"), 0
+	);
 
 	if (not bar.on_cancel) then
 		bar.on_cancel = menu_cancel;
@@ -1115,7 +1139,7 @@ end
 -- the visual / input triggers needed, used to provide the same interface for
 -- keybinding as for setup. gfunc should be a menu spawning function.
 --
-function launch_menu_path(wm, gfunc, pathdescr)
+function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
 	if (not gfunc) then
 		return;
 	end
@@ -1166,6 +1190,8 @@ function launch_menu_path(wm, gfunc, pathdescr)
 		return;
 	end
 
+	local pll = {};
+
 	for i,v in ipairs(elems) do
 		local found = false;
 
@@ -1197,16 +1223,22 @@ function launch_menu_path(wm, gfunc, pathdescr)
 			return;
 		end
 
+		if (domain) then
+			cpath.domain = domain;
+		end
+
 -- something broken with the menu item? any such cases should be noted
 		if (found.handler == nil) then
 			warning("missing handler for: " .. found.name);
 		elseif (found.submenu) then
+			table.insert(pll, {found.name, found.label});
 -- special handling if the last entry ends up as a menu, meaning it should
 -- be visible in the UI, unwise to add to a timer or command_channel
 			launch_menu = i == #elems and old_launch or launch_menu;
 			local menu = type(found.handler) == "function" and
 				found.handler() or found.handler;
 			launch_menu(wm, {list=menu}, found.force, found.hint);
+			if (not norst) then cpath:force(pll); end
 		else
 -- or revert and activate the handler, with arg if value- action
 			launch_menu = old_launch;

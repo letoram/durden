@@ -1,5 +1,5 @@
 return {
-	label = "Statusbar(Background)",
+	label = "Statusbar(TextBg)",
 	version = 1,
 	frag =
 [[
