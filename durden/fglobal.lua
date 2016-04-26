@@ -383,8 +383,9 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	ctx.on_cancel = function() IN_CUSTOM_BIND = false; end
 end
 
-sf["bind_custom"] = function(ctx, wnd)
-	gf["bind_custom"](nil, "lbl", {}, wnd, dispatch_meta);
+sf["bind_custom"] = function(wnd)
+	local m1, m2 = dispatch_meta();
+	gf["bind_custom"](nil, "lbl", {}, wnd, m1, m2);
 end
 
 gf["unbind_combo"] = function()
