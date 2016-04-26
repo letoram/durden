@@ -29,6 +29,8 @@ local function button_labelupd(btn, lbl)
 			txt, lineh, w, h, asc = render_text(lbl);
 		end
 
+		btn.last_label_w = w;
+
 		if (not valid_vid(txt)) then
 			warning("error updating button label");
 			return;
@@ -143,13 +145,25 @@ local function button_show(btn)
 end
 
 local function button_constrain(btn, pad, minw, minh, maxw, maxh)
-	assert(pad);
+	if (pad) then
+		btn.pad = pad;
+	end
 
-	btn.pad = pad;
-	btn.minw = minw;
-	btn.minh = minh;
-	btn.maxw = maxw;
-	btn.maxh = maxh;
+	if (minw) then
+		btn.minw = minw == 0 and nil or minw;
+	end
+
+	if (minh) then
+		btn.minh = minh == 0 and nil or minh;
+	end
+
+	if (maxw) then
+		btn.maxw = maxw == 0 and nil or maxw;
+	end
+
+	if (maxh) then
+		btn.maxh = maxh == 0 and nil or maxh;
+	end
 
 	btn:update();
 end

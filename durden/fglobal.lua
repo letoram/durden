@@ -78,11 +78,11 @@ function dispatch_symbol(sym, arg)
 
 	if (ch == "!") then
 		launch_menu_path(active_display(), gf["global_actions"],
-			string.sub(sym, 2));
+			string.sub(sym, 2), nil, "!");
 		return;
 	elseif (ch == "#") then
 		launch_menu_path(active_display(), sf["target_actions"],
-			string.sub(sym, 2));
+			string.sub(sym, 2), nil, "#");
 		return;
 	end
 

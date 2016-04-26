@@ -97,7 +97,10 @@ global_actions = function(trigger_function)
 		}, true, "Bind:");
 	else
 		return launch_menu(active_display(), {list = toplevel,
-			trigger = trigger_function}, true, nil, {tag = "Global"});
+			trigger = trigger_function}, true, nil, {
+				tag = "Global",
+				domain = "!"
+			});
 	end
 end
 
