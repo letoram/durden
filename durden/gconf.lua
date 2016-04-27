@@ -52,8 +52,9 @@ local defaults = {
 
 -- SECURITY: set to :disabled to disable these features
 	extcon_path = "durden",
-	status_path = "durden_status",
-	control_path = "durden_control",
+	status_path = "ipc/status",
+	control_path = "ipc/control",
+	output_path = "ipc/output",
 
 -- only enabled manually, only passive for now
 	remote_port = 5900,

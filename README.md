@@ -127,6 +127,12 @@ used).
 
 will add a config 'myconfig' to 'mycore' with somefile as first argument.
 
+Most settings are stored in the database, and can either be manually. In the
+event of a broken configuration (where it is not possible to see or otherwise
+access relevant menus), it is possible to reset to a default state by calling
+
+    arcan_db drop_appl durden
+
 Menu Widgets
 ====
 in the widget folder, there are a few short example scripts on hooks
@@ -136,23 +142,45 @@ developing quick features like notes and a calculator, but also when
 using features that becomes easier with 'cheat sheets' like an ASCII
 table.
 
-Statusbar / Command Channel
+Status / Command / Output channels
 ====
+By default, durden creates three named pipes (FIFO) in the ipc subdirectory of
+the APPLTEMP namespace (default, same as the durden path you run, but can be
+changed with the ARCAN\_APPLTEMPPATH environment variable).
 
-By default, durden creates two named pipes (FIFO) in the APPLTEMP namespace
-(e.g. export ARCAN\_APPLTEMPPATH=/some/where but defaults to the specified
-appldir) with the name (durden\_status) and (durden\_control). These can be
-used to run remote controls and to update the statusbar. For instance, using
-i3status:
+The respective fifos are called (write-only: status, command) and (read-only:
+output). Status can be used for providing external information, e.g. open
+files, available memory, network status and have it mapped on UI components
+like the status bar. The command protocol is similar to 'lemonbar' (so i3status
+with output format set to lemonbar can be used) with some additions.
 
-    i3status | sed -e 's/^/status:/' > ~/durden/durden\_
+    | is used as group separator
+    %% escapes %
+    %{fmtcmd} changes format (stateful)
 
-The command channel uses the format "namespace:command" where namespace
-is one of (command, global, target). In addition, the command name or path
- must be enabled in the built-in table in gconf.lua or manually added
-through the global/config/command\_channel path. The feature works much
-like normal custom target or global bindings, but with some additional
-(gfunc.lua) functions available to be exposed.
+    where possible fmtcmd values are:
+     F#rrggbb set text color
+     B#rrggbb set group background
+     F- reset to default text color
+     S+ switch to next screen
+     S- switch to previous screen
+     Sf switch to first (primary) screen
+     Sl switch to last screen
+     Snum switch to screen index 'num'
+     Aidentifier set group "on click" action. This can only be set once for
+     each group. If identifier is a valid path (#path/to/cmd or !path/to/cmd)
+     on-click will run that path. Otherwise, identifier value will be written
+     to output channel on click.
+
+The command channel uses the format "namespace:command" where namespace is one
+of (command, global, target). In addition, the command name or path must be
+enabled in the built-in table in gconf.lua or manually added through the
+global/config/command\_channel path. The feature works much like normal custom
+target or global bindings, but with some additional (gfunc.lua) functions
+available to be exposed.
+
+The output ipc channel acts as response for writes to both status and command
+channels.
 
 Features and Status
 =====
@@ -182,14 +210,14 @@ are being implemented, we have the following list:
   - [x] Workspace Event Notification
   - [x] Mouse Cursor Event Flash
   - [x] Font Customization
-  - [ ] Color (UI Shader Uniform settings) Customization
+  - [x] Color (UI Shader Uniform settings) Customization
   - [x] Per Window canvas shader control
   - [x] Window Translucency
   - [x] Window Alpha Channel Behavior Control (using shader)
   - [x] Off-Screen Window Alert
   - [x] Centered canvas in overdimensioned windows (fullscreen)
-  - [ ] Bind target/global action to titlebar icon
-  - [ ] Bind target/global action to statusbar icon
+  - [x] Bind target/global action to titlebar icon
+  - [x] Bind target/global action to statusbar icon
   - [x] Configurable Border Width/Gaps
   - [x] Per Workspace Background Image
 - [x] Global and Window- specific audio controls
@@ -316,11 +344,11 @@ are being implemented, we have the following list:
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
   - [ ] Change orientation
-  -     [x] vertical / horizontal
-  -     [ ] mirroring
-  -     [ ] led layout in hinting (RGB to VRGB)
+    - [x] vertical / horizontal
+    - [ ] mirroring
+    - [ ] led layout in hinting (RGB to VRGB)
   - [x] Respect display DPI and use cm/font-pt as size
-  - [ ] Remember DPI / overrides / orientation between launches
+  - [x] Remember DPI / overrides / orientation between launches
   - [x] Power Management Controls
   - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
@@ -328,7 +356,8 @@ are being implemented, we have the following list:
   - [ ] Redshift Color Temperature
   - [ ] Advanced scaling effects (xBR, ...)
   - [x] Lockscreen
-		- [ ] Autosuspend game/media on Lock
+    - [ ] Autosuspend game/media on Lock
+    - [ ] Customized action on repeated auth- failure
 
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
@@ -418,8 +447,11 @@ _files that might be of interest)_
 
     durden/atypes/* - menus and settings for specific client subtypes
     durden/menus/ - global menus and settings, target base menus and settings
+		durden/widgets/ - customized menu path- helpers
+		durden/shaders/ui/ - code for customizing decorations etc.
+		durden/recordings - video recording output stored here
+		durden/ipc/ - iopipes will be created here
 
 We don't keep any necessary assets in the resource path as that should be
 accessible to the browser (one could essentially set it to / or whatever
 filesystem mount-point one wants).
-

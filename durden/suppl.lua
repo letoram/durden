@@ -1238,7 +1238,7 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
 			local menu = type(found.handler) == "function" and
 				found.handler() or found.handler;
 			launch_menu(wm, {list=menu}, found.force, found.hint);
-			if (not norst) then cpath:force(pll); end
+			if (launch_menu == old_launch and not norst) then cpath:force(pll); end
 		else
 -- or revert and activate the handler, with arg if value- action
 			launch_menu = old_launch;
