@@ -100,7 +100,7 @@ return {
 		end,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, val);
+			wnd.in_record = suppl_setup_rec(wnd, "recordings/" .. val);
 		end
 	},
 	{

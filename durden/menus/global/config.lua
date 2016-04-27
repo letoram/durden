@@ -328,6 +328,24 @@ local durden_system = {
 		end
 	},
 	{
+		name = "outpipe",
+		label = "Output Pipe",
+		kind = "value",
+		default = true,
+		hint = "(a..Z_)",
+		validator = strict_fname_valid,
+		initial = function() local path = gconfig_get("output_path");
+				return path == ":disabled" and "[disabled]" or path;
+		end,
+		handler = function(ctx, val)
+			if (OUTPUT_CHANNEL) then
+				OUTPUT_CHANNEL:close();
+				zap_resource(gconfig_get("output_path"));
+				OUTPUT_CHANNEL = open_nonblock("<" .. val, true);
+			end
+		end
+	},
+	{
 		name = "dispmode",
 		label = "Display Mode",
 		kind = "value",

@@ -12,6 +12,12 @@ if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") th
 	CONTROL_CHANNEL = open_nonblock("<" .. cchan_fn);
 end
 
+local ochan_fn = gconfig_get("output_path");
+if (ochan_fn ~= nil and string.len(ochan_fn) > 0 and ochan_fn ~= ":disabled") then
+	zap_resource(ochan_fn);
+	OUTPUT_CHANNEL = open_nonblock("<" .. ochan_fn, true);
+end
+
 -- grammar:
 -- | element splits group
 -- %{ ... } gives formatting command
@@ -19,8 +25,12 @@ end
 --
 -- handled formatting commands:
 --  Frrggbb - set foreground color
+--  Grrggbb - set group background
 --  F- - set default color
+--  G- - set group default background
 --  S+, S-, Sf, Sl, Sn - switch tiler/display
+--  | step group
+--  A:identifier - bind command or output to click
 --
 -- ignored formatting commands:
 --  l [ align left, not supported   ]
@@ -28,32 +38,42 @@ end
 --  c [ align center, not supported ]
 --  Brrggbb - set background color, not supported (engine limit)
 --  Urrggbb - set underline color, not supported (engine limit)
---  A:oblogout: and empty A - bind command, not supported
 --
 -- most of these are limited as there are in-durden ways of achieving same res.
 --
-local function process_fmt(tok, i, disp)
+local function process_fmt(dfmt, tok, i)
 	local col;
 
 -- can support more here (e.g. embed glyph, bold/italic)
 	while (tok[i] and tok[i].fmt) do
 		if (string.len(tok[i].msg) > 0) then
 			if tok[i].msg == "F-" then
-				col = gconfig_get("text_color");
-			elseif string.match(tok[i].msg, "F%x%x%x%x%x%x") then
-				col = "\\#"  .. string.sub(tok[i].msg, 2);
+				dfmt.col = gconfig_get("text_color");
+			elseif string.match(tok[i].msg, "F#%x%x%x%x%x%x") then
+				dfmt.col = "\\#"  .. string.sub(tok[i].msg, 3);
+			elseif tok[i].msg == "G-" then
+				dfmt.bg = nil;
+			elseif string.match(tok[i].msg, "G#%x%x%x%x%x%x") then
+				dfmt.bg = {
+					tonumber(string.sub(tok[i].msg, 3, 4), 16),
+					tonumber(string.sub(tok[i].msg, 5, 6), 16),
+					tonumber(string.sub(tok[i].msg, 7, 8), 16)
+				};
 			elseif string.match(tok[i].msg, "S%d") then
-				disp = tostring(string.sub(tok[i].msg, 2));
+				dfmt.disp = tostring(string.sub(tok[i].msg, 2));
 			elseif tok[i].msg == "S+" then
-				disp = disp + 1;
-				disp = disp > display_count() and 1+(display_count() % disp) or disp;
+				dfmt.disp = dfmt.disp + 1;
+				dfmt.disp = dfmt.disp > display_count() and
+					1 + (display_count() % dfmt.disp) or dfmt.disp;
 			elseif tok[i].msg == "S-" then
-				disp = disp - 1;
-				disp = disp <= 0 and display_count() or disp;
+				dfmt.disp = dfmt.disp - 1;
+				dfmt.disp = dfmt.disp <= 0 and display_count() or dfmt.disp;
 			elseif tok[i].msg == "Sf" then
-				disp = 1;
+				dfmt.disp = 1;
 			elseif tok[i].msg == "Sl" then
-				disp = display_count();
+				dfmt.disp = display_count();
+			elseif string.byte(tok[i].msg, 1) == string.byte("A", 1) then
+				dfmt.action = string.sub(tok[i].msg, 2);
 			else
 				if (DEBUGLEVEL > 0) then
 					print("status parse, ignoring bad format " .. tok[i].msg);
@@ -64,7 +84,7 @@ local function process_fmt(tok, i, disp)
 		i = i + 1;
 	end
 
-	return i, disp, col;
+	return i;
 end
 
 local function status_parse(line)
@@ -139,48 +159,44 @@ local function status_parse(line)
 		table.insert(tok, {fmt = false, msg = cs});
 	end
 
--- now parse tok and convert into array of groups of format tables indexed by
--- desired destination display
-	local disp = 1;
-	local res = { { { } } };
+-- now process the token stream and build a table of groups with entries
+-- that carries active format state and coupled message
 	local i = 1;
+	local groups = {};
+	local cfmt = {disp = 1};
+	local cg = {};
 
--- we use the escaped form of render-text so %2==0 entries are treated as fmtstr
 	while i <= #tok do
-		local fmt = nil;
-
-		if (string.len(tok[i].msg) > 0) then -- ignore empty
-			if (tok[i].fmt) then
-				i, disp, fmt = process_fmt(tok, i, disp);
-				if (not res[disp]) then
-					res[disp] = {};
-					res[disp][1] = {};
-				end
-
-				if (fmt) then
-					if (#res[disp] % 2 == 1) then
-						table.insert(res[disp][#res[disp]], "");
-					end
-					table.insert(res[disp][#res[disp]], fmt);
-				end
-			else
-				if (#res[disp] % 2 == 0) then
-					table.insert(res[disp][#res[disp]], "");
-				end
-				table.insert(res[disp][#res[disp]], tok[i].msg);
-				i = i + 1;
-			end
-		elseif (tok[i].newgrp) then
-			if (#res[disp][#res[disp]] > 0) then
-				res[disp][#res[disp]+1] = {};
-			end
+		if (tok[i].newgrp) then
+			table.insert(groups, cg);
+			cg = {};
+			cfmt.action = nil;
 			i = i + 1;
+		elseif (tok[i].fmt) then
+			i = process_fmt(cfmt, tok, i);
 		else
+			local newfmt = {};
+			for k,v in pairs(cfmt) do
+				newfmt[k] = v;
+			end
+			table.insert(cg, {newfmt, tok[i].msg});
 			i = i + 1;
 		end
 	end
+	if (#cg > 0) then
+		table.insert(groups, cg);
+	end
 
--- now res is a table indexed with display identifiers and with proper fmtstrs
+-- normalize group to display
+	local res = {};
+	for i,v in ipairs(groups) do
+		if (#v > 0) then
+			local pd = v[#v][1].disp;
+			if (not res[pd]) then res[pd] = {}; end
+			table.insert(res[pd], v);
+		end
+	end
+
 	return res;
 end
 
@@ -199,16 +215,21 @@ local function poll_status_channel()
 		if (lst[ind]) then
 			for i=#lst[ind],1,-1 do
 				local di = #lst[ind]-i+1;
+				local grp = lst[ind][i];
+				local fmttbl = {};
+				for k,v in ipairs(grp) do
+					table.insert(fmttbl, v[1].col and v[1].col or "");
+					table.insert(fmttbl, v[2]);
+				end
 				local btn = disp.statusbar.buttons.right[di];
 				if (btn == nil) then
-				disp.statusbar:add_button("right", "sbar_msg_bg",
-					"sbar_msg_text", lst[ind][i] and lst[ind][i] or "",
-					gconfig_get("sbar_tpad") * disp.scalef,
-					disp.font_resfn
-				);
+					disp.statusbar:add_button("right", "sbar_msg_bg",
+						"sbar_msg_text", fmttbl, gconfig_get("sbar_tpad") * disp.scalef,
+						disp.font_resfn
+					);
 				else
 					local cw = btn.last_label_w;
-					disp.statusbar:update("right", di, lst[ind][i] and lst[ind][i] or "");
+					disp.statusbar:update("right", di, fmttbl);
 					if ((not btn.minw or btn.minw == 0 and cw) or (cw and cw > btn.minw)) then
 						btn:constrain(nil, cw, nil, nil, nil);
 					end
@@ -291,5 +312,8 @@ durden_shutdown = function()
 	end
 	if (CONTROL_CHANNEL) then
 		zap_resource(gconfig_get("control_path"));
+	end
+	if (OUTPUT_CHANNEL) then
+		zap_resource(gconfig_get("output_path"));
 	end
 end

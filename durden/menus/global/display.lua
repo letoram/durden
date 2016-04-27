@@ -264,14 +264,15 @@ local region_menu = {
 		kind = "value",
 		hint = "(full path)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource(val);
+			return string.len(val) > 0 and not resource("recordings/" .. val) and
+				not string.match(val, "..");
 		end,
 		eval = function() return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil;
 		end,
 		handler =
 		function(ctx, val)
-			record_handler(val);
+			record_handler("recordings/" .. val);
 		end
 	}
 };
