@@ -296,7 +296,7 @@ local durden_system = {
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			else
-				COMMAND_CHANNEL = open_nonblock("<" .. val);
+				COMMAND_CHANNEL = open_nonblock("<ipc/" .. val);
 			end
 			gconfig_set("control_path", val);
 		end
@@ -321,7 +321,7 @@ local durden_system = {
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			else
-				STATUS_CHANNEL = open_nonblock("<" .. val);
+				STATUS_CHANNEL = open_nonblock("<ipc/" .. val);
 			end
 
 			gconfig_set("status_path", val);
@@ -341,8 +341,16 @@ local durden_system = {
 			if (OUTPUT_CHANNEL) then
 				OUTPUT_CHANNEL:close();
 				zap_resource(gconfig_get("output_path"));
-				OUTPUT_CHANNEL = open_nonblock("<" .. val, true);
+				OUTPUT_CHANNEL = nil;
 			end
+
+			if (string.len(val) == 0) then
+				val = ":disabled";
+			else
+				OUTPUT_CJANNEL = open_nonblock("<ipc/" .. val, true);
+			end
+
+			gconfig_set("output_path", val);
 		end
 	},
 	{

@@ -10,8 +10,8 @@ local exit_query = {
 	label = "Yes",
 	kind = "action",
 	dangerous = true,
-		handler = function() shutdown(); end
-	}
+	handler = function() shutdown(); end
+}
 };
 
 -- Lockscreen States:

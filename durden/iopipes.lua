@@ -2,20 +2,20 @@
 -- using the nonauth- connection or regular input devices
 local sbar_fn = gconfig_get("status_path");
 if (sbar_fn ~= nil and string.len(sbar_fn) > 0 and sbar_fn ~= ":disabled") then
-	zap_resource(sbar_fn);
-	STATUS_CHANNEL = open_nonblock("<" .. sbar_fn);
+	zap_resource("ipc/" .. sbar_fn);
+	STATUS_CHANNEL = open_nonblock("<ipc/" .. sbar_fn);
 end
 
 local cchan_fn = gconfig_get("control_path");
 if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") then
-	zap_resource(cchan_fn);
-	CONTROL_CHANNEL = open_nonblock("<" .. cchan_fn);
+	zap_resource("ipc/" .. cchan_fn);
+	CONTROL_CHANNEL = open_nonblock("<ipc/" .. cchan_fn);
 end
 
 local ochan_fn = gconfig_get("output_path");
 if (ochan_fn ~= nil and string.len(ochan_fn) > 0 and ochan_fn ~= ":disabled") then
-	zap_resource(ochan_fn);
-	OUTPUT_CHANNEL = open_nonblock("<" .. ochan_fn, true);
+	zap_resource("ipc/" .. ochan_fn);
+	OUTPUT_CHANNEL = open_nonblock("<ipc/" .. ochan_fn, true);
 end
 
 -- grammar:
@@ -307,13 +307,14 @@ local dshut = durden_shutdown;
 durden_shutdown = function()
 	dshut();
 
-	if (STATUS_CHANNEL) then
-		zap_resource(gconfig_get("status_path"));
+	if (gconfig_get("status_path") ~= ":disabled") then
+		zap_resource("ipc/" .. gconfig_get("status_path"));
 	end
-	if (CONTROL_CHANNEL) then
-		zap_resource(gconfig_get("control_path"));
+	if (gconfig_get("control_path") ~= ":disabled") then
+		zap_resource("ipc/" .. gconfig_get("control_path"));
 	end
-	if (OUTPUT_CHANNEL) then
-		zap_resource(gconfig_get("output_path"));
+	if (gconfig_get("output_path") ~= ":disabled") then
+		zap_resource("ipc/" .. gconfig_get("output_path"));
+		print("DIE!", gconfig_get("output_path"));
 	end
 end
