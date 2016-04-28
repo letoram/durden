@@ -47,10 +47,15 @@ local synch_menu = {
 	name = "gamewnd_preaud",
 	label = "Preaudio",
 	kind = "value",
-	initial = function(ctx) return tostring(ctx.synch.preaudio); end,
+	initial = function(ctx, val)
+		local wnd = active_display().selected;
+		return tostring(wnd.synch.preaudio);
+	end,
 	validator = gen_valid_num(0, 8),
 	handler = function(ctx, val)
-
+		local wnd = active_display().selected;
+		wnd.synch.preaudio = tonumber(val);
+		update_synch(wnd);
 	end
 	},
 	{
