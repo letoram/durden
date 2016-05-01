@@ -28,9 +28,10 @@ end
 --  Grrggbb - set group background
 --  F- - set default color
 --  G- - set group default background
+--  Iidentifier - set group icon [if identifier match, overrides text]
 --  S+, S-, Sf, Sl, Sn - switch tiler/display
 --  | step group
---  A:identifier - bind command or output to click
+--  Aidentifier - bind command or output to click
 --
 -- ignored formatting commands:
 --  l [ align left, not supported   ]
@@ -200,6 +201,34 @@ local function status_parse(line)
 	return res;
 end
 
+local function gen_cmdtbl(cmd)
+	if (not cmd) then
+		return nil;
+	end
+
+	return {
+		click = function(btn)
+			if (string.sub(cmd, 1, 1) == "!" or
+				string.sub(cmd, 1, 1) == "#") then
+				if (allowed_commands(cmd)) then
+					dispatch_symbol(cmd);
+				end
+			else
+				if (OUTPUT_CHANNEL) then
+					OUTPUT_CHANNEL:write(string.format("%s\n", cmd));
+				end
+			end
+		end,
+		rclick = click,
+		over = function(btn)
+			btn:switch_state("active");
+		end,
+		out = function(btn)
+			btn:switch_state("inactive");
+		end
+	};
+end
+
 local function poll_status_channel()
 	local line = STATUS_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
@@ -217,16 +246,27 @@ local function poll_status_channel()
 				local di = #lst[ind]-i+1;
 				local grp = lst[ind][i];
 				local fmttbl = {};
+				local bg = nil;
+				local cmd = nil;
 				for k,v in ipairs(grp) do
 					table.insert(fmttbl, v[1].col and v[1].col or "");
 					table.insert(fmttbl, v[2]);
+					if (v[1].bg) then
+						bg = v[1].bg;
+					end
+					if (v[1].action) then
+						cmd = v[1].action;
+					end
 				end
 				local btn = disp.statusbar.buttons.right[di];
 				if (btn == nil) then
-					disp.statusbar:add_button("right", "sbar_msg_bg",
+-- we can't currently handle a text background color as font renderer does not
+-- provide a background color state, so we need to wait for changes to arcan
+-- for that
+					local btn = disp.statusbar:add_button("right", "sbar_msg_bg",
 						"sbar_msg_text", fmttbl, gconfig_get("sbar_tpad") * disp.scalef,
-						disp.font_resfn
-					);
+						disp.font_resfn, nil, nil, gen_cmdtbl(cmd));
+					btn:switch_state("inactive");
 				else
 					local cw = btn.last_label_w;
 					disp.statusbar:update("right", di, fmttbl);
@@ -246,45 +286,12 @@ local function poll_control_channel()
 		return;
 	end
 
-	local elem = string.split(line, ":");
-
--- hotplug event
-	if (elem[1] == "rescan_displays") then
-		video_displaymodes();
+	if (not allowed_commands(line)) then
+		warning("unknown/disallowed command: " .. line);
 		return;
 	end
 
-	if (#elem ~= 2) then
-		warning("broken command received on control channel, expected 2 args");
-		return;
-	end
-
-	if (elem[1] == "screenshot") then
-		local rt = active_display(true);
-		if (valid_vid(rt)) then
-			save_screenshot(elem[2], FORMAT_PNG, rt);
-			active_display():message("saved screenshot");
-		end
-
-	elseif (DEBUGLEVEL > 0 and elem[1] == "snapshot") then
-		system_snapshot("debug/" .. elem[2]);
-		active_display():message("saved debug snapshot");
-	else
-		if (not allowed_commands(elem[2])) then
-			warning("unknown/disallowed command: " .. elem[2]);
-			return;
-		end
-
-		if (elem[1] == "command") then
-			dispatch_symbol(elem[2]);
-		elseif (elem[1] == "global") then
-			dispatch_symbol("!/" .. elem[2]);
-		elseif (elem[1] == "target") then
-			dispatch_symbol("#/" .. elem[2]);
-		else
-			warning("unknown command namespace: " .. elem[1]);
-		end
-	end
+	dispatch_symbol(line);
 end
 
 -- open question is if we should check lock-state here and if we're in locked

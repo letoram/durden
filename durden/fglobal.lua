@@ -333,6 +333,19 @@ sf["bind_utf8"] = function(wnd)
 	end);
 end
 
+gf["bind_tmenu"] = function(sfun)
+	local bwt = gconfig_get("bind_waittime");
+	tiler_bbar(active_display(),
+		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		false, bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				dispatch_custom(sym, "target_actions", true);
+			end
+		end
+	);
+end
+
 gf["bind_menu"] = function(sfun)
 	local bwt = gconfig_get("bind_waittime");
 	tiler_bbar(active_display(),

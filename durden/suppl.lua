@@ -827,8 +827,6 @@ local function normh(ctx, instr, done, lastv)
 
 	if (string.len(instr) > 0) then
 		hf(instr);
-	elseif (ctx.default) then
-		hf(instr);
 	end
 
 	if (not ctx.noreset) then
@@ -974,6 +972,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 				return nlb;
 			elseif (tgt.handler) then
 				tgt.handler(ctx.handler, instr, ctx);
+				print("run handler and reset, should check for meta and reset path");
 				cpath:reset();
 				return;
 			end
@@ -1144,7 +1143,7 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
 		return;
 	end
 
-	if (DEBUGLEVEL > 2) then
+	if (DEBUGLEVEL >= 1) then
 		print("launch_menu_path: ", pathdescr);
 	end
 
