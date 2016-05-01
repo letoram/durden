@@ -289,21 +289,17 @@ local function tiler_statusbar_build(wm)
 		);
 		wm.sbar_ws[i]:hide();
 	end
--- fill slot with system messages
+-- fill slot with system messages, will later fill the role of a notification
+-- stack, with possible timeout and popup- list
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
 		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz, nil,
 		{
 			click = function(btn)
+				print("clicker");
 				btn:update("");
 			end
 		});
 	wm.sbar_ws["msg"].align_left = true;
-
--- and a fixed size slot for external messages
-	wm.sbar_ws["ext"] = wm.statusbar:add_button("center",
-		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz);
-	wm.sbar_ws["ext"].align_right = true;
-	wm.sbar_ws["ext"]:hide();
 end
 
 -- we need an overlay anchor that is only used for ordering, this to handle

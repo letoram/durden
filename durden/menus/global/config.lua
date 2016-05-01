@@ -281,7 +281,6 @@ local durden_system = {
 		label = "Control Pipe",
 		kind = "value",
 		hint = "(a..Z_)",
-		default = true,
 		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("control_path");
 			return path == ":disabled" and "[disabled]" or path;
@@ -302,10 +301,21 @@ local durden_system = {
 		end
 	},
 	{
+		name = "ctrlwhitelist",
+		label = "Whitelist",
+		kind = "value",
+		initial = function() return
+			gconfig_get("whitelist") and LBL_YES or LBL_NO;
+		end,
+		set = {LBL_YES, LBL_NO},
+		handler = function(ctx, val)
+			gconfig_set("whitelist", val == LBL_YES);
+		end
+	},
+	{
 		name = "statpipe",
 		label = "Status Pipe",
 		kind = "value",
-		default = true,
 		hint = "(a..Z_)",
 		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("status_path");
@@ -331,7 +341,6 @@ local durden_system = {
 		name = "outpipe",
 		label = "Output Pipe",
 		kind = "value",
-		default = true,
 		hint = "(a..Z_)",
 		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("output_path");

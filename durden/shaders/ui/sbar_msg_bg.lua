@@ -19,5 +19,6 @@ return {
 		}
 	},
 	states = {
+		active = { uniforms = { color = {1.0, 1.0, 1.0, 0.2} } }
 	}
 };

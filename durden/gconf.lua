@@ -8,14 +8,15 @@
 -- here for the time being, will move with internationalization
 LBL_YES = "yes";
 LBL_NO = "no";
-LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Abort";
-LBL_BIND_KEYSYM = "Press and hold single key to bind keysym %s, %s to Abort";
-LBL_BIND_COMBINATION_REP = "Press and hold or repeat- press, %s to Abort";
-LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Abort";
+LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Cancel";
+LBL_BIND_KEYSYM = "Press and hold single key to bind keysym %s, %s to Cancel";
+LBL_BIND_COMBINATION_REP = "Press and hold or repeat- press, %s to ";
+LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Cancel";
 LBL_METAGUARD = "Query Rebind in %d keypresses";
-LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b  in %.2f second, %s to Abort";
-LBL_METAGUARD_BASIC = "Rebind \\bbasic keys\\!b  in %.2f seconds, %s to Abort";
-LBL_METAGUARD_MENU = "Rebind \\bmenu\\!b  binding in %.2f seconds, %s to Abort";
+LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b in %.2f seconds, %s to ";
+LBL_METAGUARD_BASIC = "Rebind \\bbasic keys\\!b in %.2f seconds, %s to ";
+LBL_METAGUARD_MENU = "Rebind \\bGLOBAL MENU\\!b binding in %.2f seconds, %s to Cancel";
+LBL_METAGUARD_TMENU = "Rebind \\bTARGET MENU\\!b binding in %.2f seconds, %s to Cancel";
 
 HC_PALETTE = {
 	"\\#43abc9",
@@ -50,11 +51,13 @@ local defaults = {
 	enc_vpreset = 8,
 	enc_container = "mkv",
 
--- SECURITY: set to :disabled to disable these features
+-- SECURITY: set to :disabled to disable these features, or enable
+-- whitelist and modify whitelist.lua to set allowed commands and paths
 	extcon_path = "durden",
 	status_path = "status",
 	control_path = "control",
 	output_path = "output",
+	whitelist = false,
 
 -- only enabled manually, only passive for now
 	remote_port = 5900,
@@ -194,6 +197,9 @@ if (type(val) ~= type(defaults[key])) then
 	end
 end
 
+local allowed = system_load("whitelist.lua")();
+
+-- whitelist used for control channel
 local allowed = {
 	input_lock_on = true,
 	input_lock_off = true,
@@ -201,7 +207,14 @@ local allowed = {
 };
 
 function allowed_commands(cmd)
-	return allowed[cmd] ~= nil;
+	if (cmd == nil or string.len(cmd) == 0) then
+		return false;
+	end
+
+	print("check", cmd, gconfig_get("whitelist"));
+	local rv = string.split(cmd, "=")[1];
+	return gconfig_get("whitelist") == false or
+		allowed[cmd];
 end
 
 function gconfig_get(key)
