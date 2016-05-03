@@ -259,13 +259,14 @@ local function poll_status_channel()
 					end
 				end
 				local btn = disp.statusbar.buttons.right[di];
+				local mh = gen_cmdtbl(cmd);
 				if (btn == nil) then
 -- we can't currently handle a text background color as font renderer does not
 -- provide a background color state, so we need to wait for changes to arcan
 -- for that
 					local btn = disp.statusbar:add_button("right", "sbar_msg_bg",
 						"sbar_msg_text", fmttbl, gconfig_get("sbar_tpad") * disp.scalef,
-						disp.font_resfn, nil, nil, gen_cmdtbl(cmd));
+						disp.font_resfn, nil, nil, mh);
 					btn:switch_state("inactive");
 				else
 					local cw = btn.last_label_w;
@@ -273,6 +274,7 @@ local function poll_status_channel()
 					if ((not btn.minw or btn.minw == 0 and cw) or (cw and cw > btn.minw)) then
 						btn:constrain(nil, cw, nil, nil, nil);
 					end
+					btn:update_mh(mh);
 				end
 			end
 			ind = ind + 1;
