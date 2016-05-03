@@ -292,10 +292,9 @@ local function tiler_statusbar_build(wm)
 -- fill slot with system messages, will later fill the role of a notification
 -- stack, with possible timeout and popup- list
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
-		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz, nil,
+		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz,
 		{
 			click = function(btn)
-				print("clicker");
 				btn:update("");
 			end
 		});

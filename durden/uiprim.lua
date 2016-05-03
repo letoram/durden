@@ -168,6 +168,38 @@ local function button_constrain(btn, pad, minw, minh, maxw, maxh)
 	btn:update();
 end
 
+local evset = {"click", "rclick", "drag", "drop", "dblclick", "over", "out"};
+
+local function button_mh(ctx, mh)
+	if (not mh) then
+		if (ctx.own) then
+			mouse_droplistener(ctx);
+			ctx.own = nil;
+			for k,v in ipairs(evset) do
+				ctx[v] = nil;
+			end
+		end
+		return;
+	end
+
+	if (ctx.own) then
+		button_mh(ctx, nil);
+	end
+
+	local lbltbl = {};
+	for k,v in ipairs(evset) do
+		if (mh[v] and type(mh[v]) == "function") then
+			ctx[v] = mh[v];
+			table.insert(lbltbl, v);
+		end
+	end
+	ctx.name = "uiprim_button_handler";
+	ctx.own = function(ign, vid)
+		return vid == ctx.bg;
+	end
+	mouse_addlistener(ctx, lbltbl);
+end
+
 -- [anchor] required vid to attach to for ordering / masking
 -- [bshname, lblshname] shaders in ui group to use
 -- [lbl] vid or text string to use asx label
@@ -199,6 +231,7 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 		dimensions = button_size,
 		hide = button_hide,
 		show = button_show,
+		update_mh = button_mh,
 		constrain = button_constrain
 	};
 	res.lbl_tag = res.name .. "_label";
@@ -225,25 +258,7 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 	res:update(lbl);
 
 	image_mask_set(res.lbl, MASK_UNPICKABLE);
-	if (mouseh) then
-		res.own = function(ctx, vid)
-			return vid == res.bg;
-		end
-
-		local lsttbl = {};
-		res.name = "uiprim_button_handler";
-		for k,v in pairs(mouseh) do
-			res[k] = function(ctx, ...)
-				v(res, ...);
-			end
-			table.insert(lsttbl, k);
-		end
-
-		mouse_addlistener(res, lsttbl);
-	else
-		image_mask_set(res.bg, MASK_UNPICKABLE);
-	end
-
+	res:update_mh(mouseh);
 	res:switch_state("active");
 	return res;
 end
