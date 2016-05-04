@@ -779,14 +779,22 @@ local function seth(ctx, instr, done, lastv)
 		local fun = menu_hook;
 		menu_hook = nil;
 		fun(table.concat(cpath.path, "/") .. "=" .. instr);
+		cpath:reset();
 	else
 		if (ctx.handler) then
-			ctx.handler(ctx, instr);
+			ctx:handler(instr);
 		else
 			warning("broken menu entry");
 		end
+
+		local m1, m2 = dispatch_meta();
+		if (m1 and not ctx.dangerous) then
+			launch_menu_path(
+				active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+		else
+			cpath:reset();
+		end
 	end
-	cpath:reset();
 end
 
 local function normh(ctx, instr, done, lastv)
@@ -805,32 +813,35 @@ local function normh(ctx, instr, done, lastv)
 -- validate if necessary
 	if (ctx.validator ~= nil and not ctx.validator(instr)) then
 		menu_hook = nil;
-		if (not ctx.noreset) then
-			cpath:reset();
-		end
+		cpath:reset();
 		return;
 	end
 
 -- slightly more cumbersome as we need to handle all permuations of
 -- hook_on/off, valid but empty string with menu item default value
-	instr = instr and instr or "";
-	local hf = function(arg) ctx:handler(arg); end
+	if (not instr or string.len(instr) <= 0) then
+		return;
+	end
+
 	if (menu_hook) then
-		hf =
-		function(arg)
-			local rp = table.concat(cpath.path, "/") .. "=" .. instr;
-			local fun = menu_hook;
-			menu_hook = nil;
-			fun(rp);
-		end
-	end
-
-	if (string.len(instr) > 0) then
-		hf(instr);
-	end
-
-	if (not ctx.noreset) then
+		local rp = table.concat(cpath.path, "/") .. "=" .. instr;
+		local fun = menu_hook;
+		menu_hook = nil;
+		fun(rp);
 		cpath:reset();
+	else
+		ctx:handler(instr);
+		local m1, m2 = dispatch_meta();
+
+		print("value dialog over", m1, ctx.dangerous);
+-- 'dangerous' here means that global state etc. can have been changed
+-- in such a way that trying to return to the last active path is unwise
+		if (m1 and not ctx.dangerous) then
+			launch_menu_path(
+				active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+		else
+			cpath:reset();
+		end
 	end
 end
 
@@ -972,8 +983,12 @@ local function lbar_fun(ctx, instr, done, lastv)
 				return nlb;
 			elseif (tgt.handler) then
 				tgt.handler(ctx.handler, instr, ctx);
-				print("run handler and reset, should check for meta and reset path");
-				cpath:reset();
+				if (m1) then
+					launch_menu_path(
+						active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+				else
+					cpath:reset();
+				end
 				return;
 			end
 		elseif (tgt.kind == "value") then
@@ -1087,20 +1102,6 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	end
 
 	return bar;
-end
-
--- part and convert terminal escape sequences for coloring to valid
--- string output for render_text
-function esc_to_fontstr(msg)
-
--- 1. look for 0x1b, 0x5b
--- scan for m
--- split by ;
--- covert numbers (0 to \!b\!i   1 to \b   \4
--- and lut for colors etc.
---
--- truecolor: \x1b[38;5;R;G;Bm  (38 fg, 48 bg)
---
 end
 
 -- set a temporary hook that will override menu navigation

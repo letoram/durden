@@ -213,9 +213,6 @@ local function output_mouse_devent(btl, wnd)
 		end
 	end
 
-	if (btl == nil) then
-		print(debug.traceback());
-	end
 	target_input(wnd.external, btl);
 end
 
@@ -458,6 +455,11 @@ local function workspace_activate(space, noanim, negdir, newbg)
 		end
 	end
 
+	instant_image_transform(space.anchor);
+	if (valid_vid(space.background)) then
+		instant_image_transform(space.background);
+	end
+
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
@@ -481,7 +483,6 @@ local function workspace_activate(space, noanim, negdir, newbg)
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
-				instant_image_transform(bg);
 				blend_image(bg, 0.0, time);
 				blend_image(bg, 1.0, time);
 				image_mask_set(bg, MASK_POSITION);
@@ -520,6 +521,11 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 				target_displayhint(v.external, 0, 0, v.dispmask);
 			end
 		end
+	end
+
+	instant_image_transform(space.anchor);
+	if (valid_vid(space.background)) then
+		instant_image_transform(space.background);
 	end
 
 	if (not noanim and time > 0 and method ~= "none") then
@@ -650,10 +656,10 @@ local function switch_tab(space, to, ndir)
 		end
 		workspace_activate(space, false, ndir);
 	else
-		for k,v in ipairs(wnds) do
-			show_image(v.anchor);
-		end
 		workspace_deactivate(space, false, ndir);
+		if (space.selected) then
+			show_image(space.selected.anchor);
+		end
 	end
 end
 
@@ -732,11 +738,14 @@ local function drop_float(space)
 end
 
 local function reassign_float(space, wnd)
+	print("reassign float");
 end
 
 local function reassign_tab(space, wnd)
 	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w, wnd.border_w);
 	show_image(wnd.anchor);
+	show_image(wnd.border);
+	print("reassign tab");
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -786,7 +795,7 @@ local function set_vtab(space)
 	end
 
 	space.mode_hook = drop_tab;
-	space.switch_hook = nil; -- switch_tab;
+	space.switch_hook = switch_tab;
 	space.reassign_hook = reassign_tab;
 
 	local wm = space.wm;
@@ -1038,6 +1047,7 @@ local function workspace_background(ws, bgsrc, generalize)
 			ws.background_name = nil;
 		end
 	elseif (type(bgsrc) == "string") then
+-- before loading, check if some space doesn't already have the bg
 		local vid = load_image_asynch(bgsrc, function(src, stat)
 			if (stat.kind == "loaded") then
 			ws.background_name = bgsrc;
@@ -1252,6 +1262,8 @@ local function wnd_resize(wnd, neww, newh, force)
 -- still up for experimentation, but this method favors the canvas size rather
 -- than the allocated tile size
 	size_decor(wnd.effective_w + bw + bw, wnd.effective_h + tbh + bw + bw);
+	wnd.pad_top = bw + tbh;
+	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 	if (wnd.centered and wnd.space.mode ~= "float") then
 		if (wnd.fullscreen) then
 			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
@@ -1440,14 +1452,12 @@ local function wnd_reassign(wnd, ind, ninv)
 			end
 		end
 	end
-
 -- create if it doesn't exist
+	local oldspace_ind = wnd.wm.active_space;
 	if (newspace == nil) then
 		wnd.wm.spaces[ind] = create_workspace(wnd.wm);
 		newspace = wnd.wm.spaces[ind];
 	end
-
-	local seltgt = wnd.wm.selected;
 
 -- reparent
 	table.remove_match(wnd.parent.children, wnd);
@@ -1491,6 +1501,7 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 
 	tiler_statusbar_update(wnd.wm);
+	wnd.wm.active_space = oldspace_ind;
 	oldspace:resize();
 end
 
@@ -1577,6 +1588,7 @@ local function wnd_title(wnd, message, skipresize)
 	end
 
 	wnd.pad_top = wnd.border_w + tbar_geth(wnd);
+
 	if (hide_titlebar) then
 		wnd.titlebar:hide();
 		if (not skipresize) then
@@ -1959,6 +1971,9 @@ local function wnd_rebuild(v, bw)
 	if (v.space.mode == "tile" or v.space.mode == "float") then
 		v.titlebar:move(v.border_w, v.border_w);
 		v.titlebar:resize(v.width - v.border_w * 2, tbarh);
+		link_image(v.canvas, v.anchor);
+		move_image(v.canvas, v.pad_left, v.pad_top);
+		resize_image(v.canvas, v.effective_w, v.effective_h);
 	end
 end
 
@@ -2265,6 +2280,7 @@ local function tick_windows(wm)
 			v:tick();
 		end
 	end
+	wm.statusbar:tick();
 end
 
 local function tiler_find(wm, source)
@@ -2513,9 +2529,7 @@ local function tiler_rebuild_border(tiler)
 	local s = {"active", "inactive", "alert", "default"};
 	shader_update_uniform("border", "ui", "border", bw, s, "tiler-rebuild");
 	shader_update_uniform("border", "ui", "thickness", tw, s, "tiler-rebuild");
-	if (tiler == nil) then
-		print(debug.traceback());
-	end
+
 	for i,v in ipairs(tiler.windows) do
 		v:rebuild_border(bw);
 	end

@@ -4,9 +4,14 @@
 -- Description: First attempt of abstracting some of the primitive
 -- UI elements that were incidentally developed as part of durden.
 --
-local function button_labelupd(btn, lbl)
+local function button_labelupd(btn, lbl, timeout, timeoutstr)
 	local txt, lineh, w, h, asc;
 	local fontstr, offsetf = btn.fontfn();
+
+	if (timeout and timeout > 0) then
+		btn.timeout = timeout;
+		btn.timeout_lbl = timeoutstr and timeoutstr or "";
+	end
 
 -- keep this around so we can update if the fontfn changes
 	local append = true;
@@ -179,6 +184,7 @@ local function button_mh(ctx, mh)
 				ctx[v] = nil;
 			end
 		end
+		image_mask_set(ctx.bg, MASK_UNPICKABLE);
 		return;
 	end
 
@@ -197,7 +203,18 @@ local function button_mh(ctx, mh)
 	ctx.own = function(ign, vid)
 		return vid == ctx.bg;
 	end
+	image_mask_clear(ctx.bg, MASK_UNPICKABLE);
 	mouse_addlistener(ctx, lbltbl);
+end
+
+local function button_tick(btn)
+	if (btn.timeout) then
+		btn.timeout = btn.timeout - 1;
+		if (btn.timeout <= 0) then
+			btn:update(btn.timeout_lbl);
+			btn.timeout = nil;
+		end
+	end
 end
 
 -- [anchor] required vid to attach to for ordering / masking
@@ -231,6 +248,7 @@ function uiprim_button(anchor, bgshname, lblshname, lbl,
 		dimensions = button_size,
 		hide = button_hide,
 		show = button_show,
+		tick = button_tick,
 		update_mh = button_mh,
 		constrain = button_constrain
 	};
@@ -341,7 +359,7 @@ local function bar_relayout_horiz(bar)
 			v.maxw = fair_sz;
 			v.minh = bar.height;
 			v.maxh = bar.height;
-			button_labelupd(v);
+			button_labelupd(v, nil, v.timeout, v.timeout_str);
 			move_image(v.bg, lx, 0);
 			lx = lx + fair_sz;
 		end
@@ -514,6 +532,12 @@ local function bar_iter(bar)
 	end
 end
 
+local function bar_tick(bar)
+	for i in bar_iter(bar) do
+		i:tick();
+	end
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -545,6 +569,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		hide = bar_hide,
 		show = bar_show,
 		move = bar_move,
+		tick = bar_tick,
 		destroy = bar_destroy
 	};
 

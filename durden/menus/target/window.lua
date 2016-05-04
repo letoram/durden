@@ -116,5 +116,53 @@ return {
 		handler = function()
 			grab_shared_function("destroy")();
 		end
+	},
+	{
+		name = "grow_shrink_h",
+		label = "Resize(H)",
+		kind = "value",
+		validator = gen_valid_num(-0.5, 0.5),
+		hint = "(-0.5 .. 0.5)",
+		handler = function(ctx, val)
+			local num = tonumber(val);
+			local wnd = active_display().selected;
+			wnd:grow(val, 0);
+		end
+	},
+	{
+		name = "grow_shrink_v",
+		label = "Resize(V)",
+		kind = "value",
+		validator = gen_valid_num(-0.5, 0.5),
+		hint = "(-0.5 .. 0.5)",
+		handler = function(ctx, val)
+			local num = tonumber(val);
+			local wnd = active_display().selected;
+			wnd:grow(0, val);
+		end
+	},
+	{
+		name = "move_h",
+		label = "Move(H)",
+		eval = function()
+			return active_display().selected.space.mode == "float";
+		end,
+		kind = "value",
+		validator = function(val) return tonumber(val) ~= nil; end,
+		handler = function(ctx, val)
+			active_display().selected:move(tonumber(val), 0, true);
+		end
+	},
+	{
+		name = "move_v",
+		label = "Move(V)",
+		eval = function()
+			return active_display().selected.space.mode == "float";
+		end,
+		kind = "value",
+		validator = function(val) return tonumber(val) ~= nil; end,
+		handler = function(ctx, val)
+			active_display().selected:move(0, tonumber(val), true);
+		end
 	}
 };

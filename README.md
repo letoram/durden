@@ -19,7 +19,9 @@ Development is discussed on the IRC channel #arcan on the Freenode network
 Licensing
 =====
 Durden is Licensed in the 3-clause BSD format that can be found in the
-licensing file. The included terminal font, Hack-Bold is (c) Chris Simpkins
+licensing file.
+
+The included terminal font, Hack-Bold is (c) Chris Simpkins
 and licensed under the Apache-2.0 license.
 
 The includede fallback font, Emoji-One is provided free (cc-by 4.0 attribution)
@@ -172,15 +174,56 @@ with output format set to lemonbar can be used) with some additions.
      on-click will run that path. Otherwise, identifier value will be written
      to output channel on click.
 
-The command channel uses the format "namespace:command" where namespace is one
+The command channel uses the same format as normal binds, meaning that there
+is a 'hidden' group of functions and the normal groups that prefix with
+!path/to/action or !path/to/value=somenum for global actions and #path/to/action
+for target actions.
+
 of (command, global, target). In addition, the command name or path must be
 enabled in the built-in table in gconf.lua or manually added through the
 global/config/command\_channel path. The feature works much like normal custom
 target or global bindings, but with some additional (gfunc.lua) functions
 available to be exposed.
 
+There are few good mechanisms for probing the available command paths other
+than reading through the source code in menus, but running arcan durden
+dump\_menus will give a decent aproximation, but some paths are only visible /
+available when certain preconditions have been fulfilled.
+
 The output ipc channel acts as response for writes to both status and command
 channels.
+
+Performance
+=====
+For lower power devices where multi-screen setups isn't needed, simple display
+mode might be needed. This can be accessed by modifying gconf.lua or while
+running through Config/System/Display Mode (requires a Reset to activate).
+
+Simple display mode disables some other features as well, e.g. orientation
+swap, some forms of recording / sharing and others that build on the main
+surface being rendered to an off-screen buffer.
+
+While somewhat buggy, one might also want to try out mouse\_mode = "native"
+where cursor drawing is treated outside the normal rendering pipeline. This may
+make the cursor feel more 'smooth' (but at the same time can't be used as an
+indicator for slowdowns in the rendering pipeline that might be relevant to
+investigate)
+
+Browser
+=====
+The built-in browser is currently limited in a number of ways due to arcan
+engine restrictions. The primary purpose is media selection (for sharing,
+playlists, navigation) and therefore only shows extensions that have a chance
+of being 'useful' (while also part of the shared resource- namespace) and does
+not have the ability to directly alter this space (deletion, moving, renaming)
+though it is likely that this functionality will be added as a system\_load
+style .so/dll/dylib in the future.
+
+Due to limitations in how arcan glob\_resource currently works, it is blocking
+(nothing else happens until the operation finishes) and unbounded (you get all
+or nothing, not a cutoff after a certain number of items or time) which means
+that networked mappings and huge folders can introduce notable stalls, which
+is of course not acceptible.
 
 Features and Status
 =====
@@ -363,22 +406,6 @@ Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
 
-Performance
-=====
-For lower power devices where multi-screen setups isn't needed, simple display
-mode might be needed. This can be accessed by modifying gconf.lua or while
-running through Config/System/Display Mode (requires a Reset to activate).
-
-Simple display mode disables some other features as well, e.g. orientation
-swap, some forms of recording / sharing and others that build on the main
-surface being rendered to an off-screen buffer.
-
-While somewhat buggy, one might also want to try out mouse\_mode = "native"
-where cursor drawing is treated outside the normal rendering pipeline. This may
-make the cursor feel more 'smooth' (but at the same time can't be used as an
-indicator for slowdowns in the rendering pipeline that might be relevant to
-investigate)
-
 Extensions
 =====
 The above featureset mostly covers what would be useful from a tiling DE
@@ -401,12 +428,6 @@ be added.
 Sweep the database at launch for a specific tag and launch them all at startup,
 attaching to a fixed size docklet "WindowMaker/NeXTStep style" or as part of the
 global/target menu screen.
-
-### content preview in browser
-extending lbar to support dynamic asynch- content loading for associating
-preview content with bar navigation. This could be simple things like unicode-
-helper for utf-8 bind or more advanced like thumbnails of images and silent
-prelaunch for videos.
 
 ### desktop icons / shortcuts
 For float layouts, allow local icons and shortcuts to be added for launching,

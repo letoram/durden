@@ -92,6 +92,7 @@ local function imgwnd(fn)
 			wnd:set_title("image:" .. fn);
 		elseif (valid_vid(src)) then
 			delete_image(src);
+			active_display():message("couldn't load " .. fn);
 		end
 	end);
 end
@@ -160,17 +161,24 @@ local function target_submenu()
 end
 
 local function browse_internal()
-	local ffmts = {
-	jpg = imgwnd,
-	png = imgwnd,
-	bmp = imgwnd};
--- Don't have a good way to query decode for extensions at the moment,
--- would be really useful in cases like this (might just add an info arg and
--- then export through message, coreopt or similar).
-	for i,v in ipairs({"mp3", "flac", "wmv", "mkv", "avi", "asf", "flv",
-		"mpeg", "mov", "mp4", "ogg"}) do
-		ffmts[v] = decwnd;
-	end
+	local imghnd = {
+		imgwnd, HC_PALETTE[1], HC_PALETTE[1]
+	};
+	local audhnd = {
+		decwnd, HC_PALETTE[2], HC_PALETTE[2]
+	};
+	local dechnd = {
+		decwnd, HC_PALETTE[3], HC_PALETTE[3]
+	};
+
+-- decode- frameserver doesn't have a way to query type and extension for
+-- a specific resource, and running probes on all files in a folder with
+-- 10k entries might be a little excessive
+	local ffmts = {jpg = imghnd, png = imghnd, bmp = imghnd,
+		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
+		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
+		flv = dechnd
+	};
 
 	browse_file(nil, ffmts, SHARED_RESOURCE, nil);
 end

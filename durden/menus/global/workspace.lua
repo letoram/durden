@@ -69,8 +69,7 @@ local function load_bg(fn)
 	if (not space) then
 		return;
 	end
-	local m1, m2 = dispatch_meta();
-	space:set_background(fn, m1);
+	space:set_background(fn);
 end
 
 local save_ws = {
