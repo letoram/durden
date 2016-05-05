@@ -78,17 +78,19 @@ end
 
 local function accept_cancel(wm, accept)
 	local ictx = wm.input_ctx;
+	local inp = ictx.inp;
 	destroy(wm, ictx);
 
 	if (accept) then
-		local base = ictx.inp.msg;
+		local base = inp.msg;
 		if (ictx.force_completion or string.len(base) == 0) then
-			if (ictx.set and ictx.set[ictx.csel]) then
-				base = type(ictx.set[ictx.csel]) == "table" and
-					ictx.set[ictx.csel][3] or ictx.set[ictx.csel];
+			if (inp.set and inp.set[inp.csel]) then
+				base = type(inp.set[inp.csel]) == "table" and
+					inp.set[inp.csel][3] or inp.set[inp.csel];
 			end
 		end
-		ictx.get_cb(ictx.cb_ctx, base, true, ictx.set, ictx.inp.msg);
+-- save set as well
+		ictx.get_cb(ictx.cb_ctx, base, true, inp.set, inp);
 	else
 		if (ictx.on_cancel) then
 			ictx:on_cancel();
@@ -119,26 +121,26 @@ local function update_completion_set(wm, ctx, set)
 	end
 
 -- track if set changes as we will need to reset
-	if (not ctx.set or #set ~= #ctx.set) then
-		ctx.cofs = 1;
-		ctx.csel = 1;
+	if (not ctx.inp.set or #set ~= #ctx.inp.set) then
+		ctx.inp.cofs = 1;
+		ctx.inp.csel = 1;
 	end
-	ctx.set = set;
+	ctx.inp.set = set;
 
 -- clamp and account for paging
-	if (ctx.clastc ~= nil and ctx.csel < ctx.cofs) then
-		ctx.cofs = ctx.cofs - ctx.clastc;
-		ctx.cofs = ctx.cofs <= 0 and 1 or ctx.cofs;
+	if (ctx.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
+		ctx.inp.cofs = ctx.inp.cofs - ctx.clastc;
+		ctx.inp.cofs = ctx.inp.cofs <= 0 and 1 or ctx.inp.cofs;
 	end
 
 -- limitation with this solution is that we can't wrap around negative
 -- without forward stepping through due to variability in text length
-	ctx.csel = ctx.csel <= 0 and ctx.clim or ctx.csel;
+	ctx.inp.csel = ctx.inp.csel <= 0 and ctx.clim or ctx.inp.csel;
 
 -- wrap around if needed
-	if (ctx.csel > #set) then
-		ctx.csel = 1;
-		ctx.cofs = 1;
+	if (ctx.inp.csel > #set) then
+		ctx.inp.csel = 1;
+		ctx.inp.cofs = 1;
 	end
 
 -- very very messy positioning, relinking etc. can probably replace all
@@ -164,7 +166,7 @@ local function update_completion_set(wm, ctx, set)
 
 	ctx.clim = #set;
 
-	for i=ctx.cofs,#set do
+	for i=ctx.inp.cofs,#set do
 		local msgs = {};
 		local str;
 		if (type(set[i]) == "table") then
@@ -188,11 +190,11 @@ local function update_completion_set(wm, ctx, set)
 		end
 
 -- outside display? show ..., if that's our index, slide page
-		if (i ~= ctx.cofs and ofs + w > ctxw - 10) then
+		if (i ~= ctx.inp.cofs and ofs + w > ctxw - 10) then
 			str = "..."; -- string.char(0xe2, 0x86, 0x92);
-			if (i == ctx.csel) then
-				ctx.clastc = i - ctx.cofs;
-				ctx.cofs = ctx.csel;
+			if (i == ctx.inp.csel) then
+				ctx.clastc = i - ctx.inp.cofs;
+				ctx.inp.cofs = ctx.inp.csel;
 				return update_completion_set(wm, ctx, set);
 			end
 			exit = true;
@@ -224,7 +226,7 @@ local function update_completion_set(wm, ctx, set)
 			name = "lbar_labelsel",
 			own = function(ctx, vid) return vid == txt; end,
 			motion = function(mctx)
-				ctx.csel = i;
+				ctx.inp.csel = i;
 				resize_image(ctx.ccursor, w, lbarsz);
 				move_image(ctx.ccursor, mctx.mofs, 0);
 			end,
@@ -239,7 +241,7 @@ local function update_completion_set(wm, ctx, set)
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
-		if (i == ctx.csel) then
+		if (i == ctx.inp.csel) then
 			move_image(ctx.ccursor, ofs, 0);
 			resize_image(ctx.ccursor, w, lbarsz);
 		end
@@ -273,19 +275,7 @@ local function setup_string(wm, ictx, str)
 	return tvid;
 end
 
-local function lbar_ih(wm, ictx, inp, sym, caret)
-	if (caret ~= nil) then
-		update_caret(ictx, ictx.mask_text);
-		return;
-	end
-
-	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
-
--- special case, we have a strict set to chose from
-	if (type(res) == "table" and res.set) then
-		update_completion_set(wm, ictx, res.set);
-	end
-
+local function lbar_istr(wm, ictx, res)
 -- other option would be to run ictx.inp:undo, which was the approach earlier,
 -- but that prevented the input of more complex values that could go between
 -- valid and invalid. Now we just visually indicate.
@@ -303,10 +293,27 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 	update_caret(ictx, ictx.mask_text);
 end
 
+local function lbar_ih(wm, ictx, inp, sym, caret)
+	if (caret ~= nil) then
+		update_caret(ictx, ictx.mask_text);
+		return;
+	end
+	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.inp.set, ictx.inp);
+
+-- special case, we have a strict set to chose from
+	if (type(res) == "table" and res.set) then
+		update_completion_set(wm, ictx, res.set);
+	end
+
+	lbar_istr(wm, ictx, res);
+end
+
 -- used on spawn to get rid of crossfade effect
 PENDING_FADE = nil;
 local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	local ictx = wm.input_ctx;
+	local m1, m2 = dispatch_meta();
+
 	if (meta) then
 		return;
 	end
@@ -315,48 +322,64 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 		return;
 	end
 
-	if (sym == ictx.cancel or sym == ictx.accept) then
-		return accept_cancel(wm, sym == ictx.accept);
-	end
-
-	if ((sym == ictx.step_n or sym == ictx.step_p)) then
-		ictx.csel = (sym == ictx.step_n) and (ictx.csel+1) or (ictx.csel-1);
-		update_completion_set(wm, ictx, ictx.set);
-		return;
-	end
-
--- special handling, if the user hasn't typed anything, map caret manipulation
--- to completion navigation as well)
-	if (ictx.inp) then
-		local upd = false;
-		if (string.len(ictx.inp.msg) < ictx.inp.caretpos and
-			sym == ictx.inp.caret_right) then
-			ictx.csel = ictx.csel + 1;
-			upd = true;
-		elseif (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and
-			sym == ictx.inp.caret_left) then
-			ictx.csel = ictx.csel - 1;
-			upd = true;
+	if (m1 and (sym == ictx.cancel or sym == ictx.accept or
+		sym == ictx.caret_left or sym == ictx.caret_right or
+		sym == ictx.step_n or sym == ictx.step_p)) then
+		if (ictx.meta_handler and
+			ictx.meta_handler(wm, sym, iotbl, lutsym, meta)) then
+			return;
+			end
 		end
 
-		if (upd) then
-			update_completion_set(wm, ictx, ictx.set);
+		if (sym == ictx.cancel or sym == ictx.accept) then
+			return accept_cancel(wm, sym == ictx.accept);
+		end
+
+		if ((sym == ictx.step_n or sym == ictx.step_p)) then
+			ictx.inp.csel = (sym == ictx.step_n) and
+				(ictx.inp.csel+1) or (ictx.inp.csel-1);
+			update_completion_set(wm, ictx, ictx.inp.set);
 			return;
 		end
-	end
 
--- note, inp ulim can be used to force a sliding view window, not
--- useful here but still implemented.
-	ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
-		lbar_ih(wm, ictx, inp, sym, caret);
-	end);
+	-- special handling, if the user hasn't typed anything, map caret manipulation
+	-- to completion navigation as well)
+		if (ictx.inp) then
+			local upd = false;
+			if (ictx.invalid) then
+				upd = true;
+				ictx.invalid = false;
+			end
 
-	ictx.ulim = 10;
+			if (string.len(ictx.inp.msg) < ictx.inp.caretpos and
+				sym == ictx.inp.caret_right) then
+				ictx.inp.csel = ictx.inp.csel + 1;
+				upd = true;
+			elseif (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and
+				sym == ictx.inp.caret_left) then
+				ictx.inp.csel = ictx.inp.csel - 1;
+				upd = true;
+			end
+			ictx.invalid = false;
+			if (upd) then
+				update_completion_set(wm, ictx, ictx.inp.set);
+				return;
+			end
+		end
 
--- unfortunately the haphazard lbar design makes filtering / forced reverting
--- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't
--- permit, -> tbl with set? change completion view
-	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.set);
+	-- note, inp ulim can be used to force a sliding view window, not
+	-- useful here but still implemented.
+		ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
+			lbar_ih(wm, ictx, inp, sym, caret);
+		end);
+
+		ictx.ulim = 10;
+
+	-- unfortunately the haphazard lbar design makes filtering / forced reverting
+	-- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't
+	-- permit, -> tbl with set? change completion view
+
+		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.inp.set, ictx.inp);
 	if (res == false) then
 --		ictx.inp:undo();
 	elseif (res == true) then
@@ -454,6 +477,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	end
 
 	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
+
 	shader_setup(bg, "ui", "lbarbg");
 	local ph = {
 		name = "bg_cancel",
@@ -495,7 +519,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 
 	wm:set_input_lock(lbar_input);
-	wm.input_ctx = {
+	local res = {
 -- just expose the constants here instead of polluting something global
 		HELPER_TOOLTIP = 1,
 		HELPER_REG1 = 2,
@@ -508,6 +532,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		cancel = SYSTEM_KEYS["cancel"],
 		step_n = SYSTEM_KEYS["next"],
 		step_p = SYSTEM_KEYS["previous"],
+		caret_left = SYSTEM_KEYS["caret_left"],
+		caret_right = SYSTEM_KEYS["caret_right"],
 		textstr = gconfig_get("lbar_textstr"),
 		set_label = lbar_label,
 		get_cb = completion,
@@ -528,18 +554,36 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};
+	wm.input_ctx = res;
+
+-- restore from previous population / selection
+	if (opts.restore and opts.restore.msg) then
+		if (string.len(opts.restore.msg) > 1 and
+			opts.restore.cofs == 1 and opts.restore.csel == 1) then
+-- we treat this case as new as it left with many prefix+1 res that had to be
+-- erased to get to the set the user actually wanted
+		else
+			res.inp = opts.restore;
+			res.invalid = true;
+		end
+	end
+
 	lbar_input(wm, "", {active = true,
 		kind = "digital", translated = true, devid = 0, subid = 0});
+	lbar_istr(wm, res, true);
 
+-- don't want this one running here as there might be actions bounnd that
+-- alter bar state, breaking synch between data model and user
 	wm.statusbar:hide();
 
 	if (opts.label) then
-		wm.input_ctx:set_label(opts.label);
+		res:set_label(opts.label);
 	end
 
 	if (wm.debug_console) then
 		wm.debug_console:system_event("lbar activated");
 	end
-	active_lbar = wm.input_ctx;
-	return wm.input_ctx;
+
+	active_lbar = res;
+	return res;
 end

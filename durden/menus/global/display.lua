@@ -123,6 +123,30 @@ local function gen_disp_menu(disp)
 		eval = function() return not display_simple() and disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
+		},
+		{
+		name = "background",
+		label = "Set Background",
+		kind = "action",
+		handler = function()
+			local loadfn = function(fn)
+				disp.tiler:set_background(fn, true);
+				disp.background = fn;
+			end
+			local imgfiles = {png = loadfn, jpg = loadfn, bmp = loadfn};
+			browse_file({}, imgfiles, SHARED_RESOURCE, nil);
+		end
+		},
+		{
+		name = "resetbg",
+		label = "Reset Background",
+		kind = "action",
+		handler = function()
+			disp.background = "";
+		end,
+		eval = function() return
+			disp.background and string.len(disp.background) > 0;
+		end
 		}
 	};
 end
