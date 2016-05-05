@@ -23,19 +23,31 @@ end
 local function probe(ctx, yh)
 	local fd = active_display().font_delta;
 	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
-	ctx.group_sz = math.floor(yh / th);
-	ctx.group_sz = ctx.group_sz > #tbl and #tbl or ctx.group_sz;
-	return math.ceil(#tbl / ctx.group_sz);
+	local ul = math.floor(yh / th);
+
+	local ct = {};
+	local nt = {};
+	local ofs = 1;
+
+	while (ofs < #tbl) do
+		table.insert(nt, tbl[ofs]);
+		if (#nt == ul) then
+			table.insert(ct, nt);
+			nt = {};
+		end
+		ofs = ofs + 1;
+	end
+
+	if (#nt > 0) then
+		table.insert(ct, nt);
+	end
+
+	ctx.group_cache = ct;
+	return #ctx.group_cache;
 end
 
 local function show(ctx, anchor, ofs)
-	local fd = active_display().font_delta;
-	local tw = text_dimensions(fd .. "(c3 aa) 0000");
-	local si = 1 + (ofs - 1) * ctx.group_sz;
-	local ul = si + ctx.group_sz - 1;
-	local ap = image_surface_resolve_properties(anchor);
-	ul = ul > #tbl and #tbl or ul;
-	return tsupp.show(ctx, anchor, tbl, si, ul, tw);
+	return tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
 end
 
 local function destroy(ctx)

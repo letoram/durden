@@ -98,14 +98,17 @@ end
 local test_gc = 0;
 local testwnd_spawn = function(bar)
 	if (DEBUGLEVEL > 0) then
+		local neww = VRESW * 0.1;
+		local newh = VRESH * 0.1;
+
 		local img = fill_surface(math.random(200, 600), math.random(200, 600),
-			math.random(64, 255), math.random(64, 255), math.random(64, 255),
-			VRESW * 0.1, VRESH * 0.1);
+		math.random(64, 255), math.random(64, 255), math.random(64, 255),
+			neww, newh);
 		show_image(img);
 
 		local wnd = durden_launch(img, "test_window_" .. tostring(test_gc));
 		wnd.scalemode = "stretch";
-		wnd:resize();
+		wnd:resize(neww, newh);
 		test_gc = test_gc + 1;
 	end
 end
@@ -340,7 +343,7 @@ gf["bind_tmenu"] = function(sfun)
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
-				dispatch_custom(sym, "target_actions", true);
+				dispatch_custom(sym, "target", false, true);
 			end
 		end
 	);
@@ -353,7 +356,7 @@ gf["bind_menu"] = function(sfun)
 		false, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
-				dispatch_custom(sym, "global_actions", true);
+				dispatch_custom(sym, "global", false);
 			end
 		end
 	);
@@ -477,6 +480,8 @@ gf["mouse_sensitivity"] = function(val)
 end
 
 local function allgain(val)
+	print(debug.traceback());
+	print(val, type(val));
 	audio_gain(BADID, val);
 	for wnd in all_windows() do
 		if (wnd.source_audio) then

@@ -162,6 +162,7 @@ local system_menu = {
 		name = "lock",
 		label = "Lock",
 		kind = "value",
+		dangerous = true,
 		password_mask = true,
 		hint = "(unlock key)",
 		validator = function(val) return string.len(val) > 0; end,

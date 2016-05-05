@@ -21,12 +21,15 @@ local function match_ext(v, tbl)
 	return tbl[ext];
 end
 
+local browser_path = menu_path_new();
+
 local function browse_cb(ctx, instr, done, lastv, inputv)
 	if (done) then
 		if (inputv == "/") then
 			while (#ctx.path > ctx.minlen) do
 				table.remove(ctx.path, #ctx.path);
 			end
+			browser_path:reset();
 			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 			return;
 		end
@@ -35,6 +38,7 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 			if (#path > ctx.minlen) then
 				table.remove(path, #path);
 			end
+			browser_path:pop();
 			browse_file(path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 			return;
 		elseif (instr == "/") then
@@ -52,12 +56,16 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 			local fn = match_ext(pn, ctx.fltext);
 			if (type(fn) == "function") then
 				fn(pn, ctx.path);
+			elseif (type(fn) == "table") then
+				fn[1](pn, ctx.path);
 			elseif (ctx.trigger) then
 				ctx.trigger(pn, ctx.path);
 			end
 			local m1, m2 = dispatch_meta();
 			if (m1) then
 				browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
+			else
+				browser_path:reset();
 			end
 		end
 		return;
@@ -88,8 +96,16 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 		if (string.sub(v,1,string.len(instr)) == instr) then
 			if (ctx.paths[path][v] == "directory") then
 				table.insert(res, {mlbl, msellbl, v});
-			elseif (match_ext(v, ctx.fltext)) then
-				table.insert(res, v);
+			else
+				local ext = match_ext(v, ctx.fltext);
+				if (ext) then
+-- if extension comes with color hint, use that
+					if (type(ext) == "table") then
+						table.insert(res, {ext[2], ext[3], v});
+					else
+						table.insert(res, v);
+					end
+				end
 			end
 		end
 	end

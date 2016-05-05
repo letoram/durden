@@ -13,11 +13,11 @@ local argv_cmds = {};
 
 -- track custom buttons that should be added to each window
 local tbar_btns = {
---	{
---		dir = "left",
---		cmd = "#/window/destroy",
---		lbl = string.char(0xe2) .. string.char(0x9c) .. string.char(0x96)
---	}
+	{
+		dir = "left",
+		cmd = "#/window/destroy",
+		lbl = string.char(0xe2) .. string.char(0x9c) .. string.char(0x96)
+	}
 };
 
 -- count initial delay before idle shutdown
@@ -256,12 +256,14 @@ wnd_create_handler = function(wm, wnd)
 		wnd.titlebar:add_button(v.dir, "titlebar_iconbg",
 			"titlebar_icon", v.lbl, gconfig_get("sbar_tpad") * wm.scalef,
 			wm.font_resfn, nil, nil, {
+-- many complications hidden here as tons of properties can be changed between
+-- dispatch_symbol and "restore old state"
 				click = function(btn)
 					local old_sel = wm.selected;
-					wm.selected = wnd;
+					wnd:select();
 					dispatch_symbol(v.cmd);
-					if (wm.selected) then
-						wm.selected = old_sel;
+					if (old_sel.select) then
+						old_sel:select();
 					end
 				end,
 				over = function(btn)

@@ -11,7 +11,7 @@ PENDING_FADE = nil;
 local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm:set_input_lock();
-	local time = gconfig_get("transition");
+	local time = gconfig_get("lbar_transition");
 	local bar = wm.input_ctx.bar;
 	local anchor = wm.input_ctx.anchor;
 	blend_image(bar, 0.0, time, INTERP_EXPINOUT);
@@ -217,13 +217,14 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 		iostate = iostatem_save(),
 		data_y = gconfig_get("lbar_sz") * wm.scalef
 	};
+	local time = gconfig_get("lbar_transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;
 	end
 	PENDING_FADE = nil;
 	setup_vids(wm, ctx,
-		gconfig_get("lbar_sz") * 2 * wm.scalef, gconfig_get("transition"));
+		gconfig_get("lbar_sz") * 2 * wm.scalef, time);
 
 -- intercept tick callback to implement the "hold then bind" approach
 -- for single keys.

@@ -15,15 +15,15 @@ LBL_UNBIND_COMBINATION = "Press and hold the combination to unbind, %s to Cancel
 LBL_METAGUARD = "Query Rebind in %d keypresses";
 LBL_METAGUARD_META = "Rebind \\bmeta keys\\!b in %.2f seconds, %s to ";
 LBL_METAGUARD_BASIC = "Rebind \\bbasic keys\\!b in %.2f seconds, %s to ";
-LBL_METAGUARD_MENU = "Rebind \\bGLOBAL MENU\\!b binding in %.2f seconds, %s to Cancel";
-LBL_METAGUARD_TMENU = "Rebind \\bTARGET MENU\\!b binding in %.2f seconds, %s to Cancel";
+LBL_METAGUARD_MENU = "Rebind GLOBAL MENU binding in %.2f seconds, %s to Cancel";
+LBL_METAGUARD_TMENU = "Rebind TARGET MENU binding in %.2f seconds, %s to Cancel";
 
 HC_PALETTE = {
-	"\\#43abc9",
-	"\\#b5c689",
 	"\\#efd469",
-	"\\#f58b4c",
-	"\\#cd594a"
+	"\\#43abc9",
+	"\\#cd594a",
+	"\\#b5c689",
+	"\\#f58b4c"
 };
 
 local defaults = {
@@ -76,7 +76,7 @@ local defaults = {
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
 	ws_transition_out = "fade",
-	ws_autodestroy = false,
+	ws_autodestroy = true,
 	ws_autoadopt = true,
 	ws_default = "tile",
 
@@ -86,12 +86,12 @@ local defaults = {
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
 	mouse_focus_event = "click", -- motion, hover
-	mouse_remember_position = false,
+	mouse_remember_position = true,
 	mouse_factor = 1.0,
-	mouse_autohide = false,
+	mouse_autohide = true,
 	mouse_reveal = true,
 	mouse_dblclick_step = 12,
-	mouse_hidetime = 40,
+	mouse_hidetime = 120,
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
 
