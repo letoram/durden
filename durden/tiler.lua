@@ -149,7 +149,7 @@ local function wnd_destroy(wnd)
 end
 
 local function wnd_message(wnd, message, timeout)
-	print("wnd_message", message);
+--	print("wnd_message", message);
 end
 
 local function wnd_deselect(wnd, nopick)
@@ -439,7 +439,7 @@ local function level_resize(level, x, y, w, h, node)
 	process_node(level.children[#level.children], true);
 end
 
-local function workspace_activate(space, noanim, negdir, newbg)
+local function workspace_activate(space, noanim, negdir, oldbg)
 	local time = gconfig_get("transition");
 	local method = gconfig_get("ws_transition_in");
 
@@ -461,6 +461,7 @@ local function workspace_activate(space, noanim, negdir, newbg)
 	end
 
 	if (not noanim and time > 0 and method ~= "none") then
+		local htime = time * 0.5;
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
 			move_image(space.anchor, 0, 0, time);
@@ -473,8 +474,8 @@ local function workspace_activate(space, noanim, negdir, newbg)
 			move_image(space.anchor, 0, 0);
 -- stay at level zero for a little while so not to fight with crossfade
 			blend_image(space.anchor, 0.0);
-			blend_image(space.anchor, 0.0, 0.5 * time);
-			blend_image(space.anchor, 1.0, 0.5 * time);
+			blend_image(space.anchor, 0.0, htime);
+			blend_image(space.anchor, 1.0, htime);
 		else
 			warning("broken method set for ws_transition_in: " ..method);
 		end
@@ -482,12 +483,14 @@ local function workspace_activate(space, noanim, negdir, newbg)
 -- same between different workspaces as it is visually more distracting
 		local bg = space.background;
 		if (bg) then
-			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
-				blend_image(bg, 0.0, time);
-				blend_image(bg, 1.0, time);
+			if (not valid_vid(oldbg) or not image_matchstorage(oldbg, bg)) then
+				print("activate different", negdir, valid_vid(oldbg), oldbg, bg);
+				blend_image(bg, 0.0, htime);
+				blend_image(bg, 1.0, htime);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
+				print("activate same", negdir);
 				show_image(bg);
 				image_mask_clear(bg, MASK_POSITION);
 				image_mask_clear(bg, MASK_OPACITY);
@@ -529,6 +532,7 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 	end
 
 	if (not noanim and time > 0 and method ~= "none") then
+
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0, time);
 		elseif (method == "move-v") then
@@ -541,7 +545,7 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(newbg) or not image_matchstorage(newbg, bg)) then
-				blend_image(bg, 0.0, 0.25 * time);
+				blend_image(bg, 0.0, 0.5 * time);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
@@ -648,22 +652,22 @@ local function workspace_migrate(ws, newt, disptbl)
 end
 
 -- undo / redo the effect that deselect will hide the active window
-local function switch_tab(space, to, ndir)
+local function switch_tab(space, to, ndir, newbg, oldbg)
 	local wnds = linearize(space);
 	if (to) then
 		for k,v in ipairs(wnds) do
 			hide_image(v.anchor);
 		end
-		workspace_activate(space, false, ndir);
+		workspace_activate(space, false, ndir, oldbg);
 	else
-		workspace_deactivate(space, false, ndir);
+		workspace_deactivate(space, false, ndir, newbg);
 		if (space.selected) then
 			show_image(space.selected.anchor);
 		end
 	end
 end
 
-local function switch_fullscreen(space, to, ndir)
+local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 	if (space.selected == nil) then
 		return;
 	end
@@ -671,7 +675,7 @@ local function switch_fullscreen(space, to, ndir)
 	if (to) then
 		space.wm.statusbar:hide();
 		space.wm.hidden_sb = true;
-		workspace_activate(space, false, ndir);
+		workspace_activate(space, false, ndir, oldbg);
 		local lst = linearize(space);
 		for k,v in ipairs(space) do
 			hide_image(space.anchor);
@@ -680,7 +684,7 @@ local function switch_fullscreen(space, to, ndir)
 	else
 		space.wm.statusbar:show();
 		space.wm.hidden_sb = false;
-		workspace_deactivate(space, false, ndir);
+		workspace_deactivate(space, false, ndir, newbg);
 	end
 end
 
@@ -738,14 +742,12 @@ local function drop_float(space)
 end
 
 local function reassign_float(space, wnd)
-	print("reassign float");
 end
 
 local function reassign_tab(space, wnd)
 	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w, wnd.border_w);
 	show_image(wnd.anchor);
 	show_image(wnd.border);
-	print("reassign tab");
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -1027,6 +1029,21 @@ local function workspace_save(ws, shallow)
 end
 
 local function workspace_background(ws, bgsrc, generalize)
+	if (bgsrc == ws.wm.background_name and valid_vid(ws.wm.background_id)) then
+		bgsrc = ws.wm.background_id;
+	end
+
+	local ttime = gconfig_get("transition");
+	local crossfade = false;
+	if (valid_vid(ws.background)) then
+		ttime = ttime * 0.5;
+		crossfade = true;
+		expire_image(ws.background, ttime);
+		blend_image(ws.background, 0.0, ttime);
+		ws.background = nil;
+		ws.background_name = nil;
+	end
+
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(ws.wm.width, ws.wm.height);
@@ -1034,18 +1051,16 @@ local function workspace_background(ws, bgsrc, generalize)
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
-		blend_image(ws.background, 1.0, gconfig_get("transition"));
+		if (crossfade) then
+			blend_image(ws.background, 0.0, ttime);
+		end
+		blend_image(ws.background, 1.0, ttime);
 		if (valid_vid(src)) then
 			image_sharestorage(src, ws.background);
 		end
 	end
 
 	if (bgsrc == nil) then
-		if (valid_vid(ws.background)) then
-			delete_image(ws.background);
-			ws.background = nil;
-			ws.background_name = nil;
-		end
 	elseif (type(bgsrc) == "string") then
 -- before loading, check if some space doesn't already have the bg
 		local vid = load_image_asynch(bgsrc, function(src, stat)
@@ -2316,27 +2331,37 @@ local function tiler_switchws(wm, ind)
 
 	local nd = wm.space_ind < ind;
 	local cursp = wm.spaces[wm.space_ind];
-	local nextsp = wm.spaces[ind];
 
-	if (cursp.switch_hook) then
-		cursp:switch_hook(false, nd);
-	else
-		workspace_deactivate(cursp, false, nd, nextsp and nextsp.background or nil);
+	if (not wm.spaces[ind]) then
+		wm.spaces[ind] = create_workspace(wm, false);
 	end
 
+	local nextsp = wm.spaces[ind];
+
+-- workaround for autodelete on workspace triggers are an edge condition when the
+-- backgrounds are the same and should not be faded but when activate_ comes the
+-- ws is already dead so we need an intermediate
+	local oldbg = nil;
+	local nextbg = nextsp.background and nextsp.background or wm.background_id;
+	if (valid_vid(nextsp.background)) then
+		oldbg = null_surface(1, 1);
+		image_sharestorage(cursp.background, oldbg);
+	end
+
+	if (cursp.switch_hook) then
+		cursp:switch_hook(false, nd, nextbg, oldbg);
+	else
+		workspace_deactivate(cursp, false, nd, nextbg);
+	end
 -- policy, don't autodelete if the user has made some kind of customization
 	if (#cursp.children == 0 and gconfig_get("ws_autodestroy") and
 		(cursp.label == nil or string.len(cursp.label) == 0 ) and
-		cursp.background_name == nil) then
+		(cursp.background_name == nil or cursp.background_name == wm.background_name)) then
 		cursp:destroy();
 		wm.spaces[wm.space_ind] = nil;
 		wm.sbar_ws[wm.space_ind]:hide();
 	else
 		cursp.selected = cw;
-	end
-
-	if (wm.spaces[ind] == nil) then
-		wm.spaces[ind] = create_workspace(wm);
 	end
 
 	wm.sbar_ws[wm.space_ind]:switch_state("inactive");
@@ -2345,18 +2370,21 @@ local function tiler_switchws(wm, ind)
 	wm.space_ind = ind;
 	wm_update_mode(wm);
 
-	if (wm.spaces[ind].switch_hook) then
-		wm.spaces[ind]:switch_hook(true, not nd);
+	if (nextsp.switch_hook) then
+		nextsp:switch_hook(true, not nd, nextbg, oldbg);
 	else
-		workspace_activate(wm.spaces[ind], false, not nd, cursp.background);
+		workspace_activate(nextsp, false, not nd, oldbg);
 	end
 
+	if (valid_vid(oldbg)) then
+		delete_image(oldbg);
+	end
 -- safeguard against broken state
-	wm.spaces[ind].selected = wm.spaces[ind].selected and
-		wm.spaces[ind].selected or wm.spaces[ind].children[1];
+	nextsp.selected = nextsp.selected and
+		nextsp.selected or nextsp.children[1];
 
-	if (wm.spaces[ind].selected) then
-		wnd_select(wm.spaces[ind].selected);
+	if (nextsp.selected) then
+		wnd_select(nextsp.selected);
 	else
 		wm.selected = nil;
 	end
@@ -2682,6 +2710,29 @@ local function tiler_fontres(wm)
 	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("sbar_tpad");
 end
 
+local function tiler_switchbg(wm, newbg)
+	wm.background_name = newbg;
+	if (valid_vid(wm.background_id)) then
+		delete_image(wm.background_id);
+		wm.background_id = nil;
+	end
+
+-- we need this synchronously unfortunately
+	if ((type(newbg) == "string" and resource(newbg))) then
+		wm.background_id = load_image(newbg);
+	elseif (valid_vid(newbg)) then
+		wm.background_id = null_surface(wm.width, wm.height);
+		image_sharestorage(newbg, wm.background_id);
+	end
+
+-- update for all existing spaces that uses this already
+	for k,v in pairs(wm.spaces) do
+		if (v.background == nil or v.background_name == wm.background_name) then
+			v:set_background(wm.background_name);
+		end
+	end
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 
@@ -2711,6 +2762,7 @@ function tiler_create(width, height, opts)
 		scalemodes = {"normal", "stretch", "aspect"},
 
 -- public functions
+		set_background = tiler_switchbg,
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
 		swap_up = tiler_swapup,
@@ -2779,11 +2831,6 @@ function tiler_create(width, height, opts)
 				res.spaces[k]:set_label(val);
 			end
 		end
-	end
-
-	local v = get_key(string.format("ws_%s_bg", res.name));
-	if (v) then
-		res.background_name = load_image(v);
 	end
 
 -- always make sure we have a 'first one'

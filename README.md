@@ -281,9 +281,11 @@ are being implemented, we have the following list:
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
   - [ ] 'Sticky' Meta (meta press state persist n ticks)
-  - [x] Drag Reposition/Resize in Float
-  - [x] Double-Click Titlebar Maximize-Restore in Float
-  - [ ] Desktop Icons in Float-Mode
+	- [ ] Float Layout
+    - [x] Drag Reposition/Resize in Float
+    - [x] Double-Click Titlebar Maximize-Restore in Float
+    - [ ] Desktop Icons in Float-Mode
+	  - [ ] Auto-layouter in Float-Mode (normalize + binpack)
   - [x] Mouse-Hover Focus
   - [x] Mouse Scale Factors
   - [x] Mouse Follows Selection
@@ -336,9 +338,10 @@ are being implemented, we have the following list:
 			-  [ ] Sync/Gain controls
 			-  [ ] Video Filtering
 			-  [ ] Streaming Destination
-		- [ ] VNC Server
+		- [ ] Remote Sharing Server
 			-  [x] Passive
 			-  [ ] Input mapping
+			-  [ ] As separate 'display'
 		- [ ] Abstract Encode
 		  -  [ ] OCR
 			-  [ ] Text to Speech
@@ -396,11 +399,14 @@ are being implemented, we have the following list:
   - [x] Gamma Correction
   - [ ] ICC / Color Calibration Profiles
   - [ ] Daltonization
-  - [ ] Redshift Color Temperature
+  - [ ] Redshift Color Temperature (builtin, shader+update via control-ch works)
   - [ ] Advanced scaling effects (xBR, ...)
   - [x] Lockscreen
     - [ ] Autosuspend game/media on Lock
     - [ ] Customized action on repeated auth- failure
+  - [ ] Iconsheets
+	  - [ ] Static (for buttons)
+		- [ ] Dynamic (advanced window management, client registred)
 
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than

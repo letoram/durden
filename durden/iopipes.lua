@@ -324,6 +324,5 @@ durden_shutdown = function()
 	end
 	if (gconfig_get("output_path") ~= ":disabled") then
 		zap_resource("ipc/" .. gconfig_get("output_path"));
-		print("DIE!", gconfig_get("output_path"));
 	end
 end

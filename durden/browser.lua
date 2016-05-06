@@ -6,6 +6,7 @@
 
 local last_path = {};
 local last_min = 0;
+local last_rest = {};
 
 local function match_ext(v, tbl)
 	if (tbl == nil) then
@@ -23,25 +24,23 @@ end
 
 local browser_path = menu_path_new();
 
-local function browse_cb(ctx, instr, done, lastv, inputv)
+local function step_up(ctx)
+	local path = ctx.path;
+	if (#path > ctx.minlen) then
+		table.remove(path, #path);
+	end
+-- already manage path and dont need from path stack, but want lbar state
+	local op, octx = browser_path:pop();
+	browse_file(path, ctx.fltext,
+		ctx.namespace, ctx.trigger, 0, {restore = octx});
+end
+
+local function browse_cb(ctx, instr, done, lastv, inpctx)
 	if (done) then
-		if (inputv == "/") then
-			while (#ctx.path > ctx.minlen) do
-				table.remove(ctx.path, #ctx.path);
-			end
-			browser_path:reset();
-			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
-			return;
-		end
 		if (instr == "..") then
-			local path = ctx.path;
-			if (#path > ctx.minlen) then
-				table.remove(path, #path);
-			end
-			browser_path:pop();
-			browse_file(path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
-			return;
+			step_up(ctx);
 		elseif (instr == "/") then
+			browser_path:reset();
 			browse_file(ctx.initial, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 			return;
 		end
@@ -51,6 +50,7 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 		local r, v = resource(pn, ctx.namespace);
 		if (v == "directory") then
 			table.insert(ctx.path, instr);
+			browser_path:append(instr, instr, inpctx);
 			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 		else
 			local fn = match_ext(pn, ctx.fltext);
@@ -76,6 +76,7 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 -- so we need an asynch glob_resource and all the problems that come there.
 	last_path = ctx.path;
 	last_min = ctx.minlen;
+	last_rest = inpctx;
 	local path = table.concat(ctx.path, "/");
 	if (ctx.paths[path] == nil) then
 		ctx.paths[path] = glob_resource(path .. "/*", ctx.namespace);
@@ -115,14 +116,20 @@ local function browse_cb(ctx, instr, done, lastv, inputv)
 end
 
 function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
+	opts = opts and opts or {};
 	if (not pathtbl) then
 		pathtbl = last_path;
 		tblmin = last_min;
+		if (not opts.restore) then
+			opts.restore = last_rest;
+		end
 	end
 
 	local dup = {};
+
 	for k,v in ipairs(pathtbl) do dup[k] = v; end
-	active_display():lbar(browse_cb, {
+
+	local lbctx = {
 		base = prefix,
 		path = pathtbl,
 		initial = dup,
@@ -131,6 +138,20 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		fltext = extensions,
 		namespace = mask,
 		trigger = donecb,
-		opts = opts and opts or {},
-	}, {force_completion = true});
+		opts = opts
+	};
+
+	local lbar = active_display():lbar(browse_cb, lbctx,
+		{force_completion = true, restore = opts.restore});
+
+	lbar.on_cancel = function()
+		local m1, m2 = dispatch_meta();
+		if (m1) then
+			step_up(lbctx);
+		end
+	end
+-- a little hack to be able to add meta + direction handling
+	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
+--		print("meta", sym, lutsym, meta);
+	ed
 end

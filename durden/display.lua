@@ -136,6 +136,8 @@ local function display_load(display)
 				end
 			elseif (key == "shader") then
 				display_shader(display.name, val);
+			elseif (key == "bg") then
+				display.tiler:set_background(val);
 			else
 				warning("unknown stored display setting with key " .. key);
 			end
@@ -156,6 +158,9 @@ function display_manager_shutdown()
 		if (v.shader) then
 			ktbl[pref .. "shader"] = v.shader;
 -- MISSING: pack/unpack shader arguments
+		end
+		if (v.background) then
+			ktbl[pref .. "bg"] = v.background;
 		end
 	end
 -- MISSING: mode settings

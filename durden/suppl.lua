@@ -656,12 +656,10 @@ local function hlp_add_btn(helper, lbl)
 	table.insert(helper, {btn = btn, yofs = yofs, ofs = ofs + btn.w});
 end
 
-local function menu_path_append(ctx, new, lbl)
-	local path = ctx.path;
-	local helper = ctx.helper;
-
-	table.insert(path, new);
-	local res = table.concat(path, "/");
+local function menu_path_append(ctx, new, lbl, meta)
+	table.insert(ctx.path, new);
+	local res = table.concat(ctx.path, "/");
+	table.insert(ctx.meta, meta and meta or {});
 	hlp_add_btn(ctx.helper, lbl);
 
 	if (DEBUGLEVEL > 1) then
@@ -675,6 +673,7 @@ local function menu_path_pop(ctx)
 	local path = ctx.path;
 	local helper = ctx.helper;
 	table.remove(path, #path);
+	local meta = table.remove(ctx.meta, #ctx.meta);
 	local res = table.concat(path, "/");
 	local as = gconfig_get("transition") * 0.5;
 	local hlp = helper[#helper];
@@ -694,7 +693,8 @@ local function menu_path_pop(ctx)
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("active");
 	end
-	return res;
+
+	return res, meta;
 end
 
 local function menu_path_reset(ctx, prefix)
@@ -704,6 +704,7 @@ local function menu_path_reset(ctx, prefix)
 	ctx.helper = {};
 	ctx.helper.add = hlp_add_btn;
 	ctx.path = {};
+	ctx.meta = {};
 	ctx.domain = "";
 end
 
@@ -743,8 +744,9 @@ function menu_path_new()
 	suppl_widget_scan();
 	return {
 		domain = "",
-		helper = {},
-		path = {},
+		helper = {}, -- for managing activated helpers etc.
+		path = {}, -- track namespace path
+		meta = {}, -- for meta-data history (input message, filter settings, pos)
 		force = menu_path_force,
 		reset = menu_path_reset,
 		pop = menu_path_pop,
@@ -757,7 +759,8 @@ local cpath = menu_path_new();
 local function menu_cancel(wm)
 	local m1, m2 = dispatch_meta();
 	if (m1) then
-		launch_menu_path(active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+		local path, ictx = cpath:pop();
+		launch_menu_path(active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
 	else
 		cpath:reset();
 		iostatem_restore();
@@ -789,8 +792,9 @@ local function seth(ctx, instr, done, lastv)
 
 		local m1, m2 = dispatch_meta();
 		if (m1 and not ctx.dangerous) then
+			local path, ictx = cpath:pop();
 			launch_menu_path(
-				active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+				active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
 		else
 			cpath:reset();
 		end
@@ -833,12 +837,12 @@ local function normh(ctx, instr, done, lastv)
 		ctx:handler(instr);
 		local m1, m2 = dispatch_meta();
 
-		print("value dialog over", m1, ctx.dangerous);
 -- 'dangerous' here means that global state etc. can have been changed
 -- in such a way that trying to return to the last active path is unwise
 		if (m1 and not ctx.dangerous) then
+			local path, ictx = cpath:pop();
 			launch_menu_path(
-				active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+				active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
 		else
 			cpath:reset();
 		end
@@ -950,7 +954,7 @@ function suppl_run_value(ctx, mask)
 	return res;
 end
 
-local function lbar_fun(ctx, instr, done, lastv)
+local function lbar_fun(ctx, instr, done, lastv, inp_st)
 	if (done) then
 		local tgt = nil;
 		for k,v in ipairs(ctx.list) do
@@ -967,7 +971,7 @@ local function lbar_fun(ctx, instr, done, lastv)
 -- item for shortcuts. handler_hook needs to be set and either meta+submenu or
 -- just non-submenu for the hook to be called instead of the default handler
 		if (tgt.kind == "action") then
-			cpath:append(tgt.name, tgt.label);
+			cpath:append(tgt.name, tgt.label, inp_st);
 			local m1, m2 = dispatch_meta();
 			if (menu_hook and
 				(tgt.submenu and m1 or not tgt.submenu)) then
@@ -984,8 +988,9 @@ local function lbar_fun(ctx, instr, done, lastv)
 			elseif (tgt.handler) then
 				tgt.handler(ctx.handler, instr, ctx);
 				if (m1) then
+					local path, ictx = cpath:pop();
 					launch_menu_path(
-						active_display(), LAST_ACTIVE_MENU, cpath:pop(), true);
+						active_display(), LAST_ACTIVE_MENU, path, true, ictx);
 				else
 					cpath:reset();
 				end
@@ -1048,12 +1053,8 @@ end
 --  + any data the handler might need
 --
 function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
-	if (ctx == nil or ctx.list == nil or type(ctx.list) ~= "table") then
-		cpath:reset();
-		return;
-	end
-
-	if (#ctx.list == 0) then
+	if (ctx == nil or ctx.list == nil or
+		type(ctx.list) ~= "table" or #ctx.list == 0) then
 		cpath:reset();
 		return;
 	end
@@ -1079,6 +1080,7 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
+	opts.restore = last_bar;
 	opts.label = type(label) == "function" and label() or label;
 	if (opts.domain) then
 		cpath.domain = opts.domain;
@@ -1139,7 +1141,7 @@ end
 -- the visual / input triggers needed, used to provide the same interface for
 -- keybinding as for setup. gfunc should be a menu spawning function.
 --
-function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
+function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
 	if (not gfunc) then
 		return;
 	end
@@ -1156,7 +1158,7 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
 -- just filter first character if it happens to be a separator (legacy),
 -- handles /////// style typos too
 	if (string.sub(pathdescr, 1, 1) == "/") then
-		launch_menu_path(wm, gfunc, string.sub(pathdescr, 2));
+		launch_menu_path(wm, gfunc, string.sub(pathdescr, 2), nil, nil, selstate);
 		return;
 	end
 
@@ -1237,7 +1239,7 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain)
 			launch_menu = i == #elems and old_launch or launch_menu;
 			local menu = type(found.handler) == "function" and
 				found.handler() or found.handler;
-			launch_menu(wm, {list=menu}, found.force, found.hint);
+			launch_menu(wm, {list=menu}, found.force, found.hint, nil, selstate);
 			if (launch_menu == old_launch and not norst) then cpath:force(pll); end
 		else
 -- or revert and activate the handler, with arg if value- action
