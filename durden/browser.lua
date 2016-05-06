@@ -153,5 +153,5 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 -- a little hack to be able to add meta + direction handling
 	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
 --		print("meta", sym, lutsym, meta);
-	ed
+	end
 end
