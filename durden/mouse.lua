@@ -419,6 +419,15 @@ function mouse_setup_native(resimg, hs_x, hs_y)
 end
 
 --
+-- similar to absinput but try and block/mask event and hide/reveal triggers
+--
+function mouse_absinput_masked(x, y, nofwd)
+	mouse_hidemask(true);
+	mouse_absinput(x, y, nofwd);
+	mouse_hidemask(false);
+end
+
+--
 -- Some devices just give absolute movements, convert
 -- these to relative before moving on
 --
@@ -831,6 +840,11 @@ function mouse_addlistener(tbl, events)
 	if (tbl.name == nil) then
 		warning(" -- mouse listener missing identifier -- ");
 		warning( debug.traceback() );
+		tbl.name = "__missing__";
+	end
+
+	if (DEBUGLEVEL > 2) then
+		warning(string.format("handler count: %d ", mouse_handlercount()));
 	end
 
 	for ind, val in ipairs(events) do
@@ -838,8 +852,7 @@ function mouse_addlistener(tbl, events)
 			linear_find(mstate.handlers[val], tbl) == nil and tbl[val] ~= nil) then
 			insert_unique(mstate.handlers[val], tbl);
 		elseif (tbl[val] ~= nil) then
-			warning("mouse_addlistener(), unknown event function: "
-				.. val ..".\n");
+			warning("mouse_addlistener(), unknown event function: " .. val);
 		end
 	end
 end

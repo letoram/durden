@@ -12,6 +12,18 @@ local SIZE_UNIT = 38.4;
 local displays = {
 };
 
+--uncomment to log display events to a separate file, there are so many
+--hw/os/... related issues for plug /unplug edge behaviors that this is
+--needed.
+-- zap_resource("display.log");
+-- local dbgoutp = open_nonblock("display.log", true);
+local dbgoutp = nil;
+local function display_debug(msg)
+	if (dbgoutp) then
+		dbgoutp:write(msg);
+	end
+end
+
 local function get_disp(name)
 	local found, foundi;
 	for k,v in ipairs(displays) do
@@ -35,6 +47,8 @@ local function autohome_spaces(ndisp)
 					tiler.spaces[i].home == ndisp.name) then
 					tiler.spaces[i]:migrate(ndisp.tiler);
 					migrated = true;
+					display_debug(string.format("migrated %s:%d to %s",
+						tiler.name, i, ndisp.name));
 				end
 			end
 		end
@@ -107,8 +121,6 @@ local function display_data(id)
 	return strip(model), strip(serial);
 end
 
-local known_dispids = {};
-
 local function get_ppcm(pw_cm, ph_cm, dw, dh)
 	return (math.sqrt(dw * dw + dh * dh) /
 		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
@@ -167,15 +179,27 @@ function display_manager_shutdown()
 	store_key(ktbl);
 end
 
+local function get_name(id)
+-- first mapping nonsense has previously made it easier (?!)
+-- getting a valid EDID in some cases
+	local name = id == 0 and "default" or "unkn_" .. tostring(id);
+	map_video_display(WORLDID, id, HINT_NONE);
+	local model, serial = display_data(id);
+	if (model) then
+		name = string.split(model, '\r')[1] .. "/" .. serial;
+		display_debug(string.format(
+			"monitor %d resolved to %s, serial %s\n", id, model, serial));
+	end
+	return name;
+end
+
 function display_event_handler(action, id)
 	local ddisp, newh;
 	if (displays.simple) then
 		return;
 	end
 
-	if (displays[1].tiler.debug_console) then
-		displays[1].tiler.debug_console:system_event("display event: " .. action);
-	end
+	display_debug(string.format("id: %d, action: %s\n", id, action));
 
 -- display subsystem and input subsystem are connected when it comes
 -- to platform specific actions e.g. virtual terminal switching, assume
@@ -185,17 +209,7 @@ function display_event_handler(action, id)
 		return;
 	end
 
-	local model, serial = display_data(id);
-	local name = "unkn_" .. tostring(id);
-	if (model) then
-		name = string.split(model, '\r')[1] .. "/" .. serial;
-	end
-
 	if (action == "added") then
--- first mapping nonsense has previously made it easier (?!)
--- getting a valid EDID in some cases
-		map_video_display(WORLDID, id, HINT_NONE);
-
 		local modes = video_displaymodes(id);
 
 		local dw = VRESW;
@@ -221,12 +235,12 @@ function display_event_handler(action, id)
 			map_video_display(displays[1].rt, 0, displays[1].maphint);
 			ddisp = displays[1];
 			ddisp.id = 0;
-			ddisp.name = name;
+			ddisp.name = get_name(0);
 			ddisp.primary = true;
-			shader_setup(ddisp.rt, "display", ddisp.shader, name);
+			shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 			display_load(ddisp);
 		else
-			ddisp, newh = display_add(name, dw, dh, ppcm);
+			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
 			ddisp.id = id;
 			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
 			ddisp.primary = false;
@@ -237,13 +251,11 @@ function display_event_handler(action, id)
 -- etc. but it beats have to cover a number of corner cases / races
 		ddisp.ppcm = ppcm;
 		ddisp.subpx = subpx;
-		known_dispids[id+1] = ddisp;
 
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
 	elseif (action == "removed") then
-		known_dispids[id] = nil;
-		display_remove(name);
+		display_remove(name, id);
 	end
 
 	return newh;
@@ -260,7 +272,7 @@ function display_manager_init()
 		tiler = tiler_create(VRESW, VRESH, {scalef = VPPCM / SIZE_UNIT});
 		w = VRESW,
 		h = VRESH,
-		name = "default",
+		name = get_name(0),
 		id = 0,
 		ppcm = VPPCM,
 	};
@@ -339,8 +351,11 @@ function display_add(name, width, height, ppcm)
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
 	if (found) then
+		display_debug(string.format(
+			"adding display matched known orphan: %s", found.name));
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
+		display_load(found);
 
 	else
 		set_context_attachment(WORLDID);
@@ -355,7 +370,6 @@ function display_add(name, width, height, ppcm)
 		nd.tiler.name = name;
 		nd.ind = #displays;
 		new = nd.tiler;
-		display_load(ddisp);
 
 -- this will rebuild tiler with all its little things attached to rt
 		nd.rt = nd.tiler:set_rendertarget(true);
@@ -474,14 +488,16 @@ function display_migrate_wnd(wnd, dstname)
 end
 
 -- migrate the ownership of a single workspace to another display
-function display_migrate_ws(disp, dstname)
+function display_migrate_ws(tiler, dstname)
 	local dsp2 = get_disp(dstname);
 	if (not dsp2) then
 		return;
 	end
 
-	if (#disp.spaces[disp.space_ind].children > 0) then
-		disp.spaces[disp.space_ind]:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
+	if (#tiler.spaces[tiler.space_ind].children > 0) then
+		tiler.spaces[tiler.space_ind]:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
+		tiler:tile_update();
+		dsp2.tiler:tile_update();
 	end
 end
 
@@ -567,10 +583,6 @@ function active_display(rt, raw)
 	end
 end
 
-function all_displays(ref)
-	return known_dispids;
-end
-
 local function save_active_display()
 	return displays.main;
 end
@@ -580,10 +592,12 @@ end
 -- need "all windows regardless of display".  Don't break- out of this or
 -- things may get the wrong attachment later.
 --
-function all_displays_iter()
+local function aditer(rawdisp)
 	local tbl = {};
 	for i,v in ipairs(displays) do
-		table.insert(tbl, {i, v});
+		if (not v.orphan) then
+			table.insert(tbl, {i, v});
+		end
 	end
 	local c = #tbl;
 	local i = 0;
@@ -593,12 +607,20 @@ function all_displays_iter()
 		i = i + 1;
 		if (i <= c) then
 			switch_active_display(tbl[i][1]);
-			return tbl[i][2].tiler;
+			return rawdisp and tbl[i][2] or tbl[i][2].tiler;
 		else
 			switch_active_display(save);
 			return nil;
 		end
 	end
+end
+
+function all_tilers_iter()
+	return aditer(false);
+end
+
+function all_displays_iter()
+	return aditer(true);
 end
 
 function all_spaces_iter()

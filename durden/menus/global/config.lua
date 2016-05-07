@@ -109,6 +109,7 @@ local durden_bars = {
 		name = "tb_buttons",
 		label = "Titlebar(Buttons)",
 		kind = "action",
+		eval = function() return false; end,
 		submenu = true,
 		handler = tb_buttons
 	}

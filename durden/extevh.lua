@@ -143,7 +143,7 @@ end
 
 defhtbl["ident"] =
 function(wnd, source, stat)
-	print("ident", source, stat);
+--	print("ident", source, stat);
 -- FIXME: update window title unless custom titlebar?
 end
 

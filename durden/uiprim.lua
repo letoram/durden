@@ -47,6 +47,9 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 
 -- just resize / relayout
 	else
+		if (lbl == nil) then
+			return;
+		end
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
 			delete_image(btn.lbl);
 		end

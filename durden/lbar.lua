@@ -41,6 +41,7 @@ end
 local active_lbar = nil;
 local function destroy(wm, ictx)
 	for i,v in ipairs(pending) do
+
 		mouse_droplistener(v);
 	end
 	pending = {};
@@ -393,7 +394,6 @@ local function lbar_label(lbar, lbl)
 		delete_image(lbar.labelid);
 		if (lbl == nil) then
 			lbar.textofs = 0;
-
 			return;
 		end
 	end
@@ -418,6 +418,10 @@ local function lbar_label(lbar, lbl)
 -- relinking / delinking on changes every time
 	move_image(lbar.labelid, pad, pad);
 	lbar.textofs = w + gconfig_get("lbar_spacing") * wm.scalef;
+
+	if (valid_vid(lbar.text)) then
+		move_image(lbar.text, lbar.textofs, pad);
+	end
 	update_caret(lbar);
 end
 
@@ -473,18 +477,21 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	PENDING_FADE = nil;
 	if (active_lbar) then
 		warning("tried to spawn multiple lbars");
+		print(debug.traceback());
 		return;
 	end
 
-	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
-
+	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
+	image_tracetag(bg, "lbar_bg");
 	shader_setup(bg, "ui", "lbarbg");
 	local ph = {
 		name = "bg_cancel",
 		own = function(ctx, vid) return vid == bg; end,
-		click = function() accept_cancel(wm, false); end
-	};
-	mouse_addlistener(ph, {"click"});
+		click = function()
+			accept_cancel(wm, false);
+		end
+	}
+	mouse_addlistener(ph, {"click", "rclick"});
 	table.insert(pending, ph);
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
@@ -540,7 +547,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		cb_ctx = comp_ctx,
 		helpers = {{}, {}, {}},
 		destroy = function()
-			accept_cancel(active_display(), false);
+			accept_cancel(wm, false);
 		end,
 		helper_tags = lbar_helper,
 		cofs = 1,

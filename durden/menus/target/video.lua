@@ -75,12 +75,14 @@ return {
 		name = "screenshot",
 		label = "Screenshot",
 		kind = "value",
-		hint = "(full path)",
+		hint = "(stored in output/)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource(val);
+			return string.len(val) > 0 and not resource("output/" .. val) and
+				not string.match(val, "%.%.");
 		end,
 		handler = function(ctx, val)
-			save_screenshot(val, FORMAT_PNG, active_display().selected.canvas);
+			save_screenshot("output/" .. val, FORMAT_PNG,
+				active_display().selected.canvas);
 		end
 	},
 -- there are tons of controls that could possibly be added here,
@@ -90,17 +92,19 @@ return {
 		name = "record",
 		label = "Record",
 		kind = "value",
-		hint = "(full path)",
+		hint = "(stored in output/)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource(val);
+			return string.len(val) > 0 and not resource("output/" .. val) and
+				not string.match(val, "%.%.");
 		end,
-		eval = function() return string.match(
+		eval = function()
+			return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil and not valid_vid(
 				active_display().selected.in_record);
 		end,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, "recordings/" .. val);
+			wnd.in_record = suppl_setup_rec(wnd, "output/" .. val);
 		end
 	},
 	{

@@ -60,7 +60,7 @@ function grab_shared_function(funname)
 	if (sf[funname]) then
 		return function()
 			if (active_display().selected) then
-				sf[funname](active_display().selected);
+				return sf[funname](active_display().selected);
 			end
 		end
 	else
@@ -151,12 +151,6 @@ local function query_ws(fptr, label)
 	);
 end
 
-sf["reassign_wnd_bywsname"] = function(wnd)
-	query_ws(function(k)
-		wnd:assign_ws(k);
-	end, "Reassign to:");
-end
-
 gf["switch_ws_byname"] = function()
 	query_ws(function(k)
 		active_display():switch_ws(k);
@@ -165,17 +159,16 @@ gf["switch_ws_byname"] = function()
 end
 
 sf["migrate_wnd_bydspname"] = function()
-	local dsp = displays_alive(true);
 	local res = {};
 	local wnd = active_display().selected;
 
-	for k,v in ipairs(dsp) do
+	for d in all_displays_iter() do
 		table.insert(res, {
-			name = "migrate_" .. tostring(k),
-			label = v,
+			name = "migrate_" .. hexenc(d.name),
+			label = d.name,
 			kind = "action",
 			handler = function()
-				display_migrate_wnd(wnd, v);
+				display_migrate_wnd(wnd, d.name);
 			end
 		});
 	end
@@ -561,6 +554,18 @@ gf["mode_horizontal"] = function()
 		wspace.wm:tile_update();
 	end
 end
+gf["tiletog"] = function()
+	local wspace = active_display().spaces[active_display().space_ind];
+	if (wspace) then
+		if (wspace.mode ~= "tile") then
+			wspace:tile();
+		else
+			wspace.insert = wspace.insert == "h" and "v" or "h";
+		end
+		wspace.wm:tile_update();
+	end
+end
+
 gf["tabtile"] = function()
 	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
@@ -575,6 +580,20 @@ gf["float"] = function()
 	local wspace = active_display().spaces[active_display().space_ind];
 	if (wspace) then
 		wspace:float();
+	end
+end
+
+gf["tab"] = function()
+	local wspace = active_display().spaces[active_display().space_ind];
+	if (wspace) then
+		wspace:tab();
+	end
+end
+
+gf["vtab"] = function()
+	local wspace = active_display().spaces[active_display().space_ind];
+	if (wspace) then
+		wspace:vtab();
 	end
 end
 
