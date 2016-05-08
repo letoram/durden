@@ -43,15 +43,14 @@ function dispatch_reset(save)
 	tbl = {};
 	tbl["m1_RETURN"] = "spawn_terminal";
 	tbl["m1_d"] = "!open/target";
+	tbl["m1_c"] = "!display/cycle";
 	tbl["m1_g"] = "global_actions";
-	tbl["m1_t"] = "target_actions";
+	tbl["m1_h"] = "target_actions";
 	tbl["m1_RIGHT"] = "step_right";
 	tbl["m1_UP"] = "step_up";
 	tbl["m1_LEFT"] = "step_left";
 	tbl["m1_DOWN"] = "step_down";
 	tbl["m1_m2_d"] = "destroy";
-	tbl["m1_m2_v"] = "mode_vertical";
-	tbl["m1_m2_h"] = "mode_horizontal";
 	tbl["m1_v"] = "clipboard_paste";
 	tbl["m1_m2_LEFT"] = "shrink_h";
 	tbl["m1_m2_RIGHT"] = "grow_h";
@@ -61,10 +60,11 @@ function dispatch_reset(save)
 	tbl["m1_m2_j"] = "swap_up";
 	tbl["m1_m2_k"] = "swap_down";
 	tbl["m1_m2_l"] = "swap_right";
-	tbl["m1_f"] = "fullscreen";
-	tbl["m1_e"] = "tabtile";
-	tbl["m1_r"] = "vtabtile";
-	tbl["m1_m2_f"] = "float";
+	tbl["m1_m2_TAB"] = "tiletog";
+	tbl["m1_t"] = "tab";
+	tbl["m1_m2_t"] = "vtab";
+	tbl["m1_r"] = "fullscreen";
+	tbl["m1_m2_y"] = "float";
 	tbl["m1_m"] = "mergecollapse";
 	tbl["m2_LEFT"] = "move_nx";
 	tbl["m2_RIGHT"] = "move_px";
@@ -194,9 +194,9 @@ function dispatch_meta()
 	return meta_1_state, meta_2_state;
 end
 
-function dispatch_meta_reset()
-	meta_1_state = false;
-	meta_2_state = false;
+function dispatch_meta_reset(m1, m2)
+	meta_1_state = m1 and m1 or false;
+	meta_2_state = m2 and m2 or false;
 end
 
 local function track_label(iotbl, keysym, hook_handler)

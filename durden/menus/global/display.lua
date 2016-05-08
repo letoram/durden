@@ -197,14 +197,14 @@ local function query_displays()
 			display_all_mode(DISPLAY_ON);
 		end
 	});
-	for k,v in pairs(all_displays()) do
-		if (string.len(v.name) > 0) then
+	for d in all_displays_iter() do
+		if (string.len(d.name) > 0) then
 			table.insert(res, {
-				name = "disp_" .. tostring(k),
-				label = v.name,
+				name = "disp_" .. hexenc(d.name),
+				label = d.name,
 				kind = "action",
 				submenu = true,
-				handler = function() return gen_disp_menu(v); end
+				handler = function() return gen_disp_menu(d); end
 			});
 		end
 	end
@@ -286,17 +286,17 @@ local region_menu = {
 		name = "record",
 		label = "Record",
 		kind = "value",
-		hint = "(full path)",
+		hint = "(stored in output/)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource("recordings/" .. val) and
-				not string.match(val, "..");
+			return string.len(val) > 0 and not resource("output/" .. val) and
+				not string.match(val, "%.%.");
 		end,
 		eval = function() return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil;
 		end,
 		handler =
 		function(ctx, val)
-			record_handler("recordings/" .. val);
+			record_handler("output/" .. val);
 		end
 	}
 };

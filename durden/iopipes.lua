@@ -240,7 +240,7 @@ local function poll_status_channel()
 	local lst = status_parse(line);
 
 	local ind = 1;
-	for disp in all_displays_iter() do
+	for disp in all_tilers_iter() do
 		if (lst[ind]) then
 			for i=#lst[ind],1,-1 do
 				local di = #lst[ind]-i+1;

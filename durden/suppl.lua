@@ -149,7 +149,6 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
-
 function table.remove_match(tbl, match)
 	if (tbl == nil) then
 		return;

@@ -35,10 +35,24 @@ local function step_up(ctx)
 		ctx.namespace, ctx.trigger, 0, {restore = octx});
 end
 
+local old_timer;
+local function drop_timer()
+	_G[APPLID .. "_clock_pulse"] = old_timer;
+	old_timer = nil;
+end
+
+local function browser_timer(ctx)
+	ctx.counter = ctx.counter + 1;
+end
+
 local function browse_cb(ctx, instr, done, lastv, inpctx)
+	ctx.counter = 0;
+
 	if (done) then
+		drop_timer();
 		if (instr == "..") then
 			step_up(ctx);
+			return;
 		elseif (instr == "/") then
 			browser_path:reset();
 			browse_file(ctx.initial, ctx.fltext, ctx.namespace, ctx.trigger, 0);
@@ -50,6 +64,10 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 		local r, v = resource(pn, ctx.namespace);
 		if (v == "directory") then
 			table.insert(ctx.path, instr);
+-- if we filtered down to only one entry and .. then just reset to the path
+			if (#lastv == 2) then
+				inpctx = {};
+			end
 			browser_path:append(instr, instr, inpctx);
 			browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 		else
@@ -123,6 +141,14 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		if (not opts.restore) then
 			opts.restore = last_rest;
 		end
+		local tp = {};
+		if (#browser_path.path ~= #pathtbl) then
+			local tp = {};
+			for i=1,#pathtbl do
+				table.insert(tp, {pathtbl[i], pathtbl[i]});
+			end
+			browser_path:force(tp);
+		end
 	end
 
 	local dup = {};
@@ -134,6 +160,7 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		path = pathtbl,
 		initial = dup,
 		paths = {},
+		counter = 0,
 		minlen = tblmin ~= nil and tblmin or #pathtbl,
 		fltext = extensions,
 		namespace = mask,
@@ -145,13 +172,25 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		{force_completion = true, restore = opts.restore});
 
 	lbar.on_cancel = function()
+		browser_path:reset();
+		drop_timer();
 		local m1, m2 = dispatch_meta();
 		if (m1) then
 			step_up(lbctx);
 		end
 	end
--- a little hack to be able to add meta + direction handling
+
+-- a little hack to be able to add meta + direction handling,
+-- this is to be used for filter (prefix, regex) and preview mode switching
+-- (simple/advance) and for playlist management (add- to queue)
 	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
---		print("meta", sym, lutsym, meta);
 	end
+
+-- need to hook a timer to have some delay before switching to preview
+	old_timer = _G[APPLID .. "_clock_pulse"];
+	_G[APPLID .. "_clock_pulse"] = function(...)
+		browser_timer(lbctx); old_timer(...);
+	end
+
+	lbar:set_label("kukas");
 end

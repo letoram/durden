@@ -13,11 +13,6 @@ local argv_cmds = {};
 
 -- track custom buttons that should be added to each window
 local tbar_btns = {
-	{
-		dir = "left",
-		cmd = "#/window/destroy",
-		lbl = string.char(0xe2) .. string.char(0x9c) .. string.char(0x96)
-	}
 };
 
 -- count initial delay before idle shutdown
@@ -204,11 +199,11 @@ update_default_font = function(key, val)
 	gconfig_set("lbar_sz", fonth + gconfig_get("lbar_tpad") + gconfig_get("lbar_bpad"));
 	gconfig_set("lbar_caret_h", fonth);
 
-	if (not all_displays_iter) then
+	if (not all_tilers_iter) then
 		return;
 	end
 
-	for disp in all_displays_iter() do
+	for disp in all_tilers_iter() do
 		disp.font_sf = rfhf;
 		disp:update_scalef(disp.scalef);
 	end
@@ -249,6 +244,16 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 end
 
+function durden_tbar_buttons(dir, cmd, lbl)
+	if (not dir) then
+		tbar_btns = {};
+	else
+		table.insert(tbar_btns, {
+			dir = dir, cmd = cmd, lbl = lbl
+		});
+	end
+end
+
 -- tiler does not automatically add any buttons to the statusbar, or take
 -- other tracking actions based on window creation so we do that here
 wnd_create_handler = function(wm, wnd)
@@ -262,7 +267,7 @@ wnd_create_handler = function(wm, wnd)
 					local old_sel = wm.selected;
 					wnd:select();
 					dispatch_symbol(v.cmd);
-					if (old_sel.select) then
+					if (old_sel and old_sel.select) then
 						old_sel:select();
 					end
 				end,

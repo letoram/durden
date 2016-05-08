@@ -29,7 +29,7 @@ end
 
 local function idle_restore()
 	durden_input = durden_normal_input;
-	for d in all_displays_iter() do
+	for d in all_tilers_iter() do
 		show_image(d.anchor);
 	end
 	active_display():set_input_lock();

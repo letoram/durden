@@ -31,6 +31,83 @@ local swap_menu = {
 	},
 };
 
+local moverz_menu = {
+{
+	name = "grow_shrink_h",
+	label = "Resize(H)",
+	kind = "value",
+	validator = gen_valid_num(-0.5, 0.5),
+	hint = "(step: -0.5 .. 0.5)",
+	handler = function(ctx, val)
+		local num = tonumber(val);
+		local wnd = active_display().selected;
+		wnd:grow(val, 0);
+	end
+},
+{
+	name = "grow_shrink_v",
+	label = "Resize(V)",
+	kind = "value",
+	validator = gen_valid_num(-0.5, 0.5),
+	hint = "(-0.5 .. 0.5)",
+	handler = function(ctx, val)
+		local num = tonumber(val);
+		local wnd = active_display().selected;
+		wnd:grow(0, val);
+	end
+},
+{
+	name = "maxtog",
+	label = "Toggle Maximize",
+	kind = "action",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	handler = function()
+		active_display().selected:toggle_maximize();
+	end
+},
+{
+	name = "move_h",
+	label = "Move(H)",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	validator = function(val) return tonumber(val) ~= nil; end,
+	handler = function(ctx, val)
+		active_display().selected:move(tonumber(val), 0, true);
+	end
+},
+{
+	name = "move_v",
+	label = "Move(V)",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	validator = function(val) return tonumber(val) ~= nil; end,
+	handler = function(ctx, val)
+		active_display().selected:move(0, tonumber(val), true);
+	end
+}
+};
+
+local function gen_wsmove(wnd)
+	local res = {};
+	for k,v in pairs(active_display().spaces) do
+		table.insert(res, {
+			name = "move_space_" .. tostring(k),
+			label = v.label and v.label or k,
+			kind = "action",
+			handler = function()
+				wnd:assign_ws(k);
+			end
+		});
+	end
+	return res;
+end
+
 return {
 	{
 		name = "tag",
@@ -55,7 +132,11 @@ return {
 		name = "reassign_name",
 		label = "Reassign",
 		kind = "action",
-		handler = grab_shared_function("reassign_wnd_bywsname");
+		submenu = true,
+		eval = function() return #gen_wsmove(active_display().selected) > 0; end,
+		handler = function()
+			return gen_wsmove(active_display().selected);
+		end
 	},
 	{
 		name = "canvas_to_bg",
@@ -100,7 +181,7 @@ return {
 		end
 	},
 	{
-		name = "migrate_display",
+		name = "migrate",
 		label = "Migrate",
 		kind = "action",
 		submenu = true,
@@ -118,51 +199,10 @@ return {
 		end
 	},
 	{
-		name = "grow_shrink_h",
-		label = "Resize(H)",
-		kind = "value",
-		validator = gen_valid_num(-0.5, 0.5),
-		hint = "(-0.5 .. 0.5)",
-		handler = function(ctx, val)
-			local num = tonumber(val);
-			local wnd = active_display().selected;
-			wnd:grow(val, 0);
-		end
-	},
-	{
-		name = "grow_shrink_v",
-		label = "Resize(V)",
-		kind = "value",
-		validator = gen_valid_num(-0.5, 0.5),
-		hint = "(-0.5 .. 0.5)",
-		handler = function(ctx, val)
-			local num = tonumber(val);
-			local wnd = active_display().selected;
-			wnd:grow(0, val);
-		end
-	},
-	{
-		name = "move_h",
-		label = "Move(H)",
-		eval = function()
-			return active_display().selected.space.mode == "float";
-		end,
-		kind = "value",
-		validator = function(val) return tonumber(val) ~= nil; end,
-		handler = function(ctx, val)
-			active_display().selected:move(tonumber(val), 0, true);
-		end
-	},
-	{
-		name = "move_v",
-		label = "Move(V)",
-		eval = function()
-			return active_display().selected.space.mode == "float";
-		end,
-		kind = "value",
-		validator = function(val) return tonumber(val) ~= nil; end,
-		handler = function(ctx, val)
-			active_display().selected:move(0, tonumber(val), true);
-		end
+		name = "moverz",
+		label = "Move/Resize",
+		kind = "action",
+		handler = moverz_menu,
+		submenu = true
 	}
 };

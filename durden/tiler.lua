@@ -271,7 +271,29 @@ local function tiler_statusbar_build(wm)
 
 -- add_button(left, pretile, label etc.)
 	wm.sbar_ws["left"] = wm.statusbar:add_button("left", "sbar_item_bg",
-		"sbar_item", "mode", pad, wm.font_resfn, nil, sbsz);
+		"sbar_item", "mode", pad, wm.font_resfn, nil, sbsz,
+		{
+			click = function()
+				if (not wm.spaces[wm.space_ind].in_float) then
+					wm.spaces[wm.space_ind]:float();
+				else
+-- NOTE: this breaks the decoupling between tiler and rest of durden, and maybe
+-- this mouse-handler management hook should be configurable elsewhere
+					local fun = grab_global_function("global_actions");
+					if (fun) then
+						fun();
+					end
+				end
+			end,
+			rclick = function()
+				if (wm.spaces[wm.space_ind].in_float) then
+					local fun = grab_shared_function("target_actions");
+					if (fun) then
+						fun();
+					end
+				end
+			end
+		});
 
 -- pre-allocate buffer slots, but keep hidden
 	for i=1,10 do
@@ -376,13 +398,12 @@ local function wnd_select(wnd, source)
 			px = wnd.mouse[1];
 			py = wnd.mouse[2];
 		end
-		mouse_hidemask(true);
-		mouse_absinput(props.x + px * props.width, props.y + py * props.height);
-		mouse_hidemask(false);
+		mouse_absinput_masked(
+			props.x + px * props.width, props.y + py * props.height, true);
 		mouse_moved = true;
 	end
-	mouse_state().last_hover = CLOCK;
-	mouse_state().hover_ign = false;
+	ms.last_hover = CLOCK;
+	ms.hover_ign = false;
 
 	if (wnd.mouse_lock) then
 		mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
@@ -484,13 +505,11 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(oldbg) or not image_matchstorage(oldbg, bg)) then
-				print("activate different", negdir, valid_vid(oldbg), oldbg, bg);
 				blend_image(bg, 0.0, htime);
 				blend_image(bg, 1.0, htime);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
-				print("activate same", negdir);
 				show_image(bg);
 				image_mask_clear(bg, MASK_POSITION);
 				image_mask_clear(bg, MASK_OPACITY);
@@ -564,6 +583,7 @@ end
 
 -- migrate window means:
 -- copy valuable properties, destroy then "add", including tiler.windows
+--
 local function workspace_migrate(ws, newt, disptbl)
 	local oldt = ws.wm;
 	if (oldt == display) then
@@ -2343,7 +2363,7 @@ local function tiler_switchws(wm, ind)
 -- ws is already dead so we need an intermediate
 	local oldbg = nil;
 	local nextbg = nextsp.background and nextsp.background or wm.background_id;
-	if (valid_vid(nextsp.background)) then
+	if (valid_vid(nextsp.background) and valid_vid(cursp.background)) then
 		oldbg = null_surface(1, 1);
 		image_sharestorage(cursp.background, oldbg);
 	end
@@ -2640,9 +2660,7 @@ local function tiler_activate(wm)
 	if (wm.deactivated) then
 		local deact = wm.deactivated;
 		wm.deactivated = nil;
-		mouse_hidemask(true);
-		mouse_absinput(deact.mx, deact.my, true);
-		mouse_hidemask(false);
+		mouse_absinput_masked(deact.mx, deact.my, true);
 		if (deact.wnd) then
 			deact.wnd:select();
 		end
@@ -2674,13 +2692,11 @@ local function recalc_fsz(wm)
 
 -- since ascent etc. may be different at different sizes, render a test line
 -- and set the "per tiler" shift here
-
 	if (int > 0) then
 		wm.font_delta = "\\f,+" .. tostring(int);
 	elseif (int <= 0) then
 		wm.font_delta = "\\f," .. tostring(int);
 	end
-
 end
 
 -- the tiler is now on a display with a new scale factor, this means redoing
