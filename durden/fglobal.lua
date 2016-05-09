@@ -473,8 +473,6 @@ gf["mouse_sensitivity"] = function(val)
 end
 
 local function allgain(val)
-	print(debug.traceback());
-	print(val, type(val));
 	audio_gain(BADID, val);
 	for wnd in all_windows() do
 		if (wnd.source_audio) then

@@ -105,6 +105,13 @@ end
 -- ignore scrolling and tracking details.
 --
 -- Set can contain the set of strings or a table of [colstr, selcolstr, text]
+-- This is incredibly wasteful in the sense that the list, cursor and handlers
+-- are reset and rebuilt- on every change. Should split out the cursor stepping
+-- and callback for "just change selection" scenario, and verify that set ~=
+-- last set. This dates back to the poor design of lbar/completion_cb. It's only
+-- saving grace is that 'n' is constrained by wm.width and label sizes so in
+-- 1..~20 or so- range.
+--
 local function update_completion_set(wm, ctx, set)
 	if (not set) then
 		return;
@@ -167,6 +174,12 @@ local function update_completion_set(wm, ctx, set)
 
 	ctx.clim = #set;
 
+	local slide_window = function(i)
+		ctx.clastc = i - ctx.inp.cofs;
+		ctx.inp.cofs = ctx.inp.csel;
+		return update_completion_set(wm, ctx, set);
+	end
+
 	for i=ctx.inp.cofs,#set do
 		local msgs = {};
 		local str;
@@ -185,6 +198,8 @@ local function update_completion_set(wm, ctx, set)
 		local crop = false;
 
 -- special case, w is too large to fit, just crop to acceptable length
+-- maybe improve this by adding support for a shortening, have full-name
+-- in some cursor relative hint
 		if (w > 0.3 * ctxw) then
 			w = math.floor(0.3 * ctxw);
 			crop = true;
@@ -193,12 +208,11 @@ local function update_completion_set(wm, ctx, set)
 -- outside display? show ..., if that's our index, slide page
 		if (i ~= ctx.inp.cofs and ofs + w > ctxw - 10) then
 			str = "..."; -- string.char(0xe2, 0x86, 0x92);
-			if (i == ctx.inp.csel) then
-				ctx.clastc = i - ctx.inp.cofs;
-				ctx.inp.cofs = ctx.inp.csel;
-				return update_completion_set(wm, ctx, set);
-			end
 			exit = true;
+
+			if (i == ctx.inp.csel) then
+				return slide_window(i);
+			end
 		end
 
 		local txt, lines, txt_w, txt_h, asc = render_text(
@@ -222,7 +236,8 @@ local function update_completion_set(wm, ctx, set)
 			crop_image(txt, w, h);
 		end
 
--- allow (but sneer!) mouse for selection and activation
+-- allow (but sneer!) mouse for selection and activation, missing
+-- an entry to handle "last-page back to first" though
 		local mh = {
 			name = "lbar_labelsel",
 			own = function(ctx, vid) return vid == txt; end,
@@ -232,7 +247,11 @@ local function update_completion_set(wm, ctx, set)
 				move_image(ctx.ccursor, mctx.mofs, 0);
 			end,
 			click = function()
-				accept_cancel(wm, true);
+				if (exit) then
+					return slide_window(i);
+				else
+					accept_cancel(wm, true);
+				end
 			end,
 -- need copies of these into returned context for motion handler
 			mofs = ofs
@@ -245,6 +264,9 @@ local function update_completion_set(wm, ctx, set)
 		if (i == ctx.inp.csel) then
 			move_image(ctx.ccursor, ofs, 0);
 			resize_image(ctx.ccursor, w, lbarsz);
+			if (wm.input_ctx.on_step) then
+				wm.input_ctx.on_step(ctx, i, set, ctx.text_anchor, ofs + step);
+			end
 		end
 
 		move_image(txt, ofs, pad);

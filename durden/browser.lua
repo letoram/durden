@@ -180,10 +180,21 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		end
 	end
 
+	lbar.on_step = function(ctx, index, lastset, anchor, xofs)
+--		print("cursor stepped", index, lastset, anchor, xofs);
+	end
+
 -- a little hack to be able to add meta + direction handling,
 -- this is to be used for filter (prefix, regex) and preview mode switching
 -- (simple/advance) and for playlist management (add- to queue)
 	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
+		if (sym == "UP") then
+			if (not preview_toggle) then
+			end
+			preview_toggle = true;
+		elseif (sym == "DOWN") then
+			preview_toggle = false;
+		end
 	end
 
 -- need to hook a timer to have some delay before switching to preview
@@ -191,6 +202,4 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	_G[APPLID .. "_clock_pulse"] = function(...)
 		browser_timer(lbctx); old_timer(...);
 	end
-
-	lbar:set_label("kukas");
 end

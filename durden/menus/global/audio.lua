@@ -16,7 +16,6 @@ return {
 			return tostring(gconfig_get("global_gain"));
 		end,
 		handler = function(ctx, val)
-			print("set global gain:", ctx, val);
 			grab_global_function("global_gain")(tonumber(val));
 		end
 	},
