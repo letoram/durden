@@ -169,7 +169,6 @@ local kbd_menu = {
 local function mouse_lockfun(rx, ry, x, y, wnd)
 	if (wnd) then
 		wnd.mousemotion({tag = wnd}, x, y);
-		print(x, y);
 	end
 end
 
