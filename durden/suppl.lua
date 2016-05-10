@@ -194,6 +194,14 @@ function table.find_i(table, r)
 	end
 end
 
+function table.find_key_i(table, field, r)
+	for k,v in ipairs(table) do
+		if (v[field] == r) then
+			return k;
+		end
+	end
+end
+
 function table.insert_unique_i(tbl, i, v)
 	if (not table.find_i(tbl, v)) then
 		table.insert(tbl, i, v);
@@ -648,7 +656,7 @@ local function hlp_add_btn(helper, lbl)
 	local yofs = (tileh + 1) * dir;
 	move_image(btn.bg, ofs, yofs);
 	move_image(btn.bg, ofs, yp); -- switch, lbar height
-	nudge_image(btn.bg, 0, yofs, gconfig_get("transition") * 0.5, INTERP_SINE);
+	nudge_image(btn.bg, 0, yofs, gconfig_get("animation") * 0.5, INTERP_SINE);
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("inactive");
 	end
@@ -674,7 +682,7 @@ local function menu_path_pop(ctx)
 	table.remove(path, #path);
 	local meta = table.remove(ctx.meta, #ctx.meta);
 	local res = table.concat(path, "/");
-	local as = gconfig_get("transition") * 0.5;
+	local as = gconfig_get("animation") * 0.5;
 	local hlp = helper[#helper];
 	if (not hlp) then
 		return res;

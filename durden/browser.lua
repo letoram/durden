@@ -41,8 +41,64 @@ local function drop_timer()
 	old_timer = nil;
 end
 
+-- preview handler and browse timer works in tandem,
+-- preview handler is activated on new selection which checks the
+-- set for an available preview function. It stores needed metadata
+-- in a shared context that is activated / reset in the tick counter.
+-- this is done in order to have a delay (as load+decode is costly
+-- and shouldn't happen immediately on new selection).
+local function preview_handler(ctx, index, lastset, anchor, xofs, basew, mh)
+	if (index == nil or index == -1) then
+		if (ctx.cb_ctx.in_preview) then
+			for k,v in ipairs(ctx.cb_ctx.in_preview) do
+				v:destroy();
+			end
+			ctx.cb_ctx.in_preview = {};
+		end
+		return;
+	end
+
+-- this is also called when the active set has changed, so filter
+-- and reset / reload, any source material caching is up to the preview-h
+	if (ctx.cb_ctx.preview and ctx.cb_ctx.preview.used) then
+		if (#lastset ~= ctx.cb_ctx.preview.count) then
+			for k,v in ipairs(ctx.cb_ctx.in_preview) do
+				v:destroy();
+			end
+			ctx.cb_ctx.in_preview = {};
+		end
+	end
+
+	if (ctx.cb_ctx.in_preview and lastset[index] and
+		type(lastset[index]) == "table" and lastset[index][4]) then
+			ctx.cb_ctx.preview = {
+				trigger = lastset[index][4],
+				xofs = xofs,
+				anchor = anchor,
+				basew = basew,
+				name = lastset[index][3],
+				count = #lastset,
+				mh = mh
+			};
+	end
+end
+
 local function browser_timer(ctx)
 	ctx.counter = ctx.counter + 1;
+	if (ctx.counter > 10 and ctx.preview and not ctx.preview.used) then
+		local res = ctx.preview.trigger(table.concat(ctx.path, "/"),
+			ctx.preview.name,
+			ctx.namespace,
+			ctx.preview.anchor,
+			ctx.preview.xofs,
+			ctx.preview.basew,
+			ctx.preview.mh
+		);
+		ctx.preview.used = true;
+		if (res) then
+			table.insert(ctx.in_preview, res);
+		end
+	end
 end
 
 local function browse_cb(ctx, instr, done, lastv, inpctx)
@@ -75,13 +131,14 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 			if (type(fn) == "function") then
 				fn(pn, ctx.path);
 			elseif (type(fn) == "table") then
-				fn[1](pn, ctx.path);
+				fn.run(pn, ctx.path);
 			elseif (ctx.trigger) then
 				ctx.trigger(pn, ctx.path);
 			end
 			local m1, m2 = dispatch_meta();
 			if (m1) then
-				browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0);
+				browse_file(ctx.path, ctx.fltext, ctx.namespace, ctx.trigger, 0,
+					{restore = inpctx});
 			else
 				browser_path:reset();
 			end
@@ -120,7 +177,7 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 				if (ext) then
 -- if extension comes with color hint, use that
 					if (type(ext) == "table") then
-						table.insert(res, {ext[2], ext[3], v});
+						table.insert(res, {ext.col, ext.selcol, v, ext.preview});
 					else
 						table.insert(res, v);
 					end
@@ -172,6 +229,9 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		{force_completion = true, restore = opts.restore});
 
 	lbar.on_cancel = function()
+		if (valid_vid(lbctx.preview_del)) then
+			delete_image(lbctx.preview_del);
+		end
 		browser_path:reset();
 		drop_timer();
 		local m1, m2 = dispatch_meta();
@@ -180,20 +240,28 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		end
 	end
 
-	lbar.on_step = function(ctx, index, lastset, anchor, xofs)
---		print("cursor stepped", index, lastset, anchor, xofs);
+	lbar.on_step = preview_handler;
+	if (gconfig_get("preview_mode") == "auto") then
+		lbctx.in_preview = {};
 	end
 
 -- a little hack to be able to add meta + direction handling,
 -- this is to be used for filter (prefix, regex) and preview mode switching
 -- (simple/advance) and for playlist management (add- to queue)
 	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
-		if (sym == "UP") then
-			if (not preview_toggle) then
+		if (sym == SYSTEM_KEYS["caret_right"]) then
+			if (not lbctx.in_preview) then
+				lbctx.in_preview = {};
 			end
-			preview_toggle = true;
-		elseif (sym == "DOWN") then
-			preview_toggle = false;
+			return true;
+		elseif (sym == SYSTEM_KEYS["caret_left"]) then
+			if (lbctx.in_preview) then
+				for i,v in ipairs(lbctx.in_preview) do
+					v:destroy();
+				end
+				lbctx.in_preview = nil;
+			end
+			return true;
 		end
 	end
 

@@ -39,6 +39,9 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
+-- right now, the options are 'none' and 'auto'
+	preview_mode = "auto",
+
 -- default window dimensions (relative tiler size) for windows
 -- created in float mode with unknown starting size
 	float_defw = 0.3,
@@ -72,6 +75,7 @@ local defaults = {
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
+	animation = 10,
 
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
@@ -136,7 +140,6 @@ local defaults = {
 	lbar_bpad = 2,
 	lbar_spacing = 10,
 	lbar_sz = 12, -- dynamically recalculated on font changes
-	lbar_transition = 10,
 	lbar_bg = {0x33, 0x33, 0x33},
 	lbar_textstr = "\\#cccccc ",
 	lbar_alertstr = "\\#ff0000 ",

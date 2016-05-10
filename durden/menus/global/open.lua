@@ -84,21 +84,97 @@ local function get_remstr(val)
 	return base;
 end
 
-local function imgwnd(fn)
-	load_image_asynch(fn, function(src, stat)
-		if (stat.kind == "loaded") then
-			local wnd = active_display():add_window(src, {scalemode = "stretch"});
-			string.gsub(fn, "\\", "\\\\");
-			wnd:set_title("image:" .. fn);
-		elseif (valid_vid(src)) then
-			delete_image(src);
-			active_display():message("couldn't load " .. fn);
-		end
-	end);
+local function setup_wnd(vid, title, scalemode)
+	local wnd = active_display():add_window(vid, {scalemode = scalemode});
+	if (wnd) then
+		wnd:set_title(title);
+	end
 end
 
-local function dechnd(source, status)
-	print("status.kind:", status.kind);
+local prev_cache = {};
+local function imgwnd(fn, pctx)
+	print(prev_cache[fn]);
+	if (pctx and valid_vid(pctx.vid)) then
+-- if finished, just take new window and take ownership of vid
+-- otherwise update vid with new handler that spawns window on activation
+		local st = image_state(pctx.vid);
+		if (st == "asynchronous state") then
+			pctx.spawn = pctx.vid;
+			pctx.title = "image:" .. fn;
+			pctx.vid = BADID;
+		else
+			pctx.vid = BADID;
+		end
+	else
+		load_image_asynch(fn, function(src, stat)
+			if (stat.kind == "loaded") then
+				setup_wnd(src, "image:" .. fn, "stretch");
+			elseif (valid_vid(src)) then
+				delete_image(src);
+				active_display():message("couldn't load " .. fn);
+			end
+		end);
+	end
+end
+
+local function setup_prev(src, anchor, xofs, basew)
+	local time = gconfig_get("animation");
+	link_image(src, anchor);
+	resize_image(src, basew, 0);
+	local props = image_surface_properties(src);
+	resize_image(src, 8, 8);
+	move_image(src, xofs + basew * 0.5, 0);
+	resize_image(src, basew, 0, time);
+	blend_image(src, 1.0, time);
+	nudge_image(src, -basew * 0.5, -props.height, time);
+	image_inherit_order(src, true);
+end
+
+local function imgprev(path, name, space, anchor, xofs, basew, mh)
+-- cache loaded paths, on trigger we know we are "focused" and
+-- should be a bit larger
+	local fn = path .. "/" .. name;
+	if (not resource(fn, space)) then
+		return;
+	end
+
+	for k,v in pairs(prev_cache) do
+		if (valid_vid(v)) then
+			blend_image(v, k == fn and 1.0 or 0.3, gconfig_get("animation"));
+		end
+	end
+
+	if (prev_cache[fn]) then
+		return;
+	end
+
+	local vid = load_image_asynch(fn,
+	function(src, stat)
+		if (stat.kind == "loaded") then
+			if (stat.spawn) then
+				spawn_wnd(stat);
+			else
+				setup_prev(src, anchor, xofs, basew);
+				if (mh) then mh.child = src; end
+			end
+		else
+-- death is easy, destroy will be called by lbar
+		end
+	end);
+	prev_cache[fn] = vid;
+	return {
+		vid = vid,
+		name = name,
+		destroy = function(ctx)
+			prev_cache[fn] = nil;
+			if (valid_vid(ctx.vid)) then
+				delete_image(vid);
+			end
+		end,
+		activate = function(ctx)
+			imgwnd(fn, ctx);
+		end
+	};
 end
 
 -- track lastpath so we can meta-launch browse internal and resume old path
@@ -161,15 +237,12 @@ local function target_submenu()
 end
 
 local function browse_internal()
-	local imghnd = {
-		imgwnd, HC_PALETTE[1], HC_PALETTE[1]
-	};
-	local audhnd = {
-		decwnd, HC_PALETTE[2], HC_PALETTE[2]
-	};
-	local dechnd = {
-		decwnd, HC_PALETTE[3], HC_PALETTE[3]
-	};
+	local imghnd = { run = imgwnd, col = HC_PALETTE[1],
+		selcol = HC_PALETTE[1], preview = imgprev };
+	local audhnd = { run = decwnd, col = HC_PALETTE[2],
+		selcol = HC_PALETTE[2] };
+	local dechnd = { run = decwnd, col = HC_PALETTE[3],
+		selcol = HC_PALETTE[3] };
 
 -- decode- frameserver doesn't have a way to query type and extension for
 -- a specific resource, and running probes on all files in a folder with
@@ -180,7 +253,11 @@ local function browse_internal()
 		flv = dechnd
 	};
 
-	browse_file(nil, ffmts, SHARED_RESOURCE, nil);
+	local opts = {
+		auto_preview = (gconfig_get("preview_mode") == "auto")
+	};
+
+	browse_file(nil, ffmts, SHARED_RESOURCE, nil, nil, opts);
 end
 
 register_global("spawn_terminal", spawn_terminal);

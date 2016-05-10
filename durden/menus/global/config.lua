@@ -191,6 +191,17 @@ local durden_visual = {
 		kind = "value",
 		hint = "(1..100)",
 		validator = gen_valid_num(1, 100),
+		initial = function() return tostring(gconfig_get("animation")); end,
+		handler = function(ctx, val)
+			gconfig_set("animation", tonumber(val));
+		end
+	},
+	{
+		name = "trans_speed",
+		label = "Transition Speed",
+		kind = "value",
+		hint = "(1..100)",
+		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("transition")); end,
 		handler = function(ctx, val)
 			gconfig_set("transition", tonumber(val));

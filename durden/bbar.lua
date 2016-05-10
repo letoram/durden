@@ -11,7 +11,7 @@ PENDING_FADE = nil;
 local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm:set_input_lock();
-	local time = gconfig_get("lbar_transition");
+	local time = gconfig_get("transition");
 	local bar = wm.input_ctx.bar;
 	local anchor = wm.input_ctx.anchor;
 	blend_image(bar, 0.0, time, INTERP_EXPINOUT);
@@ -165,7 +165,7 @@ local function setup_vids(wm, ctx, lbsz, time)
 
 	ctx.bar = bar;
 	ctx.progress = progress;
-	local time = gconfig_get("lbar_transition");
+	local time = gconfig_get("transition");
 	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
 	shader_setup(bg, "ui", "lbarbg");
 	link_image(bg, wm.order_anchor);
@@ -217,7 +217,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 		iostate = iostatem_save(),
 		data_y = gconfig_get("lbar_sz") * wm.scalef
 	};
-	local time = gconfig_get("lbar_transition");
+	local time = gconfig_get("transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;

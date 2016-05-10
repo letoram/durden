@@ -41,7 +41,6 @@ end
 local active_lbar = nil;
 local function destroy(wm, ictx)
 	for i,v in ipairs(pending) do
-
 		mouse_droplistener(v);
 	end
 	pending = {};
@@ -52,8 +51,10 @@ local function destroy(wm, ictx)
 	end
 
 -- our lbar
-	local ictx = wm.input_ctx;
-	local time = gconfig_get("lbar_transition");
+	local time = gconfig_get("transition");
+	if (ictx.on_step and ictx.cb_ctx) then
+		ictx.on_step(ictx, -1);
+	end
 
 	blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
 	blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
@@ -135,10 +136,13 @@ local function update_completion_set(wm, ctx, set)
 	end
 	ctx.inp.set = set;
 
+	local on_step = wm.input_ctx.on_step;
+
 -- clamp and account for paging
 	if (ctx.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
 		ctx.inp.cofs = ctx.inp.cofs - ctx.clastc;
 		ctx.inp.cofs = ctx.inp.cofs <= 0 and 1 or ctx.inp.cofs;
+		if (on_step) then on_step(ctx); end
 	end
 
 -- limitation with this solution is that we can't wrap around negative
@@ -147,6 +151,7 @@ local function update_completion_set(wm, ctx, set)
 
 -- wrap around if needed
 	if (ctx.inp.csel > #set) then
+		if (on_step and ctx.inp.cofs > 1) then on_step(ctx); end
 		ctx.inp.csel = 1;
 		ctx.inp.cofs = 1;
 	end
@@ -177,6 +182,7 @@ local function update_completion_set(wm, ctx, set)
 	local slide_window = function(i)
 		ctx.clastc = i - ctx.inp.cofs;
 		ctx.inp.cofs = ctx.inp.csel;
+		if (on_step) then on_step(ctx); end
 		return update_completion_set(wm, ctx, set);
 	end
 
@@ -240,8 +246,17 @@ local function update_completion_set(wm, ctx, set)
 -- an entry to handle "last-page back to first" though
 		local mh = {
 			name = "lbar_labelsel",
-			own = function(ctx, vid) return vid == txt; end,
+			own = function(mctx, vid)
+				return vid == txt or vid == mctx.child;
+			end,
 			motion = function(mctx)
+				if (ctx.inp.csel == i) then
+					return;
+				end
+				if (on_step) then
+					on_step(ctx, i, set, ctx.text_anchor,
+						mctx.mofs + mctx.mstep, mctx.mwidth, mctx);
+				end
 				ctx.inp.csel = i;
 				resize_image(ctx.ccursor, w, lbarsz);
 				move_image(ctx.ccursor, mctx.mofs, 0);
@@ -254,7 +269,9 @@ local function update_completion_set(wm, ctx, set)
 				end
 			end,
 -- need copies of these into returned context for motion handler
-			mofs = ofs
+			mofs = ofs,
+			mstep = step,
+			mwidth = w
 		};
 
 		mouse_addlistener(mh, {"motion", "click"});
@@ -264,8 +281,8 @@ local function update_completion_set(wm, ctx, set)
 		if (i == ctx.inp.csel) then
 			move_image(ctx.ccursor, ofs, 0);
 			resize_image(ctx.ccursor, w, lbarsz);
-			if (wm.input_ctx.on_step) then
-				wm.input_ctx.on_step(ctx, i, set, ctx.text_anchor, ofs + step);
+			if (on_step) then
+				on_step(ctx, i, set, ctx.text_anchor, ofs + step, w, mh);
 			end
 		end
 
@@ -491,7 +508,7 @@ end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
-	local time = gconfig_get("lbar_transition");
+	local time = gconfig_get("transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;
@@ -503,7 +520,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		return;
 	end
 
-	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
+	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
 	image_tracetag(bg, "lbar_bg");
 	shader_setup(bg, "ui", "lbarbg");
 	local ph = {
