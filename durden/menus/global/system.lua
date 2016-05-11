@@ -70,7 +70,7 @@ local function lock_value(ctx, val)
 	iostatem_save();
 
 -- this doesn't allow things like a background image / "screensaver"
-	for d in all_displays_iter() do
+	for d in all_tilers_iter() do
 		hide_image(d.anchor);
 	end
 
