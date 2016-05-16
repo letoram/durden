@@ -140,9 +140,11 @@ local function update_completion_set(wm, ctx, set)
 
 -- clamp and account for paging
 	if (ctx.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
+		local ocofs = ctx.inp.cofs;
 		ctx.inp.cofs = ctx.inp.cofs - ctx.clastc;
 		ctx.inp.cofs = ctx.inp.cofs <= 0 and 1 or ctx.inp.cofs;
-		if (on_step) then on_step(ctx); end
+
+		if (ocofs ~= ctx.inp.cofs and on_step) then on_step(ctx); end
 	end
 
 -- limitation with this solution is that we can't wrap around negative

@@ -140,6 +140,7 @@ local function imgprev(path, name, space, anchor, xofs, basew, mh)
 
 	for k,v in pairs(prev_cache) do
 		if (valid_vid(v)) then
+			instant_image_transform(v);
 			blend_image(v, k == fn and 1.0 or 0.3, gconfig_get("animation"));
 		end
 	end
