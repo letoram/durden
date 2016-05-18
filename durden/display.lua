@@ -437,6 +437,12 @@ function display_remove(name)
 	end
 end
 
+-- special little hook in LWA mode that handles resize requests from
+-- parent. We treat that as a 'normal' resolution switch.
+function VRES_AUTORES(w, h, vppcm, flags, source)
+	resize_video_canvas(w, h);
+end
+
 function display_ressw(name, mode)
 	local disp = get_disp(name);
 	if (not disp) then

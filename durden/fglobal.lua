@@ -95,24 +95,6 @@ function dispatch_symbol(sym, arg)
 	end
 end
 
-local test_gc = 0;
-local testwnd_spawn = function(bar)
-	if (DEBUGLEVEL > 0) then
-		local neww = VRESW * 0.1;
-		local newh = VRESH * 0.1;
-
-		local img = fill_surface(math.random(200, 600), math.random(200, 600),
-		math.random(64, 255), math.random(64, 255), math.random(64, 255),
-			neww, newh);
-		show_image(img);
-
-		local wnd = durden_launch(img, "test_window_" .. tostring(test_gc));
-		wnd.scalemode = "stretch";
-		wnd:resize(neww, newh);
-		test_gc = test_gc + 1;
-	end
-end
-
 gf["switch_wnd_bytag"] = function()
 	local tags = {};
 	for i,v in ipairs(active_display().windows) do
@@ -200,9 +182,6 @@ gf["swap_left"] = function() active_display():swap_left(); end
 gf["swap_up"] = function() active_display():swap_up(); end
 gf["swap_down"] = function() active_display():swap_down(); end
 gf["swap_right"] = function() active_display():swap_right(); end
-
-gf["debug_testwnd_bar"] = function() testwnd_spawn(true); end
-gf["debug_testwnd_nobar"] = function() testwnd_spawn(); end
 
 gf["debug_dump_state"] = function()
 	local stm = benchmark_timestamp(0);
