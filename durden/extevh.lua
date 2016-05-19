@@ -50,7 +50,7 @@ local function default_reqh(wnd, source, ev)
 	end
 
 	if (normal[ev.segkind]) then
-		target_accept(source, default_handler);
+		accept_target(source, default_handler);
 		target_updatehandler(source, default_handler);
 		return;
 	end

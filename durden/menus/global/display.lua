@@ -39,6 +39,7 @@ local function query_dispmenu(ind, name)
 		local got_dynamic = true;
 		for k,v in ipairs(modes) do
 			if (v.dynamic) then
+-- incomplete, query for custom desired res?
 				got_dynamic = true;
 			else
 				table.insert(mtbl, {
@@ -113,7 +114,8 @@ local function gen_disp_menu(disp)
 		label = "Resolution",
 		kind = "action",
 		submenu = true,
-		eval = function() return disp.id ~= nil; end,
+		eval = function() return disp.id ~= nil and
+			#query_dispmenu(disp.id, disp.name) > 0;  end,
 		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
