@@ -91,7 +91,7 @@ local timer_add = {
 	{
 		name = "add_period",
 		label = "Periodic",
-		hint = "(Period, seconds)",
+		hint = "(Period, ~seconds)",
 		kind = "value",
 		validator = function(val)
 			local num = tonumber(val);
@@ -111,7 +111,7 @@ local timer_add = {
 	{
 		name = "add_once",
 		label = "Once",
-		hint = "(Delay, seconds)",
+		hint = "(Delay, ~seconds)",
 		kind = "value",
 		validator = function(val)
 			local num = tonumber(val);
@@ -130,7 +130,7 @@ local timer_add = {
 	},
 	{
 		name = "add_idle",
-		hint = "(Idle time, seconds)",
+		hint = "(Idle time, ~seconds)",
 		label = "Idle",
 		kind = "value",
 		validator = timerval,
@@ -144,7 +144,7 @@ local timer_add = {
 	},
 	{
 		name = "add_idle_once",
-		hint = "(Idle time, seconds)",
+		hint = "(Idle time, ~seconds)",
 		label = "Idle-Once",
 		kind = "value",
 		validator = timerval,
