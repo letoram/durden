@@ -278,6 +278,11 @@ function display_manager_init()
 	};
 
 	displays.simple = gconfig_get("display_simple");
+
+-- this is a workaround for having support for 'non-simple' mode
+-- with the SDL platform that currently does not support arbitrary
+-- mapping, but we want to be able to test features like display shaders
+	displays.nohide = not map_video_display(WORLDID, 0, HINT_NONE);
 	displays.main = 1;
 	local ddisp = displays[1];
 	ddisp.tiler.name = "default";
@@ -286,12 +291,15 @@ function display_manager_init()
 -- color etc. correction shaders or rotate/fit/...
 	if (not displays.simple) then
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
-		hide_image(ddisp.rt);
 		ddisp.maphint = HINT_NONE;
 		ddisp.shader = gconfig_get("display_shader");
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		display_load(displays[1]);
+
+		if (displays.nohide) then
+			show_image(ddisp.rt);
+		end
 	end
 
 	return displays[1].tiler;
@@ -375,7 +383,7 @@ function display_add(name, width, height, ppcm)
 -- we hide it as we explicitly map to a display and do not want it visible
 -- in the WORLDID domain, eating fillrate.
 		nd.rt = nd.tiler:set_rendertarget(true);
-		hide_image(nd.rt);
+--		hide_image(nd.rt);
 
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
@@ -428,7 +436,7 @@ function display_remove(name)
 
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
-	hide_image(found.rt);
+	--hide_image(found.rt);
 
 	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
 		found.orphan = false;
