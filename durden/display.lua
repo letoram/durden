@@ -131,6 +131,11 @@ function display_count()
 end
 
 local function display_load(display)
+	if (not display or not display.name) then
+		warning("load called on broken display");
+		return;
+	end
+
 	local pref = "disp_" .. hexenc(display.name) .. "_";
 	local keys = match_keys(pref .. "%");
 	for i,v in ipairs(keys) do
@@ -154,6 +159,10 @@ local function display_load(display)
 				warning("unknown stored display setting with key " .. key);
 			end
 		end
+	end
+
+	if (not display.shader) then
+		display_shader(display.name, gconfig_get("display_shader"));
 	end
 end
 
@@ -238,13 +247,13 @@ function display_event_handler(action, id)
 			ddisp.name = get_name(0);
 			ddisp.primary = true;
 			shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
-			display_load(ddisp);
 		else
 			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
 			ddisp.id = id;
 			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
 			ddisp.primary = false;
 		end
+		display_load(ddisp);
 
 -- load possible overrides since before, note that this is slightly
 -- inefficient as it will force rebuild of underlying rendertargets
