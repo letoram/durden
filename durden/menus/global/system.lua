@@ -107,6 +107,33 @@ local function query_dump()
 	bar:set_label("filename (debug/):");
 end
 
+local function spawn_debug_wnd(vid, title)
+	show_image(vid);
+	local wnd = active_display():add_window(vid, {scalemode = "stretch"});
+	wnd:set_title(title);
+end
+
+local function gen_displaywnd_menu()
+	local res = {};
+	for disp in all_displays_iter() do
+		table.insert(res, {
+			name = "disp_" .. tostring(disp.name),
+			handler = function()
+				local nsrf = null_surface(disp.tiler.width, disp.tiler.height);
+				image_sharestorage(disp.rt, nsrf);
+				if (valid_vid(nsrf)) then
+					spawn_debug_wnd(nsrf, "display: " .. tostring(k));
+				end
+			end,
+			label = disp.name,
+			kind = "action"
+		});
+	end
+
+	return res;
+end
+
+local counter = 0;
 local debug_menu = {
 	{
 		name = "dump",
@@ -120,6 +147,42 @@ local debug_menu = {
 		label = "Broken Call (Crash)",
 		kind = "action",
 		handler = function() does_not_exist(); end
+	},
+	{
+		name = "testwnd",
+		label = "Color window",
+		kind = "action",
+		handler = function()
+			counter = counter + 1;
+			spawn_debug_wnd(
+				fill_surface(math.random(200, 600), math.random(200, 600),
+					math.random(64, 255), math.random(64, 255), math.random(64, 255)),
+				"color_window_" .. tostring(counter)
+			);
+		end
+	},
+	{
+		name = "worldid_wnd",
+		label = "WORLDID window",
+		kind = "action",
+		handler = function()
+			local wm = active_display();
+			local newid = null_surface(wm.width, wm.height);
+			if (valid_vid(newid)) then
+				image_sharestorage(WORLDID, newid);
+				spawn_debug_wnd(newid, "worldid");
+			end
+		end
+	},
+	{
+		name = "display_wnd",
+		label = "display_window",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return not gconfig_get("display_simple");
+		end,
+		handler = gen_displaywnd_menu
 	},
 	{
 		name = "alert",
@@ -171,6 +234,14 @@ local system_menu = {
 		end
 	},
 	{
+		name = "debug",
+		label = "Debug",
+		kind = "action",
+		eval = function() return DEBUGLEVEL > 0; end,
+		submenu = true,
+		handler = debug_menu,
+	},
+	{
 		name = "lock",
 		label = "Lock",
 		kind = "value",
@@ -181,15 +252,5 @@ local system_menu = {
 		handler = lock_value
 	}
 };
-
-if (DEBUGLEVEL > 0) then
-	table.insert(system_menu,{
-		name = "debug",
-		label = "Debug",
-		kind = "action",
-		submenu = true,
-		handler = debug_menu,
-	});
-end
 
 return system_menu;

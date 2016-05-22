@@ -201,6 +201,10 @@ function iostatem_added(iotbl)
 	if (not dev) then
 -- locate last saved device settings:
 -- axis state, analog force, special bindings
+		if (iotbl.devid == nil) then
+			for k,v in pairs(iotbl) do print(k, v); end
+		end
+
 		devices[iotbl.devid] = {
 			devid = iotbl.devid,
 			label = iotbl.label,
@@ -208,7 +212,7 @@ function iostatem_added(iotbl)
 			lookup = label_lookup[iotbl.label]
 				and label_lookup[iotbl.label] or {default_lh, default_ah},
 			force_analog = false,
-			keyboard = iotbl.keyboard
+			keyboard = (iotbl.keyboard and true or false)
 		};
 		dev = devices[iotbl.devid];
 		if (label_lookup[iotbl.label]) then
