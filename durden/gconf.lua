@@ -174,6 +174,9 @@ local defaults = {
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
 	pretiletext_color = "\\#ffffff ",
+
+-- LWA specific settings, only really useful for development / debugging
+	lwa_autores = true
 };
 
 local listeners = {};

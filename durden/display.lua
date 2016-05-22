@@ -286,9 +286,9 @@ function display_manager_init()
 -- color etc. correction shaders or rotate/fit/...
 	if (not displays.simple) then
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
+		hide_image(ddisp.rt);
 		ddisp.maphint = HINT_NONE;
 		ddisp.shader = gconfig_get("display_shader");
-		show_image(ddisp.rt);
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		display_load(displays[1]);
@@ -372,11 +372,13 @@ function display_add(name, width, height, ppcm)
 		new = nd.tiler;
 
 -- this will rebuild tiler with all its little things attached to rt
+-- we hide it as we explicitly map to a display and do not want it visible
+-- in the WORLDID domain, eating fillrate.
 		nd.rt = nd.tiler:set_rendertarget(true);
+		hide_image(nd.rt);
 
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
-		show_image(nd.rt);
 		found = nd;
 		set_context_attachment(displays[displays.main].rt);
 	end
@@ -440,7 +442,23 @@ end
 -- special little hook in LWA mode that handles resize requests from
 -- parent. We treat that as a 'normal' resolution switch.
 function VRES_AUTORES(w, h, vppcm, flags, source)
-	resize_video_canvas(w, h);
+	local disp = displays[1];
+
+	if (gconfig_get("lwa_autores")) then
+		if (displays.simple) then
+			resize_video_canvas(w, h);
+			disp.tiler:resize(w, h, true);
+		else
+			run_display_action(displays[1], function()
+				if (video_displaymodes(0, w, h)) then
+					image_set_txcos_default(disp.rt);
+					disp.tiler:resize(w, h, true);
+					disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
+				end
+			end);
+		end
+	end
+
 end
 
 function display_ressw(name, mode)
