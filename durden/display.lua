@@ -589,12 +589,12 @@ function display_simple()
 	return displays.simple;
 end
 
-function display_share(args, recfn)
-	local disp = displays[displays.main];
+function display_share(disp, args, recfn)
 	if (not valid_vid(disp.rt)) then
 		return;
 	end
 
+	print("display share:", args, recfn);
 	if (disp.share_slot) then
 		delete_image(disp.share_slot);
 		disp.share_slot = nil;
@@ -603,8 +603,9 @@ function display_share(args, recfn)
 -- time being or we'd need to do a lot of attachment tracking
 		disp.share_slot = alloc_surface(disp.w, disp.h, true);
 		define_recordtarget(disp.share_slot,
-		recfn, args, {disp.rt}, {}, RENDERTARGET_NODETACH, RENDERTARGET_NOSCALE, 1,
+		recfn, args, {disp.rt}, {}, RENDERTARGET_NODETACH, RENDERTARGET_NOSCALE, -1,
 		function(src, status)
+			print(src, status);
 		end
 		);
 	end

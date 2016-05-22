@@ -94,7 +94,7 @@ return {
 		kind = "value",
 		hint = "(stored in output/)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val) and
+			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
 				not string.match(val, "%.%.");
 		end,
 		eval = function()
@@ -104,7 +104,7 @@ return {
 		end,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, "output/" .. val);
+			wnd.in_record = suppl_setup_rec(wnd, "output/" .. val .. ".mkv");
 		end
 	},
 	{

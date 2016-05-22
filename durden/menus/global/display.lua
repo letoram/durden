@@ -149,6 +149,33 @@ local function gen_disp_menu(disp)
 		eval = function() return
 			disp.background and string.len(disp.background) > 0;
 		end
+		},
+		{
+		name = "record",
+		label = "Record",
+		kind = "value",
+		hint = "(stored in output/name.mkv)",
+		eval = function()
+			return disp.share_slot == nil and string.match(
+				FRAMESERVER_MODES, "encode") ~= nil;
+		end,
+--		validator = function(val)
+--			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
+--				not string.match(val, "%.%.");
+--		end,
+		handler = function(ctx, val)
+			local args = suppl_build_recargs(nil, nil, false);
+			display_share(disp, args, "output/" .. val .. ".mkv");
+		end
+		},
+		{
+		name = "stop_record",
+		lbel = "Stop Recording",
+		kind = "action",
+		eval = function() return disp.share_slot ~= nil; end,
+		handler = function()
+			display_share(disp);
+		end
 		}
 	};
 end
@@ -290,7 +317,7 @@ local region_menu = {
 		kind = "value",
 		hint = "(stored in output/)",
 		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val) and
+			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
 				not string.match(val, "%.%.");
 		end,
 		eval = function() return string.match(
@@ -298,7 +325,7 @@ local region_menu = {
 		end,
 		handler =
 		function(ctx, val)
-			record_handler("output/" .. val);
+			record_handler("output/" .. val .. ".mkv");
 		end
 	}
 };

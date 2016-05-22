@@ -965,7 +965,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 	if (done) then
 		local tgt = nil;
 		for k,v in ipairs(ctx.list) do
-			if (string.lower(v.label) == string.lower(instr)) then
+			if (v.label and string.lower(v.label) == string.lower(instr)) then
 				tgt = v;
 			end
 		end
