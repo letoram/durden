@@ -118,7 +118,6 @@ local function update_completion_set(wm, ctx, set)
 		return;
 	end
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
-
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
 		for i,v in ipairs(pending) do
@@ -137,7 +136,6 @@ local function update_completion_set(wm, ctx, set)
 	ctx.inp.set = set;
 
 	local on_step = wm.input_ctx.on_step;
-
 -- clamp and account for paging
 	if (ctx.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
 		local ocofs = ctx.inp.cofs;
@@ -598,6 +596,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret = car,
 		caret_y = carety,
 		cleanup = opts.cleanup,
+		on_step = opts.on_step,
 		iostate = iostatem_save(),
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true

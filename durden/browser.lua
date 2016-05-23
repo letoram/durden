@@ -192,6 +192,7 @@ end
 
 function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	opts = opts and opts or {};
+
 	if (not pathtbl) then
 		pathtbl = last_path;
 		tblmin = last_min;
@@ -226,7 +227,8 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	};
 
 	local lbar = active_display():lbar(browse_cb, lbctx,
-		{force_completion = true, restore = opts.restore});
+		{force_completion = true, restore = opts.restore,
+		on_step = preview_handler});
 
 	lbar.on_cancel = function()
 		if (valid_vid(lbctx.preview_del)) then
@@ -240,7 +242,6 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		end
 	end
 
-	lbar.on_step = preview_handler;
 	if (gconfig_get("preview_mode") == "auto") then
 		lbctx.in_preview = {};
 	end
