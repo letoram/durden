@@ -1299,7 +1299,13 @@ local function wnd_resize(wnd, neww, newh, force)
 	size_decor(wnd.effective_w + bw + bw, wnd.effective_h + tbh + bw + bw);
 	wnd.pad_top = bw + tbh;
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
+
 	if (wnd.centered and wnd.space.mode ~= "float") then
+		if (wnd.space.mode == "tile") then
+			move_image(wnd.anchor, wnd.x, wnd.y);
+		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
+			move_image(wnd.anchor, 0, 0);
+		end
 		if (wnd.fullscreen) then
 			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));

@@ -251,11 +251,18 @@ end
 -- global/display/*/record, global/display/region/ and target/video/...
 --
 function suppl_build_recargs(vsrc, asrc, streaming, val)
-	local argstr = string.format("vcodec=%s:fps=%.3f:vpreset=%d:container=%s",
+	local argstr = string.format("vcodec=%s:fps=%.3f:container=%s",
 		gconfig_get("enc_vcodec"), gconfig_get("enc_fps"),
-		gconfig_get("enc_vpreset"), streaming and "stream" or
-		gconfig_get("enc_container")
+		streaming and "stream" or gconfig_get("enc_container")
 	);
+
+	local vbr = gconfig_get("enc_vbr");
+	local vqual = gconfig_get("enc_vpreset");
+	if (vqual > 0) then
+		argstr = argstr .. ":vpreset=" .. tostring(vqual);
+	else
+		argstr = argstr .. ":vbitrate=" .. tostring(vbr);
+	end
 
 	if (not asrc or #asrc == 0) then
 		argstr = argstr .. ":noaudio";

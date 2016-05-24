@@ -47,12 +47,16 @@ local defaults = {
 	float_defw = 0.3,
 	float_defh = 0.2,
 
--- default encoder setting, used by suppl when building string
+-- default encoder setting, used by suppl when building string. We don't
+-- have a way to query the span of these parameters yet (like available
+-- codecs).
 	enc_fps = 30,
 	enc_srate = -1,
 	enc_vcodec = "H264",
 	enc_vpreset = 8,
 	enc_container = "mkv",
+	enc_presilence = 0,
+	enc_vbr = 0,
 
 -- SECURITY: set to :disabled to disable these features, or enable
 -- whitelist and modify whitelist.lua to set allowed commands and paths

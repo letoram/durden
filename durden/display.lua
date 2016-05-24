@@ -19,6 +19,7 @@ local displays = {
 -- local dbgoutp = open_nonblock("display.log", true);
 local dbgoutp = nil;
 local function display_debug(msg)
+	print(msg);
 	if (dbgoutp) then
 		dbgoutp:write(msg);
 	end
@@ -460,6 +461,15 @@ end
 -- parent. We treat that as a 'normal' resolution switch.
 function VRES_AUTORES(w, h, vppcm, flags, source)
 	local disp = displays[1];
+	display_debug(string.format("autores(%f, %f, %f, %d, %d)",
+		w, h, vppcm, flags, source));
+
+	for k,v in ipairs(displays) do
+		if (v.id == source) then
+			disp = v;
+			break;
+		end
+	end
 
 	if (gconfig_get("lwa_autores")) then
 		if (displays.simple) then
@@ -467,7 +477,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			disp.tiler:resize(w, h, true);
 		else
 			run_display_action(displays[1], function()
-				if (video_displaymodes(0, w, h)) then
+				if (video_displaymodes(source, w, h)) then
 					image_set_txcos_default(disp.rt);
 					disp.tiler:resize(w, h, true);
 					disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
