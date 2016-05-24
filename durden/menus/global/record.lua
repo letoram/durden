@@ -25,8 +25,8 @@ return function(val)
 			inputh(wnd, source, status);
 		end
 
-		local argstr, srate = suppl_build_recargs(vgrp, agrp, false);
-		define_recordtarget(dvid, val, argstr, vgrp, agrp,
+		local argstr, srate, fn = suppl_build_recargs(vgrp, agrp, false, val);
+		define_recordtarget(dvid, fn, argstr, vgrp, agrp,
 			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate, infn);
 		wnd:set_title("recording");
 	end);

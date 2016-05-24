@@ -154,23 +154,20 @@ local function gen_disp_menu(disp)
 		name = "record",
 		label = "Record",
 		kind = "value",
-		hint = "(stored in output/name.mkv)",
-		eval = function()
-			return disp.share_slot == nil and string.match(
-				FRAMESERVER_MODES, "encode") ~= nil;
+		hint = suppl_recarg_hint,
+		eval = function() return disp.share_slot == nil
+			 and suppl_recarg_eval();
 		end,
---		validator = function(val)
---			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
---				not string.match(val, "%.%.");
---		end,
+		hintsel = suppl_recarg_sel,
+		validator = suppl_recarg_valid,
 		handler = function(ctx, val)
-			local args = suppl_build_recargs(nil, nil, false);
-			display_share(disp, args, "output/" .. val .. ".mkv");
+			local args, ign, path = suppl_build_recargs(val, nil, nil, val);
+			display_share(disp, args, path);
 		end
 		},
 		{
 		name = "stop_record",
-		lbel = "Stop Recording",
+		label = "Stop Recording",
 		kind = "action",
 		eval = function() return disp.share_slot ~= nil; end,
 		handler = function()
@@ -252,7 +249,7 @@ local region_menu = {
 				show_image(dvid);
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 				wnd:set_title("Snapshot" .. tostring(CLOCK));
-			end)
+			end);
 		end,
 	},
 	{
@@ -300,8 +297,11 @@ local region_menu = {
 			end);
 		end
 	},
+
 -- also need to become more complicated for an 'action connection' rather
--- than 'passive streaming over VNC'
+-- than 'passive streaming over VNC', with the big change being how lbar,
+-- active_display and tiler interact so that the shared subset can become
+-- a restricted tiler of its own
 	{
 		name = "share",
 		label = "Share",
@@ -315,17 +315,12 @@ local region_menu = {
 		name = "record",
 		label = "Record",
 		kind = "value",
-		hint = "(stored in output/)",
-		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
-				not string.match(val, "%.%.");
-		end,
-		eval = function() return string.match(
-			FRAMESERVER_MODES, "encode") ~= nil;
-		end,
-		handler =
-		function(ctx, val)
-			record_handler("output/" .. val .. ".mkv");
+		hint = suppl_recarg_hint,
+		hintsel = suppl_recarg_set,
+		validator = suppl_recarg_valid,
+		eval = suppl_recarg_eval,
+		handler = function(ctx, val)
+			record_handler(val);
 		end
 	}
 };

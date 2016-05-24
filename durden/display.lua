@@ -594,7 +594,6 @@ function display_share(disp, args, recfn)
 		return;
 	end
 
-	print("display share:", args, recfn);
 	if (disp.share_slot) then
 		delete_image(disp.share_slot);
 		disp.share_slot = nil;
@@ -602,10 +601,12 @@ function display_share(disp, args, recfn)
 -- this one can't handle resolution switching and we ignore audio for the
 -- time being or we'd need to do a lot of attachment tracking
 		disp.share_slot = alloc_surface(disp.w, disp.h, true);
+		local indir = null_surface(disp.w, disp.h);
+		show_image(indir);
+		image_sharestorage(disp.rt, indir);
 		define_recordtarget(disp.share_slot,
-		recfn, args, {disp.rt}, {}, RENDERTARGET_NODETACH, RENDERTARGET_NOSCALE, -1,
+		recfn, args, {indir}, {}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1,
 		function(src, status)
-			print(src, status);
 		end
 		);
 	end
