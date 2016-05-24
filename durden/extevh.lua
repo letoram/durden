@@ -216,7 +216,6 @@ end
 --  stateinf is used in the builtin/shared
 defhtbl["state_size"] =
 function(wnd, source, stat)
-	warning("got state_size");
 	wnd.stateinf = {size = stat.state_size, typeid = stat};
 end
 

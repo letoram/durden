@@ -388,6 +388,53 @@ local durden_system = {
 	}
 };
 
+local recmenu = {
+	{
+	name = "fps",
+	label = "Framerate",
+	kind = "value",
+	hint = "(10..60)",
+	validator = gen_valid_num(10, 60),
+	initial = function() return tostring(gconfig_get("enc_fps")); end,
+	handler = function(ctx, val)
+		gconfig_set("enc_fps", tonumber(val));
+	end
+	},
+	{
+	name = "preset",
+	label = "Video Quality Preset",
+	kind = "value",
+	hint = "(0:disable..10:max, overrides bitrate)",
+	validator = gen_valid_num(0, 10),
+	initial = function() return tostring(gconfig_get("enc_vpreset")); end,
+	handler = function(ctx, val)
+		gconfig_set("enc_vpreset", tonumber(val));
+		gconfig_set("enc_vbr", tonumber(val) == 0 and 800 or 0);
+	end
+	},
+	{
+	name = "vbr",
+	label = "Video Bitrate",
+	kind = "value",
+	hint = "(kbit/s, overrides preset)",
+	validator = gen_valid_num(100, 10000),
+	initial = function() return tostring(gconfig_get("enc_vbr")); end,
+	handler = function(ctx, val)
+		gconfig_set("enc_vpreset", 0);
+		gconfig_set("enc_vbr", tonumber(val));
+	end
+	},
+	{
+	name = "presilence",
+	label = "Audio Presilence",
+	kind = "value",
+	hint = "(samples)",
+	validator = gen_valid_num(0, 16384),
+	initial = function() return tostring(gconfig_get("enc_presilence")); end,
+	handler = function(ctx, val) gconfig_set("enc_presilence", tonumber(val)); end
+	}
+};
+
 local config_terminal_font = {
 	{
 		name = "font_sz",
@@ -478,6 +525,13 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = durden_system
+	},
+	{
+		name = "recording",
+		label = "Recording",
+		kind = "action",
+		submenu = true,
+		handler = recmenu
 	},
 	{
 		name = "terminal",
