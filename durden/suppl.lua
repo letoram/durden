@@ -216,8 +216,8 @@ function table.i_subsel(table, label, field)
 	for k,v in ipairs(table) do
 		local match = field and v[field] or v;
 		if (type(match) ~= "string") then
-			warning("invalid entry in table subselect");
-			if (DEBUGLEVEL > 1) then print(debug.traceback()); end
+			warning(string.format("invalid entry(%s,%s) in table subselect",
+				v.name and v.name or "[no name]", field));
 			break;
 		end
 		match = string.lower(match);
@@ -245,10 +245,12 @@ function hexenc(instr)
 	end);
 end
 
--- streaming is incomplete still in that we havn't set up mechanism for
--- credential-store-fetch and we really need a better way to define all the
--- possible arguments.
-function suppl_build_recargs(vsrc, asrc, streaming)
+--
+-- the suppl_ arguments here are used to share the same code / fetch / help
+-- functions for all menu items that are connected to recording (e.g.
+-- global/display/*/record, global/display/region/ and target/video/...
+--
+function suppl_build_recargs(vsrc, asrc, streaming, val)
 	local argstr = string.format("vcodec=%s:fps=%.3f:vpreset=%d:container=%s",
 		gconfig_get("enc_vcodec"), gconfig_get("enc_fps"),
 		gconfig_get("enc_vpreset"), streaming and "stream" or
@@ -259,7 +261,21 @@ function suppl_build_recargs(vsrc, asrc, streaming)
 		argstr = argstr .. ":noaudio";
 	end
 
-	return argstr, gconfig_get("enc_srate");
+	return argstr, gconfig_get("enc_srate"), "output/" .. val .. ".mkv";
+end
+
+suppl_recarg_hint = "(stored in output/name.mkv)";
+
+function suppl_recarg_valid(val)
+	return string.len(val) > 0 and
+		not resource("output/" .. val .. ".mkv") and not string.match(val, "%.%.");
+end
+
+-- [when we have a credential store for streaming destinations]
+-- suppl_recarg_sel
+
+function suppl_recarg_eval()
+	return string.match(FRAMESERVER_MODES, "encode") ~= nil;
 end
 
 function suppl_region_select(r, g, b, handler)
@@ -396,9 +412,9 @@ function suppl_setup_rec(wnd, val)
 		return;
 	end
 
-	local argstr, srate = suppl_build_recargs(varr, aarr, false);
+	local argstr, srate, fn = suppl_build_recargs(varr, aarr, false, val);
 
-	define_recordtarget(db, val, argstr, varr, aarr,
+	define_recordtarget(db, fn, argstr, varr, aarr,
 		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
 		function(source, stat)
 			if (stat.kind == "terminated") then

@@ -92,19 +92,16 @@ return {
 		name = "record",
 		label = "Record",
 		kind = "value",
-		hint = "(stored in output/)",
-		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val .. ".mkv") and
-				not string.match(val, "%.%.");
-		end,
+		hint = suppl_recarg_hint,
+		hintsel = suppl_recarg_eval,
+		validator = suppl_recarg_valid,
 		eval = function()
-			return string.match(
-			FRAMESERVER_MODES, "encode") ~= nil and not valid_vid(
-				active_display().selected.in_record);
+			return not active_display().selected.in_record and
+				suppl_recarg_eval();
 		end,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, "output/" .. val .. ".mkv");
+			wnd.in_record = suppl_setup_rec(wnd, val);
 		end
 	},
 	{
