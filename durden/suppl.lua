@@ -1020,7 +1020,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 				if (m1) then
 					local path, ictx = cpath:pop();
 					launch_menu_path(
-						active_display(), LAST_ACTIVE_MENU, path, true, ictx);
+						active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
 				else
 					cpath:reset();
 				end
@@ -1104,10 +1104,6 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 
 	fcomp = fcomp == nil and true or false;
 
-	if (opts and opts.domain) then
-		cpath.domain = opts.domain;
-	end
-
 	opts = opts and opts or {};
 	opts.force_completion = fcomp;
 	opts.restore = last_bar;
@@ -1115,6 +1111,7 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	if (opts.domain) then
 		cpath.domain = opts.domain;
 	end
+
 	ctx.wm = wm;
 -- this was initially written to be independent, that turned out to be a
 -- terrible design decision.
@@ -1124,10 +1121,9 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	end
 
 -- activate any path triggered widget
+	local path = table.concat(cpath.path, "/");
 	suppl_widget_path(bar, bar.anchor,
-		(cpath.domain and cpath.domain or "") ..
-		table.concat(cpath.path, "/"), 0
-	);
+		(cpath.domain and cpath.domain or "") .. path, 0);
 
 	if (not bar.on_cancel) then
 		bar.on_cancel = menu_cancel;
@@ -1256,7 +1252,11 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
 		end
 
 		if (domain) then
-			cpath.domain = domain;
+			if (type(domain) ~= "string") then
+				print(debug.traceback(), "DOMAIN ERROR");
+			else
+				cpath.domain = domain;
+			end
 		end
 
 -- something broken with the menu item? any such cases should be noted
