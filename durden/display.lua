@@ -306,10 +306,7 @@ function display_manager_init()
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		display_load(displays[1]);
-
-		if (displays.nohide) then
-			show_image(ddisp.rt);
-		end
+		blend_image(ddisp.rt, displays.nohide and 1 or 0);
 	end
 
 	return displays[1].tiler;
@@ -393,7 +390,7 @@ function display_add(name, width, height, ppcm)
 -- we hide it as we explicitly map to a display and do not want it visible
 -- in the WORLDID domain, eating fillrate.
 		nd.rt = nd.tiler:set_rendertarget(true);
---		hide_image(nd.rt);
+		hide_image(nd.rt);
 
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
@@ -436,17 +433,28 @@ local function autoadopt_display(disp)
 	end
 end
 
-function display_remove(name)
+function display_remove(name, id)
 	local found, foundi = get_disp(name);
 
+-- first by name, then by id
 	if (not found) then
-		warning("attempt remove unknown display");
-		return;
+		for k,v in ipairs(displays) do
+			if (id and v.id == id) then
+				found = v;
+				foundi = k;
+				break;
+			end
+		end
+
+		if (not found) then
+			warning("attempted to remove unknown display: " .. name);
+			return;
+		end
 	end
 
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
-	--hide_image(found.rt);
+	hide_image(found.rt);
 
 	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
 		found.orphan = false;
@@ -476,7 +484,8 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			resize_video_canvas(w, h);
 			disp.tiler:resize(w, h, true);
 		else
-			run_display_action(displays[1], function()
+			run_display_action(disp, function()
+
 				if (video_displaymodes(source, w, h)) then
 					image_set_txcos_default(disp.rt);
 					disp.tiler:resize(w, h, true);

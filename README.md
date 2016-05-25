@@ -94,6 +94,18 @@ The file autorun.lua can also be used to add timers that are set when launched,
 Make sure the syntax is correct because the entire file will be ignored in the
 event of parser errors.
 
+Lockscreen
+====
+
+A lockscreen can be setup temporarily by accessing system/lock and enter a one-
+use password, or as mentioned in the timers section, be bound to an idle timer
+or similar mechanism.
+
+In addition, it is possible to bind a path to lockscreen success or
+fail_n_times by modifying gconf.lua, look for lock_ok and lock_fail_ entries.
+This can be used for strong effects like starting webcam streaming, running
+external commands or shutting down.
+
 Database Configuration
 ====
 The launch bar (default meta1+d) uses preconfigured execution profiles that are
