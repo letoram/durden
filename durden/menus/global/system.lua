@@ -21,6 +21,13 @@ local exit_query = {
 local ef = function() end;
 local idle_wakeup = ef;
 local idle_setup = function(val, failed)
+	if (failed > 0) then
+		local fp = gconfig_get("lock_fail_" .. tostring(failed));
+		if (fp) then
+			dispatch_symbol(fp);
+		end
+	end
+
 	active_display():set_input_lock(ef);
 	timer_add_idle("idle_wakeup", 10, true, ef, function()
 		idle_wakeup(val, failed);
@@ -42,15 +49,22 @@ idle_wakeup = function(key, failed)
 				return true;
 			end
 
+-- accept, note that this comparison is early-out timing side channel
+-- sensitive, but for the threat model here it does not really matter
 			if (msg == key) then
 				idle_restore();
+				if (gconfig_get("lock_ok")) then
+					dispatch_symbol(gconfig_get("lock_ok"));
+				end
 			else
 				idle_setup(key, failed + 1);
 			end
 			iostatem_restore();
 		end,
 		{}, {label = string.format(
-			"Key (%d Failed Attempts):", failed), password_mask = true}
+			"Key (%d Failed Attempts):", failed),
+			password_mask = gconfig_get("passmask")
+		}
 	);
 	bar.on_cancel = function()
 		idle_setup(key, failed);
@@ -72,6 +86,11 @@ local function lock_value(ctx, val)
 -- this doesn't allow things like a background image / "screensaver"
 	for d in all_tilers_iter() do
 		hide_image(d.anchor);
+	end
+
+	local fn = gconfig_get("lock_on");
+	if (fn) then
+		dispatch_symbol(fn);
 	end
 
 	idle_setup(val, 0);
@@ -246,7 +265,7 @@ local system_menu = {
 		label = "Lock",
 		kind = "value",
 		dangerous = true,
-		password_mask = true,
+		password_mask = gconfig_get("passmask"),
 		hint = "(unlock key)",
 		validator = function(val) return string.len(val) > 0; end,
 		handler = lock_value

@@ -42,6 +42,17 @@ local defaults = {
 -- right now, the options are 'none' and 'auto'
 	preview_mode = "auto",
 
+-- should entries that request a password show the input as *** chars
+	passmask = false,
+
+--
+-- advanced lockscreen features, not currently mapped to UI
+-- lock_ok = "!/some/path/like/resume_all",
+-- lock_on = "!/some/path/like/suspend_all"
+-- lock_fail_1 = "!/system/output=fail_once",
+-- lock_fail_10 = "!/system/shutdown/ok",
+--
+
 -- default window dimensions (relative tiler size) for windows
 -- created in float mode with unknown starting size
 	float_defw = 0.3,
