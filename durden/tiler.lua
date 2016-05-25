@@ -2600,7 +2600,7 @@ local function tiler_rendertarget(wm, set)
 -- quality internal storage format, and disable the use of the alpha channel
 	if (set == true) then
 		wm.rtgt_id = alloc_surface(wm.width, wm.height, true, 1);
-		image_tracetag(wm.rtgt_id, "tiler_rt");
+		image_tracetag(wm.rtgt_id, "tiler_rt" .. wm.name);
 		local pitem = null_surface(32, 32); --workaround for rtgt restriction
 		image_tracetag(pitem, "rendertarget_placeholder");
 		define_rendertarget(wm.rtgt_id, {pitem});
