@@ -495,6 +495,8 @@ end
 
 gf["toggle_audio"] = function()
 	local new_state = not gconfig_get("global_mute");
+	active_display():message("Global mute set to [" ..
+		(new_state and LBL_YES or LBL_NO) .. "]");
 	allgain(new_state and 0.0 or gconfig_get("global_gain"));
 	gconfig_set("global_mute", new_state);
 end
