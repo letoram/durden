@@ -708,7 +708,7 @@ function all_spaces_iter()
 	end
 end
 
-function all_windows(tiler, atype)
+function all_windows(atype)
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
