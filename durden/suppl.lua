@@ -381,6 +381,7 @@ function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 		local dsrf = null_surface(w, h);
 		image_sharestorage(dvid, dsrf);
 		delete_image(dvid);
+		show_image(dsrf);
 		dvid = dsrf;
 	end
 

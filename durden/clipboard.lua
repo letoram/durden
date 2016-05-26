@@ -70,6 +70,54 @@ local function clipboard_lost(ctx, source)
 	ctx.locals[source] = nil;
 end
 
+local function clipboard_save(ctx, fn)
+	zap_resource(fn);
+	local wout = open_nonblock(fn, 1);
+	if (not wout) then
+		warning("clipboard/save: couldn't open " .. fn .. " for writing.");
+		return false;
+	end
+
+	wout:write(string.format("local res = { globals = {}; urls = {}; };\n"));
+	for k,v in ipairs(ctx.globals) do
+		wout:write(string.format("table.insert(res.globals, %q);\n", v));
+	end
+	for k,v in ipairs(ctx.urls) do
+		wout:write(string.format("table.insert(res.urls, %q);\n", v));
+	end
+
+	wout:write("return res;\n");
+	wout:close();
+	return true;
+end
+
+local function clipboard_load(ctx, fn)
+	if (not resource(fn)) then
+		return;
+	end
+
+	local res = system_load(fn, 0);
+	if (not res) then
+		warning("parsing error loading clipboard history from: " .. fn);
+		return;
+	end
+
+	local okstate, map = pcall(res);
+	if (not okstate) then
+		warning("execution error loading clipboard history from: " .. fn);
+		return;
+	end
+
+	if (map and type(map) == "table" and
+		map.globals and type(map.globals) == "table" and
+		map.urls and type(map.urls) == "table") then
+		ctx.globals = map.globals;
+		ctx.urls = map.urls;
+	end
+
+	return true;
+end
+
 local function clipboard_locals(ctx, source)
 	return ctx.locals[source] and ctx.locals[source] or {};
 end
@@ -123,6 +171,8 @@ return {
 	add = clipboard_add,
 	text = clipboard_text,
 	lost = clipboard_lost,
+	save = clipboard_save,
+	load = clipboard_load,
 	pastemodes = clipboard_pastemodes,
 	set_global = clipboard_setglobal,
 	list_local = clipboard_locals,

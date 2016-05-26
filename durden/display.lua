@@ -19,7 +19,6 @@ local displays = {
 -- local dbgoutp = open_nonblock("display.log", true);
 local dbgoutp = nil;
 local function display_debug(msg)
-	print(msg);
 	if (dbgoutp) then
 		dbgoutp:write(msg);
 	end

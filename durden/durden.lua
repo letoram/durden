@@ -45,6 +45,7 @@ function durden(argv)
 	system_load("wnd_settings.lua")(); -- per window settings persistence
 	system_load("iopipes.lua")(); -- status and command channels
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
+	CLIPBOARD:load("clipboard_data.lua");
 
 -- functions exposed to user through menus, binding and scripting
 
@@ -567,6 +568,7 @@ durden_input = durden_normal_input;
 
 function durden_shutdown()
 	SYMTABLE:store_translation();
+	CLIPBOARD:save("clipboard_data.lua");
 	display_manager_shutdown();
 	gconfig_shutdown();
 end

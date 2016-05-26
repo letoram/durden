@@ -151,8 +151,8 @@ local defaults = {
 
 -- input bar graphics
 	lbar_dim = 0.8,
-	lbar_tpad = 2,
-	lbar_bpad = 2,
+	lbar_tpad = 4,
+	lbar_bpad = 0,
 	lbar_spacing = 10,
 	lbar_sz = 12, -- dynamically recalculated on font changes
 	lbar_bg = {0x33, 0x33, 0x33},
