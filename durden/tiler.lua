@@ -976,6 +976,7 @@ local function workspace_set(space, mode)
 		space:resize();
 	end
 
+	space.last_mode = space.mode;
 	space.mode = mode;
 
 -- enforce titlebar changes (some modes need them to work..)

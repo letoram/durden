@@ -672,7 +672,11 @@ sf["fullscreen"] = function(wnd)
 		print(debug.traceback());
 	end
 
-	(wnd.fullscreen and wnd.space.tile or wnd.space.fullscreen)(wnd.space);
+	if (wnd.fullscreen) then
+		wnd.space[wnd.space.last_mode and wnd.space.last_mode or "tile"](wnd.space);
+	else
+		wnd.space.fullscreen(wnd.space);
+	end
 end
 sf["mergecollapse"] = function(wnd)
 	(#wnd.children > 0 and wnd.collapse or wnd.merge)(wnd);
