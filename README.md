@@ -414,8 +414,9 @@ are being implemented, we have the following list:
   - [ ] Redshift Color Temperature (builtin, shader+update via control-ch works)
   - [ ] Advanced scaling effects (xBR, ...)
   - [x] Lockscreen
-    - [ ] Autosuspend game/media on Lock
-    - [ ] Customized action on repeated auth- failure
+    - [x] Autosuspend game/media or all on Lock
+    - [x] Customized action on repeated auth- failure
+		- [x] Customized action on lock/unlock
   - [ ] Iconsheets
 	  - [ ] Static (for buttons)
 		- [ ] Dynamic (advanced window management, client registred)

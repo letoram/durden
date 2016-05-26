@@ -195,6 +195,44 @@ gf["debug_random_alert"] = function()
 	end
 end
 
+local function allsusp(atype)
+	for wnd in all_windows(atype) do
+		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			wnd.temp_suspend = true;
+			wnd:set_suspend(true);
+		end
+	end
+end
+
+local function allresume(atype)
+	for wnd in all_windows(atype) do
+		if (wnd.temp_suspend and
+			valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			wnd:set_suspend(false);
+		end
+	end
+end
+
+gf["all_suspend"] = function()
+	allsusp();
+end
+
+gf["all_resume"] = function()
+	allresume();
+end
+
+gf["all_media_resume"] = function()
+	for k,v in ipairs({"game", "multimedia", "lwa"}) do
+		allresume(v);
+	end
+end
+
+gf["all_media_suspend"] = function()
+	for k,v in ipairs({"game", "multimedia", "lwa"}) do
+		allsusp(v);
+	end
+end
+
 -- sweep the entire bindings table
 gf["rebind_basic"] = function(chain)
 	local tbl = {

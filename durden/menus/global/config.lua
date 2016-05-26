@@ -497,6 +497,33 @@ local config_terminal = {
 	}
 };
 
+local allmenu = {
+	{
+		name = "all_susp",
+		label = "Suspend All",
+		kind = "action",
+		handler = grab_global_function("all_suspend")
+	},
+	{
+		name = "all_media_susp",
+		label = "Suspend Media",
+		kind = "action",
+		handler = grab_global_function("all_media_suspend")
+	},
+	{
+		name = "all_susp",
+		label = "Resume All",
+		kind = "action",
+		handler = grab_global_function("all_resume")
+	},
+	{
+		name = "all_media_resume",
+		label = "Resume Media",
+		kind = "action",
+		handler = grab_global_function("all_media_resume")
+	},
+};
+
 return {
 	{
 		name = "visual",
@@ -532,6 +559,13 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = recmenu
+	},
+	{
+		name = "allwnd",
+		label = "All-Windows",
+		kind = "action",
+		submenu = true,
+		handler = allmenu,
 	},
 	{
 		name = "terminal",
