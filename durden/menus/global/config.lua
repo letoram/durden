@@ -112,6 +112,17 @@ local durden_bars = {
 		eval = function() return false; end,
 		submenu = true,
 		handler = tb_buttons
+	},
+	{
+		name = "tb_hide",
+		label = "Hide Titlebar",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function() return
+			gconfig_get("hide_titlebar") and LBL_YES or LBL_NO end,
+		handler = function(ctx, val)
+			gconfig_set("hide_titlebar", val == LBL_YES);
+		end
 	}
 }
 ;
@@ -127,7 +138,7 @@ local durden_visual = {
 		handler = durden_font
 	},
 	{
-		name = "statusbar",
+		name = "bars",
 		label = "Bars",
 		kind = "action",
 		submenu = true,

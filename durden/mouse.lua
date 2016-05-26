@@ -995,8 +995,8 @@ function mouse_hide()
 	end
 end
 
-function mouse_autohide()
-	mstate.autohide = not mstate.autohide;
+function mouse_autohide(state)
+	mstate.autohide = (state and state or not mstate.autohide);
 	return mstate.autohide;
 end
 
@@ -1101,9 +1101,11 @@ function mouse_select_begin(vid, constrain)
 		vid = vid,
 		hidden = mstate.hidden,
 		autodelete = {},
+		autohide = mstate.autohide,
 		lockvid = mstate.lockvid,
 		lockfun = mstate.lockfun
 	};
+	mstate.autohide = false;
 
 	mouse_show();
 -- just save any old constrain- vid and create a new one that match
@@ -1184,6 +1186,7 @@ function mouse_select_end(handler)
 
 	mstate.lockfun = mstate.in_select.lockfun;
 	mstate.lockvid = mstate.in_select.lockvid;
+	mstate.autohide = mstate.in_select.autohide;
 
 	for i,v in ipairs(mstate.in_select.autodelete) do
 		if (valid_vid(v)) then

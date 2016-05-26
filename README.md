@@ -380,7 +380,7 @@ are being implemented, we have the following list:
     - [x] Trim
     - [x] No CR/LF
     - [x] No consecutive whitespace
-  - [ ] Persistant pasteboard (serialize to K/V store)
+  - [x] Persistant pasteboard (serialize to file)
   - [ ] Streaming Text
   - [ ] Text Hash to Color on Copy (show in paste menu)
   - [x] Special clipboard tracking for detected URLs
