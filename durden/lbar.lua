@@ -129,7 +129,7 @@ local function update_completion_set(wm, ctx, set)
 	end
 
 -- track if set changes as we will need to reset
-	if (not ctx.inp.set or #set ~= #ctx.inp.set) then
+	if (not ctx.inp.cofs or not ctx.inp.set or #set ~= #ctx.inp.set) then
 		ctx.inp.cofs = 1;
 		ctx.inp.csel = 1;
 	end
@@ -338,6 +338,7 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		update_caret(ictx, ictx.mask_text);
 		return;
 	end
+	inp.csel = inp.csel and inp.csel or 1;
 	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.inp.set, ictx.inp);
 
 -- special case, we have a strict set to chose from
@@ -384,7 +385,7 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 	-- special handling, if the user hasn't typed anything, map caret manipulation
 	-- to completion navigation as well)
-		if (ictx.inp) then
+		if (ictx.inp and ictx.inp.csel) then
 			local upd = false;
 			if (ictx.invalid) then
 				upd = true;
