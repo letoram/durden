@@ -546,8 +546,8 @@ end
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 	assert(anchor);
 	assert(anchorp);
-	assert(width > 0);
-	assert(height > 0);
+	width = width > 0 and width or 1;
+	height = height > 0 and height or 1;
 
 	local res = {
 		anchor = fill_surface(width, height, 255, 0, 0),

@@ -70,7 +70,7 @@ local function gen_disp_menu(disp)
 		},
 		{
 		name = "density",
-		label = "Pixel Density",
+		label = "Density",
 		kind = "value",
 		hint = "(px/cm)",
 		validator = gen_valid_float(10, 600.0),

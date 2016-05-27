@@ -95,13 +95,15 @@ local moverz_menu = {
 
 local function gen_wsmove(wnd)
 	local res = {};
-	for k,v in pairs(active_display().spaces) do
+	local adsp = active_display().spaces;
+
+	for i=1,10 do
 		table.insert(res, {
 			name = "move_space_" .. tostring(k),
-			label = v.label and v.label or k,
+			label = (adsp[i] and adsp[i].label) and adsp[i].label or tostring(i);
 			kind = "action",
 			handler = function()
-				wnd:assign_ws(k);
+				wnd:assign_ws(i);
 			end
 		});
 	end
