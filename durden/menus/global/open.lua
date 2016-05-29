@@ -184,7 +184,7 @@ local function decwnd(fn, path)
 	lastpath = path;
 	local vid = launch_decode(fn, function() end);
 	if (valid_vid(vid)) then
-		durden_launch(vid, fn, "decode");
+		durden_launch(vid, "", fn);
 	end
 end
 
