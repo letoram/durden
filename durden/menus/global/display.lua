@@ -173,6 +173,20 @@ local function gen_disp_menu(disp)
 		handler = function()
 			display_share(disp);
 		end
+		},
+		{
+		name = "raw",
+		label = "Screenshot(raw)",
+		kind = "value",
+		hint = "(stored in output/)",
+		eval = function() return valid_vid(disp.rt); end,
+		validator = function(val)
+			return string.len(val) > 0 and not resource("output/" .. val) and
+				not string.match(val, "%.%.");
+		end,
+		handler = function(ctx, val)
+			save_screenshot("output/" .. val, FORMAT_RAW32, disp.rt);
+		end
 		}
 	};
 end
