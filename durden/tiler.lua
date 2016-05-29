@@ -1206,7 +1206,7 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	resize_image(src, outw, outh);
 	if (wnd.autocrop) then
 		local ip = image_storage_properties(src);
-		image_set_txcos_default(src);
+		image_set_txcos_default(src, wnd.origo_ll);
 		image_scale_txcos(src, outw / ip.width, outh / ip.height);
 	end
 	if (wnd.filtermode) then
@@ -1629,14 +1629,15 @@ local function wnd_title(wnd, message, skipresize)
 		hide_titlebar = false;
 	end
 
-	wnd.pad_top = wnd.border_w + tbar_geth(wnd);
-
 	if (hide_titlebar) then
 		wnd.titlebar:hide();
+		wnd.pad_top = wnd.border_w;
 		if (not skipresize) then
 			wnd:resize(wnd.width, wnd.height);
 		end
 		return;
+	else
+		wnd.pad_top = wnd.border_w + tbar_geth(wnd);
 	end
 
 	wnd.titlebar:show();
