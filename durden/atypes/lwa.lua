@@ -24,7 +24,6 @@ local rtbl = {
 		centered = true,
 		default_shader = {"simple", "crop"},
 		scalemode = "stretch",
-		autocrop = true,
 		rate_unlimited = true,
 		filtermode = FILTER_NONE,
 		clipboard_block = true,

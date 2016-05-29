@@ -133,6 +133,7 @@ function(wnd, source, stat)
 	if (wnd.space.mode == "float") then
 		wnd:resize_effective(stat.width, stat.height);
 	end
+	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
 end
 
