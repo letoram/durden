@@ -854,7 +854,8 @@ local function normh(ctx, instr, done, lastv)
 
 -- slightly more cumbersome as we need to handle all permuations of
 -- hook_on/off, valid but empty string with menu item default value
-	if (not instr or string.len(instr) <= 0) then
+	if (not instr) then
+		cpath:reset();
 		return;
 	end
 
