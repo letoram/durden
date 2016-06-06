@@ -234,7 +234,14 @@ local function tiler_statusbar_update(wm)
 	if (statush > 0) then
 		wm.statusbar:resize(wm.width, statush);
 	end
-	wm.statusbar:move(0, wm.height - statush);
+
+	if (gconfig_get("sbar_pos") == "top") then
+		wm.statusbar:move(0, -statush);
+		move_image(wm.anchor, 0, statush);
+	else
+		move_image(wm.anchor, 0, 0);
+		wm.statusbar:move(0, wm.height - statush);
+	end
 
 	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
 		return;
