@@ -134,6 +134,11 @@ function durden(argv)
 	if (type(cmd) == "function") then
 		cmd();
 	end
+
+	if (gconfig_get("first_run")) then
+		gconfig_set("first_run", false);
+		meta_guard_reset(true);
+	end
 end
 
 argv_cmds["dump_menus"] = function()
