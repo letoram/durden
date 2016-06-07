@@ -93,7 +93,6 @@ end
 
 local prev_cache = {};
 local function imgwnd(fn, pctx)
-	print(prev_cache[fn]);
 	if (pctx and valid_vid(pctx.vid)) then
 -- if finished, just take new window and take ownership of vid
 -- otherwise update vid with new handler that spawns window on activation
@@ -340,5 +339,20 @@ return {
 		return tgt ~= nil and #tgt > 0;
 	end,
 	handler = target_submenu
-}
+},
+{
+	name = "model",
+	label = "Model",
+	submenu = true,
+	kind = "value",
+	set = function()
+		return durden_model_list()
+	end,
+	eval = function()
+		return #durden_model_list() > 0;
+	end,
+	handler = function(ctx, val)
+		durden_modelwnd(val);
+	end
+},
 };

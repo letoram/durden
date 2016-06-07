@@ -1014,7 +1014,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 					return;
 			elseif (tgt.submenu) then
 				ctx.list = type(tgt.handler) == "function"
-					and tgt.handler() or tgt.handler;
+					and tgt.handler(ctx.handler) or tgt.handler;
 				local nlb = launch_menu(ctx.wm, ctx, tgt.force, tgt.hint);
 				return nlb;
 			elseif (tgt.handler) then
@@ -1040,7 +1040,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 	local msellbl = gconfig_get("lbar_menulblselstr");
 
 	for i=1,#subs do
-			if ((subs[i].eval == nil or subs[i].eval(ctx, instr)) and
+			if ((subs[i].eval == nil or subs[i].eval(ctx.handler, instr)) and
 			(ctx.show_invisible or not subs[i].invisible)) then
 			if (subs[i].submenu) then
 					table.insert(res, {mlbl, msellbl, subs[i].label});

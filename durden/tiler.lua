@@ -2079,7 +2079,9 @@ local border_mh = {
 		end
 	end,
 	drop = function(ctx)
+		local wnd = ctx.tag;
 		ctx.tag.in_drag_rz = false;
+		wnd:resize(wnd.width, wnd.height);
 	end
 };
 
@@ -2111,9 +2113,12 @@ local canvas_mh = {
 	end,
 
 	button = function(ctx, vid, ...)
-		if (valid_vid(ctx.tag.external, TYPE_FRAWMESERVER)) then
+		if (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			wnd_mousebutton(ctx, ...);
 		end
+	end,
+
+	drag = function()
 	end,
 
 	dblclick = function(ctx)

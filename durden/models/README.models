@@ -1,0 +1,5 @@
+The 3D support here is mostly a fun 'map a custom display source on a 3d model'
+feature brought back from the AWB theme.
+
+For it to work, it requires models in a very specific format.
+Examples models (with blender sources) can be found @ https://www.bintray.com/letoram/arcan-aux
