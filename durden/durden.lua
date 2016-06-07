@@ -44,6 +44,7 @@ function durden(argv)
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("wnd_settings.lua")(); -- per window settings persistence
 	system_load("iopipes.lua")(); -- status and command channels
+	system_load("models/3dsupport.lua")(); -- simple 3d model viewing
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 	CLIPBOARD:load("clipboard_data.lua");
 
@@ -121,17 +122,6 @@ function durden(argv)
 	iostatem_init();
 
 	mouse_reveal_hook(gconfig_get("mouse_reveal"));
-
--- hook some API functions for debugging purposes
-	if (DEBUGLEVEL > 0) then
-		local oti = target_input;
-		target_input = function(dst, tbl)
-			if (active_display().debug_console) then
-				active_display().debug_console:add_input(tbl, dst);
-			end
-			oti(dst, tbl);
-		end
-	end
 
 	for i,v in ipairs(argv) do
 		if (argv_cmds[v]) then
@@ -439,10 +429,6 @@ end
 
 function durden_normal_input(iotbl, fromim)
 -- we track all iotbl events in full debug mode
-	if (DEBUGLEVEL > 2 and active_display().debug_console) then
-		active_display().debug_console:add_input(iotbl);
-	end
-
 	if (iotbl.kind == "status") then
 		durden_iostatus_handler(iotbl);
 		return;
@@ -495,8 +481,17 @@ function durden_normal_input(iotbl, fromim)
 		return;
 	end
 
--- there may be per-window label tabel for custom input labels,
--- those need to be applied still.
+--	if (iotbl.digital) then
+--	active_display():message(string.format("sym: %s, label: %s %s",
+--		SYMTABLE[iotbl.keysym] and SYMTABLE[iotbl.keysym] or "none",
+--		iotbl.label and iotbl.label or "none", iotbl.active and "pressed" or
+--		"released"));
+--	elseif (iotbl.touch) then
+--		active_display():message(string.format("touch: %d, %d, %s",
+--			iotbl.devid, iotbl.subid, iotbl.active and "press" or "release"));
+--	end
+
+-- when in doubt, just forward to the window
 	target_input(sel.external, iotbl);
 end
 

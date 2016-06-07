@@ -20,6 +20,9 @@ local shared_actions = {
 		label = "Input",
 		submenu = true,
 		kind = "action",
+		eval = function()
+			return not active_display().selected.menu_input_disable;
+		end,
 		handler = system_load("menus/target/input.lua")()
 	},
 	{
@@ -27,6 +30,9 @@ local shared_actions = {
 		label = "State",
 		submenu = true,
 		kind = "action",
+		eval = function()
+			return not active_display().selected.menu_state_disable;
+		end,
 		handler = system_load("menus/target/state.lua")()
 	},
 	{

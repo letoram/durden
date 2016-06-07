@@ -6,7 +6,7 @@
 if (SHADER_LANGUAGE == "GLSL120") then
 local old_build = build_shader;
 function build_shader(vertex, fragment, label)
-	vertex = vetex and ("#define VERTEX\n" .. vertex) or nil;
+	vertex = vertex and ("#define VERTEX\n" .. vertex) or nil;
 	fragment = fragment and ([[
 		#ifdef GL_ES
 			#ifdef GL_FRAGMENT_PRECISION_HIGH
