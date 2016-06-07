@@ -19,7 +19,6 @@
 
 local gf = {};
 local sf = {};
-system_load("wnd_settings.lua")();
 
 function register_global(funname, funptr)
 	if (gf[funname] ~= nil) then

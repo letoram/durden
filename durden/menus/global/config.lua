@@ -123,6 +123,19 @@ local durden_bars = {
 		handler = function(ctx, val)
 			gconfig_set("hide_titlebar", val == LBL_YES);
 		end
+	},
+	{
+		name = "sbar_pos",
+		label = "Statusbar Position",
+		kind = "value",
+		set = {"top", "bottom"},
+		initial = function()
+			return gconfig_get("sbar_pos");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_pos", val);
+			active_display():tile_update();
+		end
 	}
 }
 ;

@@ -182,6 +182,7 @@ local defaults = {
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
+	sbar_pos = "top",
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
