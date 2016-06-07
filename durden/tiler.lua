@@ -248,7 +248,7 @@ local function tiler_statusbar_update(wm)
 	end
 	wm_update_mode(wm);
 	local space = wm.spaces[wm.space_ind];
-	wm.statusbar[space == "fullscreen" and "hide" or "show"](wm.statusbar);
+	wm.statusbar[space.mode == "fullscreen" and "hide" or "show"](wm.statusbar);
 
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then

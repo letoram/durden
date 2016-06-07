@@ -193,7 +193,6 @@ local function launch(str, cfg)
 		local wnd = durden_launch(vid, cfg, str);
 		wnd.config_target = str;
 		wnd.config_config = cfg;
-		wnd_settings_load(wnd);
 	end
 end
 
