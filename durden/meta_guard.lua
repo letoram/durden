@@ -11,9 +11,18 @@ local threshold = 40;
 local mg;
 
 -- Called when meta key has been rebound from the UI
-function meta_guard_reset()
-	mgc = 0;
-	meta_guard = mg;
+function meta_guard_reset(force)
+	if (force) then
+		mgc = threshold + 1;
+		if (mg) then
+			mg();
+		else
+			meta_guard();
+		end
+	else
+		mgc = 0;
+		meta_guard = mg;
+	end
 end
 
 function meta_guard(s1, s2)

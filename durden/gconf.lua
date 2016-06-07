@@ -41,6 +41,7 @@ local defaults = {
 
 -- right now, the options are 'none' and 'auto'
 	preview_mode = "auto",
+	first_run = true,
 
 -- should entries that request a password show the input as *** chars
 	passmask = false,
