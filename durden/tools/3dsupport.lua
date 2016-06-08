@@ -112,7 +112,7 @@ local function material_loaded(source, statustbl)
 	end
 end
 
-function durden_model_list()
+local function model_list()
 	local lst = glob_resource("models/*");
 	local res = {};
 
@@ -339,7 +339,7 @@ local function set_pos(model, res)
 	rotate3d_model(model.vid, roll, pitch, yaw, 20, ROTATE_ABSOLUTE);
 end
 
-function durden_modelwnd(name)
+local function modelwnd(name)
 	local res = load_model(name);
 	if (not res or not valid_vid(res.vid)) then
 		return;
@@ -411,3 +411,20 @@ function durden_modelwnd(name)
 -- missing - player stepping on tick, toggle view- position
 	return wnd;
 end
+
+global_menu_register("open",
+{
+	name = "model",
+	label = "Model",
+	submenu = true,
+	kind = "value",
+	set = function()
+		return model_list()
+	end,
+	eval = function()
+		return #model_list() > 0;
+	end,
+	handler = function(ctx, val)
+		modelwnd(val);
+	end
+});

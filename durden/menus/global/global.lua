@@ -104,7 +104,7 @@ global_actions = function(trigger_function)
 	end
 end
 
-function attach_global_menu(path, entry)
+function global_menu_register(path, entry)
 	local elems = string.split(path, '/');
 	local level = toplevel;
 	if (#elems > 0 and elems[1] == "") then
