@@ -1,4 +1,4 @@
-function spawn_terminal()
+function spawn_terminal(cmd)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
@@ -34,6 +34,10 @@ function spawn_terminal()
 		neww = wnd.width - wnd.pad_left - wnd.pad_right;
 		newh = wnd.height- wnd.pad_top - wnd.pad_bottom;
 		lstr = lstr .. string.format(":width=%d:height=%d", neww, newh);
+	end
+
+	if (cmd) then
+		lstr = lstr .. ":" .. cmd;
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
@@ -309,7 +313,7 @@ return {
 		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 	end,
 	handler = function(ctx, val)
-		spawn_terminal(cmd);
+		spawn_terminal(val);
 	end
 },
 {
