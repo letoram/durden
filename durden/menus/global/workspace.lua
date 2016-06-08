@@ -9,6 +9,26 @@ local function switch_ws_menu()
 		};
 	end
 
+	table.insert(spaces,
+	{
+		name = "next",
+		kind = "action",
+		label = "Next",
+		handler = function()
+			active_display():step_ws(1);
+		end
+	});
+
+	table.insert(spaces,
+	{
+		name = "prev",
+		kind = "action",
+		label = "Previous",
+		handler = function()
+			active_display():step_ws(-1);
+		end
+	});
+
 	return spaces;
 end
 
