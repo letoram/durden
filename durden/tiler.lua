@@ -2432,6 +2432,22 @@ local function tiler_switchws(wm, ind)
 	tiler_statusbar_update(wm);
 end
 
+local function tiler_stepws(wm, dir)
+	local cur = wm.space_ind + dir;
+	dir = dir < -1 and -1 or dir;
+	dir = dir >  1 and  1 or dir;
+
+	repeat
+		cur = cur <= 0 and 10 or cur;
+		cur = cur >= 9 and 1 or cur;
+		if (wm.spaces[cur] ~= nil) then
+			wm:switch_ws(cur);
+			return;
+		end
+		cur = cur + dir;
+	until cur == wm.space_ind;
+end
+
 local function tiler_swapws(wm, ind2)
 	local ind1 = wm.space_ind;
 
@@ -2799,6 +2815,7 @@ function tiler_create(width, height, opts)
 
 -- public functions
 		set_background = tiler_switchbg,
+		step_ws = tiler_stepws,
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
 		swap_up = tiler_swapup,
