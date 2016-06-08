@@ -91,6 +91,14 @@ local retrosub = {
 	kind = "action",
 	submenu = true,
 	handler = synch_menu
+	},
+	{
+	name = "gamewnd_slotgrab",
+	label = "Slotted-Grab",
+	kind = "action",
+	handler = function(wnd)
+		iostatem_slotgrab(wnd);
+	end
 	}
 };
 

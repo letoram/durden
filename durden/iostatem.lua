@@ -12,6 +12,7 @@ local def_delay = 0;
 local DEVMAP_DOMAIN = APPL_RESOURCE;
 local rol_avg = 1;
 local evc = 1;
+local slot_grab = nil;
 
 -- specially for game devices, note that like with the other input platforms,
 -- the actual mapping for a device may vary with underlying input platform and,
@@ -24,6 +25,12 @@ end
 
 local function default_ah(sub)
 	return "AXIS" .. tostring(sub + 1), 1;
+end
+
+-- slotted grab is used to reroute all PLAYERn_*** translated inputs to
+-- be routed to a specific window, ignoring active focus
+function iostatem_slotgrab(new)
+	slot_grab = new;
 end
 
 -- returns a table that can be used to restore the input state, used
@@ -99,11 +106,14 @@ function iostatem_input(iotbl)
 
 	elseif (iotbl.digital) then
 		iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
-		if (dev.slot > 0) then
-			iotbl.label = dev.lookup and
-				"PLAYER"..tostring(dev.slot).."_"..dev.lookup[1](iotbl.subid) or "";
+		if (dev.slot > 0 and dev.lookup) then
+			iotbl.label = "PLAYER" .. tostring(dev.slot) .. "_" ..
+				dev.lookup[1](iotbl.subid);
+			if (slot_grab and slot_grab.external) then
+				target_input(slot_grab.external, iotbl);
+				return true;
+			end
 		end
-
 	elseif (iotbl.analog and dev and dev.slot > 0) then
 		local ah, af = dev.lookup[2](iotbl.subid);
 		if (ah) then
@@ -112,6 +122,10 @@ function iostatem_input(iotbl)
 				for i=1,#iotbl.samples do
 					iotbl.samples[i] = iotbl.samples[i] * af;
 				end
+			end
+			if (slot_grab and slot_grab.external) then
+				target_input(slot_grab.external, iotbl);
+				return true;
 			end
 		end
 
