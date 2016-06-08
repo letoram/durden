@@ -338,20 +338,5 @@ return {
 		return tgt ~= nil and #tgt > 0;
 	end,
 	handler = target_submenu
-},
-{
-	name = "model",
-	label = "Model",
-	submenu = true,
-	kind = "value",
-	set = function()
-		return durden_model_list()
-	end,
-	eval = function()
-		return #durden_model_list() > 0;
-	end,
-	handler = function(ctx, val)
-		durden_modelwnd(val);
-	end
-},
+}
 };

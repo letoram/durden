@@ -43,15 +43,28 @@ function durden(argv)
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
-	system_load("models/3dsupport.lua")(); -- simple 3d model viewing
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 	CLIPBOARD:load("clipboard_data.lua");
 
 -- functions exposed to user through menus, binding and scripting
-
 	system_load("fglobal.lua")(); -- tiler- related global functions
 	system_load("menus/global/global.lua")(); -- desktop related global
 	system_load("menus/target/target.lua")(); -- shared window related global
+
+-- tools are quick 'drop-ins' to get additional features like modelviewer
+	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(list) do
+		local res = system_load("tools/" .. v, 0);
+		if (not res) then
+			warning(string.format("couldn't parse tool: %s", v));
+		else
+			local okstate, msg = pcall(res);
+			if (not okstate) then
+				warning(string.format("runtime error loading tool: %s", v));
+				print(msg);
+			end
+		end
+	end
 
 -- load builtin features and 'extensions'
 	local res = glob_resource("builtin/*.lua", APPL_RESOURCE);
