@@ -283,6 +283,7 @@ are being implemented, we have the following list:
 - [ ] Input
   - [ ] Gaming Devices
     - [x] Basic Support (maps, scan, plug/unplug)
+    - [x] Reroute known game inputs to specific window
     - [ ] Axis Remapping
     - [ ] Axis Filtering
     - [ ] Analog Calibration
