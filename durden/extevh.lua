@@ -145,8 +145,8 @@ end
 
 defhtbl["ident"] =
 function(wnd, source, stat)
---	print("ident", source, stat);
--- FIXME: update window title unless custom titlebar?
+	wnd.ident = stat.message;
+	wnd:set_title(stat.message);
 end
 
 defhtbl["terminated"] =
@@ -167,6 +167,15 @@ defhtbl["registered"] =
 function(wnd, source, stat)
 	local atbl = archetypes[stat.segkind];
 	if (atbl == nil or wnd.atype ~= nil) then
+		return;
+	end
+
+-- note that this can be emitted multiple times, it is just the
+-- segment kind that can't / wont change
+	if (wnd.registered) then
+		if (stat.title and string.len(stat.title) > 0) then
+			wnd:set_title(stat.title, true);
+		end
 		return;
 	end
 
