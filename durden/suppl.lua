@@ -757,6 +757,8 @@ function suppl_widget_scan()
 			else
 				warning("widget " .. v .. " failed to load");
 			end
+		else
+			warning("widget " .. v .. "f failed to parse");
 		end
 	end
 end
@@ -891,31 +893,34 @@ end
 -- [ident]:str matches path/special:function to match against widget
 -- paths and [reserved]:num is the number of center- used pixels to avoid.
 --
-function suppl_widget_path(ctx, anchor, ident, reserved)
+function suppl_widget_path(ctx, anchor, ident)
 	local match = {};
 	local fi = 0;
 
+	local wident = nil;
+	if (string.sub(ident, 1, 1) == "#") then
+		local wnd = active_display().selected;
+		wident = wnd.ident;
+	end
+
+	local props = image_surface_resolve_properties(anchor);
+	local y1 = props.y;
+	local y2 = props.y + props.height;
 	local ad = active_display();
-	local sub_sz = 0.5 * reserved;
-	local rh = ad.height * 0.5 - sub_sz;
-	local y2 = math.floor(ad.height * 0.5 + sub_sz - 1);
+
+-- account for top/bottom padding of bar
+	local rh = (ad.height - y2) > y1 and y1 or (ad.height - y2);
 
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
-			if (j == ident) then
--- insertion sort the floaters so we can treat them special later
-				if (v.float) then
-					table.insert(match, 1, {v, 1});
-					fi = fi + 1;
-				else
-
+			if ((type(j) == "function" and j(ctx, ident, wident))
+				or ((type(j) == "string" and j == ident))) then
 -- or query for the number of columns needed assuming a certain height
-					local nc = v.probe and v.probe(ctx, rh) or 1;
-					for n=1,nc do
-						table.insert(match, {v, n});
-					end
-
+				local nc = v.probe and v.probe(ctx, rh) or 1;
+				for n=1,nc do
+					table.insert(match, {v, n});
 				end
+
 			end
 		end
 	end
@@ -925,19 +930,22 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 		return;
 	end
 
+	local pad = 20;
+
 -- create anchors linked to background for automatic deletion, as they
 -- are used for clipping, distribute in a fair away between top and bottom
 -- but with special treatment for floating widgets
 	local start = fi+1;
+	local ctr = 0;
 
 	if (nm - fi > 0) then
 		local ndiv = (#match - fi) / 2;
-		local cellw = ndiv > 1 and ad.width / ndiv or ad.width;
-		local cx = 0;
-		local ay = 0;
+		local cellw = ndiv > 1 and (ad.width - pad - pad) / ndiv or ad.width;
+		local cx = pad;
 		while start <= nm do
+			ctr = ctr + 1;
 			local anch = null_surface(cellw, rh);
-			show_image(anch);
+			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
 			link_image(anch, anchor);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
@@ -946,11 +954,10 @@ function suppl_widget_path(ctx, anchor, ident, reserved)
 
 -- position and slide only if we get a hint on dimensions consumed
 			if (w and h) then
-				move_image(anch, cx, ay == 0 and rh - h or y2);
-				if (ay == 0) then
-					ay = y2;
+				if (ctr % 2 == 1) then
+					move_image(anch, cx, -h);
 				else
-					ay = 0;
+					move_image(anch, cx, props.height);
 					cx = cx + cellw;
 				end
 			else
@@ -1124,8 +1131,8 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 
 -- activate any path triggered widget
 	local path = table.concat(cpath.path, "/");
-	suppl_widget_path(bar, bar.anchor,
-		(cpath.domain and cpath.domain or "") .. path, 0);
+	suppl_widget_path(bar, bar.text_anchor,
+		(cpath.domain and cpath.domain or "") .. path);
 
 	if (not bar.on_cancel) then
 		bar.on_cancel = menu_cancel;

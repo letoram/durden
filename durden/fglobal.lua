@@ -324,7 +324,7 @@ function fglobal_bind_u8(hook)
 				active_display():message("invalid utf-8 sequence specified");
 			end
 		end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
-		suppl_widget_path(bar, bar.anchor, "special:u8", bar.barh);
+		suppl_widget_path(bar, bar.text_anchor, "special:u8", bar.barh);
 	end;
 
 	tiler_bbar(active_display(),
@@ -404,7 +404,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 	);
 
 	local lbsz = 2 * active_display().scalef * gconfig_get("lbar_sz");
-	suppl_widget_path(ctx, ctx.anchor, "special:custg", lbsz);
+	suppl_widget_path(ctx, ctx.bar, "special:custg", lbsz);
 	ctx.on_cancel = function() IN_CUSTOM_BIND = false; end
 end
 

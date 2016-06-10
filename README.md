@@ -153,8 +153,8 @@ in the widget folder, there are a few short example scripts on hooks
 that are enabled when menu navigation reaches a certain state or the
 lbar/bbar are used for some things. This feature is intended to help
 developing quick features like notes and a calculator, but also when
-using features that becomes easier with 'cheat sheets' like an ASCII
-table.
+using features that becomes easier with 'cheat sheets', binding info
+or an ASCII table.
 
 Status / Command / Output channels
 ====
