@@ -1,0 +1,17 @@
+.+%.lua
+. all characters
++ (1) * (0) - (0+) ? (0 or 1)
+%a letters
+%c control characters
+%d digits
+%l lower case letters
+%p punctuation characters
+%s space characters
+%u upper case letters
+%w alphanumeric characters
+%x hexadecimal digits
+%z NUL- character
+%% match %
+[] define charset
+upcase %(SLP,..) negate
+
