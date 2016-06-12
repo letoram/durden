@@ -83,7 +83,7 @@ local defaults = {
 	remote_pass = "guest",
 
 -- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
--- performance footprint etc. but prevents certain features like selective
+-- Performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.
 	display_simple = false,
 	display_shader = "basic",
@@ -110,7 +110,7 @@ local defaults = {
 	mouse_factor = 1.0,
 	mouse_autohide = true,
 	mouse_reveal = true,
-	mouse_dblclick_step = 12,
+	mouse_dblclick = 12,
 	mouse_hidetime = 120,
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
@@ -137,7 +137,11 @@ local defaults = {
 -- default keyboard repeat rate for all windows, some archetypes have
 -- default overrides and individual windows can have strong overrides
 	kbd_period = 4,
-	kbd_delay = 300,
+	kbd_delay = 600,
+
+-- accepted values: m1_double, m2_double, none
+	meta_lock = "m1_double",
+	meta_stick_time = 0,
 
 -- built-in terminal defaults
 	term_autosz = true, -- will ignore cellw / cellh and use font testrender

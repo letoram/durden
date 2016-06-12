@@ -4,9 +4,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Sensitivity",
 		hint = function() return "(0.01..10)"; end,
-		validator = function(val)
-			return gen_valid_num(0, 10)(val);
-		end,
+		validator = gen_valid_num(0, 10),
 		initial = function()
 			return tostring(gconfig_get("mouse_factor"));
 		end,
@@ -18,13 +16,24 @@ local mouse_menu = {
 		end
 	},
 	{
+		name = "dblclick",
+		kind = "value",
+		label = "Double-Click",
+		hint = function() return "(deadline for double click)"; end,
+		validator = gen_valid_num(5, 100),
+		initial = function()
+			return tostring(gconfig_get("mouse_dblclick"));
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_dblclick", tonumber(val));
+		end
+	},
+	{
 		name = "hover",
 		kind = "value",
 		label = "Hover Delay",
 		hint = function() return "10..80"; end,
-		validator = function(val)
-			return gen_valid_num(0, 80)(val);
-		end,
+		validator = gen_valid_num(0, 80),
 		initial = function()
 			return tostring(gconfig_get("mouse_hovertime"));
 		end,
@@ -92,9 +101,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Autohide Delay",
 		hint = function() return "40..400"; end,
-		validator = function(val)
-			return gen_valid_num(0, 400)(val);
-		end,
+		validator = gen_valid_num(0, 400),
 		initial = function()
 			return tostring(gconfig_get("mouse_hidetime"));
 		end,
@@ -349,13 +356,13 @@ local keymaps_menu = {
 
 local keyb_menu = {
 	{
-		name = "keyboard_repeat",
+		name = "repeat",
 		label = "Repeat Period",
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_period")); end,
 		hint = "ticks/cycle (0:disabled - 50)",
 		note = "sets as new default, applies to new windows",
-		validator = gen_valid_num(0, 100);
+		validator = gen_valid_num(0, 100),
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_period", val);
@@ -363,7 +370,7 @@ local keyb_menu = {
 		end
 	},
 	{
-		name = "keyboard_delay",
+		name = "delay",
 		label = "Initial Delay",
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_delay")); end,
@@ -376,14 +383,33 @@ local keyb_menu = {
 		end
 	},
 	{
-		name = "keyboard_maps",
+		name = "",
+		label = "Lock Toggle",
+		set = {"Meta-1 doublepress", "Meta-2 doublepress", "None"},
+		kind = "value",
+		handler = function()
+		end,
+	},
+	{
+		name = "sticky",
+		label = "Sticky Meta",
+		kind = "value",
+		hint = "release-delay (0: disable)",
+		validator = gen_valid_num(0, 100),
+		initial = function() return tostring(gconfig_get("meta_stick_time")); end,
+		handler = function(ctx, val)
+			gconfig_set("meta_stick_time", tonumber(val));
+		end
+	},
+	{
+		name = "maps",
 		label = "Maps",
 		kind = "action",
 		submenu = true,
 		handler = keymaps_menu
 	},
 	{
-		name = "keyboard_reset",
+		name = "reset",
 		label = "Reset",
 		kind = "action",
 		handler = function() SYMTABLE:reset(); end

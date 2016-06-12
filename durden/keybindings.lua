@@ -112,8 +112,11 @@ system_load("meta_guard.lua")();
 
 -- We assume that all relevant input related functions go
 -- through this one as it is used to map track meta_ key state.
-local meta_1_state = false;
-local meta_2_state = false;
+local meta_1_state;
+local meta_2_state;
+local clickrate;
+local meta_stick;
+local unstick_counter = 0;
 
 function dispatch_system(key, val)
 	if (SYSTEM_KEYS[key] ~= nil) then
@@ -124,7 +127,30 @@ function dispatch_system(key, val)
 	end
 end
 
+function dispatch_tick()
+	if (unstick_counter > 0) then
+		unstick_counter = unstick_counter - 1;
+		if (unstick_counter == 0) then
+			meta_1_state = nil;
+			meta_2_state = nil;
+		end
+	end
+end
+
 function dispatch_load()
+	gconfig_listen("meta_stick_time", "kbdbind.lua",
+	function(key, val)
+		print("stick changed to", val);
+		meta_stick = val;
+	end);
+	gconfig_listen("mouse_dblclick", "kbdbind.lua",
+	function(key, val)
+		clickrate = val;
+	end
+	);
+	clickrate = gconfig_get("mouse_dblclick");
+	meta_stick = gconfig_get("meta_stick_time");
+
 	for k,v in pairs(SYSTEM_KEYS) do
 		local km = get_key("sysk_" .. k);
 		if (km ~= nil) then
@@ -181,12 +207,12 @@ function dispatch_custom(key, val, nomb, wnd, global)
 end
 
 function dispatch_meta()
-	return meta_1_state, meta_2_state;
+	return meta_1_state ~= nil, meta_2_state ~= nil;
 end
 
 function dispatch_meta_reset(m1, m2)
-	meta_1_state = m1 and m1 or false;
-	meta_2_state = m2 and m2 or false;
+	meta_1_state = m1 and CLOCK or nil;
+	meta_2_state = m2 and CLOCK or nil;
 end
 
 local function track_label(iotbl, keysym, hook_handler)
@@ -194,24 +220,39 @@ local function track_label(iotbl, keysym, hook_handler)
 
 	local metam = false;
 	if (keysym == SYSTEM_KEYS["meta_1"]) then
-		meta_1_state = iotbl.active;
+-- for "sticky meta" we defer the release- to be triggered as a tick
+		if (meta_stick > 0) then
+			if (iotbl.active) then
+				meta_1_state = CLOCK;
+				unstick_counter = meta_stick;
+			end
+		else
+			meta_1_state = iotbl.active and CLOCK or nil;
+		end
 		metam = true;
 
 	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
-		meta_2_state = iotbl.active;
+		if (meta_stick > 0) then
+			if (iotbl.active) then
+				meta_2_state = CLOCK;
+				unstick_counter = meta_stick;
+			end
+		else
+			meta_2_state = iotbl.active and CLOCK or nil;
+		end
 		metam = true;
 	end
 
 	local lutsym = "" ..
-		(meta_1_state == true and "m1_" or "") ..
-		(meta_2_state == true and "m2_" or "") .. keysym;
+		(meta_1_state and "m1_" or "") ..
+		(meta_2_state and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
 		hook_handler(active_display(), keysym, iotbl, lutsym, metam, tbl[lutsym]);
 		return true, lutsym;
 	end
 
-	if (metam or not meta_guard(meta_1_state, meta_2_state)) then
+	if (metam or not meta_guard(meta_1_state ~= nil, meta_2_state ~= nil)) then
 		return true, lutsym;
 	end
 
