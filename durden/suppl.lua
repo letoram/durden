@@ -286,10 +286,12 @@ function suppl_recarg_eval()
 end
 
 function suppl_region_select(r, g, b, handler)
-	local col = color_surface(1, 1, r, g, b);
+	local col = fill_surface(1, 1, r, g, b);
 	blend_image(col, 0.2);
 	iostatem_save();
 	mouse_select_begin(col);
+	dispatch_meta_reset();
+	shader_setup(col, "ui", "regsel", "active");
 	durden_input = durden_regionsel_input;
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end

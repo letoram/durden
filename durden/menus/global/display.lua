@@ -252,6 +252,9 @@ local function query_displays()
 end
 
 local record_handler = system_load("menus/global/record.lua")();
+local last_dvid; -- track VID for OCR
+local last_msg; -- append message for multipart
+
 local region_menu = {
 	{
 		name = "snapshot",
@@ -260,6 +263,7 @@ local region_menu = {
 		handler = function()
 			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
+				if (not valid_vid(dvid)) then return; end
 				show_image(dvid);
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 				wnd:set_title("Snapshot" .. tostring(CLOCK));
@@ -273,7 +277,7 @@ local region_menu = {
 		handler = function()
 			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
-				show_image(dvid);
+				if (not valid_vid(dvid)) then return; end
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 				if (wnd) then
 					wnd:set_title("Monitor");
@@ -290,24 +294,40 @@ local region_menu = {
 		name = "ocr",
 		label = "OCR",
 		kind = "action",
-		eval = function() return false; end,
 		handler = function()
 			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
+
+-- assume that a new OCR call invalidates the last / pending one
+				if (valid_vid(last_dvid)) then
+					delete_image(last_dvid);
+					last_dvid = nil;
+				end
+
 				local dvid, grp = suppl_region_setup(x1, y1, x2, y2, true, false);
 				if (not valid_vid(dvid)) then
 					return;
 				end
-				define_recordtarget(dvid, grp, "protocol=ocr", grp, {},
+				last_dvid = dvid;
+				hide_image(dvid);
+
+				define_recordtarget(dvid, "stream", "protocol=ocr", grp, {},
 					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
 				function(source, stat)
 					if (stat.kind == "message") then
--- aggregate and push into global clipboard
+						last_msg = last_msg and (last_msg .. stat.message) or stat.message;
+						if (not stat.multipart) then
+							CLIPBOARD:add("OCR", last_msg, false);
+							last_msg = nil;
+							delete_image(source);
+						end
 					elseif (stat.kind == "terminated") then
 						delete_image(source);
-					else
 					end
 				end);
+
+-- make sure the copy in the new rendertarget is updated, then sync down
 				rendertarget_forceupdate(dvid);
+				stepframe_target(dvid);
 			end);
 		end
 	},
