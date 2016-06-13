@@ -130,7 +130,7 @@ function durden(argv)
 	audio_gain(BADID, gconfig_get("global_gain"));
 
 -- load saved keybindings
-	dispatch_load();
+	dispatch_load(durden_lock_toggle);
 	iostatem_init();
 
 	mouse_reveal_hook(gconfig_get("mouse_reveal"));
@@ -288,6 +288,14 @@ wnd_create_handler = function(wm, wnd)
 			}
 		);
 	end
+end
+
+--
+-- triggered by meta- state tracker, we need the hook here to also trigger
+-- mouse locking and update border states
+--
+function durden_lock_toggle(newst)
+
 end
 
 -- there is a ton of "per window" input state when it comes to everything from

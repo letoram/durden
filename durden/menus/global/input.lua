@@ -383,12 +383,32 @@ local keyb_menu = {
 		end
 	},
 	{
-		name = "",
+		name = "mlock",
 		label = "Lock Toggle",
-		set = {"Meta-1 doublepress", "Meta-2 doublepress", "None"},
+		set = {"Meta-1 doubletap", "Meta-2 doubletap", "None"},
 		kind = "value",
-		handler = function()
+		initial = function() return gconfig_get("meta_lock"); end,
+		handler = function(ctx, val)
+			if (val == "Meta-1 doubletap") then
+				val = "m1";
+			elseif (val == "Meta-2 doubletap") then
+				val = "m2";
+			else
+				val = "none";
+			end
+			gconfig_set("meta_lock", val);
 		end,
+	},
+	{
+		name = "pressrate",
+		label = "Lock Timing",
+		hint = "ticks between releases for doubletap",
+		kind = "value",
+		initial = function() return tostring(gconfig_get("meta_dbltime")); end,
+		validator = gen_valid_num(4, 100),
+		handler = function(ctx, val)
+			gconfig_set("meta_dbltime", tonumber(val));
+		end
 	},
 	{
 		name = "sticky",

@@ -39,6 +39,18 @@ local tbl = {};
 -- normal input event handler
 local stbl = {};
 
+-- state tracking table for locking/unlocking, double-tap tracking, and sticky
+local mtrack = {
+	m1 = nil,
+	m2 = nil,
+	last_m1 = 0,
+	last_m2 = 0,
+	unstick_ctr = 0,
+	dblrate = 10,
+	mstick = 0,
+	mlock = "none"
+};
+
 function dispatch_reset(save)
 	tbl = {};
 	tbl["m1_RETURN"] = "spawn_terminal";
@@ -110,14 +122,6 @@ dispatch_reset();
 -- the following line can be removed if meta state protection is not needed
 system_load("meta_guard.lua")();
 
--- We assume that all relevant input related functions go
--- through this one as it is used to map track meta_ key state.
-local meta_1_state;
-local meta_2_state;
-local clickrate;
-local meta_stick;
-local unstick_counter = 0;
-
 function dispatch_system(key, val)
 	if (SYSTEM_KEYS[key] ~= nil) then
 		SYSTEM_KEYS[key] = val;
@@ -128,28 +132,35 @@ function dispatch_system(key, val)
 end
 
 function dispatch_tick()
-	if (unstick_counter > 0) then
-		unstick_counter = unstick_counter - 1;
-		if (unstick_counter == 0) then
-			meta_1_state = nil;
-			meta_2_state = nil;
+	if (mtrack.unstick_ctr > 0) then
+		mtrack.unstick_ctr = mtrack.unstick_ctr - 1;
+		if (mtrack.unstick_ctr == 0) then
+			mtrack.m1 = nil;
+			mtrack.m2 = nil;
 		end
 	end
 end
 
-function dispatch_load()
-	gconfig_listen("meta_stick_time", "kbdbind.lua",
+function dispatch_load(locktog)
+	gconfig_listen("meta_stick_time", "keybindings.lua",
 	function(key, val)
-		print("stick changed to", val);
-		meta_stick = val;
+		mtrack.mstick = val;
 	end);
-	gconfig_listen("mouse_dblclick", "kbdbind.lua",
+	gconfig_listen("meta_dbltime", "keybindings.lua",
 	function(key, val)
-		clickrate = val;
+		mtrack.dblrate = val;
 	end
 	);
-	clickrate = gconfig_get("mouse_dblclick");
-	meta_stick = gconfig_get("meta_stick_time");
+	gconfig_listen("meta_lock", "keybindings.lua",
+	function(key, val)
+		mtrack.mlock = val;
+	end
+	);
+
+	mtrack.dblrate = gconfig_get("meta_dbltime");
+	mtrack.mstick = gconfig_get("meta_stick_time");
+	mtrack.mlock = gconfig_get("meta_lock");
+	mtrack.locktog = locktog;
 
 	for k,v in pairs(SYSTEM_KEYS) do
 		local km = get_key("sysk_" .. k);
@@ -207,52 +218,77 @@ function dispatch_custom(key, val, nomb, wnd, global)
 end
 
 function dispatch_meta()
-	return meta_1_state ~= nil, meta_2_state ~= nil;
+	return mtrack.m1 ~= nil, mtrack.m2 ~= nil;
 end
 
 function dispatch_meta_reset(m1, m2)
-	meta_1_state = m1 and CLOCK or nil;
-	meta_2_state = m2 and CLOCK or nil;
+	mtrack.m1 = m1 and CLOCK or nil;
+	mtrack.m2 = m2 and CLOCK or nil;
+end
+
+function dispatch_toggle()
+	mtrack.ignore = not mtrack.ignore;
+	if (mtrack.locktog) then
+		mtrack.locktog(mtrack.ignore);
+	end
 end
 
 local function track_label(iotbl, keysym, hook_handler)
 	local metadrop = false;
-
 	local metam = false;
-	if (keysym == SYSTEM_KEYS["meta_1"]) then
--- for "sticky meta" we defer the release- to be triggered as a tick
-		if (meta_stick > 0) then
-			if (iotbl.active) then
-				meta_1_state = CLOCK;
-				unstick_counter = meta_stick;
-			end
-		else
-			meta_1_state = iotbl.active and CLOCK or nil;
-		end
-		metam = true;
 
-	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
-		if (meta_stick > 0) then
-			if (iotbl.active) then
-				meta_2_state = CLOCK;
-				unstick_counter = meta_stick;
+-- notable state considerations here, we need to construct
+-- a string label prefix that correspond to the active meta keys
+-- but also take 'sticky' (release- take artificially longer) and
+-- figure out 'gesture' (double-press)
+	local function metatrack(s1)
+		local rv1, rv2;
+		if (iotbl.active) then
+			if (mtrack.mstick > 0) then
+				mtrack.unstick_ctr = mtrack.mstick;
 			end
+			rv1 = CLOCK;
 		else
-			meta_2_state = iotbl.active and CLOCK or nil;
+			if (mtrack.mstick > 0) then
+				rv1 = s1;
+			else
+-- rv already nil
+			end
+			rv2 = CLOCK;
 		end
 		metam = true;
+		return rv1, rv2;
 	end
 
+	if (keysym == SYSTEM_KEYS["meta_1"]) then
+		local m1, m1d = metatrack(mtrack.m1, mtrack.last_m1);
+		mtrack.m1 = m1;
+		if (m1d and mtrack.mlock == "m1") then
+			if (m1d - mtrack.last_m1 <= mtrack.dblrate) then
+				dispatch_toggle();
+			end
+			mtrack.last_m1 = m1d;
+		end
+	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
+		local m2, m2d = metatrack(mtrack.m2, mtrack.last_m2);
+		mtrack.m2 = m2;
+		if (m2d and mtrack.mlock == "m2") then
+			if (m2d - mtrack.last_m2 <= mtrack.dblrate) then
+				dispatch_toggle();
+			end
+			mtrack.last_m2 = m2d;
+		end
+	end
 	local lutsym = "" ..
-		(meta_1_state and "m1_" or "") ..
-		(meta_2_state and "m2_" or "") .. keysym;
+		(mtrack.m1 and "m1_" or "") ..
+		(mtrack.m2 and "m2_" or "") .. keysym;
 
 	if (hook_handler) then
 		hook_handler(active_display(), keysym, iotbl, lutsym, metam, tbl[lutsym]);
 		return true, lutsym;
 	end
 
-	if (metam or not meta_guard(meta_1_state ~= nil, meta_2_state ~= nil)) then
+	if (metam or not meta_guard(mtrack.m1 ~= nil, mtrack.m2 ~= nil)) then
 		return true, lutsym;
 	end
 
@@ -287,16 +323,9 @@ function dispatch_translate(iotbl, nodispatch)
 		end
 -- generate durden specific meta- tracking or apply binding hooks
 		ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
-
-	elseif (iotbl.analog) then
-		if (active_display().input_alock) then
-			ok = active_display().input_alock(iotbl);
-		end
-	else
--- miss handling of other sensors and touch devices here
 	end
 
-	if (not lutsym) then
+	if (not lutsym or mtrack.ignore) then
 		return false, nil, iotbl;
 	end
 

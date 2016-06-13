@@ -208,7 +208,8 @@ function display_event_handler(action, id)
 		return;
 	end
 
-	display_debug(string.format("id: %d, action: %s\n", id, action));
+	display_debug(string.format("id: %d, action: %s\n",
+		id and id or -1, action and action or ""));
 
 -- display subsystem and input subsystem are connected when it comes
 -- to platform specific actions e.g. virtual terminal switching, assume
