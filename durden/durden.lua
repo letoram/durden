@@ -40,6 +40,7 @@ function durden(argv)
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
+	system_load("touchm.lua")(); -- touch display input
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
@@ -452,6 +453,13 @@ function durden_display_state(action, id)
 	end
 end
 
+local input_devhs = {};
+-- for some complex or hybrid devices, we want the option of
+-- being able to take priority in manipulating or mutating iotbl state
+function durden_register_devhandler(devid, func, ctx)
+	input_devhs[devid] = {func, ctx};
+end
+
 function durden_normal_input(iotbl, fromim)
 -- we track all iotbl events in full debug mode
 	if (iotbl.kind == "status") then
@@ -460,18 +468,22 @@ function durden_normal_input(iotbl, fromim)
 	end
 
 	ievcount = ievcount + 1;
+	local devh = input_devhs[iotbl.devid];
+	if (devh) then
+		iotbl = devh[1](devh[2], iotbl);
+		if (not iotbl) then
+			return;
+		end
+	end
 
 -- iostate manager takes care of mapping or translating 'game' devices,
 -- stateful "per window" tracking and "autofire" or "repeat" injections
--- but tries to ignore mouse devices.
+-- but tries to ignore touch and mouse devices.
 	if (not fromim) then
 		if (iostatem_input(iotbl)) then
 			return;
 		end
 	end
-
--- since we have some kind of input event, reset our idle timers
-	timer_reset_idle();
 
 -- then we forward keyboard events into the dispatch function, this applies
 -- translations, bindings and symtable mapping. Returns information if the
@@ -485,6 +497,17 @@ function durden_normal_input(iotbl, fromim)
 		if (ok) then
 			return;
 		end
+		timer_reset_idle();
+	end
+
+-- default assumes that the event disappeared and any output is reinjected
+-- as a different kind of event. Otherwise touch is manipulated and left to
+-- forward to external further below.
+	if (iotbl.touch) then
+		if (not touch_consume_sample(iotbl)) then
+			return;
+		end
+		timer_reset_idle();
 	end
 
 -- after that we have special handling for mouse motion and presses,

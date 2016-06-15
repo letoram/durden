@@ -129,6 +129,9 @@ local defaults = {
 	mouse_mode = "nonnative",
 	mouse_scalef = 1.0,
 
+-- default classifier for unknown touch devices
+	mt_classifier = "relmouse",
+
 -- audio settings
 	global_gain = 1.0,
 	gain_fade = 10,
