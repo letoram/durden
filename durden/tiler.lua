@@ -408,13 +408,18 @@ local function wnd_select(wnd, source)
 		mouse_absinput_masked(
 			props.x + px * props.width, props.y + py * props.height, true);
 		mouse_moved = true;
+-- won't generate normal over event
+		if (wnd.cursor == "hidden") then
+			mouse_hidemask(true);
+			mouse_hide();
+		end
 	end
 	ms.last_hover = CLOCK;
 	ms.hover_ign = false;
 
 	if (wnd.mouse_lock) then
 		mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
-				wnd.mouse_lock or nil);
+				wnd.mouse_lock or nil, wnd.mouse_lock_center, wnd);
 	end
 
 	wnd:to_front();
@@ -2109,6 +2114,7 @@ local canvas_mh = {
 		end
 
 		if (ctx.tag.cursor == "hidden") then
+			mouse_hidemask(true);
 			mouse_hide();
 		end
 	end,
@@ -2185,6 +2191,7 @@ local function wnd_create(wm, source, opts)
 		effective_h = 0,
 		weight = 1.0,
 		vweight = 1.0,
+		cursor = "default",
 		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
 		scalemode = opts.scalemode and opts.scalemode or "normal",

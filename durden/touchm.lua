@@ -26,13 +26,12 @@ local devices = {};
 -- aggregate samples with a variable number of ticks as sample period
 -- and then feed- back into _input as a relative mouse input event
 local function relative_sample(devtbl, iotbl)
--- convert touch event to mouse and re-inject as absolute coordinates
 	local ind = iotbl.subid - 128;
 	if (iotbl.digital) then
-		return iostatem_input(iotbl) and iotbl or nil;
-	elseif (ind ~= 0) then
 		return;
 	end
+
+-- only map to normal motion if a single source is marked as active
 
 -- should also register a tick handler to periodically reset sample-base
 -- to deal with jittery or broken devices that do not expose a release
@@ -42,33 +41,24 @@ local function relative_sample(devtbl, iotbl)
 		devtbl.last_x = nil;
 		devtbl.last_y = nil;
 		return;
-	elseif (devtbl.last_x == nil) then
+	elseif (not devtbl.last_x) then
 		devtbl.last_x = iotbl.x;
 		devtbl.last_y = iotbl.y;
 		return;
 	end
 
--- normalize samples to -1..1
-
--- undocumented platform badness, subid is based to 128 for TOUCH due
--- to devices with both buttons, axes and multitouch.
 	local dx = iotbl.x - devtbl.last_x;
 	local dy = iotbl.y - devtbl.last_y;
 	devtbl.last_x = iotbl.x;
 	devtbl.last_y = iotbl.y;
 
--- scale samples relative to VRESW, VRESH
-
--- track the number of active indices and optionally map to additional
--- gesture classifications
---
 	mouse_input(dx, dy);
 	return nil;
 end
 
 local function relative_init(devtbl)
-	devtbl.last_x = active_display().width * 0.5;
-	devtbl.last_y = active_display().height * 0.5;
+	devtbl.last_x = VRESW * 0.5;
+	devtbl.last_y = VRESH * 0.5;
 	devtbl.scale_x = 1.0;
 	devtbl.scale_y = 1.0;
 end
