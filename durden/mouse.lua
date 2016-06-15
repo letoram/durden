@@ -73,6 +73,16 @@ local mouse_handlers = {
 	rclick = {}
 };
 
+-- convention established mapping for forwarding to game/terminal/...
+MOUSE_LBUTTON = 0;
+MOUSE_RBUTTON = 1;
+MOUSE_MBUTTON = 2;
+MOUSE_WHEELPY = 3;
+MOUSE_WHEELNY = 4;
+MOUSE_WHEELPX = 5;
+MOUSE_WHEELNX = 6;
+MOUSE_AUXBTN  = 7; -- >= 7 really
+
 local mstate = {
 -- tables of event_handlers to check for match when
 	handlers = mouse_handlers,
