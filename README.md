@@ -243,6 +243,7 @@ To get an overview of the features that have been implemented and features that
 are being implemented, we have the following list:
 
 - [x] Basic Window Management Modes: float, tab, vertical-tab, tiled, fullscreen
+- [ ] Preset configuration / themes ("desktop", tiling, enhanced security..)
 - [ ] Workspace Management
   - [x] Naming/Renaming
   - [x] Searching Based On Name
@@ -259,7 +260,6 @@ are being implemented, we have the following list:
   - [x] Animated Transitions (fade, move)
   - [x] Dim-Layer on Menus
   - [x] Configurable Bar Positioning
-  - [ ] Tray/Statusbar movable to target/global menu screen
   - [ ] Ws- switch time based on diff. in content brightness
   - [ ] Workspace color sample points mapped to external LEDs
   - [x] Workspace Event Notification
@@ -289,25 +289,30 @@ are being implemented, we have the following list:
     - [ ] Analog Calibration
     - [ ] Autofire
   - [ ] Touchpads/screens
+	  - [ ] Mouse Emulation
+		- [ ] Gesture- analysis profiler
     - [ ] Calibration Tool
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
-  - [ ] 'Sticky' Meta (meta press state persist n ticks)
+  - [x] 'Sticky' Meta (meta press state persist n ticks)
 	- [ ] Float Layout
     - [x] Drag Reposition/Resize in Float
     - [x] Double-Click Titlebar Maximize-Restore in Float
     - [ ] Desktop Icons in Float-Mode
 	  - [ ] Auto-layouter in Float-Mode (normalize + binpack)
-  - [x] Mouse-Hover Focus
-  - [x] Mouse Scale Factors
-  - [x] Mouse Follows Selection
-  - [x] Mouse Lock to Window
-  - [ ] Mouse Button Reordering
-  - [ ] Meta + Mouse Button Binding
-	- [ ] Custom Gestures to action binding
-  - [x] Focus-Follows-Mouse
-  - [x] Autohiding Mouse
+	- [x] Mouse
+	  - [x] Focus follows:
+		  - [x] Hover
+			- [x] Click
+			- [x] Motion
+    - [x] Scale Factor
+    - [x] Follows Selection
+    - [x] Lock to Window
+    - [x] Autohide / Reveal
+    - [ ] Button Reordering
+		- [ ] Meta+Click Binding
+	  - [ ] Mouse->Touch emulation (input gestures)
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
   - [ ] On-Screen Keyboard (custom button grid as window that don't focus)
@@ -355,8 +360,8 @@ are being implemented, we have the following list:
 			-  [x] Passive
 			-  [ ] Input mapping
 			-  [ ] As separate 'display'
-		- [ ] Abstract Encode
-		  -  [ ] OCR
+		- [ ] Abstract Encode/Decode
+		  -  [x] OCR
 			-  [ ] Text to Speech
 			-  [ ] Speech Recognition
 			-  [ ] Dictionary / Translation
@@ -393,6 +398,8 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Level Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
+	- [ ] Privilege Level indication
+	  - [ ] Trusted input path on high-privilege window
   - [ ] Notification on reaching VID limit threshold
         and suspend external/ subsegs temporarily
 - [x] Basic Crash Recovery/Reset/Reload
@@ -402,6 +409,7 @@ are being implemented, we have the following list:
   - [x] Offscreen Workspace Rendering
   - [x] Migrate Workspaces Between Displays
   - [x] Home Workspace to Preferred Display
+  - [ ] Virtual Overlay Display
   - [ ] Change orientation
     - [x] vertical / horizontal
     - [ ] mirroring

@@ -619,5 +619,6 @@ function durden_clock_pulse(n, nt)
 
 	flush_pending();
 	mouse_tick(1);
+	dispatch_tick();
 	display_tick();
 end
