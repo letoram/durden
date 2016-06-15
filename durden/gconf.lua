@@ -139,9 +139,10 @@ local defaults = {
 	kbd_period = 4,
 	kbd_delay = 600,
 
--- accepted values: m1_double, m2_double, none
-	meta_lock = "m1_double",
+-- accepted values: m1, m2, none
+	meta_lock = "m2",
 	meta_stick_time = 0,
+	meta_dbltime = 10,
 
 -- built-in terminal defaults
 	term_autosz = true, -- will ignore cellw / cellh and use font testrender
