@@ -248,6 +248,10 @@ function iostatem_added(iotbl)
 	return devices[iotbl.devid];
 end
 
+function iostatem_lookup(devid)
+	return devices[devid];
+end
+
 function iostatem_removed(iotbl)
 	local dev = devices[iotbl.devid];
 	if (dev) then
