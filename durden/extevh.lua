@@ -289,6 +289,7 @@ function(wnd, source, stat)
 			delete_image(wnd.clipboard)
 		end
 		wnd.clipboard = accept_target();
+		link_image(wnd.clipboard, wnd.anchor);
 		target_updatehandler(wnd.clipboard,
 			function(source, status)
 				extevh_clipboard(wnd, source, status)
