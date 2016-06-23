@@ -277,7 +277,6 @@ local function dev_menu(v)
 			label = "Bind",
 			handler = function() return gen_bmenu(v, pref .. "_bind"); end,
 			kind = "action",
-			eval = false,
 			submenu = true
 		},
 		{
