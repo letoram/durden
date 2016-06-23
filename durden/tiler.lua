@@ -2131,9 +2131,6 @@ local canvas_mh = {
 		end
 	end,
 
-	drag = function()
-	end,
-
 	dblclick = function(ctx)
 		if (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			wnd_mousedblclick(ctx);

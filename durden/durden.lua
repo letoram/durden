@@ -67,17 +67,6 @@ function durden(argv)
 		end
 	end
 
--- load builtin features and 'extensions'
-	local res = glob_resource("builtin/*.lua", APPL_RESOURCE);
-	for k,v in ipairs(res) do
-		local res = system_load("builtin/" .. v, false);
-		if (res) then
-			res();
-		else
-			warning(string.format("couldn't load builtin (%s)", v));
-		end
-	end
-
 -- can't work without a detected keyboard
 	if (not input_capabilities().translated) then
 		warning("arcan reported no available translation capable devices "
