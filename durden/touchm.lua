@@ -139,7 +139,8 @@ local function relative_sample(devtbl, iotbl)
 
 -- digital is bothersome as some devices send the first button as
 -- finger on pad even if it has a 'real' button underneath. Then we
--- have 'soft'buttons multitap
+-- have 'soft'buttons multitap, and the default behavior for the device
+-- in iostatem..
 	if (iotbl.digital) then
 		if (devtbl.button_remap) then
 			local bi = devtbl.button_remap[iotbl.subid];
@@ -149,8 +150,7 @@ local function relative_sample(devtbl, iotbl)
 		elseif (iotbl.subid < MOUSE_AUXBTN) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		end
-		active_display():message(string.format("%d - %d", iotbl.subid, iotbl.active and 1 or 0));
-		return;
+		return iotbl;
 	end
 
 	if (not iotbl.x or not iotbl.y) then
