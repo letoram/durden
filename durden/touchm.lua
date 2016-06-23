@@ -63,10 +63,10 @@ local function tryload(map)
 
 	if (devtbl.range) then
 		res.range = {};
-		res.range.low_x = devtbl.range.low_x and devtbl.range.low_x or 0;
-		res.range.low_y = devtbl.range.low_y and devtbl.range.low_y or 0;
-		res.range.high_x = devtbl.range.high_x and devtbl.range.high_x or 0;
-		res.range.high_y = devtbl.range.high_y and devtbl.range.high_y or 0;
+		res.range[1] = devtbl.range.low_x and devtbl.range.low_x or VRESW;
+		res.range[2] = devtbl.range.low_y and devtbl.range.low_y or VRESH;
+		res.range[3] = devtbl.range.high_x and devtbl.range.high_x or 0;
+		res.range[4] = devtbl.range.high_y and devtbl.range.high_y or 0;
 	end
 
 	res.activation = {0.0, 0.0, 1.0, 1.0};
@@ -153,6 +153,10 @@ local function relative_sample(devtbl, iotbl)
 		return;
 	end
 
+	if (not iotbl.x or not iotbl.y) then
+		return;
+	end
+
 -- update range
 	if (devtbl.autorange) then
 		devtbl.range[1] = iotbl.x < devtbl.range[1] and iotbl.x or devtbl.range[1];
@@ -224,6 +228,9 @@ local function relative_init(prof, st)
 		if (type(v) == "table") then
 			st[k] = {};
 			for j,l in pairs(v) do
+				st[k][j] = l;
+			end
+			for j,l in ipairs(v) do
 				st[k][j] = l;
 			end
 		else

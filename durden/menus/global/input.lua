@@ -1,3 +1,18 @@
+local function gen_mbutton_menu()
+	local res = {};
+	for i=1,5 do
+		table.insert(res, {
+			name = tostring(i),
+			kind = "action",
+			label = tostring(i),
+			handler = function()
+				mouse_button_input(i, true);
+				mouse_button_input(i, false);
+			end
+		});
+	end
+end
+
 local mouse_menu = {
 	{
 		name = "scale",
@@ -43,6 +58,13 @@ local mouse_menu = {
 			gconfig_set("mouse_hovertime", val);
 			mouse_state().hover_ticks = val;
 		end
+	},
+	{
+		name = "button",
+		label = "Button",
+		submenu = true,
+		kind = "action",
+		handler = gen_mbutton_menu(),
 	},
 	{
 		name = "save_pos",
