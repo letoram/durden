@@ -26,7 +26,7 @@ local toplevel = {
 		kind = "action",
 		invisible = true,
 		handler = function()
-			grab_global_function("target_actions")
+			grab_shared_function("target_actions")();
 		end
 	},
 -- useful for idle- timers where you only want enter or exit behavior
