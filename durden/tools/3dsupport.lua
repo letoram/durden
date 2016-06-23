@@ -373,6 +373,8 @@ local function modelwnd(name)
 		end
 		resize_image(tgtsurf, w, h);
 	end);
+
+-- modify mouse handlers and re-register
 	wnd.handlers.mouse.canvas.drag = function(ctx, vid, dx, dy)
 		if (wnd.model_move) then
 			local props = image_surface_properties(res.vid);
@@ -381,6 +383,13 @@ local function modelwnd(name)
 			rotate3d_model(res.vid, 0, dy, dx, 0, ROTATE_RELATIVE);
 		end
 	end
+	local lst = {};
+	for k,v in pairs(wnd.handlers.mouse.canvas) do
+		table.insert(lst, k);
+	end
+	mouse_droplistener(wnd.handlers.mouse.canvas);
+	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
+
 	show_image(tgtsurf);
 	wnd.actions = {
 	{
