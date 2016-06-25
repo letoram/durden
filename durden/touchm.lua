@@ -21,19 +21,15 @@
 -- and some vectorizer -> chinese OCR style input
 --
 
-local gestures = {
-	M1_TAP_1 = 1,
-	M1_TAP_2 = 2,
-	M1_DBL_TAP = 4,
-};
-
 local devices = {};
 local profiles = {};
+local classifiers = {};
+local default_profile = nil;
 
 local function tryload(map)
 	local res = system_load("devmaps/touch/" .. map, 0);
 	if  (not res) then
-		warning(string_format("touchm, system_load on map %s failed", map));
+		warning(string.format("touchm, system_load on map %s failed", map));
 		return;
 	end
 
@@ -55,6 +51,17 @@ local function tryload(map)
 
 -- used for touch-device plugging
 	res.matchflt = devtbl.matchflt;
+	res.mt_eval = (devtbl.mt_eval and type(devtbl.mt_eval) == "number") and
+		devtbl.mt_eval or 10;
+	res.swipe_threshold = (devtbl.swipe_threshold and
+		type(devtbl.swipe_threshold) == "number") and devtbl.swipe_threshold or 0.2;
+	res.drag_threshold = (devtbl.drag_threshold and
+		type(devtbl.drag_threshold) == "number") and devtbl.drag_threshold or 0.2;
+	res.autorange = devtbl.autorange and devtbl.autorange == true;
+	res.submask = (devtbl.submask and type(devtbl.submask) == "number") and
+		devtbl.submask or 0xfffff;
+	res.timeout = (devtbl.timeout and type(devtbl.timeout) == "number") and
+		devtbl.timeout or 10;
 
 -- used for translating absolute coordinates into relative
 	if (not devtbl.autorange and not devtbl.range) then
@@ -84,8 +91,8 @@ local function tryload(map)
 	res.gestures = {};
 	res.zones = {};
 	if (devtbl.gestures) then
-		for k,v in ipairs(devtbl.gestures) do
-			if (typeof(v) == "string" and typeof(k) == "string") then
+		for k,v in pairs(devtbl.gestures) do
+			if (type(v) == "string" and type(k) == "string") then
 				res.gestures[k] = v;
 			else
 				warning(string.format("touchm, gesture %s ignored\n", k));
@@ -102,9 +109,6 @@ local function tryload(map)
 		end
 	end
 
-	res.timeout = (devtbl.timeout and type(devtbl.timeout) == "number") and
-		devtbl.timeout or 10;
-
 	res.default_cooldown = (devtbl.default_cooldown and type(
 		devtbl.default_cooldown) == "number") and devtbl.default_cooldown or 3;
 	return res;
@@ -119,18 +123,34 @@ local function nbits(v)
 	return res;
 end
 
-function touchm_reload()
-	profiles = {};
-	local lst = glob_resource("devmaps/touch/*.lua", APPL_RESOURCE);
-	for k,v in ipairs(lst) do
-		local res = tryload(lst);
-		if (res) then
-			table.insert(profiles, res);
+-- get prefix%d_dir, only l/r/u/d down, no diags..
+local function gen_key(prefix, thresh, dx, dy, nf)
+	local adx = math.abs(dx);
+	local ady = math.abs(dy);
+	if (adx > ady) then
+		if (adx - ady > thresh) then
+			return string.format("%s%d_%s", prefix, nf, adx<0 and "left" or "right");
+		end
+	else
+		if (ady - adx > thresh) then
+			return string.format("%s%d_%s", prefix, nf, ady<0 and "up" or "down");
 		end
 	end
 end
 
-touchm_reload();
+local function run_drag(dev, dx, dy, nf)
+	local key = gen_key("drag", dev.drag_threshold, dx, dy, nf);
+	if (key and dev.gestures[key]) then
+		dispatch_symbol(dev.gestures[key]);
+	end
+end
+
+local function run_swipe(dev, dx, dy, nf)
+	local key = gen_key("swipe", dev.swipe_threshold, dx, dy, nf);
+	if (key and dev.gestures[key]) then
+		dispatch_symbol(dev.gestures[key]);
+	end
+end
 
 -- aggregate samples with a variable number of ticks as sample period
 -- and then feed- back into _input as a relative mouse input event
@@ -147,12 +167,18 @@ local function relative_sample(devtbl, iotbl)
 			if (bi) then
 				mouse_button_input(bi, iotbl.active);
 			end
+-- if we don't have an explicit button map to use, use the ID and
+-- modify with an optional "how many fingers on pad" value (can be masked out)
 		elseif (iotbl.subid < MOUSE_AUXBTN) then
-			mouse_button_input(iotbl.subid, iotbl.active);
+			local bc = nbits(devtbl.ind_mask);
+			bc = bc > 0 and bc - 1 or bc;
+			local badd = bit.band(bc, devtbl.submask);
+			mouse_button_input(iotbl.subid + bc, iotbl.active);
 		end
 		return iotbl;
 	end
 
+-- platform or caller- bug workaround
 	if (not iotbl.x or not iotbl.y) then
 		return;
 	end
@@ -180,15 +206,21 @@ local function relative_sample(devtbl, iotbl)
 			devtbl.in_active = true;
 			devtbl.last_x = x;
 			devtbl.last_y = y;
+			devtbl.onef_enter = nil;
+			devtbl.dxdt = 0;
+			devtbl.dydt = 0;
+			devtbl.max_ind = 0;
+			devtbl.dxyclk = CLOCK;
 			devtbl.cooldown = devtbl.default_cooldown;
 		end
 		return;
 	end
 
+-- detect which fingers have been added or removed
 	local im = bit.lshift(1, ind);
 	local nm = devtbl.ind_mask;
 
--- track for the transition between single- and multitouch
+-- track for the transition to/from single- and multitouch
 	if (iotbl.active) then
 		nm = bit.bor(devtbl.ind_mask, im);
 		if (nm ~= devtbl.ind_mask) then
@@ -201,6 +233,14 @@ local function relative_sample(devtbl, iotbl)
 		nm = bit.band(devtbl.ind_mask, bit.bnot(im));
 		if (nm == 0 or (nm == 1 and ind ~= devtbl.primary_ind)) then
 			devtbl.in_active = false;
+			if (devtbl.mt_enter) then
+				if (devtbl.max_ind > 1 and not devtbl.dragged) then
+					run_swipe(devtbl, devtbl.dxdt, devtbl.dydt, devtbl.max_ind);
+				end
+				devtbl.mt_enter = nil;
+				devtbl.dragged = false;
+				devtbl.max_ind = 0;
+			end
 		else
 			devtbl.last_x = x;
 			devtbl.last_y = y;
@@ -209,17 +249,43 @@ local function relative_sample(devtbl, iotbl)
 		return;
 	end
 
-	if (nbits(devtbl.ind_mask) == 1 and devtbl.ind_mask == devtbl.primary) then
+-- only track delta motion for the first finger, this
+-- prevents the classifier from being able to distinguish
+-- pinch/zoom style motion
+	if (im ~= devtbl.primary) then
+		return;
+	end
+
+-- finally figure out the actual motion and scale
+	local dx = (x - devtbl.last_x) * devtbl.scale_x;
+	local dy = (y - devtbl.last_y) * devtbl.scale_y;
+	local nb = nbits(devtbl.ind_mask);
+
+-- track the maximum number of fingers on the pad during a timeslot
+-- to detect drag+tap or distinguish between 2/3 finger swipe
+	if (devtbl.max_ind < nb) then
+		devtbl.max_ind = nb;
+	end
+
+	devtbl.last_x = x;
+	devtbl.last_y = y;
+
+-- for one-finger drag, map to mouse-relative input
+	if (nb == 1) then
 		local ad = active_display();
-		local dx = (x - devtbl.last_x) * devtbl.scale_x;
-		local dy = (y - devtbl.last_y) * devtbl.scale_y;
-		devtbl.last_x = x;
-		devtbl.last_y = y;
 		if (devtbl.cooldown == 0) then
 			mouse_input(VRESW * dx, VRESH * dy);
 		end
+-- track multi-finger gestures motion separate, this is reset in
+-- per timeslot and can be used for magnitude in multi-finger drag
+	elseif (nb >= 2) then
+		if (not devtbl.mt_enter) then
+			devtbl.mt_enter = CLOCK;
+		end
+
+		devtbl.dxdt = devtbl.dxdt + dx;
+		devtbl.dydt = devtbl.dydt + dy;
 	end
-	return nil;
 end
 
 local function relative_init(prof, st)
@@ -243,59 +309,81 @@ local function relative_init(prof, st)
 	st.ind_mask = 0;
 end
 
-local classifiers = {
-	relmouse = {relative_init, relative_sample}
-};
+local function relative_tick(v)
+-- this captures 1,2,3+ button drag actions
+	if (v.in_active) then
+		if (v.cooldown > 0) then
+			v.cooldown = v.cooldown - 1;
+		end
 
-local default_profile = {
-	label = "default",
-	name = "default",
-	autorange = true,
-	range = {0, 0, 1, 1},
-	classifier = "relmouse",
-	activation = {0.2, 0.2, 0.8, 0.8},
-	scale_x = 1.0,
-	scale_y = 1.0,
-	default_cooldown = 2,
-	timeout = 10,
-	gestures = {
-		swipe3_right = '!workspace/switch/next',
-		swipe3_left = '!workspace/switch/prev',
-	};
-};
+	if (v.mt_enter and CLOCK - v.mt_enter >= v.mt_eval) then
+-- check if dxdt exceeds threshold, and if so, convert to gesture
+-- otherwise reset dxdt and drop mt_enter
+			local nb = nbits(v.ind_mask);
+			if (nb == 2 or nb == 3) then
+				run_drag(v, v.dxdt, v.dydt, nb);
+				v.dragged = true;
+			end
+			v.mt_enter = CLOCK;
+			v.dxdt = 0;
+			v.dydt = 0;
+		end
+	end
 
--- will only come here the firs time for each device
-function touch_consume_sample(iotbl)
-	if (not devices[iotbl.devid]) then
-		local st = {};
-		devices[iotbl.devid] = st;
+	if (CLOCK - v.last_sample > v.timeout) then
+		v.in_active = false;
+		v.ind_mask = 0;
+		v.dragged = false;
+		v.mt_enter = nil;
+	end
+end
+
+classifiers.relmouse =
+-- simple classifier that only takes 1-finger drag to mouse and
+-- 2-3 finger drag/sweeps into account, to be complemented with
+-- more competent ones
+	{relative_init, relative_sample, relative_tick};
+
+-- will only come here the first time for each device
+function touch_register_device(iotbl)
+	if (devices[iotbl.devid]) then
+		return;
+	end
+
+	local st = {};
+	devices[iotbl.devid] = st;
 
 -- try and find a profile based on device name
-		local devtbl = iostatem_lookup(iotbl.devid);
-		local profile = default_profile;
-		if (devtbl and devtbl.label) then
-			for k,v in ipairs(profiles) do
-				if (v and v.matchflt and string.match(devtbl.label, v.matchflt)) then
-					profile = v;
-					break;
-				end
+	local devtbl = iostatem_lookup(iotbl.devid);
+	local profile = default_profile;
+	if (devtbl and devtbl.label) then
+		for k,v in ipairs(profiles) do
+			if (v and v.matchflt and string.match(devtbl.label, v.matchflt)) then
+				profile = v;
+				break;
 			end
 		end
+	end
 
 -- grab the matching classifier
-		if (classifiers[profile.classifier]) then
-			cf = classifiers[profile.classifier];
+	if (classifiers[profile.classifier]) then
+		cf = classifiers[profile.classifier];
 -- or fallback
-		elseif (classifiers[gconfig_get("mt_classifier")]) then
-			cf = classifiers[gconfig_get("mt_classifier")];
-		else
-			cf = classifiers[relmouse];
-		end
+	elseif (classifiers[gconfig_get("mt_classifier")]) then
+		cf = classifiers[gconfig_get("mt_classifier")];
+	else
+		cf = classifiers["relmouse"];
+	end
 
 -- and register
+	if (cf) then
 		cf[1](profile, st);
 		durden_register_devhandler(iotbl.devid, cf[2], st);
 		durden_input(iotbl);
+		st.tick = cf[3];
+	else
+		warning(string.format(
+			"touchm, no classifier loaded for %s", profile.classifier));
 	end
 end
 
@@ -303,18 +391,35 @@ end
 function touch_shutdown()
 end
 
-local old = _G[APPLID .. "_clock_pulse"];
-_G[APPLID .. "_clock_pulse"] = function(...)
+local clock_fun = function(...)
 	for k,v in pairs(devices) do
-		if (v.in_active) then
-			if (v.cooldown > 0) then
-				v.cooldown = v.cooldown - 1;
-			end
-			if (CLOCK - v.last_sample > v.timeout) then
-				v.in_active = false;
-				v.ind_mask = 0;
-			end
+		if (v.tick) then
+			v:tick();
 		end
 	end
-	old(...);
 end
+
+function touchm_reload()
+	profiles = {};
+	local lst = glob_resource("devmaps/touch/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(lst) do
+		local res = tryload(v);
+		if (res) then
+			table.insert(profiles, res);
+		end
+	end
+
+	for k,v in ipairs(profiles) do
+		if (v.name == "default") then
+			default_profile = v;
+			touch_tick = clock_fun;
+			return true;
+		end
+	end
+
+	warning("touchm_reload(), no default profile found, touch disabled");
+	touch_tick = function() end;
+	return false;
+end
+
+touchm_reload();

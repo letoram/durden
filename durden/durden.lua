@@ -40,7 +40,6 @@ function durden(argv)
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
-	system_load("touchm.lua")(); -- touch display input
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
@@ -425,11 +424,17 @@ end
 
 -- shared between the other input forms (normal, locked, ...)
 function durden_iostatus_handler(iotbl)
-	active_display():message(string.format("%d:%d %s",
-		iotbl.devid, iotbl.subid, iotbl.action));
+	if (iotbl.label and string.len(iotbl.label) > 0) then
+		active_display():message(string.format("%s: %s",
+			iotbl.action, iotbl.label));
+	else
+		active_display():message(string.format("%s %d",
+			iotbl.action, iotbl.devid));
+	end
 
 	if (iotbl.action == "added") then
 		iostatem_added(iotbl);
+
 	elseif (iotbl.action == "removed") then
 		iostatem_removed(iotbl);
 	end
@@ -459,15 +464,14 @@ function durden_normal_input(iotbl, fromim)
 	ievcount = ievcount + 1;
 	local devh = input_devhs[iotbl.devid];
 	if (devh) then
-		iotbl = devh[1](devh[2], iotbl);
-		if (not iotbl) then
+		if (not devh[1](devh[2], iotbl)) then
 			return;
 		end
 	end
 
 -- iostate manager takes care of mapping or translating 'game' devices,
--- stateful "per window" tracking and "autofire" or "repeat" injections
--- but tries to ignore touch and mouse devices.
+-- device added/removed events, stateful "per window" tracking and
+-- "autofire" or "repeat" injections but ignores mice and keyboard devices.
 	if (not fromim) then
 		if (iostatem_input(iotbl)) then
 			return;
@@ -484,16 +488,6 @@ function durden_normal_input(iotbl, fromim)
 	local ok, outsym, iotbl = dispatch_translate(iotbl);
 	if (iotbl.digital) then
 		if (ok) then
-			return;
-		end
-		timer_reset_idle();
-	end
-
--- default assumes that the event disappeared and any output is reinjected
--- as a different kind of event. Otherwise touch is manipulated and left to
--- forward to external further below.
-	if (iotbl.touch) then
-		if (not touch_consume_sample(iotbl)) then
 			return;
 		end
 		timer_reset_idle();
@@ -637,8 +631,15 @@ function durden_clock_pulse(n, nt)
 		end
 	end
 
-	flush_pending();
+-- and mouse may populate the target-pending queue,
 	mouse_tick(1);
-	dispatch_tick();
+
+-- anything periodically attached to a single tiler should be done now
 	display_tick();
+
+-- forward to third parties
+	flush_pending();
+
+-- this should only be for tracking, so order-independent
+	dispatch_tick();
 end

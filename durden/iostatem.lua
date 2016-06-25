@@ -5,6 +5,8 @@
 -- toggle on a per window (save/restore) basis etc.
 --
 
+system_load("touchm.lua")();
+
 local devstate = {};
 local devices = {};
 local def_period = 0;
@@ -132,8 +134,12 @@ function iostatem_input(iotbl)
 -- only forward if asbolutely necessary (i.e. selected window explicitly accepts
 -- analog) as the input storms can saturate most event queues
 	return true;
-	else
--- nothing for touch devices right now
+
+-- touch is "deferred" registration because the event layer won't tell us
+-- if we have a touch device or not, so we react to the first sample and the
+-- touch subsystem then redirects routing for the specific device
+	elseif (iotbl.touch) then
+		touch_register_device(iotbl);
 	end
 end
 
@@ -161,6 +167,8 @@ end
 -- returns a table of iotbls, process with ipairs and forward to
 -- normal input dispatch
 function iostatem_tick()
+	touch_tick();
+
 	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
 	evc = 0;
 
@@ -187,6 +195,10 @@ function iostatem_tick()
 
 -- scan devstate.devices and emitt similar events for the auto-
 -- repeat toggles there
+end
+
+function iostatem_shutdown()
+	touch_shutdown();
 end
 
 -- find the lowest -not-in-used- slot ID by alive devices

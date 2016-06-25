@@ -222,17 +222,6 @@ local function gen_bmenu(v, pref)
 			end
 		},
 		{
-			label = "Mouse Button",
-			name = pref .. "_mouse",
-			kind = "value",
-			set = {"left", " right", "middle", "scroll up", "scroll down",
-				"scroll left", "scroll right"},
-			handler = function(ctx, val)
--- launch filtered bind (to subid), then let iostatem make
--- an explicit bind
-			end,
-		},
-		{
 			label = "",
 			name = pref .. "UTF-8",
 			kind = "action",
