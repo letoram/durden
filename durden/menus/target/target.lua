@@ -31,7 +31,9 @@ local shared_actions = {
 		submenu = true,
 		kind = "action",
 		eval = function()
-			return not active_display().selected.menu_state_disable;
+			local wnd = active_display().selected;
+			return valid_vid(wnd.external, TYPE_FRAMESERVER)
+				and not wnd.menu_state_disable;
 		end,
 		handler = system_load("menus/target/state.lua")()
 	},
@@ -53,7 +55,8 @@ local shared_actions = {
 		kind = "action",
 		eval = function()
 			local wnd = active_display().selected;
-			return wnd.coreopt and #wnd.coreopt > 0;
+			return valid_vid(wnd.external, TYPE_FRAMESERVER) and
+				wnd.coreopt and #wnd.coreopt > 0;
 		end,
 		handler = system_load("menus/target/coreopts.lua")()
 	},

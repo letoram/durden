@@ -171,7 +171,7 @@ local function sort_meshes(a, b)
 	end
 end
 
-local function get_valid_windows(model)
+local function get_valid_windows(cwin, model)
 	local lst = {};
 	for wnd in all_windows() do
 		if (valid_vid(wnd.external)) then
@@ -182,6 +182,9 @@ local function get_valid_windows(model)
 				handler = function()
 					mesh_shader(model.vid, display, model.display_mesh);
 					set_image_as_frame(model.vid, wnd.external, model.display_slot);
+					cwin.menu_input_disable = false;
+					cwin.menu_state_disable = false;
+					cwin.external = wnd.external;
 				end
 			});
 		end
@@ -359,8 +362,6 @@ local function modelwnd(name)
 
 -- and bind to a new window
 	local wnd = active_display():add_window(tgtsurf, {scalemode = "stretch"});
-	wnd.menu_input_disable = true;
-	wnd.menu_state_disable = true;
 	wnd.bindings = {
 	TAB = function() wnd.model_move = not wnd.model_move; end
 	};
@@ -391,15 +392,17 @@ local function modelwnd(name)
 	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
 
 	show_image(tgtsurf);
-	wnd.actions = {
+	wnd.menu_input_disable = true;
+	wnd.menu_state_disable = true;
+		wnd.actions = {
 	{
 		name = "map",
 		label = "Source",
 		submenu = true,
 		kind = "action",
 		eval = function() return res.display_slot ~= nil and
-			#get_valid_windows(res); end,
-		handler = function() return get_valid_windows(res); end
+			#get_valid_windows(wnd, res); end,
+		handler = function() return get_valid_windows(wnd, res); end
 	},
 	{
 		name = "view",

@@ -334,7 +334,7 @@ function durden_launch(vid, prefix, title, wnd)
 		wnd.dispatch = shared_dispatch();
 		wnd.external = vid;
 		extevh_register_window(vid, wnd);
-		EVENT_SYNCH[wnd.canvas] = {
+		EVENT_SYNCH[wnd.external and wnd.external or wnd.canvas] = {
 			queue = {},
 			target = vid
 		};
