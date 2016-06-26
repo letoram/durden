@@ -1658,7 +1658,7 @@ local function wnd_title(wnd, message, skipresize)
 	end
 end
 
-local function convert_mouse_xy(wnd, x, y)
+local function convert_mouse_xy(wnd, x, y, rx, ry)
 -- note, this should really take viewport into account (if provided), when
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
@@ -1672,9 +1672,9 @@ local function convert_mouse_xy(wnd, x, y)
 	local ly = sfy * (y - aprop.y);
 
 	res[1] = lx;
-	res[2] = 0;
+	res[2] = rx and rx or 0;
 	res[3] = ly;
-	res[4] = 0;
+	res[4] = ry and ry or 0;
 
 	if (wnd.last_ms) then
 		res[2] = (wnd.last_ms[1] - res[1]);
@@ -1757,9 +1757,9 @@ local function wnd_mousepress(ctx)
 	end
 end
 
-local function wnd_mousemotion(ctx, x, y)
+local function wnd_mousemotion(ctx, x, y, rx, ry)
 	local wnd = ctx.tag;
-	local mv = convert_mouse_xy(wnd, x, y);
+	local mv = convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
 		source = "mouse",
@@ -1775,17 +1775,21 @@ local function wnd_mousemotion(ctx, x, y)
 		samples = {mv[3], mv[4]}
 	};
 
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
 -- with rate limited mouse events (those 2khz gaming mice that likes
 -- to saturate things even when not needed), we accumulate relative samples
 	if (not wnd.rate_unlimited) then
-		local ep = EVENT_SYNCH[wnd.canvas].pending;
+		local ep = EVENT_SYNCH[wnd.external] and EVENT_SYNCH[wnd.external].pending;
 		if (ep) then
 			ep[1].samples[1] = mv[1];
 			ep[1].samples[2] = ep[1].samples[2] + mv[2];
 			ep[2].samples[1] = mv[3];
 			ep[2].samples[2] = ep[2].samples[2] + mv[4];
 		else
-			EVENT_SYNCH[wnd.canvas].pending = {iotbl, iotbl2};
+			EVENT_SYNCH[wnd.external].pending = {iotbl, iotbl2};
 		end
 	else
 		target_input(wnd.external, iotbl);
@@ -2217,6 +2221,7 @@ local function wnd_create(wm, source, opts)
 		collapse = wnd_collapse,
 		prev = wnd_prev,
 		move =wnd_move,
+		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
 		grow = wnd_grow
 	};

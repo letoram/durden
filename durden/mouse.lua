@@ -634,9 +634,8 @@ local function mouse_btnlock(ind, active)
 	local x, y = mouse_xy();
 	if (not valid_vid(mstate.lockvid)) then
 		mouse_lockto(nil, nil);
-		if (mstate.lockfun) then
-			mstate.lockfun(x, y, 0, 0, ind, active);
-		end
+	elseif (mstate.lockfun) then
+			mstate.lockfun(x, y, 0, 0, mstate.lockstate, ind, active);
 	end
 end
 

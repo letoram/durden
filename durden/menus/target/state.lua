@@ -1,5 +1,5 @@
 local function shared_reset(wnd)
-	if (wnd.external) then
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		reset_target(wnd.external);
 	end
 end

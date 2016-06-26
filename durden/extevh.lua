@@ -151,7 +151,7 @@ end
 
 defhtbl["terminated"] =
 function(wnd, source, stat)
-	EVENT_SYNCH[wnd.canvas] = nil;
+	EVENT_SYNCH[source] = nil;
 
 -- if the target menu is active on the same window that is being
 -- destroyed, cancel it so we don't risk a tiny race

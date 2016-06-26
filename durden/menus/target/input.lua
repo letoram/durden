@@ -166,9 +166,13 @@ local kbd_menu = {
 	},
 };
 
-local function mouse_lockfun(rx, ry, x, y, wnd)
-	if (wnd) then
-		wnd.mousemotion({tag = wnd}, x, y);
+local function mouse_lockfun(rx, ry, x, y, wnd, ind, act)
+-- simulate the normal mouse motion in the case of constrained input
+	if (ind) then
+		print(rx, ry, x, y, wnd, ind, act);
+		wnd.mousebutton({tag = wnd}, ind, act, x, y);
+	else
+		wnd.mousemotion({tag = wnd}, x, y, rx, ry);
 	end
 end
 
@@ -191,7 +195,8 @@ local mouse_menu = {
 			else
 				wnd.mouse_lock = mouse_lockfun;
 				wnd.mouse_lock_center = val == "Center";
-				mouse_lockto(wnd.canvas, nil, wnd.mouse_lock_center, wnd);
+				mouse_lockto(wnd.canvas,
+					mouse_lockfun, wnd.mouse_lock_center, wnd);
 			end
 		end
 	},
