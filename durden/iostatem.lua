@@ -222,14 +222,17 @@ local function assign_slot(dev)
 	dev.slot = ind;
 end
 
+function iostatem_reset_flag()
+	for i,v in pairs(devices) do
+		v.lost = true;
+	end
+end
+
 function iostatem_added(iotbl)
 	local dev = devices[iotbl.devid];
 	if (not dev) then
 -- locate last saved device settings:
 -- axis state, analog force, special bindings
-		if (iotbl.devid == nil) then
-			for k,v in pairs(iotbl) do print(k, v); end
-		end
 
 		devices[iotbl.devid] = {
 			devid = iotbl.devid,
@@ -246,6 +249,7 @@ function iostatem_added(iotbl)
 		else
 			dev.slot = 0;
 		end
+		touch_register_device(iotbl, true);
 	else
 -- keeping this around for devices and platforms that generate a new
 -- ID for each insert/removal will slooowly leak (unlikely though)

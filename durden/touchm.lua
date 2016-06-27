@@ -64,6 +64,7 @@ local function tryload(map)
 		devtbl.timeout or 10;
 	res.motion_block = devtbl.motion_block or false;
 	res.warp_press = devtbl.warp_press or false;
+	res.touch_only = devtbl.touch_only or false;
 
 -- used for translating absolute coordinates into relative
 	if (not devtbl.autorange and not devtbl.range) then
@@ -72,10 +73,10 @@ local function tryload(map)
 
 	if (devtbl.range) then
 		res.range = {};
-		res.range[1] = devtbl.range.low_x and devtbl.range.low_x or VRESW;
-		res.range[2] = devtbl.range.low_y and devtbl.range.low_y or VRESH;
-		res.range[3] = devtbl.range.high_x and devtbl.range.high_x or 0;
-		res.range[4] = devtbl.range.high_y and devtbl.range.high_y or 0;
+		res.range[1] = devtbl.range[1] and devtbl.range[1] or 0;
+		res.range[2] = devtbl.range[2] and devtbl.range[2] or 0;
+		res.range[3] = devtbl.range[3] and devtbl.range[3] or VRESW;
+		res.range[4] = devtbl.range[4] and devtbl.range[4] or VRESH;
 	end
 
 	res.activation = {0.0, 0.0, 1.0, 1.0};
@@ -193,9 +194,27 @@ local function memu_sample(devtbl, iotbl)
 		return iotbl;
 	end
 
--- platform or caller- bug workaround
+-- platform or caller filtering, to allow devices lika a PS4 that has a touchpad
+-- but also analog axes that we want to handle 'the normal way'
+	if (not devtbl.touch and devtbl.touch_only) then
+		return iotbl;
+	end
+
 	if (not iotbl.x or not iotbl.y) then
-		return;
+		if (iotbl.samples) then
+			for k,v in pairs(iotbl) do print(k, v); end
+-- something that fakes (or is) a mouse like derivative delivered samples here,
+-- need to do the normal "only update on 1" trick
+			if (iotbl.subid == 1) then
+				iotbl.x = devtbl.cache_x;
+				iotbl.y = iotbl.samples[1];
+			else
+				devtbl.cache_x = iotbl.samples[1];
+				return;
+			end
+		else
+			return iotbl;
+		end
 	end
 
 -- update range
@@ -209,6 +228,7 @@ local function memu_sample(devtbl, iotbl)
 -- convert to normalized coordinates
 	local x = (iotbl.x - devtbl.range[1]) / devtbl.range[3];
 	local y = (iotbl.y - devtbl.range[2]) / devtbl.range[4];
+	print(x, y, devtbl.range[1], devtbl.range[2], devtbl.range[3], devtbl.range[4]);
 
 -- track sample for auto-reset
 	devtbl.last_sample = CLOCK;
@@ -328,6 +348,7 @@ local function memu_init(abs, prof, st)
 -- basic tracking we need
 	st.gest_mask = 0;
 	st.ind_mask = 0;
+	st.last_sample = CLOCK;
 	st.relative = abs;
 end
 
@@ -370,7 +391,7 @@ classifiers.absmouse =
 	{function(...) memu_init(true, ...); end, memu_sample, memu_tick};
 
 -- will only come here the first time for each device
-function touch_register_device(iotbl)
+function touch_register_device(iotbl, eval)
 	if (devices[iotbl.devid]) then
 		return;
 	end
@@ -380,14 +401,22 @@ function touch_register_device(iotbl)
 
 -- try and find a profile based on device name
 	local devtbl = iostatem_lookup(iotbl.devid);
-	local profile = default_profile;
+	local profile = nil;
 	if (devtbl and devtbl.label) then
 		for k,v in ipairs(profiles) do
-			if (v and v.matchflt and string.match(devtbl.label, v.matchflt)) then
+			if (v and v.matchflt and (
+				devtbl.label == v.matchflt or string.match(devtbl.label, v.matchflt))) then
 				profile = v;
 				break;
 			end
 		end
+	end
+
+	if (not profile) then
+		if (eval) then
+			return;
+		end
+		profile = default_profile;
 	end
 
 -- grab the matching classifier
