@@ -216,6 +216,7 @@ function display_event_handler(action, id)
 -- keystate change between display resets.
 	if (action == "reset") then
 		dispatch_meta_reset();
+		iostatem_reset_flag();
 		return;
 	end
 
