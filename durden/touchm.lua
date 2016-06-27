@@ -62,6 +62,8 @@ local function tryload(map)
 		devtbl.submask or 0xfffff;
 	res.timeout = (devtbl.timeout and type(devtbl.timeout) == "number") and
 		devtbl.timeout or 10;
+	res.motion_block = devtbl.motion_block or false;
+	res.warp_press = devtbl.warp_press or false;
 
 -- used for translating absolute coordinates into relative
 	if (not devtbl.autorange and not devtbl.range) then
@@ -154,7 +156,7 @@ end
 
 -- aggregate samples with a variable number of ticks as sample period
 -- and then feed- back into _input as a relative mouse input event
-local function relative_sample(devtbl, iotbl)
+local function memu_sample(devtbl, iotbl)
 	local ind = iotbl.subid - 128;
 
 -- digital is bothersome as some devices send the first button as
@@ -162,6 +164,15 @@ local function relative_sample(devtbl, iotbl)
 -- have 'soft'buttons multitap, and the default behavior for the device
 -- in iostatem..
 	if (iotbl.digital) then
+
+-- warping is needed for a combination of a touch display that should
+-- only give gestures and "touch-press" but have normal behavior with
+-- a mouse or trackpad
+		local mx, my = mouse_xy();
+		if (devtbl.warp_press) then
+			mouse_absinput_masked(devtbl.last_x, devtbl.last_y, true);
+		end
+
 		if (devtbl.button_remap) then
 			local bi = devtbl.button_remap[iotbl.subid];
 			if (bi) then
@@ -174,6 +185,10 @@ local function relative_sample(devtbl, iotbl)
 			bc = bc > 0 and bc - 1 or bc;
 			local badd = bit.band(bc, devtbl.submask);
 			mouse_button_input(iotbl.subid + bc, iotbl.active);
+		end
+
+		if (devtbl.warp_press) then
+			mouse_absinput_masked(mx, my, true);
 		end
 		return iotbl;
 	end
@@ -270,11 +285,17 @@ local function relative_sample(devtbl, iotbl)
 	devtbl.last_x = x;
 	devtbl.last_y = y;
 
--- for one-finger drag, map to mouse-relative input
-	if (nb == 1) then
+-- for one-finger drag, map to absolute or relative input, unless
+-- "blocked". blocking motion can be useful for touch-displays where
+-- presses should warp.
+	if (nb == 1 and not devtbl.motion_block) then
 		local ad = active_display();
-		if (devtbl.cooldown == 0) then
-			mouse_input(VRESW * dx, VRESH * dy);
+		if (devtbl.abs) then
+			mouse_absinput(ad.width * x, ad.height * y);
+		else
+			if (devtbl.cooldown == 0) then
+				mouse_input(ad.width * dx, ad.height * dy);
+			end
 		end
 -- track multi-finger gestures motion separate, this is reset in
 -- per timeslot and can be used for magnitude in multi-finger drag
@@ -288,7 +309,7 @@ local function relative_sample(devtbl, iotbl)
 	end
 end
 
-local function relative_init(prof, st)
+local function memu_init(abs, prof, st)
 -- one-level copy
 	for k,v in pairs(prof) do
 		if (type(v) == "table") then
@@ -307,9 +328,10 @@ local function relative_init(prof, st)
 -- basic tracking we need
 	st.gest_mask = 0;
 	st.ind_mask = 0;
+	st.relative = abs;
 end
 
-local function relative_tick(v)
+local function memu_tick(v)
 -- this captures 1,2,3+ button drag actions
 	if (v.in_active) then
 		if (v.cooldown > 0) then
@@ -342,7 +364,10 @@ classifiers.relmouse =
 -- simple classifier that only takes 1-finger drag to mouse and
 -- 2-3 finger drag/sweeps into account, to be complemented with
 -- more competent ones
-	{relative_init, relative_sample, relative_tick};
+	{function(...) memu_init(false, ...); end, memu_sample, memu_tick};
+
+classifiers.absmouse =
+	{function(...) memu_init(true, ...); end, memu_sample, memu_tick};
 
 -- will only come here the first time for each device
 function touch_register_device(iotbl)

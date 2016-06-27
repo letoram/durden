@@ -9,12 +9,20 @@ return {
 	label = "default",
 	name = "default",
 
+-- device string pattern or explicit string for auto- selecting profile,
+-- not needed for the special 'default' name
+	matchflt = nil,
+
 -- track / remember sample values to figure out device range
 	autorange = true,
 
 -- invalid default range due to "autorange"
 	range = {VRESW, VRESH, 1, 1},
+
+-- other option is 'absmouse'
 	classifier = "relmouse",
+
+-- ignore samples until we get one inside (>= [1,2] <= [3,4])
 	activation = {0.1, 0.1, 0.9, 0.9},
 
 -- "pre-mouse" acceleration
@@ -29,6 +37,13 @@ return {
 
 -- window for drag-vs-swipe evaluation
 	mt_eval = 5,
+
+-- useful when combining touch displays, track pad and regular mouse,
+-- motion block stops cursor movement (gestures only) and warp_press
+-- makes digital events warp to last known device-specific x,y, send a
+-- press and then jump back
+	motion_block = false,
+	warp_press = false,
 
 -- reset touch- tracking after n ticks of no input samples
 	timeout = 10,
