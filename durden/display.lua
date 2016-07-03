@@ -36,6 +36,18 @@ local function get_disp(name)
 	return found, foundi;
 end
 
+function display_maphint(disp)
+	if (type(disp) == "string") then
+		disp = get_disp(disp);
+	end
+
+	if (type(disp) ~= "table") then
+		return HINT_NONE;
+	end
+
+	return bit.bor(disp.maphint, (disp.primary and HINT_PRIMARY or 0));
+end
+
 local function autohome_spaces(ndisp)
 	local migrated = false;
 
@@ -155,6 +167,8 @@ local function display_load(display)
 				display_shader(display.name, val);
 			elseif (key == "bg") then
 				display.tiler:set_background(val);
+			elseif (key == "primary") then
+				display.primary = tonumber(val) == 1;
 			else
 				warning("unknown stored display setting with key " .. key);
 			end
@@ -183,6 +197,7 @@ function display_manager_shutdown()
 		if (v.background) then
 			ktbl[pref .. "bg"] = v.background;
 		end
+		ktbl[pref .. "primary"] = v.primary and 1 or 0;
 	end
 -- MISSING: mode settings
 	store_key(ktbl);
@@ -243,7 +258,7 @@ function display_event_handler(action, id)
 		end
 
 		if (id == 0) then
-			map_video_display(displays[1].rt, 0, displays[1].maphint);
+			map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
 			ddisp = displays[1];
 			ddisp.id = 0;
 			ddisp.name = get_name(0);
@@ -252,8 +267,7 @@ function display_event_handler(action, id)
 		else
 			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
 			ddisp.id = id;
-			map_video_display(ddisp.rt, id, 0, ddisp.maphint);
-			ddisp.primary = false;
+			map_video_display(ddisp.rt, id, 0, display_maphint(disp));
 		end
 		display_load(ddisp);
 
@@ -380,6 +394,7 @@ function display_add(name, width, height, ppcm)
 			w = width,
 			h = height,
 			name = name,
+			primary = false,
 			maphint = HINT_NONE
 		};
 		table.insert(displays, nd);
@@ -501,11 +516,12 @@ end
 function display_ressw(name, mode)
 	local disp = get_disp(name);
 	if (not disp) then
-		warning("display_ressww(), invalid display reference for " .. tostring(name));
+		warning("display_ressww(), invalid display reference for "
+			.. tostring(name));
 		return;
 	end
 
--- track this so we can recover if the display is lost, readded and homed to def.
+-- track this so we can recover if the display is lost, readded and homed to def
 	disp.last_m = mode;
 	disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
 		0.1 * mode.phy_height_mm, mode.width, mode.height);
@@ -514,7 +530,7 @@ function display_ressw(name, mode)
 		video_displaymodes(disp.id, mode.modeid);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
-			map_video_display(disp.rt, disp.id, disp.maphint);
+			map_video_display(disp.rt, disp.id, display_maphint(disp.maphint));
 		end
 		disp.tiler:resize(mode.width, mode.height, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
@@ -595,7 +611,7 @@ function display_reorient(name, hint)
 	end
 
 	run_display_action(disp, function()
-		map_video_display(disp.rt, disp.id, disp.maphint);
+		map_video_display(disp.rt, disp.id, display_maphint(disp.maphint));
 		disp.tiler.width = neww;
 		disp.tiler.height = newh;
 		disp.tiler:update_scalef(disp.tiler.scalef);

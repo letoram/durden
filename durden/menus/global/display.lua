@@ -59,7 +59,7 @@ local function gen_disp_menu(disp)
 	return {
 		{
 		name = "state",
-		eval = function() return disp.id ~= nil and disp.primary ~= true; end,
+		eval = function() return disp.id ~= nil; end,
 		label = "Toggle On/Off",
 		kind = "action",
 		handler = function()
@@ -148,6 +148,20 @@ local function gen_disp_menu(disp)
 		end,
 		eval = function() return
 			disp.background and string.len(disp.background) > 0;
+		end
+		},
+		{
+		name = "primary_hint",
+		label = "Force-Sync",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		eval = function() return not display_simple(); end,
+		initial = function()
+			return disp.primary and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			disp.primary = val == LBL_YES;
+			map_video_display(disp.rt, disp.id, display_maphint(disp));
 		end
 		},
 		{
