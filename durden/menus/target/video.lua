@@ -128,7 +128,21 @@ return {
 				shader_setup(active_display().selected.canvas, dom, key);
 			end
 		end
--- really cool preview here would be to have lbar run in tile helper mode,
--- and apply every shader to every tile as a preview
+	},
+	{
+		name = "source_fs",
+		label = "Source-Fullscreen",
+		kind = "value",
+		eval = function() return not display_simple() and valid_vid(
+			active_display().selected.external, TYPE_FRAMESERVER); end,
+		initial = function()
+			return gconfig_get("display_source_fs");
+		end,
+		set = {"Stretch", "Mode Switch"},
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			display_fullscreen(active_display(false, true).name,
+				wnd.external, val == "Mode Switch");
+		end
 	}
 };

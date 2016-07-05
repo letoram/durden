@@ -93,6 +93,9 @@ local function switch_active_display(ind)
 	set_mouse_scalef();
 end
 
+local function set_best_mode(disp, w, h)
+end
+
 local function display_data(id)
 	local data, hash = video_displaydescr(id);
 	local model = "unknown";
@@ -140,6 +143,58 @@ end
 
 function display_count()
 	return #displays;
+end
+
+-- "hard" fullscreen- mode where the window canvas is mapped directly to
+-- the display without going through the detour of a rendertarget. Note that
+-- this is not as close as we can go yet, but requires more platform support
+-- and loses the ability to apply a shader.
+--
+-- The 'real' version would require not only a mode-switch but:
+--
+--  * track producer state and mark that we need a scanout capable buffer
+--    (which depend on the buffer format and so on) handle and wrap- shmif
+--    vbuf-only drawing into such a buffer. This can already
+--
+--  * for kms-, have arcan directly wrap the shmif- part into a DMAbuf and
+--    send that as the scanout for cases.
+--
+--  * use more native post-processing for ICC-/ gamma correction
+--
+function display_fullscreen(name, vid, modesw, mapv)
+	local disp = get_disp(name);
+	if (not disp) then
+		return;
+	end
+
+	if (not valid_vid(vid)) then
+-- tell the connected tiler to restore old mode so target_hints,
+-- locking etc. propagate correctly, it's implemented here rather than in
+-- tiler to support different WMs.
+		map_video_display(disp.rt, disp.id, display_maphint(disp));
+		if (disp.last_m and disp.fs_modesw) then
+			video_displaymodes(disp.id, disp.last_m.modeid);
+		end
+		disp.monitor_vid = nil;
+		disp.monitor_sprops = nil;
+		if (disp.fs_mode) then
+			local ws = disp.tiler.spaces[disp.tiler.space_ind];
+			if (type(ws[disp.fs_mode]) == "function") then
+				ws[disp.fs_mode](ws);
+			end
+			disp.fs_mode = nil;
+		end
+	else
+-- we currently do not disable rendertarget updates, so that memory bw
+-- is still currently wasted
+		disp.monitor_vid = vid;
+		local ws = disp.tiler.spaces[disp.tiler.space_ind];
+		disp.fs_mode = ws.mode;
+		map_video_display(vid, disp.id, display_maphint(disp));
+	end
+
+-- will be applied in tick
+	disp.fs_modesw = modesw;
 end
 
 local function display_load(display)
@@ -267,7 +322,7 @@ function display_event_handler(action, id)
 		else
 			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
 			ddisp.id = id;
-			map_video_display(ddisp.rt, id, 0, display_maphint(disp));
+			map_video_display(ddisp.rt, id, display_maphint(disp));
 		end
 		display_load(ddisp);
 
@@ -769,6 +824,27 @@ function display_tick()
 	for k,v in ipairs(displays) do
 		if (not v.orphan) then
 			v.tiler:tick();
+		end
+
+-- periodically check the status of source if we are in dedicated fullscreen mode
+		if (not displays.simple and v.monitor_vid) then
+
+-- on death, set "BADID" (which will revert mapping to normal rt)
+			if (not valid_vid(v.monitor_vid, TYPE_FRAMESERVER)) then
+				display_fullscreen(v.name, BADID);
+
+			elseif (v.fs_modesw) then
+				local isp = image_storage_properties(v.monitor_vid);
+
+-- deferred resize- propagation due to cost of mode switch, this could probably be
+-- even more conservative, though resolution switches in the source will cause a visual
+-- glitch for the 'incorrect' frames.
+				if (not v.monitor_sprops or isp.width ~= v.monitor_sprops.width or
+					isp.height ~= v.monitor_sprops.height) then
+					v.monitor_sprops = isp;
+					set_best_mode(v, isp.width, isp.height);
+				end
+			end
 		end
 	end
 end
