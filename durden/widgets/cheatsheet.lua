@@ -42,8 +42,15 @@ local function probe(ctx, yh)
 	for k,v in ipairs(ctx.sheetset) do
 		local nt = {};
 		for i=2,#v do
-			table.insert(nt, v[i]);
-			if (#nt == ul) then
+			local step = false;
+			if (string.len(v[i]) == 0) then
+				step = #nt > 0;
+			else
+				table.insert(nt, v[i]);
+				step = #nt >= ul;
+			end
+
+			if (step) then
 				table.insert(ct, nt);
 				nt = {};
 			end
