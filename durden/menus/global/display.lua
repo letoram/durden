@@ -407,5 +407,15 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = region_menu
+	},
+	{
+		name = "fullscreen",
+		label = "Dedicated Fullscreen",
+		kind = "value",
+		initial = function() return gconfig_get("disp_fs_mode"); end,
+		set = {"Stretch", "Stretch-Switch", "Center", "Center-Switch"},
+		handler = function(ctx, val)
+			gconfig_set("disp_fs_mode", string.lower(val));
+		end
 	}
 };

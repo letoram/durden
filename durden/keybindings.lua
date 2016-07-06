@@ -226,8 +226,17 @@ function dispatch_meta_reset(m1, m2)
 	mtrack.m2 = m2 and CLOCK or nil;
 end
 
-function dispatch_toggle()
-	mtrack.ignore = not mtrack.ignore;
+function dispatch_toggle(forcev)
+	if (mtrack.mlock == "none") then
+		mtrack.ignore = false;
+		return;
+	end
+
+	if (forcev) then
+		mtrack.ignore = forcev;
+	else
+		mtrack.ignore = not mtrack.ignore;
+	end
 	if (mtrack.locktog) then
 		mtrack.locktog(mtrack.ignore);
 	end
