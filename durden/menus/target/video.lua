@@ -56,6 +56,25 @@ local scalemodes = {
 	}
 };
 
+local advanced = {
+	{
+		name = "source_fs",
+		label = "Source-Fullscreen",
+		kind = "action",
+		eval = function() return not display_simple() and valid_vid(
+			active_display().selected.external, TYPE_FRAMESERVER); end,
+		initial = function()
+			return gconfig_get("display_source_fs");
+		end,
+		set = {"Stretch", "Mode Switch"},
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			display_fullscreen(active_display(false, true).name,
+				wnd.external, val == "Mode Switch");
+		end
+	}
+};
+
 return {
 	{
 		name = "scaling",
@@ -130,19 +149,10 @@ return {
 		end
 	},
 	{
-		name = "source_fs",
-		label = "Source-Fullscreen",
-		kind = "value",
-		eval = function() return not display_simple() and valid_vid(
-			active_display().selected.external, TYPE_FRAMESERVER); end,
-		initial = function()
-			return gconfig_get("display_source_fs");
-		end,
-		set = {"Stretch", "Mode Switch"},
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			display_fullscreen(active_display(false, true).name,
-				wnd.external, val == "Mode Switch");
-		end
+		label = "Advanced",
+		name = "advanced",
+		submenu = true,
+		kind = "action",
+		handler = advanced
 	}
 };

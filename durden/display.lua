@@ -322,7 +322,7 @@ function display_event_handler(action, id)
 		else
 			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
 			ddisp.id = id;
-			map_video_display(ddisp.rt, id, display_maphint(disp));
+			map_video_display(ddisp.rt, id, display_maphint(ddisp));
 		end
 		display_load(ddisp);
 
@@ -585,7 +585,7 @@ function display_ressw(name, mode)
 		video_displaymodes(disp.id, mode.modeid);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
-			map_video_display(disp.rt, disp.id, display_maphint(disp.maphint));
+			map_video_display(disp.rt, disp.id, display_maphint(disp));
 		end
 		disp.tiler:resize(mode.width, mode.height, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
@@ -646,27 +646,26 @@ function display_reorient(name, hint)
 		return;
 	end
 
+	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
 	if (hint ~= nil) then
-		disp.maphint = hint;
+		disp.maphint = bit.bor(disp.maphint, hint);
 	else
-		if (disp.maphint == HINT_ROTATE_CW_90 or
-			disp.maphint == HINT_ROTATE_CCW_90) then
-			disp.maphint = HINT_NONE;
+		if (bit.band(disp.maphint, mfl) > 0) then
+			disp.maphint = bit.band(disp.maphint, bit.bnot(mfl));
 		else
-			disp.maphint = HINT_ROTATE_CW_90;
+			disp.maphint = bit.bor(disp.maphint, HINT_ROTATE_CW_90);
 		end
 	end
 
 	local neww = disp.w;
 	local newh = disp.h;
-	if (disp.maphint == HINT_ROTATE_CW_90 or
-		disp.maphint == HINT_ROTATE_CCW_90) then
+	if (bit.band(disp.maphint, mfl) > 0) then
 		neww = disp.h;
 		newh = disp.w;
 	end
 
 	run_display_action(disp, function()
-		map_video_display(disp.rt, disp.id, display_maphint(disp.maphint));
+		map_video_display(disp.rt, disp.id, display_maphint(disp));
 		disp.tiler.width = neww;
 		disp.tiler.height = newh;
 		disp.tiler:update_scalef(disp.tiler.scalef);
@@ -832,8 +831,7 @@ function display_tick()
 -- on death, set "BADID" (which will revert mapping to normal rt)
 			if (not valid_vid(v.monitor_vid, TYPE_FRAMESERVER)) then
 				display_fullscreen(v.name, BADID);
-
-			elseif (v.fs_modesw) then
+			else
 				local isp = image_storage_properties(v.monitor_vid);
 
 -- deferred resize- propagation due to cost of mode switch, this could probably be
@@ -842,7 +840,10 @@ function display_tick()
 				if (not v.monitor_sprops or isp.width ~= v.monitor_sprops.width or
 					isp.height ~= v.monitor_sprops.height) then
 					v.monitor_sprops = isp;
-					set_best_mode(v, isp.width, isp.height);
+					if (v.fs_modesw) then
+						set_best_mode(v, isp.width, isp.height);
+					end
+-- remap so crop-center works
 				end
 			end
 		end
