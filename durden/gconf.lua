@@ -212,6 +212,18 @@ function gconfig_listen(key, id, fun)
 	listeners[key][id] = fun;
 end
 
+-- for tools and other plugins to enable their own values
+function gconfig_register(key, val)
+	if (not defaults[key]) then
+		local v = get_key(key);
+		if (v ~= nil and type(v) == type(val)) then
+			defaults[key] = v;
+		else
+			defaults[key] = val;
+		end
+	end
+end
+
 function gconfig_set(key, val)
 if (type(val) ~= type(defaults[key])) then
 		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",

@@ -132,7 +132,7 @@ local function wnd_destroy(wnd)
 
 	wnd.titlebar:destroy();
 
-	if (valid_vid(wnd.external)) then
+	if (valid_vid(wnd.external) and not wnd.external_prot) then
 		delete_image(wnd.external);
 	end
 
@@ -1262,7 +1262,7 @@ local function wnd_font(wnd, sz, hint, font)
 end
 
 local function wnd_resize(wnd, neww, newh, force)
-	if (wnd.in_drag_rz and not force) then
+	if (wnd.in_drag_rz and not force or not valid_vid(wnd.canvas)) then
 		return false;
 	end
 
