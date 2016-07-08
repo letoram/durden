@@ -556,8 +556,8 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			disp.tiler:resize(w, h, true);
 		else
 			run_display_action(disp, function()
-
 				if (video_displaymodes(source, w, h)) then
+					resize_video_canvas(w, h);
 					image_set_txcos_default(disp.rt);
 					disp.tiler:resize(w, h, true);
 					disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});

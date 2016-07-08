@@ -185,6 +185,7 @@ local function get_valid_windows(cwin, model)
 					cwin.menu_input_disable = false;
 					cwin.menu_state_disable = false;
 					cwin.external = wnd.external;
+					cwin.external_prot = true;
 				end
 			});
 		end

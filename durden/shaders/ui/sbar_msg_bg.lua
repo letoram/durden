@@ -19,6 +19,7 @@ return {
 		}
 	},
 	states = {
-		active = { uniforms = { color = {1.0, 1.0, 1.0, 0.2} } }
+		active = { uniforms = { color = {1.0, 1.0, 1.0, 0.2} } },
+		locked = { uniforms = { color = {0.4078, 0.05, 0.05, 0.9} } }
 	}
 };

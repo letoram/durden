@@ -211,7 +211,7 @@ local function gen_cmdtbl(cmd)
 			if (string.sub(cmd, 1, 1) == "!" or
 				string.sub(cmd, 1, 1) == "#") then
 				if (allowed_commands(cmd)) then
-					dispatch_symbol(cmd);
+					dispatch_symbol(cmd, nil, true);
 				end
 			else
 				if (OUTPUT_CHANNEL) then
@@ -293,7 +293,7 @@ local function poll_control_channel()
 		return;
 	end
 
-	dispatch_symbol(line);
+	dispatch_symbol(line, nil, true);
 end
 
 -- open question is if we should check lock-state here and if we're in locked

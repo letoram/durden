@@ -60,7 +60,7 @@ function durden(argv)
 		else
 			local okstate, msg = pcall(res);
 			if (not okstate) then
-				warning(string.format("runtime error loading tool: %s", v));
+				warning(string.format("runtime error loading tool: %s - %s", v, msg));
 				print(msg);
 			end
 		end
@@ -283,8 +283,10 @@ end
 -- triggered by meta- state tracker, we need the hook here to also trigger
 -- mouse locking and update border states
 --
-function durden_lock_toggle(newst)
-
+function durden_lock_toggle(newst, state)
+	for i in all_tilers_iter() do
+		i.sbar_ws["msg"]:switch_state(newst and "locked" or "active");
+	end
 end
 
 -- there is a ton of "per window" input state when it comes to everything from

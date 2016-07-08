@@ -67,7 +67,7 @@ function grab_shared_function(funname)
 	end
 end
 
-function dispatch_symbol(sym, arg)
+function dispatch_symbol(sym, arg, ext)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
 
