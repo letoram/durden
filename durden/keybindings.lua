@@ -226,19 +226,27 @@ function dispatch_meta_reset(m1, m2)
 	mtrack.m2 = m2 and CLOCK or nil;
 end
 
-function dispatch_toggle(forcev)
+function dispatch_toggle(forcev, state)
+	local oldign = mtrack.ignore;
+
 	if (mtrack.mlock == "none") then
 		mtrack.ignore = false;
 		return;
 	end
 
-	if (forcev) then
+	if (forcev ~= nil) then
 		mtrack.ignore = forcev;
 	else
 		mtrack.ignore = not mtrack.ignore;
 	end
+
+-- run cleanup hook
+	if (type(oldign) == "function" and mtrack.ignore ~= oldign) then
+		oldign();
+	end
+
 	if (mtrack.locktog) then
-		mtrack.locktog(mtrack.ignore);
+		mtrack.locktog(mtrack.ignore, state);
 	end
 end
 
@@ -335,6 +343,10 @@ function dispatch_translate(iotbl, nodispatch)
 	end
 
 	if (not lutsym or mtrack.ignore) then
+		if (type(mtrack.ignore) == "function") then
+			return mtrack.ignore(lutsym, iotbl, tbl[lutsym]);
+		end
+
 		return false, nil, iotbl;
 	end
 
