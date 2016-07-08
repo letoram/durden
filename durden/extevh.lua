@@ -26,6 +26,11 @@ local function load_archetypes()
 		end
 	end
 end
+
+function extevh_archetype(atype)
+	return archetypes[atype];
+end
+
 load_archetypes();
 
 local function cursor_handler(wnd, source, status)
