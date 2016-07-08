@@ -475,6 +475,8 @@ end
 function mouse_lockto(vid, fun, warp, state)
 	local olv = mstate.lockvid;
 	local olf = mstate.lockfun;
+	local olw = mstate.warp;
+	local ols = mstate.lockstate;
 
 	if (valid_vid(vid)) then
 		mstate.lockvid = vid;
@@ -488,7 +490,7 @@ function mouse_lockto(vid, fun, warp, state)
 		mstate.warp = false;
 	end
 
-	return olv, olf;
+	return olv, olf, olw, ols;
 end
 
 function mouse_xy()
@@ -621,11 +623,11 @@ local function lmbhandler(hists, press)
 end
 
 local function mouse_lockh(relx, rely)
-	local x, y = mouse_xy();
 -- safeguard from deletions that don't clean up after themselves
 	if (not valid_vid(mstate.lockvid)) then
 		mouse_lockto();
 	elseif (mstate.lockfun) then
+		local x, y = mouse_xy();
 		mstate.lockfun(relx, rely, x, y, mstate.lockstate);
 	end
 end
@@ -635,7 +637,7 @@ local function mouse_btnlock(ind, active)
 	if (not valid_vid(mstate.lockvid)) then
 		mouse_lockto(nil, nil);
 	elseif (mstate.lockfun) then
-			mstate.lockfun(x, y, 0, 0, mstate.lockstate, ind, active);
+			mstate.lockfun(0, 0, x, y, mstate.lockstate, ind, active);
 	end
 end
 

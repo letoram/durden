@@ -1,4 +1,4 @@
-function spawn_terminal(cmd)
+function spawn_terminal(cmd, nolaunch)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
@@ -6,8 +6,11 @@ function spawn_terminal(cmd)
 -- we want the dimensions in beforehand so we can pass them immediately
 -- and in that way avoid the cost of a _resize() + signal cycle. To avoid
 -- an initial 'flash' before background etc. is applied, we preset one.
-	local wnd = durden_prelaunch();
-	wnd:set_title("Terminal");
+	local wnd;
+	if (not nolaunch) then
+		wnd = durden_prelaunch();
+		wnd:set_title("Terminal");
+	end
 
 	local ppcm = tostring(active_display(true, true).ppcm);
 	local ppcm = string.gsub(ppcm, ',', '.');
@@ -28,20 +31,15 @@ function spawn_terminal(cmd)
 		lstr = lstr .. string.format(":font_fb=[ARCAN_FONTPATH]/%s", fbf);
 	end
 
--- we can't use the effective_w,h fields yet because the scalemode do
--- not apply (chicken and egg problem)
-	if (gconfig_get("term_autosz")) then
-		neww = wnd.width - wnd.pad_left - wnd.pad_right;
-		newh = wnd.height- wnd.pad_top - wnd.pad_bottom;
-		lstr = lstr .. string.format(":width=%d:height=%d", neww, newh);
-	end
-
 	if (cmd) then
 		lstr = lstr .. ":" .. cmd;
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
 	image_tracetag(vid, "terminal");
+	if (nolaunch) then
+		return vid;
+	end
 
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal", wnd);
