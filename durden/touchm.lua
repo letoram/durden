@@ -132,11 +132,11 @@ local function gen_key(prefix, thresh, dx, dy, nf)
 	local ady = math.abs(dy);
 	if (adx > ady) then
 		if (adx - ady > thresh) then
-			return string.format("%s%d_%s", prefix, nf, adx<0 and "left" or "right");
+			return string.format("%s%d_%s", prefix, nf, dx<0 and "left" or "right");
 		end
 	else
 		if (ady - adx > thresh) then
-			return string.format("%s%d_%s", prefix, nf, ady<0 and "up" or "down");
+			return string.format("%s%d_%s", prefix, nf, dy<0 and "up" or "down");
 		end
 	end
 end
@@ -158,14 +158,19 @@ end
 -- aggregate samples with a variable number of ticks as sample period
 -- and then feed- back into _input as a relative mouse input event
 local function memu_sample(devtbl, iotbl)
+
+-- poorly documented hack, subid is indexed higher for touch to handle
+-- devices that emit both emulated mouse and touch events
 	local ind = iotbl.subid - 128;
+	if (ind < 0 and not iotbl.digital) then
+		return;
+	end
 
 -- digital is bothersome as some devices send the first button as
 -- finger on pad even if it has a 'real' button underneath. Then we
 -- have 'soft'buttons multitap, and the default behavior for the device
 -- in iostatem..
 	if (iotbl.digital) then
-
 -- warping is needed for a combination of a touch display that should
 -- only give gestures and "touch-press" but have normal behavior with
 -- a mouse or trackpad
@@ -202,7 +207,6 @@ local function memu_sample(devtbl, iotbl)
 
 	if (not iotbl.x or not iotbl.y) then
 		if (iotbl.samples) then
-			for k,v in pairs(iotbl) do print(k, v); end
 -- something that fakes (or is) a mouse like derivative delivered samples here,
 -- need to do the normal "only update on 1" trick
 			if (iotbl.subid == 1) then
@@ -216,7 +220,6 @@ local function memu_sample(devtbl, iotbl)
 			return iotbl;
 		end
 	end
-
 -- update range
 	if (devtbl.autorange) then
 		devtbl.range[1] = iotbl.x < devtbl.range[1] and iotbl.x or devtbl.range[1];
@@ -228,7 +231,6 @@ local function memu_sample(devtbl, iotbl)
 -- convert to normalized coordinates
 	local x = (iotbl.x - devtbl.range[1]) / devtbl.range[3];
 	local y = (iotbl.y - devtbl.range[2]) / devtbl.range[4];
-	print(x, y, devtbl.range[1], devtbl.range[2], devtbl.range[3], devtbl.range[4]);
 
 -- track sample for auto-reset
 	devtbl.last_sample = CLOCK;
@@ -396,9 +398,6 @@ function touch_register_device(iotbl, eval)
 		return;
 	end
 
-	local st = {};
-	devices[iotbl.devid] = st;
-
 -- try and find a profile based on device name
 	local devtbl = iostatem_lookup(iotbl.devid);
 	local profile = nil;
@@ -418,6 +417,9 @@ function touch_register_device(iotbl, eval)
 		end
 		profile = default_profile;
 	end
+
+	local st = {};
+	devices[iotbl.devid] = st;
 
 -- grab the matching classifier
 	if (classifiers[profile.classifier]) then
