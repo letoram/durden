@@ -360,7 +360,7 @@ local keymaps_menu = {
 		label = "Save",
 		kind = "value",
 		validator = function(val) return val and string.len(val) > 0 and
-			not resource("keymaps/" .. val .. ".lua", SYMTABLE_DOMAIN); end,
+			not resource("devmaps/keyboard/" .. val .. ".lua", SYMTABLE_DOMAIN); end,
 		handler = function(ctx, val)
 			SYMTABLE:save_keymap(val);
 		end

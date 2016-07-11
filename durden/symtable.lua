@@ -20,7 +20,8 @@
 -- the higher-level [label] remapping is not performed here.
 
 -- modify to use other namespace
-SYMTABLE_DOMAIN = APPL_RESOURCE;
+local SYMTABLE_DOMAIN = APPL_RESOURCE;
+local GLOBPATH = "devmaps/keyboard/*.lua";
 
 -- for legacy reasons, we provide an sdl compatible symtable
 local symtable = {};
@@ -664,7 +665,7 @@ end
 
 symtable.list_keymaps = function(tbl, cached)
 	local res = {};
-	local list = glob_resource("keymaps/*.lua", SYMTABLE_DOMAIN);
+	local list = glob_resource(GLOBPATH, SYMTABLE_DOMAIN);
 
 	if (list and #list > 0) then
 		for k,v in ipairs(list) do
@@ -713,7 +714,7 @@ end
 -- file (ignore the overlay)
 symtable.save_keymap = function(tbl, name)
 	assert(name and type(name) == "string" and string.len(name) > 0);
-	local dst = "keymaps/" .. name .. ".lua";
+	local dst = "/devmaps/keyboard/" .. name .. ".lua";
 	if (resource(dst,SYMTABLE_DOMAIN)) then
 		zap_resource(dst);
 	end

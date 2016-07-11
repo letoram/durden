@@ -9,8 +9,8 @@
 --
 
 local SIZE_UNIT = 38.4;
-local displays = {
-};
+local displays = {};
+local profiles = {};
 
 --uncomment to log display events to a separate file, there are so many
 --hw/os/... related issues for plug /unplug edge behaviors that this is
@@ -35,6 +35,71 @@ local function get_disp(name)
 	end
 	return found, foundi;
 end
+
+local function tryload(v)
+	local res = system_load(v, 0);
+
+	if (not res) then
+		warning("parsing error loading display map: " .. v);
+		return;
+	end
+
+	local okstate, map = pcall(res);
+	if (not okstate or type(map) ~= "table") then
+		warning("execution error loading map: " .. v);
+		return;
+	end
+
+	if (type(map.name) ~= "string" or
+		type(map.ident) ~= "string") then
+		warning("bad obligatory fields in map: " .. v);
+		return;
+	end
+
+	local rv = {
+		name = map.name,
+		ident = map.ident
+	};
+
+-- copy and sanity check optional fields
+
+	if (type(map.ppcm) == "number" and map.ppcm < 200 and map.ppcm > 10) then
+		rv.ppcm = map.ppcm;
+	end
+
+	if (type(map.wm) == "string") then
+		if (map.wm == "tiler" or map.wm == "ignore") then
+			rv.wm = map.wm;
+		end
+	end
+
+	if (type(map.width) == "number" and map.width > 0) then
+		rv.width = map.width;
+	end
+
+	if (type(map.height) == "number" and map.height > 0) then
+		rv.height = map.width;
+	end
+
+	return rv;
+end
+
+function display_scanprofiles()
+	profiles = {};
+	local lst = glob_resource("devmaps/display/*.lua", APPL_RESOURCE);
+	if (not lst) then
+		return;
+	end
+	table.sort(lst);
+	for k,v in ipairs(lst) do
+		local res = tryload("devmaps/display/" .. v);
+		if (res) then
+			table.insert(profiles, res);
+		end
+	end
+end
+
+display_scanprofiles();
 
 function display_maphint(disp)
 	if (type(disp) == "string") then
@@ -114,7 +179,7 @@ local function display_data(id)
 				if (string.byte(data, ofs+4) == 0xff) then
 					serial = string.sub(data, ofs+5, ofs+5+12);
 				elseif (string.byte(data, ofs+4) == 0xfc) then
-						model = string.sub(data, ofs+5, ofs+5+12);
+					model = string.sub(data, ofs+5, ofs+5+12);
 				end
 			end
 
@@ -313,14 +378,18 @@ function display_event_handler(action, id)
 		end
 
 		if (id == 0) then
-			map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
 			ddisp = displays[1];
 			ddisp.id = 0;
 			ddisp.name = get_name(0);
 			ddisp.primary = true;
+			map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
 			shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		else
 			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
+			if (not ddisp) then
+				return;
+			end
+
 			ddisp.id = id;
 			map_video_display(ddisp.rt, id, display_maphint(ddisp));
 		end
@@ -430,8 +499,8 @@ function display_add(name, width, height, ppcm)
 	local found = get_disp(name);
 	local new = nil;
 
-	width = width < MAX_SURFACEW and width or MAX_SURFACEW;
-	height = height < MAX_SURFACEH and height or MAX_SURFACEH;
+	width = math.clamp(width, width, MAX_SURFACEW);
+	height = math.clamp(height, height, MAX_SURFACEH);
 
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
@@ -443,6 +512,31 @@ function display_add(name, width, height, ppcm)
 		display_load(found);
 
 	else
+		local prof;
+		for k,v in ipairs(profiles) do
+			if (string.match(name, v.ident)) then
+				prof = v;
+				break;
+			end
+		end
+
+		if (prof) then
+-- facility for supporting more window management styles in the future
+			if (prof.wm == "ignore") then
+				return;
+			end
+
+			if (prof.width) then
+				width = math.clamp(prof.width, prof.width, MAX_SURFACEW);
+			end
+			if (prof.height) then
+				height = math.clamp(prof.height, prof.height, MAX_SURFACEW);
+			end
+			if (prof.ppcm) then
+				ppcm = prof.ppcm;
+			end
+		end
+
 		set_context_attachment(WORLDID);
 		local nd = {
 			tiler = tiler_create(width, height, {name=name, scalef=ppcm/SIZE_UNIT}),
@@ -607,7 +701,8 @@ function display_cycle_active(ind)
 	local nd = displays.main;
 	repeat
 		nd = (nd + 1 > #displays) and 1 or (nd + 1);
-	until (nd == displays.main or not displays[nd].orphan);
+	until (nd == displays.main or not
+		(displays[nd].orphan or displays[nd].disabled));
 
 	switch_active_display(nd);
 end
@@ -727,10 +822,10 @@ end
 -- need "all windows regardless of display".  Don't break- out of this or
 -- things may get the wrong attachment later.
 --
-local function aditer(rawdisp)
+local function aditer(rawdisp, showorph, showdis)
 	local tbl = {};
 	for i,v in ipairs(displays) do
-		if (not v.orphan) then
+		if ((not v.orphan or showorph) and (not v.disabled or showdis)) then
 			table.insert(tbl, {i, v});
 		end
 	end
@@ -812,7 +907,7 @@ function displays_alive(filter)
 	local res = {};
 
 	for k,v in ipairs(displays) do
-		if (not v.orphan and (not filter or k ~= displays.main)) then
+		if (not (v.orphan or v.disabled) and (not filter or k ~= displays.main)) then
 			table.insert(res, v.name);
 		end
 	end
@@ -825,7 +920,7 @@ function display_tick()
 			v.tiler:tick();
 		end
 
--- periodically check the status of source if we are in dedicated fullscreen mode
+-- periodically check source for dedicated fullscreen mode
 		if (not displays.simple and v.monitor_vid) then
 
 -- on death, set "BADID" (which will revert mapping to normal rt)
@@ -834,9 +929,9 @@ function display_tick()
 			else
 				local isp = image_storage_properties(v.monitor_vid);
 
--- deferred resize- propagation due to cost of mode switch, this could probably be
--- even more conservative, though resolution switches in the source will cause a visual
--- glitch for the 'incorrect' frames.
+-- deferred resize- propagation due to cost of mode switch, this could probably
+-- be even more conservative, though resolution switches in the source will
+-- cause a visual glitch for the 'incorrect' frames.
 				if (not v.monitor_sprops or isp.width ~= v.monitor_sprops.width or
 					isp.height ~= v.monitor_sprops.height) then
 					v.monitor_sprops = isp;
