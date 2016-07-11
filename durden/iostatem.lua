@@ -364,12 +364,12 @@ function iostatem_init()
 	gconfig_listen("kbd_period", "iostatem", set_period);
 	gconfig_listen("kbd_delay", "iostatem", set_delay);
 	devstate.counter = def_delay;
-	local list = glob_resource("devmaps/*.lua", DEVMAP_DOMAIN);
+	local list = glob_resource("devmaps/game/*.lua", DEVMAP_DOMAIN);
 
 -- glob for all devmaps, make sure they match the platform and return
 -- correct types and non-colliding identifiers
 	for k,v in ipairs(list) do
-		tryload(v);
+		tryload("game/" .. v);
 	end
 
 -- all analog sampling on by default, then we manage on a per-window
