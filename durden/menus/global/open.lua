@@ -251,7 +251,7 @@ local function browse_internal()
 	local ffmts = {jpg = imghnd, png = imghnd, bmp = imghnd,
 		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
 		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
-		flv = dechnd
+		flv = dechnd, mpg = dechnd, mpeg = dechnd
 	};
 
 	local opts = {

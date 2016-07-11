@@ -239,6 +239,10 @@ local function hb(ch)
 	return th[fd+1] .. th[sd+1];
 end
 
+function math.clamp(v, min, high)
+	return (v < min and v or min) > high and high or v;
+end
+
 function hexenc(instr)
 	return string.gsub(instr, "(.)", function(ch)
 		return hb(ch:byte(1));

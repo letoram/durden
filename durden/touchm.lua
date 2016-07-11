@@ -456,6 +456,11 @@ end
 function touchm_reload()
 	profiles = {};
 	local lst = glob_resource("devmaps/touch/*.lua", APPL_RESOURCE);
+	if (not lst) then
+		return;
+	end
+
+	table.sort(lst);
 	for k,v in ipairs(lst) do
 		local res = tryload(v);
 		if (res) then

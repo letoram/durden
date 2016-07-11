@@ -75,6 +75,20 @@ you want to bind it to. To bind a sub-menu, hold meta1 while selecting.
 It is however also possible to tweak/modify the startup defaults (see
 autorun.lua, keybindings.lua and gconf.lua).
 
+Device Maps
+=====
+For detailed configuration of input and output device behaviors, scripts can
+be added to the devmaps/ folder. Each folder has a separate README.md that
+describes the expected format. On device added/ removed events, these maps are
+scanned looking for a fitting map to tune how data from the device is interpreted
+and routed.
+
+Extensions
+=====
+Two folders are dedicated for extending the behavior of durden. One is widgets,
+which contain scripts that trigger on a specific global or target menu path.
+To add a custom me
+
 Timers
 ====
 Durden does not have explicit settings for suspend/resume, shutdown,
@@ -146,15 +160,6 @@ event of a broken configuration (where it is not possible to see or otherwise
 access relevant menus), it is possible to reset to a default state by calling
 
     arcan_db drop_appl durden
-
-Menu Widgets
-====
-in the widget folder, there are a few short example scripts on hooks
-that are enabled when menu navigation reaches a certain state or the
-lbar/bbar are used for some things. This feature is intended to help
-developing quick features like notes and a calculator, but also when
-using features that becomes easier with 'cheat sheets', binding info
-or an ASCII table.
 
 Status / Command / Output channels
 ====
@@ -247,7 +252,7 @@ are being implemented, we have the following list:
 - [ ] Workspace Management
   - [x] Naming/Renaming
   - [x] Searching Based On Name
-	- [x] Saving/Restoring Properties (background, mode, name)
+  - [x] Saving/Restoring Properties (background, mode, name)
   - [ ] Saving/Restoring Layout (positions, weights)
 - [x] Basic Window Management
   - [x] Reassign
@@ -289,30 +294,30 @@ are being implemented, we have the following list:
     - [ ] Analog Calibration
     - [ ] Autofire
   - [ ] Touchpads/screens
-	  - [ ] Mouse Emulation
-		- [ ] Gesture- analysis profiler
+    - [x] Mouse Emulation
+    - [x] Gesture- analysis profiler
     - [ ] Calibration Tool
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
   - [x] 'Sticky' Meta (meta press state persist n ticks)
-	- [ ] Float Layout
+  - [ ] Float Layout
     - [x] Drag Reposition/Resize in Float
     - [x] Double-Click Titlebar Maximize-Restore in Float
     - [ ] Desktop Icons in Float-Mode
-	  - [ ] Auto-layouter in Float-Mode (normalize + binpack)
-	- [x] Mouse
-	  - [x] Focus follows:
-		  - [x] Hover
-			- [x] Click
-			- [x] Motion
+    - [ ] Auto-layouter in Float-Mode (normalize + binpack)
+  - [x] Mouse
+    - [x] Focus follows:
+      - [x] Hover
+      - [x] Click
+      - [x] Motion
     - [x] Scale Factor
     - [x] Follows Selection
     - [x] Lock to Window
     - [x] Autohide / Reveal
     - [ ] Button Reordering
-		- [ ] Meta+Click Binding
-	  - [ ] Mouse->Touch emulation (input gestures)
+    - [ ] Meta+Click Binding
+    - [ ] Mouse to Touch emulation (input gestures)
   - [x] Per/Window Keyremapping
   - [ ] Macro Record / Replay
   - [ ] On-Screen Keyboard (custom button grid as window that don't focus)
@@ -329,18 +334,12 @@ are being implemented, we have the following list:
   - [x] Custom Unicode Binding (global and per window)
 - [ ] Program Save-State Management
   - [x] Save/Load
-	- [ ] Dynamic state change support
+  - [ ] Dynamic state change support
   - [ ] State transfer between windows
 - [ ] Advanced Window Integration
   - [ ] Omnipresent Windows
-  - [x] Window Canvas to Workspace Background Image
   - [ ] Cloning Windows
-  - [x] Migrate Window Between Displays
-  - [x] Debugging Subwindows
   - [ ] Overlay Surfaces
-  - [x] Customized Titlebar
-  - [x] Customized Cursors, Cursorhints
-  - [x] Customized Border
   - [ ] Content position indicator (scrollbar)
   - [ ] Icon to "Tray"
   - [ ] Content/Scrollbar Integration
@@ -349,22 +348,28 @@ are being implemented, we have the following list:
   - [ ] Cursor Drag - Event Region
     - [x] Monitor region
     - [x] Snapshot region
+    - [x] Single Target (A/V)
+    - [x] Visual Region (V)
+    - [x] OCR
     - [ ] Recording
-		  -  [x] Single Target (A/V)
-			-  [x] Visual Region (V)
-		  -  [ ] Controllable A/V mixing
-			-  [ ] Sync/Gain controls
-			-  [ ] Video Filtering
-			-  [ ] Streaming Destination
-		- [ ] Remote Sharing Server
-			-  [x] Passive
-			-  [ ] Input mapping
-			-  [ ] As separate 'display'
-		- [ ] Abstract Encode/Decode
-		  -  [x] OCR
-			-  [ ] Text to Speech
-			-  [ ] Speech Recognition
-			-  [ ] Dictionary / Translation
+      - [ ] Controllable A/V mixing
+      - [ ] Sync/Gain controls
+      - [ ] Video Filtering
+      - [ ] Streaming Destination
+    - [ ] Remote Sharing Server
+      - [x] Passive
+      - [ ] Input mapping
+      - [ ] As separate 'display'
+    - [ ] Abstract Encode/Decode
+    - [ ] Text to Speech
+    - [ ] Speech Recognition
+    - [ ] Dictionary / Translation
+  - [x] Window Canvas to Workspace Background Image
+  - [x] Migrate Window Between Displays
+  - [x] Debugging Subwindows
+  - [x] Customized Titlebar
+  - [x] Customized Cursors, Cursorhints
+  - [x] Customized Border
   - [x] Automation
     -  [x] Fire-Once Timers
     -  [x] Idle-Timers
@@ -398,8 +403,8 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Level Indicator
   - [x] Configure/Disable external connections
   - [ ] Limit subsurfaces per window
-	- [ ] Privilege Level indication
-	  - [ ] Trusted input path on high-privilege window
+  - [ ] Privilege Level indication
+  - [x] Trusted input path on high-privilege window
   - [ ] Notification on reaching VID limit threshold
         and suspend external/ subsegs temporarily
 - [x] Basic Crash Recovery/Reset/Reload
@@ -425,48 +430,14 @@ are being implemented, we have the following list:
   - [x] Lockscreen
     - [x] Autosuspend game/media or all on Lock
     - [x] Customized action on repeated auth- failure
-		- [x] Customized action on lock/unlock
+    - [x] Customized action on lock/unlock
   - [ ] Iconsheets
-	  - [ ] Static (for buttons)
-		- [ ] Dynamic (advanced window management, client registred)
+    - [ ] Static (for buttons)
+    - [ ] Dynamic (advanced window management, client registred)
 
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
-
-Extensions
-=====
-The above featureset mostly covers what would be useful from a tiling DE
-perspective, but given the relative minimal effort in adding features that
-would allow mimicking other DEs ('start' button, dock, control panel, ..) --
-some extension scripts and support is planned but not currently implemented
-(likely to be drop:able into a plugins folder that globbed / scanned on load
-With some minimal hook api).
-
-### start button, popup, control panel
-While the status/etc. bar code should probably be replaced with a more flexible
-system for adding dynamic bars and attachment points, adding a clickable button
-to work like the normal windows-style start menu should be an easy thing.
-
-The menu-code that uses the lbar currently could trivially be switched over
-to use such popup-menu style navigation, though some icon field may need to
-be added.
-
-### external widgets
-Sweep the database at launch for a specific tag and launch them all at startup,
-attaching to a fixed size docklet "WindowMaker/NeXTStep style" or as part of the
-global/target menu screen.
-
-### desktop icons / shortcuts
-For float layouts, allow local icons and shortcuts to be added for launching,
-but also for 'minimizing selected window' to desktop icon and some operation
-to hide/reveal active windows.
-
-### advanced keyboard - mouse navigation
-Offscreen, run edge detection/amplification, downscale and readback to get
-a 'navigation map' of continous regions that the mouse cursor can be centered
-to, allowing much faster cursor positioning with keyboard and "sticky" regions
-with mouse navigation.
 
 Repository
 =====
@@ -481,26 +452,28 @@ _files that might be of interest)_
 				mouse.lua        - mouse gesture support
 				shdrmgmt.lua     - shader loading and setup
 				symtable.lua     - keyboard layout and input translation
-        iostatem.lua     - per window input state machine tracking
 				extevh.lua       - default frameserver event handlers
         durden.lua       - main script, input routing and process management
         display.lua      - display and multiple-workspace manager
         tiler.lua        - main tiling layout, workspace management etc.
-        wnd_settings.lua - window serialization and restore
         lbar.lua         - support script for textedit control
         uiprim.lua       - UI primitives, buttons etc.
         bbar.lua         - binding bar, used for querying keybindings
+        whitelist.lua    - IPC command whitelisting
         browser.lua      - lbar based resource browser
         suppl.lua        - text and menu convinience functions
         timer.lua        - one-off or recurrent timer events
+        touchm.lua       - handles touch- device managent
+        iostatem.lua     - per window input state machine tracking
 
-    durden/atypes/* - menus and settings for specific client subtypes
-    durden/menus/ - global menus and settings, target base menus and settings
-		durden/widgets/ - customized menu path- helpers
+    durden/atypes/*    - menus and settings for specific client subtypes
+    durden/menus/      - global menus and settings, target base menus and settings
+		durden/devmaps     - device (mouse, display, game, keyboard) default configuration
+		durden/widgets/    - customized menu path- helpers
+    durden/tools/      - loadable tools/plugins
 		durden/shaders/ui/ - code for customizing decorations etc.
-		durden/recordings - video recording output stored here
-		durden/ipc/ - iopipes will be created here
+		durden/recordings  - video recording output stored here
+		durden/ipc/        - iopipes will be created here
 
 We don't keep any necessary assets in the resource path as that should be
-accessible to the browser (one could essentially set it to / or whatever
-filesystem mount-point one wants).
+accessible to the browser (can even be set to '/')
