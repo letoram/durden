@@ -11,6 +11,7 @@ local function gen_mbutton_menu()
 			end
 		});
 	end
+	return res;
 end
 
 local mouse_menu = {
