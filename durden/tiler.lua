@@ -63,10 +63,6 @@ local function wnd_destroy(wnd)
 		return;
 	end
 
-	if (wm.debug_console) then
-		wm.debug_console:system_event("lost " .. wnd.name);
-	end
-
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
 		wm.deactivated.wnd = nil;
 	end
@@ -155,7 +151,9 @@ end
 local function wnd_deselect(wnd, nopick)
 	local mwm = wnd.space.mode;
 	if (mwm == "tab" or mwm == "vtab") then
-		hide_image(wnd.anchor);
+		if (not nopick) then
+			hide_image(wnd.anchor);
+		end
 	end
 
 	if (wnd.wm.selected == wnd) then
@@ -327,8 +325,6 @@ local function tiler_statusbar_build(wm)
 	wm.sbar_ws["msg"].align_left = true;
 end
 
--- we need an overlay anchor that is only used for ordering, this to handle
--- that windows may appear while the overlay is active
 local function wm_order(wm)
 	return wm.order_anchor;
 end
@@ -1273,11 +1269,6 @@ local function wnd_resize(wnd, neww, newh, force)
 	wnd.height = newh;
 
 	local props = image_storage_properties(wnd.canvas);
-
-	if (wnd.wm.debug_console) then
-		wnd.wm.debug_console:system_event(string.format("%s%s resized to %d, %d",
-			wnd.name, force and " force" or "", neww, newh));
-	end
 
 -- to save space for border width, statusbar and other properties
 	if (not wnd.fullscreen) then
@@ -2226,10 +2217,6 @@ local function wnd_create(wm, source, opts)
 		grow = wnd_grow
 	};
 
-	if (wm.debug_console) then
-		wm.debug_console:system_event(string.format("new window using %d", source));
-	end
-
 	local space = wm.spaces[wm.space_ind];
 	res.space_ind = wm.space_ind;
 	res.space = space;
@@ -2666,10 +2653,6 @@ local function wm_countspaces(wm)
 end
 
 local function tiler_input_lock(wm, dst)
-	if (wm.debug_console) then
-		wm.debug_console:system_event(dst and ("input lock set to "
-			.. tostring(dst)) or "input lock cleared");
-	end
 	wm.input_lock = dst;
 end
 
