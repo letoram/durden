@@ -181,6 +181,28 @@ gf["swap_left"] = function() active_display():swap_left(); end
 gf["swap_up"] = function() active_display():swap_up(); end
 gf["swap_down"] = function() active_display():swap_down(); end
 gf["swap_right"] = function() active_display():swap_right(); end
+sf["swap_focus"] = function()
+	local sp = active_display().active_space;
+	local sw = active_display().selected;
+	local dw = sp.children[2];
+	if (not sp or #sp.children <= 2 or not sw) then
+		return;
+	end
+	local ind = table.find_i(sp.children, sw);
+	if (not ind or ind > 2) then
+		sw.last = dw;
+		sw:swap(dw);
+		sp:resize();
+	elseif (ind == 2 and dw.last and dw.last.swap) then
+		dw:swap(dw.last);
+		sp:resize();
+	end
+
+	local m1, m2 = dispatch_meta();
+	if (m2) then
+		dw:select();
+	end
+end
 
 gf["debug_dump_state"] = function()
 	local stm = benchmark_timestamp(0);
