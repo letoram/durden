@@ -129,7 +129,7 @@ local function lock_constrain()
 -- locking to surface is slightly odd in that we still need to return
 -- valid relative motion which may or may not come from a relative source
 -- and still handle constraints e.g. warp/clamp
-	if (mstate.lockvid) then
+	if (valid_vid(mstate.lockvid)) then
 		local props = image_surface_resolve_properties(mstate.lockvid);
 		local ul_x = props.x;
 		local ul_y = props.y;
