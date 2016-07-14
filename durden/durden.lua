@@ -390,7 +390,7 @@ function durden_new_connection(source, status)
 		end
 		if (status) then
 -- switch attachment immediately to new display
-			local ap = display_attachment();
+			local ap = active_display(true);
 			if (ap ~= nil) then
 				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
 			end
