@@ -327,6 +327,7 @@ end
 -- OUTSYM = prefix with normal modifiers (ALT+x, etc.)
 -- LABEL = more abstract and target specific identifier
 --
+local last_deferred = nil;
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
@@ -363,12 +364,21 @@ function dispatch_translate(iotbl, nodispatch)
 	if (tbl[lutsym] or (not iotbl.active and tbl[rlut])) then
 		if (iotbl.active and tbl[lutsym]) then
 			dispatch_symbol(tbl[lutsym]);
+			if (tbl[rlut]) then
+				last_deferred = tbl[rlut];
+			end
+
 		elseif (tbl[rlut]) then
 			dispatch_symbol(tbl[rlut]);
+			last_deferred = nil;
 		end
 
 -- don't want to run repeat for valid bindings
 		iostatem_reset_repeat();
+		return true, lutsym, iotbl;
+	elseif (last_deferred) then
+		dispatch_symbol(last_deferred);
+		last_deferred = nil;
 		return true, lutsym, iotbl;
 	elseif (not sel) then
 		return false, lutsym, iotbl;
