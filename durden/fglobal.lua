@@ -394,7 +394,7 @@ gf["bind_menu"] = function(sfun)
 end
 
 -- ignore: sfun, lbl, cctx
-gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
+gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2, falling)
 	local bwt = gconfig_get("bind_waittime");
 
 	local ctx = tiler_bbar(active_display(),
@@ -404,7 +404,7 @@ gf["bind_custom"] = function(sfun, lbl, ctx, wnd, m1, m2)
 			if (done) then
 				launch_menu_hook(function(path)
 					IN_CUSTOM_BIND = false;
-					local res = dispatch_custom(sym, path, false, wnd, m1);
+					local res = dispatch_custom(sym, path, false, wnd, m1, falling);
 					active_display():message(res and res .. " unbound" or nil);
 				end);
 				active_display():message("select function to bind to " .. sym, -1);
@@ -433,6 +433,10 @@ end
 sf["bind_custom"] = function(wnd)
 	local m1, m2 = dispatch_meta();
 	gf["bind_custom"](nil, "lbl", {}, wnd, m1, m2);
+end
+
+gf["bind_custom_falling"] = function(sfun, lbl, ctx, wnd, m1, m2)
+	gf["bind_custom"](sfun, lbl, ctx, wnd, m1, m2, true);
 end
 
 gf["unbind_combo"] = function()

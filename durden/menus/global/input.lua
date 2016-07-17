@@ -473,6 +473,12 @@ local bind_menu = {
 		handler = grab_global_function("bind_custom")
 	},
 	{
+		name = "custom_falling",
+		kind = "action",
+		label = "Custom(Release)",
+		handler = grab_global_function("bind_custom_falling")
+	},
+	{
 		name = "meta",
 		kind = "action",
 		label = "Meta",
