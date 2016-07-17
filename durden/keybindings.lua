@@ -363,7 +363,7 @@ function dispatch_translate(iotbl, nodispatch)
 	if (tbl[lutsym] or (not iotbl.active and tbl[rlut])) then
 		if (iotbl.active and tbl[lutsym]) then
 			dispatch_symbol(tbl[lutsym]);
-		else
+		elseif (tbl[rlut]) then
 			dispatch_symbol(tbl[rlut]);
 		end
 
