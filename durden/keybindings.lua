@@ -202,7 +202,11 @@ function dispatch_list()
 	return res;
 end
 
-function dispatch_custom(key, val, nomb, wnd, global)
+function dispatch_custom(key, val, nomb, wnd, global, falling)
+	if (falling) then
+		key = "f_" .. key;
+	end
+
 	local old = tbl[key];
 	local pref = wnd and "custs_" or "custg_";
 -- go through these hoops to support unbind (nomb),
@@ -296,6 +300,7 @@ local function track_label(iotbl, keysym, hook_handler)
 			mtrack.last_m2 = m2d;
 		end
 	end
+
 	local lutsym = "" ..
 		(mtrack.m1 and "m1_" or "") ..
 		(mtrack.m2 and "m2_" or "") .. keysym;
@@ -354,10 +359,14 @@ function dispatch_translate(iotbl, nodispatch)
 		return true, lutsym, iotbl, tbl[lutsym];
 	end
 
-	if (tbl[lutsym]) then
-		if (iotbl.active) then
+	local rlut = "f_" ..lutsym;
+	if (tbl[lutsym] or (not iotbl.active and tbl[rlut])) then
+		if (iotbl.active and tbl[lutsym]) then
 			dispatch_symbol(tbl[lutsym]);
+		else
+			dispatch_symbol(tbl[rlut]);
 		end
+
 -- don't want to run repeat for valid bindings
 		iostatem_reset_repeat();
 		return true, lutsym, iotbl;
