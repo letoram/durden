@@ -7,18 +7,24 @@ function spawn_terminal(cmd, nolaunch)
 -- and in that way avoid the cost of a _resize() + signal cycle. To avoid
 -- an initial 'flash' before background etc. is applied, we preset one.
 	local wnd;
+	local prepend = "";
+
 	if (not nolaunch) then
 		wnd = durden_prelaunch();
 		wnd:set_title("Terminal");
+		wnd.scalemode = "stretch";
+		wnd.space:resize();
+		prepend = string.format(
+			"width=%d:height=%d:", wnd.effective_w, wnd.effective_h);
 	end
 
 	local ppcm = tostring(active_display(true, true).ppcm);
 	local ppcm = string.gsub(ppcm, ',', '.');
 
 	local lstr = string.format(
-		"font_hint=%s:font=[ARCAN_FONTPATH]/%s:ppcm=%s:"..
+		"%sfont_hint=%s:font=[ARCAN_FONTPATH]/%s:ppcm=%s:"..
 		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
-		TERM_HINT_RLUT[tonumber(gconfig_get("term_font_hint"))],
+		prepend, TERM_HINT_RLUT[tonumber(gconfig_get("term_font_hint"))],
 		gconfig_get("term_font"),
 		ppcm, gconfig_get("term_font_sz"),
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
