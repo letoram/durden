@@ -328,6 +328,8 @@ end
 -- LABEL = more abstract and target specific identifier
 --
 local last_deferred = nil;
+local deferred_id = 0;
+
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
@@ -366,6 +368,7 @@ function dispatch_translate(iotbl, nodispatch)
 			dispatch_symbol(tbl[lutsym]);
 			if (tbl[rlut]) then
 				last_deferred = tbl[rlut];
+				deferred_id = iotbl.devid;
 			end
 
 		elseif (tbl[rlut]) then
@@ -376,7 +379,7 @@ function dispatch_translate(iotbl, nodispatch)
 -- don't want to run repeat for valid bindings
 		iostatem_reset_repeat();
 		return true, lutsym, iotbl;
-	elseif (last_deferred) then
+	elseif (last_deferred and iotbl.devid == deferred_id) then
 		dispatch_symbol(last_deferred);
 		last_deferred = nil;
 		return true, lutsym, iotbl;
