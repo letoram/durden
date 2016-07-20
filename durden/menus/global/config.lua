@@ -9,6 +9,10 @@ hint_lut = {
 TERM_HINT_RLUT = {};
 for k,v in pairs(hint_lut) do TERM_HINT_RLUT[v] = k; end
 
+-- populated on tool loading
+local tools_conf = {
+};
+
 local durden_font = {
 	{
 		name = "size",
@@ -600,5 +604,12 @@ return {
 			return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 		end,
 		handler = config_terminal
+	},
+	{
+		name = "tools",
+		label = "Tools",
+		kind = "action",
+		submenu = true,
+		handler = tools_conf
 	}
 };
