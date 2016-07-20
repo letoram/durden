@@ -3,6 +3,9 @@
 -- boiler-plate mapping to engine- or support script functions.
 --
 
+local tools = {
+};
+
 local toplevel = {
 	{
 		name = "open",
@@ -80,6 +83,13 @@ local toplevel = {
 		submenu = true,
 		handler = system_load("menus/global/system.lua")()
 	},
+	{
+		name = "tools",
+		label = "Tools",
+		kind = "action",
+		submenu = true,
+		handler = tools
+	}
 };
 
 function get_global_menu()

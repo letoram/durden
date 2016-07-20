@@ -425,10 +425,10 @@ local function modelwnd(name)
 	return wnd;
 end
 
-global_menu_register("open",
+global_menu_register("tools",
 {
 	name = "model",
-	label = "Model",
+	label = "Model Viewer",
 	submenu = true,
 	kind = "value",
 	set = function()

@@ -12,12 +12,6 @@
 -- default keybinding setting(?)
 --
 
-gconfig_register("dt_pos", "top");
-gconfig_register("dt_ofs", true);
-gconfig_register("dt_width", 1.0);
-gconfig_register("dt_height", 0.4);
-gconfig_register("dt_opa", 0.8);
-
 local dstate = {
 	dir_x = 0,
 	dir_y = 1,
@@ -25,6 +19,60 @@ local dstate = {
 	ofs = 0,
 	width = 0.5,
 	height = 0.3
+};
+
+gconfig_register("dt_width", 0.5);
+gconfig_register("dt_height", 0.4);
+gconfig_register("dt_opa", 0.8);
+
+local function update_size()
+	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
+		local disp = active_display();
+		local neww = disp.width * gconfig_get("dt_width");
+		local newh = disp.height * gconfig_get("dt_height");
+		target_displayhint(dstate.term, neww, newh);
+	end
+end
+
+local dterm_cfg = {
+{
+	label = "Width",
+	name = "width",
+	kind = "value",
+	hint = "(100 * val)%",
+	validator = gen_valid_float(0.1, 1.0),
+	initial = function() return gconfig_get("dt_width"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_weight", tonumber(val));
+		update_size();
+	end
+},
+{
+	label = "Height",
+	name = "height",
+	kind = "value",
+	hint = "(100 * val)%",
+	validator = gen_valid_float(0.1, 1.0),
+	initial = function() return gconfig_get("dt_width"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_height", tonumber(val));
+		update_size();
+	end
+},
+{
+	label = "Background Alpha",
+	name = "alpha",
+	kind = "value",
+	hint = "(0..1, 1=opaque)",
+	validator = gen_valid_float(0.0, 1.0),
+	initial = function() return gconfig_get("dt_opa"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_opa", tonumber(val));
+		if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
+			target_graphmode(dstate.term, gconfig_get("dt_opa"));
+		end
+	end
+}
 };
 
 local atype = extevh_archetype("terminal");
@@ -36,6 +84,7 @@ local function drop()
 		-1 * dstate.dir_x * props.width, -1 * dstate.dir_y * props.height,
 		gconfig_get("animation")
 	);
+	blend_image(dstate.term, 0.0, gconfig_get("animation"));
 	dstate.active = false;
 	dispatch_toggle(false);
 	mouse_lockto(unpack(dstate.lock));
@@ -91,49 +140,51 @@ local function dterm()
 -- if we got a terminal running, prefer that
 -- or spawn a new one.. create anchor, attach, order, ...
 	local disp = active_display();
-	local neww = disp.width * dstate.width;
-	local newh = disp.height * dstate.height;
+	local neww = disp.width * gconfig_get("dt_width");
+	local newh = disp.height * gconfig_get("dt_height");
 
 	if (not valid_vid(dstate.term)) then
-		dstate.term = spawn_terminal("", true);
+		dstate.term = spawn_terminal(string.format("width=%d:height=%d", neww, newh), true);
 		dstate.disp = disp;
-		show_image(dstate.term);
 		target_updatehandler(dstate.term, termh);
 		target_graphmode(dstate.term, gconfig_get("dt_opa"));
 	end
 
--- center on non-dominant axis
-	move_image(dstate.term, -1 * neww * dstate.dir_x, -1 * newh * dstate.dir_y);
-	if (dstate.dir_x ~= 0) then
-		nudge_image(dstate.term, 0.0, 0.5 * (disp.height - newh));
-	elseif (dstate.dir_y ~= 0) then
-		nudge_image(dstate.term, 0.5 * (disp.width - neww), 0.0);
-	end
-
--- reattach to different output
+-- reattach to different output on switch or resize
 	if (dstate.disp ~= active_display()) then
+		target_displayhint(dstate.term, neww, newh);
 		dstate.disp = active_display();
 -- send font hint
+-- reevaluate width, resize
 	end
-
-	local neww = dstate.disp.width * dstate.width;
-	local newh = dstate.disp.height * dstate.height;
 
 -- put us in the "special" overlay order range
 	order_image(dstate.term, 65532);
 
--- activate / keyboard input
--- save coords, lock mouse to vid
-	target_displayhint(dstate.term,
-		dstate.disp.width * dstate.width,
-		dstate.disp.height * dstate.height
-	);
+-- center at hidden state non-dominant axis, account for user- padding
+-- do this the safe "all options rather than math" way due to the possible
+-- switching of user- config between spawns
+	if (dstate.dir_x ~= 0) then
+		neww = neww + dstate.ofs;
+		if (dstate.dir_x > 0) then
+			move_image(dstate.term, -neww, 0.5 * (disp.height - newh));
+			nudge_image(dstate.term, neww, 0, gconfig_get("animation"));
+		else
+			move_image(dstate.term, disp.width, 0.5 * (disp.height - newh));
+			nudge_image(dstate.term, -neww, 0, gconfig_get("animation"));
+		end
+	elseif (dstate.dir_y ~= 0) then
+		newh = newh + dstate.ofs;
+		if (dstate.dir_y > 0) then -- top
+			move_image(dstate.term, 0.5 * (disp.width - neww), -newh);
+			nudge_image(dstate.term, 0, newh, gconfig_get("animation"));
+		else -- bottom
+			move_image(dstate.term, 0.5 * (disp.width - neww), disp.height);
+			nudge_image(dstate.term, 0, -newh, gconfig_get("animation"));
+		end
+	end
 
--- animate
-	show_image(dstate.term);
-	nudge_image(dstate.term, 1 * dstate.dir_x * neww,
-		1 * dstate.dir_y * newh, gconfig_get("animation"));
-
+	blend_image(dstate.term, 1.0, gconfig_get("animation"));
 	dstate.active = true;
 	dispatch_toggle(ldisp);
 
@@ -148,11 +199,19 @@ local function dterm()
 	target_displayhint(dstate.term, 0, 0, 0);
 end
 
-global_menu_register("system",
+global_menu_register("tools",
 {
 	name = "dterm",
 	label = "Drop-down Terminal",
 	kind = "action",
-	invisible = true, -- (register keybinding instead?)
 	handler = dterm
+});
+
+global_menu_register("settings/tools",
+{
+	name = "dterm",
+	label = "Drop-down Terminal",
+	kind = "action",
+	submenu = true,
+	handler = dterm_cfg
 });
