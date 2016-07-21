@@ -130,16 +130,19 @@ end
 
 defhtbl["resized"] =
 function(wnd, source, stat)
-	wnd.space:resize();
 	wnd.source_audio = stat.source_audio;
 	audio_gain(stat.source_audio, (gconfig_get("global_mute") and 0 or 1) *
 		gconfig_get("global_gain") * wnd.gain);
-
-	if (wnd.space.mode == "float") then
-		wnd:resize_effective(stat.width, stat.height);
-	end
 	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
+
+-- only block after FIRST (need initial dimensions)
+	if (not wnd.resize_block or not wnd.ext_resize) then
+		wnd:resize_effective(stat.width, stat.height);
+	end
+	wnd.ext_resize = true;
+-- special case, we mark the resize as 'reposition only'
+	wnd.space:resize(true);
 end
 
 defhtbl["message"] =
