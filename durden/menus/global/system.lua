@@ -153,6 +153,12 @@ local function gen_displaywnd_menu()
 end
 
 local counter = 0;
+
+local function gettitle(wnd)
+	return string.format("%s:%s", wnd.title_prefix and wnd.title_prefix or "unk",
+			wnd.title_text and wnd.title_text or "unk");
+end
+
 local debug_menu = {
 	{
 		name = "dump",
@@ -222,6 +228,29 @@ local debug_menu = {
 		eval = function() return frameserver_debugstall ~= nil; end,
 		validator = gen_valid_num(0, 100),
 		handler = function(ctx,val) frameserver_debugstall(tonumber(val)*10); end
+	},
+	{
+		name = "dump_tree",
+		label = "Dump Space-Tree",
+		kind = "action",
+		eval = function() return active_display().spaces[
+			active_display().space_ind] ~= nil; end,
+		handler = function(ctx)
+			local space = active_display().spaces[active_display().space_ind];
+			local fun;
+			print("<space>");
+			fun = function(node, level)
+				print(string.format("%s<node id='%s' horiz=%f vert=%f>",
+					string.rep("\t", level), gettitle(node),
+					node.weight, node.vweight));
+				for k,v in ipairs(node.children) do
+					fun(v, level+1);
+				end
+				print(string.rep("\t", level) .. "</node>");
+			end
+			fun(space, 0);
+			print("</space>");
+		end
 	}
 };
 

@@ -44,7 +44,27 @@ to be able to access for assets when browsing for images, video etc.
 e.g. arcan -p /home/myuser/stuff durden
 
 There are numerous other ways for setting this up, see the Arcan wiki and
-manpages for other namespacing and configuration options.
+manpages for configuration options. If you're "lucky" (linux, normal "no-X" VT,
+build dependencies fullfilled and KMS/GBM on) this should land in something like:
+
+     git clone https://github.com/letoram/arcan.git
+     git clone https://github.com/letoram/durden.git
+     cd arcan/external/git; bash ./clone.sh
+     cd ../ ; mkdir build ; cd build
+     cmake -DVIDEO_PLATFORM=egl-dri -DSTATIC_SQLITE3=ON -DSTATIC_OPENAL=ON
+        -DSTATIC_FREETYPE=ON -DENABLE_HIJACK=ON ../src
+     make -j 8
+     ./arcan ../../durden/durden
+
+Note: the egl-dri (and egl-nvidia) video platforms are for running this as a
+dedicated desktop, if you just want to try things out, use the _sdl_ platform
+instead. Some features when it comes to display management and input will behave
+differently, and you likely want to bind a toggle for enabling/disabling
+cursor locking.
+
+Another option, if your drivers give you accelerated GL in X but not working
+KMS/DRI is to merely run arcan/durden with SDL as the video platform in
+fullscreen- mode and only application, essentially making X your "driver".
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
 for the currently mapped defaults. If you don't press any of the META keys
@@ -87,7 +107,10 @@ Extensions
 =====
 Two folders are dedicated for extending the behavior of durden. One is widgets,
 which contain scripts that trigger on a specific global or target menu path.
-To add a custom me
+A typical example is widgets/ascii.lua that is activated when a utf-8 sequence
+is to be bound.
+The other are tools that add more generic features, examples being a 3d
+modelviewer and an automatic tiling layout manager.
 
 Timers
 ====
@@ -116,7 +139,7 @@ use password, or as mentioned in the timers section, be bound to an idle timer
 or similar mechanism.
 
 In addition, it is possible to bind a path to lockscreen success or
-fail_n_times by modifying gconf.lua, look for lock_ok and lock_fail_ entries.
+fail "n" times by modifying gconf.lua, look for lock\_ok and lock\_fail_ entries.
 This can be used for strong effects like starting webcam streaming, running
 external commands or shutting down.
 
@@ -317,13 +340,13 @@ are being implemented, we have the following list:
     - [x] Autohide / Reveal
     - [ ] Button Reordering
     - [ ] Meta+Click Binding
-    - [ ] Mouse to Touch emulation (input gestures)
+    - [ ] Abstract Gesture Training
   - [x] Per/Window Keyremapping
-  - [ ] Macro Record / Replay
-  - [ ] On-Screen Keyboard (custom button grid as window that don't focus)
+  - [ ] Macros
+  - [ ] Custom On-Screen Keyboards
   - [ ] Global forwards
     - [ ] Specific Binding
-    - [ ] Specific Device
+    - [x] Specific Device
   - [ ] Input state to LED binding (keymap, active bindings for RGB keyboards)
 - [ ] Internationalization
   - [ ] Menu Translations
@@ -474,6 +497,3 @@ _files that might be of interest)_
 		durden/shaders/ui/ - code for customizing decorations etc.
 		durden/recordings  - video recording output stored here
 		durden/ipc/        - iopipes will be created here
-
-We don't keep any necessary assets in the resource path as that should be
-accessible to the browser (can even be set to '/')

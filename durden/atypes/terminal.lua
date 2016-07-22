@@ -33,6 +33,7 @@ local res = {
 		scalemode = "stretch",
 		autocrop = true,
 		font_block = true,
+		resize_block = true,
 		filtermode = FILTER_NONE
 	}
 };

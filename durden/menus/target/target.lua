@@ -100,6 +100,30 @@ function get_shared_menu()
 	return shared_actions;
 end
 
+function shared_menu_register(path, entry)
+	local elems = string.split(path, '/');
+	local level = shared_actions;
+	if (#elems > 0 and elems[1] == "") then
+		table.remove(elems, 1);
+	end
+
+	for k,v in ipairs(elems) do
+		local found = false;
+		for i,j in ipairs(level) do
+			if (j.name == v and type(j.handler) == "table") then
+				found = true;
+				level = j.handler;
+				break;
+			end
+		end
+		if (not found) then
+			warning(string.format("attach_global_menu(%s) failed on (%s)",path,v));
+			return;
+		end
+	end
+	table.insert(level, entry);
+end
+
 local show_shmenu;
 show_shmenu = function(wnd)
 	wnd = wnd and wnd or active_display().selected;

@@ -427,9 +427,10 @@ end
 -- underlying surface). Keep everything divisible by two for simplicity.
 --
 -- The overall structure in split mode is simply a tree, split resources fairly
--- between individuals (with an assignable weight) and recurse down to children
+-- divided between individuals (with an assignable weight) and recurse down to
+-- children
 --
-local function level_resize(level, x, y, w, h, node)
+local function level_resize(level, x, y, w, h, repos)
 	local fair = math.ceil(w / #level.children);
 	fair = (fair % 2) == 0 and fair or fair + 1;
 
@@ -439,26 +440,26 @@ local function level_resize(level, x, y, w, h, node)
 
 	local process_node = function(node, last)
 		node.x = x; node.y = y;
-		node.h = h;
+		node.max_h = h;
 
 		if (last) then
-			node.w = w;
+			node.max_w = w;
 		else
-			node.w = math.ceil(fair * node.weight);
-			node.w = (node.w % 2) == 0 and node.w or node.w + 1;
+			node.max_w = math.floor(fair * node.weight);
+			node.max_w = (node.max_w % 2) == 0 and node.max_w or node.max_w + 1;
 		end
 
+-- recurse downwards
 		if (#node.children > 0) then
-			node.h = math.ceil(h / 2 * node.vweight);
-			node.h = (node.h % 2) == 0 and node.h or node.h + 1;
-			level_resize(node, x, y + node.h, node.w, h - node.h);
+			node.max_h = math.floor(h / 2 * node.vweight);
+			node.max_h = (node.max_h % 2) == 0 and node.max_h or node.max_h + 1;
+			level_resize(node, x, y + node.max_h, node.max_w, h - node.max_h, repos);
 		end
 
-		move_image(node.anchor, node.x, node.y);
-		node:resize(node.w, node.h);
+		node:resize(node.max_w, node.max_h, false, repos);
 
-		x = x + node.w;
-		w = w - node.w;
+		x = x + node.max_w;
+		w = w - node.max_w;
 	end
 
 	for i=1,#level.children-1 do
@@ -781,7 +782,7 @@ end
 -- just unlink statusbar, resize all at the same time (also hides some
 -- of the latency in clients producing new output buffers with the correct
 -- dimensions etc). then line the statusbars at the top.
-local function set_tab(space)
+local function set_tab(space, repos)
 	local lst = linearize(space);
 	if (#lst == 0) then
 		return;
@@ -799,7 +800,11 @@ local function set_tab(space)
 	local ofs = 0;
 
 	for k,v in ipairs(lst) do
-		v:resize_effective(wm.width, wm.height - sb_sz - tbar_sz);
+		v.max_w = wm.width;
+		v.max_h = wm.height - sb_sz - tbar_sz;
+		if (not repos) then
+			v:resize(v.max_w, v.max_h);
+		end
 		move_image(v.anchor, 0, 0);
 		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
@@ -818,7 +823,7 @@ end
 
 -- tab and vtab are similar in most aspects except for the axis used
 -- and the re-ordering of the selected statusbar
-local function set_vtab(space)
+local function set_vtab(space, repos)
 	local lst = linearize(space);
 	if (#lst == 0) then
 		return;
@@ -840,7 +845,11 @@ local function set_vtab(space)
 
 	local ofs = 0;
 	for k,v in ipairs(lst) do
-		v:resize_effective(wm.width, cl_area);
+		v.max_w = wm.width;
+		v.max_h = cl_area;
+		if (not repos) then
+			v:resize(v.max_w, v.max_h);
+		end
 		move_image(v.anchor, 0, ypos);
 		move_image(v.canvas, 0, 0);
 		hide_image(v.anchor);
@@ -888,45 +897,64 @@ local function set_fullscreen(space)
 
 	move_image(dw.canvas, 0, 0);
 	move_image(dw.anchor, 0, 0);
+	dw.max_w = dw.wm.width;
+	dw.max_h = dw.wm.height;
 	dw:resize(dw.wm.width, dw.wm.height);
 end
 
 local function set_float(space)
-	if (not space.in_float) then
-		space.in_float = true;
-		space.reassign_hook = reassign_float;
-		space.mode_hook = drop_float;
-		local tbl = linearize(space);
-		for i,v in ipairs(tbl) do
-			local props = image_storage_properties(v.canvas);
-			local neww;
-			local newh;
--- work with relative position / size to handle migrate or resize
-			if (v.last_float) then
-				neww = space.wm.width * v.last_float.width;
-				newh = space.wm.height * v.last_float.height;
-				move_image(v.anchor,
-					space.wm.width * v.last_float.x,
-					space.wm.height * v.last_float.y
-				);
--- if window havn't been here before, clamp
-			else
-				neww = props.width + v.pad_left + v.pad_right;
-				newh = props.height + v.pad_top + v.pad_bottom;
-				neww = (space.wm.width < neww and space.wm.width) or neww;
-				newh = (space.wm.height < newh and space.wm.height) or newh;
-			end
+	if (space.in_float) then
+		return;
+	end
 
-			v:resize(neww, newh, true);
+	space.reassign_hook = reassign_float;
+	space.mode_hook = drop_float;
+	space.in_float = true;
+
+	local tbl = linearize(space);
+	if (space.layouter and space:layouter("float", tbl)) then
+		return;
+	end
+
+	for i,v in ipairs(tbl) do
+		local props = image_storage_properties(v.canvas);
+		local neww;
+		local newh;
+-- work with relative position / size to handle migrate or resize
+		if (v.last_float) then
+			neww = space.wm.width * v.last_float.width;
+			newh = space.wm.height * v.last_float.height;
+			move_image(v.anchor,
+				space.wm.width * v.last_float.x,
+				space.wm.height * v.last_float.y
+			);
+-- if window havn't been here before, clamp
+		else
+			neww = props.width + v.pad_left + v.pad_right;
+			newh = props.height + v.pad_top + v.pad_bottom;
+			neww = (space.wm.width < neww and space.wm.width) or neww;
+			newh = (space.wm.height < newh and space.wm.height) or newh;
 		end
+
+-- doesn't really matter here as we run with "force" flag
+		v.max_w = neww;
+		v.min_h = newh;
+
+		v:resize(neww, newh, true);
 	end
 end
 
-local function set_tile(space)
+local function set_tile(space, repos)
 	local wm = space.wm;
 	wm.statusbar:show();
 	wm.statusbar.hidden_sb = false;
-	level_resize(space, 0, 0, wm.width, wm.height - sbar_geth(wm));
+	if (space.layouter) then
+		local tbl = linearize(space);
+		if (space:layouter("tile", tbl, repos)) then
+			return;
+		end
+	end
+	level_resize(space, 0, 0, wm.width, wm.height - sbar_geth(wm), repos);
 end
 
 local space_handlers = {
@@ -997,9 +1025,9 @@ local function workspace_set(space, mode)
 	tiler_statusbar_update(space.wm);
 end
 
-local function workspace_resize(space)
+local function workspace_resize(space, external)
 	if (space_handlers[space.mode]) then
-		space_handlers[space.mode](space, true);
+		space_handlers[space.mode](space, external);
 	end
 
 	if (valid_vid(space.background)) then
@@ -1122,6 +1150,7 @@ create_workspace = function(wm, anim)
 		destroy = workspace_destroy,
 		migrate = workspace_migrate,
 		save = workspace_save,
+		linearize = linearize,
 
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
@@ -1212,11 +1241,14 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	outw = math.floor(outw);
 	outh = math.floor(outh);
 	resize_image(src, outw, outh);
+
+-- for normal where the source is larger than the alloted slot
 	if (wnd.autocrop) then
 		local ip = image_storage_properties(src);
 		image_set_txcos_default(src, wnd.origo_ll);
 		image_scale_txcos(src, outw / ip.width, outh / ip.height);
 	end
+
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
 	end
@@ -1257,38 +1289,93 @@ local function wnd_font(wnd, sz, hint, font)
 	end
 end
 
-local function wnd_resize(wnd, neww, newh, force)
+local function wnd_repos(wnd)
+-- reposition within the alotted space
+	if (wnd.centered and wnd.space.mode ~= "float") then
+		if (wnd.space.mode == "tile") then
+			move_image(wnd.anchor,
+				wnd.x + math.floor(0.5 * (wnd.max_w - wnd.width)),
+				wnd.y + math.floor(0.5 * (wnd.max_h - wnd.height))
+			);
+
+		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
+			move_image(wnd.anchor, 0, 0);
+		end
+
+		if (wnd.fullscreen) then
+			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
+				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
+		end
+	else
+		move_image(wnd.anchor, wnd.x, wnd.y);
+	end
+end
+
+--
+-- One of the worst functions in the entire project, the amount of
+-- edge cases are considerable. Test for:
+--  . float drag-resize during external resize
+--  . source that stretch, source that force aspect
+--  . layouter- triggered
+--  . switch to/from float
+--  . dbl-click titlebar in float
+--  . migrate then reposition
+--  . toggle decorations / titlebar
+--  . spawn during float
+--
+local function wnd_resize(wnd, neww, newh, force, maskev)
 	if (wnd.in_drag_rz and not force or not valid_vid(wnd.canvas)) then
 		return false;
 	end
 
+-- first clamp
 	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
 	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
-
-	wnd.width = neww;
-	wnd.height = newh;
+	if (not force) then
+		neww = wnd.max_w > neww and neww or wnd.max_w;
+		newh = wnd.max_h > newh and newh or wnd.max_h;
+	end
 
 	local props = image_storage_properties(wnd.canvas);
 
 -- to save space for border width, statusbar and other properties
+	local decw = wnd.pad_left + wnd.pad_right;
+	local dech = wnd.pad_top + wnd.pad_bottom;
+
+-- reposition according to padding / decoration
 	if (not wnd.fullscreen) then
 		move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
-		neww = neww - wnd.pad_left - wnd.pad_right;
-		newh = newh - wnd.pad_top - wnd.pad_bottom;
+		neww = neww - decw;
+		newh = newh - dech;
+	else
+		decw = 0;
+		dech = 0;
 	end
 
+-- edge-case ignore
 	if (neww <= 0 or newh <= 0) then
 		return;
 	end
 
-	wnd.effective_w = math.ceil(neww);
-	wnd.effective_h = math.ceil(newh);
-
 -- now we know dimensions of the window in regards to its current tiling cell
 -- etc. so we can resize the border accordingly (or possibly cascade weights)
-	wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
-		wnd.scalemode, wnd.canvas, props, neww, newh, wnd.space.mode == "float");
+	if (force) then
+		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
+			wnd.scalemode, wnd.canvas, props, neww, newh,
+			force
+		);
+		wnd.width = neww + decw;
+		wnd.height = newh + dech;
+	else
+		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
+			wnd.scalemode, wnd.canvas, props, wnd.max_w-decw, wnd.max_h-dech,
+			force
+		);
+		wnd.width = wnd.effective_w + decw;
+		wnd.height = wnd.effective_h + dech;
+	end
 
+-- update decoration
 	local bw = wnd.border_w;
 	local tbh = tbar_geth(wnd);
 	local size_decor = function(w, h)
@@ -1303,23 +1390,11 @@ local function wnd_resize(wnd, neww, newh, force)
 	size_decor(wnd.effective_w + bw + bw, wnd.effective_h + tbh + bw + bw);
 	wnd.pad_top = bw + tbh;
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
+	wnd:reposition();
 
-	if (wnd.centered and wnd.space.mode ~= "float") then
-		if (wnd.space.mode == "tile") then
-			move_image(wnd.anchor, wnd.x, wnd.y);
-		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
-			move_image(wnd.anchor, 0, 0);
-		end
-		if (wnd.fullscreen) then
-			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
-				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
-		else
-			nudge_image(wnd.anchor, math.floor(0.5*(neww - wnd.effective_w)),
-				math.floor(0.5*(newh - wnd.effective_h)));
-		end
+	if (not maskev) then
+		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
-
-	run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 end
 
 -- sweep all windows, calculate center-point distance,
@@ -1580,7 +1655,8 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (wnd.space.mode == "float") then
-		wnd:resize(wnd.width + (wnd.wm.width*w), wnd.height + (wnd.wm.height*h));
+		wnd:resize(wnd.width + (wnd.wm.width*w),
+			wnd.height + (wnd.wm.height*h), true);
 		return;
 	end
 
@@ -1588,6 +1664,7 @@ local function wnd_grow(wnd, w, h)
 		return;
 	end
 
+-- vertical weight is simpler, only got "parent" and "me", rest is subdivided
 	if (h ~= 0) then
 		wnd.vweight = wnd.vweight + h;
 		wnd.parent.vweight = wnd.parent.vweight - h;
@@ -1595,13 +1672,14 @@ local function wnd_grow(wnd, w, h)
 
 	if (w ~= 0) then
 		wnd.weight = wnd.weight + w;
+-- re-balance weight among siblings, take/give what wnd just gained / lost
 		if (#wnd.parent.children > 1) then
 			local ws = w / (#wnd.parent.children - 1);
-		for i=1,#wnd.parent.children do
-			if (wnd.parent.children[i] ~= wnd) then
-				wnd.parent.children[i].weight = wnd.parent.children[i].weight - ws;
+			for i=1,#wnd.parent.children do
+				if (wnd.parent.children[i] ~= wnd) then
+					wnd.parent.children[i].weight = wnd.parent.children[i].weight - ws;
+				end
 			end
-		end
 		end
 	end
 
@@ -1711,7 +1789,8 @@ local function wnd_toggle_maximize(wnd)
 	if (wnd.float_dim) then
 		move_image(wnd.anchor,
 			wnd.float_dim.x * wnd.wm.width, wnd.float_dim.y * wnd.wm.height);
-		wnd:resize(wnd.float_dim.w * wnd.wm.width, wnd.float_dim.h * wnd.wm.height);
+		wnd:resize(wnd.float_dim.w * wnd.wm.width,
+			wnd.float_dim.h * wnd.wm.height, true);
 		wnd.float_dim = nil;
 	else
 		local cur = {};
@@ -1721,7 +1800,7 @@ local function wnd_toggle_maximize(wnd)
 		cur.w = wnd.width / wnd.wm.width;
 		cur.h = wnd.height / wnd.wm.height;
 		wnd.float_dim = cur;
-		wnd:resize(wnd.wm.width, wnd.wm.height);
+		wnd:resize(wnd.wm.width, wnd.wm.height, true);
 		move_image(wnd.anchor, 0, 0);
 	end
 end
@@ -2049,6 +2128,7 @@ local titlebar_mh = {
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local tag = ctx.tag;
+-- TODO: possible to drag outside client area
 		if (tag.space.mode == "float") then
 			nudge_image(tag.anchor, dx, dy);
 		end
@@ -2087,8 +2167,8 @@ local border_mh = {
 	end,
 	drop = function(ctx)
 		local wnd = ctx.tag;
+		wnd:resize(wnd.width, wnd.height, true);
 		ctx.tag.in_drag_rz = false;
-		wnd:resize(wnd.width, wnd.height);
 	end
 };
 
@@ -2132,6 +2212,44 @@ local canvas_mh = {
 		end
 	end
 };
+
+local function wnd_swap(w1, w2, deep)
+	if (w1 == w2) then
+		return;
+	end
+-- 1. weights, only makes sense in tile mode
+	if (w1.space.mode == "tile") then
+		local wg1 = w1.weight;
+		local wg1v = w1.vweight;
+		w1.weight = w2.weight;
+		w1.vweight = w2.vweight;
+		w2.weight = wg1;
+		w2.vweight = wg1v;
+	end
+-- 2. parent->children entries
+	local wp1 = w1.parent;
+	local wp1i = table.find_i(wp1.children, w1);
+	local wp2 = w2.parent;
+	local wp2i = table.find_i(wp2.children, w2);
+
+	wp1.children[wp1i] = w2;
+	wp2.children[wp2i] = w1;
+-- 3. parents
+	w1.parent = wp2;
+	w2.parent = wp1;
+-- 4. question is if we want children to tag along or not
+	if (not deep) then
+		for i=1,#w1.children do
+			w1.children[i].parent = w2;
+		end
+		for i=1,#w2.children do
+			w2.children[i].parent = w1;
+		end
+		local wc = w1.children;
+		w1.children = w2.children;
+		w2.children = wc;
+	end
+end
 
 local function wnd_create(wm, source, opts)
 	if (opts == nil) then opts = {}; end
@@ -2179,10 +2297,18 @@ local function wnd_create(wm, source, opts)
 		border_w = gconfig_get("borderw"),
 		dispmask = 0,
 		name = "wnd_" .. tostring(ent_count),
+
+-- though the active values are defined by the anchor and canvas, these
+-- values are used for tracking / budgets in the current layout mode
 		effective_w = 0,
 		effective_h = 0,
+		max_w = wm.width,
+		max_h = wm.height,
+		x = 0,
+		y = 0,
 		weight = 1.0,
 		vweight = 1.0,
+
 		cursor = "default",
 		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
@@ -2204,6 +2330,7 @@ local function wnd_create(wm, source, opts)
 		update_font = wnd_font,
 		resize = wnd_resize,
 		migrate = wnd_migrate,
+		reposition = wnd_repos,
 		resize_effective = wnd_effective_resize,
 		select = wnd_select,
 		deselect = wnd_deselect,
@@ -2214,7 +2341,8 @@ local function wnd_create(wm, source, opts)
 		move =wnd_move,
 		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
-		grow = wnd_grow
+		grow = wnd_grow,
+		swap = wnd_swap
 	};
 
 	local space = wm.spaces[wm.space_ind];
@@ -2223,6 +2351,7 @@ local function wnd_create(wm, source, opts)
 	if (space.mode == "float") then
 		res.width = math.floor(wm.width * gconfig_get("float_defw"));
 		res.height = math.floor(wm.height * gconfig_get("float_defh"));
+-- TODO: doesn't account for source AR
 	else
 		res.width = opts.width and opts.width or wm.min_width;
 		res.height = opts.height and opts.height or wm.min_height;
@@ -2308,7 +2437,7 @@ local function wnd_create(wm, source, opts)
 
 	if (not(wm.selected and wm.selected.fullscreen)) then
 		show_image(res.anchor);
-		space:resize(res);
+		space:resize();
 		res:select();
 	else
 		shader_setup(res.border, "ui", "border", "inactive");
@@ -2472,43 +2601,6 @@ local function tiler_swapws(wm, ind2)
 	end
 
 	wm:tile_update();
-end
-
-local function wnd_swap(w1, w2, deep)
-	if (w1 == w2) then
-		return;
-	end
--- 1. weights, only makes sense in tile mode
-	if (w1.space.mode == "tile") then
-		local wg1 = w1.weight;
-		local wg1v = w1.vweight;
-		w1.weight = w2.weight;
-		w1.vweight = w2.vweight;
-		w2.weight = wg1;
-		w2.vweight = wg1v;
-	end
--- 2. parent->children entries
-	local wp1 = w1.parent;
-	local wp1i = table.find_i(wp1.children, w1);
-	local wp2 = w2.parent;
-	local wp2i = table.find_i(wp2.children, w2);
-	wp1.children[wp1i] = w2;
-	wp2.children[wp2i] = w1;
--- 3. parents
-	w1.parent = wp2;
-	w2.parent = wp1;
--- 4. question is if we want children to tag along or not
-	if (not deep) then
-		for i=1,#w1.children do
-			w1.children[i].parent = w2;
-		end
-		for i=1,#w2.children do
-			w2.children[i].parent = w1;
-		end
-		local wc = w1.children;
-		w1.children = w2.children;
-		w2.children = wc;
-	end
 end
 
 local function tiler_swapup(wm, deep, resel)
@@ -2756,6 +2848,8 @@ end
 
 local function tiler_switchbg(wm, newbg)
 	wm.background_name = newbg;
+-- TODO: toggle rendertarget flag on/off on noclear
+
 	if (valid_vid(wm.background_id)) then
 		delete_image(wm.background_id);
 		wm.background_id = nil;
