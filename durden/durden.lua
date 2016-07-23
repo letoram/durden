@@ -218,7 +218,7 @@ end
 -- be separated code-wise, as we want tiler- and other modules to be reusable
 -- in less complex projects
 local function tile_changed(wnd, neww, newh, efw, efh)
-	if (not neww or not newh) then
+	if (not neww or not newh or wnd.block_resize) then
 		return;
 	end
 
@@ -340,6 +340,9 @@ function durden_launch(vid, prefix, title, wnd)
 			queue = {},
 			target = vid
 		};
+		if (wnd.wm.selected ~= wnd) then
+			wnd:set_dispmask(TD_HINT_UNFOCUSED);
+		end
 	end
 
 	return wnd;

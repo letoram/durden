@@ -72,8 +72,10 @@ local function wnd_destroy(wnd)
 		local mx, my = mouse_xy();
 	end
 
+	local space = wnd.space;
+
 	if (wnd.fullscreen) then
-		wnd.space:tile();
+		space:tile();
 	end
 
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
@@ -92,7 +94,8 @@ local function wnd_destroy(wnd)
 		wnd:prev();
 	end
 
--- but that doesn't always succeed (edge-case, last window)
+-- but that doesn't always succeed (edge-case, last window) or layouter
+-- may be acting outside of convention, so drop possibly dangling
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
 		if (wnd.space.selected == wnd) then
@@ -132,7 +135,6 @@ local function wnd_destroy(wnd)
 		delete_image(wnd.external);
 	end
 
-	local space = wnd.space;
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
 	end
@@ -141,7 +143,9 @@ local function wnd_destroy(wnd)
 	table.remove_match(wm.windows, wnd);
 
 -- rebuild layout
-	space:resize();
+	if (not (space.layouter and space.layouter.lost(space, wnd, true))) then
+		space:resize();
+	end
 end
 
 local function wnd_message(wnd, message, timeout)
@@ -345,12 +349,6 @@ local function get_hier(vid)
 end
 
 local function wnd_select(wnd, source)
-	if (not wnd.wm) then
-		warning("select on broken window");
-		print(debug.traceback());
-		return;
-	end
-
 	if (wnd.wm.deactivated) then
 		return;
 	end
@@ -383,15 +381,16 @@ local function wnd_select(wnd, source)
 
 	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
-
 	if (wnd.wm.active_space == wnd.space) then
 		wnd.wm.selected = wnd;
 	end
 	wnd.space.selected = wnd;
 
+-- activate all "on-trigger" mouse events, like warping and locking
 	ms = mouse_state();
 	ms.hover_ign = true;
 	local mouse_moved = false;
+
 	local props = image_surface_resolve_properties(wnd.canvas);
 	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local px = 0.0;
@@ -430,30 +429,29 @@ end
 -- divided between individuals (with an assignable weight) and recurse down to
 -- children
 --
-local function level_resize(level, x, y, w, h, repos)
-	local fair = math.ceil(w / #level.children);
-	fair = (fair % 2) == 0 and fair or fair + 1;
-
+local function level_resize(level, x, y, w, h, repos, fairh)
+	local fairw = math.ceil(w / #level.children);
+	fairw = (fairw % 2) == 0 and fairw or fairw + 1;
 	if (#level.children == 0) then
 		return;
 	end
 
-	local process_node = function(node, last)
+	local process_node = function(node, last, fairh)
 		node.x = x; node.y = y;
 		node.max_h = h;
 
 		if (last) then
 			node.max_w = w;
 		else
-			node.max_w = math.floor(fair * node.weight);
+			node.max_w = math.floor(fairw * node.weight);
 			node.max_w = (node.max_w % 2) == 0 and node.max_w or node.max_w + 1;
 		end
 
 -- recurse downwards
 		if (#node.children > 0) then
-			node.max_h = math.floor(h / 2 * node.vweight);
-			node.max_h = (node.max_h % 2) == 0 and node.max_h or node.max_h + 1;
-			level_resize(node, x, y + node.max_h, node.max_w, h - node.max_h, repos);
+			node.max_h = math.floor(fairh * node.vweight);
+			level_resize(node,
+				x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
 		end
 
 		node:resize(node.max_w, node.max_h, false, repos);
@@ -462,11 +460,31 @@ local function level_resize(level, x, y, w, h, repos)
 		w = w - node.max_w;
 	end
 
-	for i=1,#level.children-1 do
-		process_node(level.children[i]);
+-- recursively find the depth to know the fair division, (N) is not high
+-- enough for this value to be worth tracking rather than just calculating
+	local get_depth;
+	get_depth = function(node, depth)
+		if (#node.children == 0) then
+			return depth;
+		end
+
+		local maxd = depth;
+		for i=1,#node.children do
+			local d = get_depth(node.children[i], depth + 1);
+				maxd = d > maxd and d or maxd;
+		end
+
+		return maxd;
 	end
 
-	process_node(level.children[#level.children], true);
+	for i=1,#level.children-1 do
+		process_node(level.children[i], false,
+			fairh and fairh or math.floor(h / get_depth(level.children[i], 1)));
+	end
+
+-- allow the last node to "fill" to handle broken weights
+	local last = level.children[#level.children];
+	process_node(last, true, fairh and fairh or math.floor(h/get_depth(last, 1)));
 end
 
 local function workspace_activate(space, noanim, negdir, oldbg)
@@ -912,7 +930,7 @@ local function set_float(space)
 	space.in_float = true;
 
 	local tbl = linearize(space);
-	if (space.layouter and space:layouter("float", tbl)) then
+	if (space.layouter and space.layouter.resize(space, tbl)) then
 		return;
 	end
 
@@ -950,7 +968,7 @@ local function set_tile(space, repos)
 	wm.statusbar.hidden_sb = false;
 	if (space.layouter) then
 		local tbl = linearize(space);
-		if (space:layouter("tile", tbl, repos)) then
+		if (space.layouter.resize(space, tbl, repos)) then
 			return;
 		end
 	end
@@ -1151,6 +1169,7 @@ create_workspace = function(wm, anim)
 		migrate = workspace_migrate,
 		save = workspace_save,
 		linearize = linearize,
+		lost = workspace_lost,
 
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
@@ -1185,6 +1204,10 @@ create_workspace = function(wm, anim)
 end
 
 local function wnd_merge(wnd)
+	if (wnd.space.layouter and wnd.space.layouter.block_merge) then
+		return;
+	end
+
 	local i = 1;
 	while (i ~= #wnd.parent.children) do
 		if (wnd.parent.children[i] == wnd) then
@@ -1207,6 +1230,10 @@ local function wnd_merge(wnd)
 end
 
 local function wnd_collapse(wnd)
+	if (wnd.space.layouter and wnd.space.layouter.block_collapse) then
+		return;
+	end
+
 	for k,v in ipairs(wnd.children) do
 		table.insert(wnd.parent.children, v);
 		v.parent = wnd.parent;
@@ -1392,7 +1419,10 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 	wnd:reposition();
 
-	if (not maskev) then
+-- delegate resize event to allow some "white lies"
+	if (wnd.space.layouter and wnd.space.layouter.block_rzevent) then
+		wnd.space.layouter.resize(wnd.space, nil, true);
+	elseif (not maskev) then
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
 end
@@ -1530,9 +1560,10 @@ end
 local function wnd_reassign(wnd, ind, ninv)
 -- for reassign by name, resolve to index
 	local newspace = nil;
+	local wm = wnd.wm;
 
 	if (type(ind) == "string") then
-		for k,v in pairs(wnd.wm.spaces) do
+		for k,v in pairs(wm.spaces) do
 			if (v.label == ind) then
 				ind = k;
 			end
@@ -1540,11 +1571,11 @@ local function wnd_reassign(wnd, ind, ninv)
 		if (type(ind) == "string") then
 			return;
 		end
-		newspace = wnd.wm.spaces[ind];
+		newspace = wm.spaces[ind];
 	elseif (type(ind) == "table") then
 		newspace = ind;
 	else
-		newspace = wnd.wm.spaces[ind];
+		newspace = wm.spaces[ind];
 	end
 
 -- don't switch unless necessary
@@ -1562,21 +1593,21 @@ local function wnd_reassign(wnd, ind, ninv)
 
 -- drop selection references unless we can find a new one,
 -- or move to child if there is one
-	if (wnd.wm.selected == wnd) then
+	if (wm.selected == wnd) then
 		wnd:prev();
-		if (wnd.wm.selected == wnd) then
+		if (wm.selected == wnd) then
 			if (wnd.children[1] ~= nil) then
 				wnd.children[1]:select();
 			else
-				wnd.wm.selected = nil;
+				wm.selected = nil;
 			end
 		end
 	end
 -- create if it doesn't exist
-	local oldspace_ind = wnd.wm.active_space;
+	local oldspace_ind = wm.active_space;
 	if (newspace == nil) then
-		wnd.wm.spaces[ind] = create_workspace(wnd.wm);
-		newspace = wnd.wm.spaces[ind];
+		wm.spaces[ind] = create_workspace(wm);
+		newspace = wm.spaces[ind];
 	end
 
 -- reparent
@@ -1592,17 +1623,12 @@ local function wnd_reassign(wnd, ind, ninv)
 	wnd.space = newspace;
 	wnd.space_ind = ind;
 	wnd.parent = newspace;
-	link_image(wnd.anchor, newspace.anchor);
-	table.insert(newspace.children, wnd);
-
--- restore vid structure etc. to the default state
-	if (oldspace.reassign_hook and newspace.mode ~= oldspace.mode) then
-		oldspace:reassign_hook(wnd);
-	end
-
 -- weights aren't useful for new space, reset
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
+	link_image(wnd.anchor, newspace.anchor);
+
+-- restore vid structure etc. to the default state
 
 -- edge condition, if oldspace had more children, the select event would
 -- have caused a deselect already - but deselect can only be called once
@@ -1611,18 +1637,36 @@ local function wnd_reassign(wnd, ind, ninv)
 		wnd:deselect();
 	end
 
+	if (oldspace.reassign_hook and newspace.mode ~= oldspace.mode) then
+		oldspace:reassign_hook(wnd);
+	end
+
 -- subtle resize in order to propagate resize events while still hidden
 	if (not(newspace.selected and newspace.selected.fullscreen)) then
 		newspace.selected = wnd;
-		newspace:resize();
+		if not (newspace.layouter and newspace.layouter.added(newspace, wnd)) then
+			table.insert(newspace.children, wnd);
+			newspace:resize();
+		end
 		if (not ninv) then
 			newspace:deactivate(true);
 		end
+	else
+		table.insert(newspace.children, wnd);
 	end
 
-	tiler_statusbar_update(wnd.wm);
-	wnd.wm.active_space = oldspace_ind;
-	oldspace:resize();
+-- since new spaces may have come and gone
+	tiler_statusbar_update(wm);
+	wm.active_space = oldspace_ind;
+	if not (oldspace.layouter and oldspace.layouter.lost(oldspace, wnd)) then
+		oldspace:resize();
+
+-- protect against layouter breaking selection
+		if ((not oldspace.selected or not wm.selected
+			or wm.selected ~= oldspace.selected) and #oldspace.children > 0) then
+			oldspace.children[#oldspace.children]:select();
+		end
+	end
 end
 
 local function wnd_move(wnd, dx, dy, align)
@@ -1660,7 +1704,9 @@ local function wnd_grow(wnd, w, h)
 		return;
 	end
 
-	if (wnd.space.mode ~= "tile") then
+-- "grow" in float mode is different as it doesn't affect weights
+	if (wnd.space.mode ~= "tile" or (wnd.space.layouter and
+		wnd.space.layouter.block_grow)) then
 		return;
 	end
 
@@ -1975,6 +2021,7 @@ end
 
 local function wnd_dispmask(wnd, val, noflush)
 	wnd.dispmask = val;
+
 	if (not noflush and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_displayhint(wnd.external, 0, 0, wnd.dispmask);
 	end
@@ -2213,10 +2260,12 @@ local canvas_mh = {
 	end
 };
 
-local function wnd_swap(w1, w2, deep)
-	if (w1 == w2) then
+local function wnd_swap(w1, w2, deep, force)
+	if (w1 == w2 or (not force
+		and w1.space.layouter and w1.space.layouter.block_swap)) then
 		return;
 	end
+
 -- 1. weights, only makes sense in tile mode
 	if (w1.space.mode == "tile") then
 		local wg1 = w1.weight;
@@ -2251,10 +2300,78 @@ local function wnd_swap(w1, w2, deep)
 	end
 end
 
-local function wnd_create(wm, source, opts)
+-- attach a window to the active workspace, this is a one-time
+local function wnd_ws_attach(res)
+	local wm = res.wm;
+	res.ws_attach = nil;
+
+	if (wm.spaces[wm.space_ind] == nil) then
+		wm.spaces[wm.space_ind] = create_workspace(wm);
+	end
+
+-- actual dimensions depend on the state of the workspace we'll attach to
+	local space = wm.spaces[wm.space_ind];
+	res.space_ind = wm.space_ind;
+	res.space = space;
+	link_image(res.anchor, space.anchor);
+
+	if (space.mode == "float") then
+-- TODO: this does not respect aspect ratio
+		res.width = math.floor(wm.width * gconfig_get("float_defw"));
+		res.height = math.floor(wm.height * gconfig_get("float_defh"));
+	else
+	end
+
+-- same goes for hierarchical position and relatives
+	local insert = space.layouter and space.layouter.added(space,res);
+	if (not insert) then
+		if (not wm.selected or wm.selected.space ~= space) then
+			table.insert(space.children, res);
+			res.parent = space;
+		elseif (space.insert == "h") then
+			if (wm.selected.parent) then
+				local ind = table.find_i(wm.selected.parent.children, wm.selected);
+				table.insert(wm.selected.parent.children, ind+1, res);
+				res.parent = wm.selected.parent;
+			else
+				table.insert(space.children, res, ind);
+				res.parent = space;
+			end
+		else
+			table.insert(wm.selected.children, res);
+			res.parent = wm.selected;
+		end
+	end
+
+	if (not(wm.selected and wm.selected.fullscreen)) then
+		show_image(res.anchor);
+		if (not insert) then
+			res:select();
+		end
+		space:resize();
+	else
+		shader_setup(res.border, "ui", "border", "inactive");
+	end
+
+-- trigger the resize cascade now that we know the layout..
+	if (res.space.mode == "float") then
+		move_image(res.anchor, mouse_xy());
+		res:resize(res.width, res.height);
+	end
+
+	wm:on_wnd_create(res);
+	return res;
+end
+
+-- build an orphaned window that isn't connected to a real workspace yet,
+-- but with all the expected members setup-up and in place. This means that
+-- some operations will be no-ops and the window will not appear in normal
+-- iterators.
+local wnd_setup = function(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 	local bw = gconfig_get("borderw");
 	local res = {
+		wm = wm,
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
 		border = fill_surface(1, 1, 255, 255, 255),
@@ -2316,6 +2433,7 @@ local function wnd_create(wm, source, opts)
 
 -- public events to manipulate the window
 		alert = wnd_alert,
+		hide = wnd_hide,
 		assign_ws = wnd_reassign,
 		destroy = wnd_destroy,
 		set_message = wnd_message,
@@ -2324,6 +2442,10 @@ local function wnd_create(wm, source, opts)
 		add_handler = wnd_addhandler,
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
+		add_overlay = wnd_overlay,
+		toggle_overlay = wnd_overlay_toggle,
+		delete_overlay = wnd_overlay_delete,
+		synch_overlays = synch_olay_meta,
 		rebuild_border = wnd_rebuild,
 		toggle_maximize = wnd_toggle_maximize,
 		to_front = wnd_tofront,
@@ -2341,29 +2463,26 @@ local function wnd_create(wm, source, opts)
 		move =wnd_move,
 		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
-		grow = wnd_grow,
-		swap = wnd_swap
+		swap = wnd_swap,
+		grow = wnd_grow
 	};
+	res.width = opts.width and opts.width or wm.min_width;
+	res.height = opts.height and opts.height or wm.min_height;
 
-	local space = wm.spaces[wm.space_ind];
-	res.space_ind = wm.space_ind;
-	res.space = space;
-	if (space.mode == "float") then
-		res.width = math.floor(wm.width * gconfig_get("float_defw"));
-		res.height = math.floor(wm.height * gconfig_get("float_defh"));
--- TODO: doesn't account for source AR
-	else
-		res.width = opts.width and opts.width or wm.min_width;
-		res.height = opts.height and opts.height or wm.min_height;
-	end
-
-	ent_count = ent_count + 1;
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");
 	image_tracetag(res.canvas, "wnd_canvas");
-	res.wm = wm;
+
+	image_inherit_order(res.anchor, true);
+	image_inherit_order(res.border, true);
+	image_inherit_order(res.canvas, true);
+
+	link_image(res.canvas, res.anchor);
+	link_image(res.border, res.anchor);
 
 	image_mask_set(res.anchor, MASK_UNPICKABLE);
+	ent_count = ent_count + 1;
+
 	res.titlebar = uiprim_bar(res.anchor, ANCHOR_UL,
 		res.width - 2 * bw, tbar_geth(res), "titlebar", titlebar_mh);
 	res.titlebar.tag = res;
@@ -2373,39 +2492,13 @@ local function wnd_create(wm, source, opts)
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
 	res.titlebar:hide();
 
-	if (wm.spaces[wm.space_ind] == nil) then
-		wm.spaces[wm.space_ind] = create_workspace(wm);
-	end
-
-	image_inherit_order(res.anchor, true);
-	image_inherit_order(res.border, true);
-	image_inherit_order(res.canvas, true);
-
-	link_image(res.canvas, res.anchor);
-	link_image(res.border, res.anchor);
-
 -- order canvas so that it comes on top of the border for mouse events
 	order_image(res.canvas, 2);
 
-	shader_setup(res.border, "ui", "border", "active");
+-- default is active, but should be inactive here
+	res.titlebar:switch_state("inactive", true);
+	shader_setup(res.border, "ui", "border", "inactive");
 	show_image({res.border, res.canvas});
-
-	if (not wm.selected or wm.selected.space ~= space) then
-		table.insert(space.children, res);
-		res.parent = space;
-
-	elseif (space.insert == "h") then
-		if (wm.selected.parent) then
-			table.insert(wm.selected.parent.children, res);
-			res.parent = wm.selected.parent;
-		else
-			table.insert(space.children, res);
-			res.parent = space;
-		end
-	else
-		table.insert(wm.selected.children, res);
-		res.parent = wm.selected;
-	end
 
 	res.handlers.mouse.border = {
 		name = tostring(res.anchor) .. "_border",
@@ -2432,25 +2525,16 @@ local function wnd_create(wm, source, opts)
 		table.insert(tl, k);
 	end
 	mouse_addlistener(res.handlers.mouse.canvas, tl);
-
-	link_image(res.anchor, space.anchor);
-
-	if (not(wm.selected and wm.selected.fullscreen)) then
-		show_image(res.anchor);
-		space:resize();
-		res:select();
-	else
-		shader_setup(res.border, "ui", "border", "inactive");
-	end
-
 	res.block_mouse = opts.block_mouse;
+	res.ws_attach = wnd_ws_attach;
+	return res;
+end
 
-	if (res.space.mode == "float") then
-		move_image(res.anchor, mouse_xy());
-		res:resize(res.width, res.height);
+local function wnd_create(wm, source, opts)
+	local res = wnd_setup(wm, source, opts);
+	if (res) then
+		res:ws_attach();
 	end
-
-	wm:on_wnd_create(res);
 	return res;
 end
 
