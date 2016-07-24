@@ -354,7 +354,7 @@ local function get_hier(vid)
 	return ht;
 end
 
-local function wnd_select(wnd, source)
+local function wnd_select(wnd, source, mouse)
 	if (wnd.wm.deactivated) then
 		return;
 	end
@@ -385,12 +385,12 @@ local function wnd_select(wnd, source)
 	shader_setup(wnd.border, "ui", "border", state);
 	wnd.titlebar:switch_state(state, true);
 
-	run_event(wnd, "select");
 	wnd.space.previous = wnd.space.selected;
 	if (wnd.wm.active_space == wnd.space) then
 		wnd.wm.selected = wnd;
 	end
 	wnd.space.selected = wnd;
+	run_event(wnd, "select", mouse);
 
 -- activate all "on-trigger" mouse events, like warping and locking
 	ms = mouse_state();
@@ -1824,7 +1824,7 @@ local function wnd_mouseclick(ctx, vid)
 
 	if (wnd.wm.selected ~= wnd and
 		gconfig_get("mouse_focus_event") == "click") then
-		wnd:select();
+		wnd:select(nil, true);
 		return;
 	end
 
@@ -1869,7 +1869,7 @@ local function wnd_mousepress(ctx)
 
 	if (wnd.wm.selected ~= wnd) then
 		if (gconfig_get("mouse_focus_event") == "click") then
-			wnd:select();
+			wnd:select(nil, true);
 		end
 		return;
 	end
@@ -1980,7 +1980,7 @@ local function wnd_mousehover(ctx, vid)
 
 	if (wnd.wm.selected ~= ctx.tag and
 		gconfig_get("mouse_focus_event") == "hover") then
-		wnd:select();
+		wnd:select(nil, true);
 	end
 -- good place for tooltip hover hint
 end
@@ -1991,7 +1991,7 @@ local function wnd_mouseover(ctx, vid)
 
 	if (wnd.wm.selected ~= ctx.tag and
 		gconfig_get("mouse_focus_event") == "motion") then
-		wnd:select();
+		wnd:select(nil, true);
 	end
 end
 
@@ -2023,6 +2023,15 @@ local function wnd_addhandler(wnd, ev, fun)
 	end
 	table.remove_match(wnd.handlers[ev], fun);
 	table.insert(wnd.handlers[ev], fun);
+end
+
+local function wnd_drophandler(wnd, ev, fun)
+	assert(ev);
+	if (wnd.handlers[ev] == nil) then
+		warning("tried to add handler for unknown event: " .. ev);
+		return;
+	end
+	table.remove_match(wnd.handlers[ev], fun);
 end
 
 local function wnd_dispmask(wnd, val, noflush)
@@ -2442,6 +2451,7 @@ local wnd_setup = function(wm, source, opts)
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		add_handler = wnd_addhandler,
+		drop_handler = wnd_drophandler,
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
 		add_overlay = wnd_overlay,
