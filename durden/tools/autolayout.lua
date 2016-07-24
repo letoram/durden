@@ -1,4 +1,5 @@
 -- returning true means we took responsibility for attaching to parent
+local swap_focus;
 local function get_depth(node)
 	local depth = 0;
 	local last = node;
@@ -63,6 +64,24 @@ local function side_imgcfg(wnd)
 	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
 end
 
+local function sel_h(wnd, mouse)
+	if (mouse) then
+		if (gconfig_get("autolay_selswap")) then
+			swap_focus(wnd);
+		end
+	end
+end
+
+-- trigger if window baseclass changes
+local function reg_h(wnd)
+	save_wnd(wnd);
+	if (wnd.space.children[2] == wnd) then
+		center_imgcfg(wnd);
+	else
+		side_imgcfg(wnd);
+	end
+end
+
 local function center_setup(space)
 	local lin = space:linearize();
 -- nothing in focus region? then use selected window
@@ -92,6 +111,8 @@ local function center_setup(space)
 	local right = {};
 	local ctr = 1;
 	for i=1,#lin do
+		lin[i]:add_handler("register", reg_h);
+		lin[i]:add_handler("select", sel_h);
 		lin[i].vweight = 1.0;
 		if (lin[i] ~= focus) then
 			lin[i].center_focus = false;
@@ -165,16 +186,6 @@ local function center_focus(space)
 	dst:select();
 end
 
--- trigger if window baseclass changes
-local function reg_h(wnd)
-	save_wnd(wnd);
-	if (wnd.space.children[2] == wnd) then
-		center_imgcfg(wnd);
-	else
-		side_imgcfg(wnd);
-	end
-end
-
 local dh = target_displayhint;
 target_displayhint = function(id, w, h, ...)
 	dh(id, w, h, ...);
@@ -186,7 +197,6 @@ local function center_added(space, wnd)
 		table.insert(space.children, wnd);
 		wnd.parent = space;
 		center_setup(space);
-		table.insert(wnd.handlers.register, reg_h);
 		space:resize();
 		center_focus(space);
 		return true;
@@ -215,7 +225,8 @@ local function center_added(space, wnd)
 
 -- make sure sizes are fair
 	side_imgcfg(wnd);
-	table.insert(wnd.handlers.register, reg_h);
+	wnd:add_handler("register", reg_h);
+	wnd:add_handler("select", sel_h);
 	center_focus(space);
 	space:resize();
 	return true;
@@ -245,12 +256,8 @@ local function center_lost(space, wnd, destroy)
 
 	if (not destroy) then
 		restore_wnd(wnd);
-		for k,v in ipairs(wnd.handlers.register) do
-			if (v == reg_h) then
-				table.remove(wnd.handlers.register, k);
-				break;
-			end
-		end
+		wnd:drop_handler("register", reg_h);
+		wnd:drop_handler("select", sel_h);
 	end
 
 -- ugly edge condition, if we migrate or destroy a child to the first
@@ -284,7 +291,7 @@ local function center_resize(space, lin, evblock, wnd, cb)
 -- just forward to the next layer
 end
 
-local function swap_focus(sel)
+swap_focus = function(sel)
 	local sp = active_display().active_space;
 	local sw = active_display().selected;
 	local dw = sp.children[2];
@@ -353,6 +360,8 @@ local function center_free(space)
 	for k,v in ipairs(lst) do
 		v.weight = 1.0;
 		v.vweight = 1.0;
+		v:drop_handler("register", reg_h);
+		v:drop_handler("select", sel_h);
 	end
 
 	space.layouter = nil;
@@ -443,6 +452,8 @@ local function update_space(space)
 end
 
 gconfig_register("autolay_sideopa", 0.5);
+gconfig_register("autolay_selswap", true);
+
 gconfig_listen("autolay_sideopa", "autolayh", function()
 -- find all the workspaces where this layouter is used
 	for tiler in all_tilers_iter() do
@@ -467,7 +478,19 @@ local laycfg = {
 	handler = function(ctx, val)
 		gconfig_set("autolay_sideopa", tonumber(val));
 	end
-}
+},
+{
+	name = "selswap",
+	label = "Mouse-SelectSwap",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	initial = function() return gconfig_get(
+		"autolay_selswap") and LBL_YES or LBL_NO;
+	end,
+	handler = function(ctx, val)
+		gconfig_set("autolay_selswap", val == LBL_YES);
+	end
+},
 };
 
 global_menu_register("settings/tools",
