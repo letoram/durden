@@ -229,7 +229,11 @@ function(wnd, source, stat)
 	if (stat.title and string.len(stat.title) > 0) then
 		wnd:set_title(stat.title, true);
 	end
---	wnd:load_config(wnd.config_tgt);
+
+-- very rarely needed
+	for k,v in ipairs(wnd.handlers.register) do
+		v(wnd, stat.segkind, stat);
+	end
 end
 
 --  stateinf is used in the builtin/shared

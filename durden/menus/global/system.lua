@@ -155,8 +155,9 @@ end
 local counter = 0;
 
 local function gettitle(wnd)
-	return string.format("%s:%s", wnd.title_prefix and wnd.title_prefix or "unk",
-			wnd.title_text and wnd.title_text or "unk");
+	return string.format("%s/%s:%s", wnd.name,
+		wnd.title_prefix and wnd.title_prefix or "unk",
+		wnd.title_text and wnd.title_text or "unk");
 end
 
 local debug_menu = {
