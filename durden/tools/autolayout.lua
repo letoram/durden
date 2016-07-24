@@ -12,12 +12,73 @@ local function get_depth(node)
 	return depth, last;
 end
 
+local function save_wnd(wnd)
+	wnd.old = {
+		autocrop = wnd.autocrop,
+		shader = image_shader(wnd.canvas),
+		scalemode = wnd.scalemode
+	};
+end
+
+local function restore_wnd(wnd)
+	if (not wnd.old) then
+		return;
+	end
+
+	if (wnd.old.shader > 0) then
+		image_shader(wnd.canvas, wnd.old.shader);
+	end
+
+	wnd.scalemode = wnd.old.scalemode;
+	wnd.autocrop = wnd.old.autocrop;
+	show_image(wnd.anchor);
+end
+
+-- "center" means normal behavior and the active shader for the window
+local function center_imgcfg(wnd)
+	if (not wnd.space.layouter.scaled) then
+		return;
+	end
+
+	if (not wnd.old) then
+		save_wnd(wnd);
+	end
+
+	restore_wnd(wnd);
+end
+
+-- "side" means stretch, optional blend and a normal shader
+local function side_imgcfg(wnd)
+	if (not wnd.space.layouter.scaled) then
+		return;
+	end
+
+	if (not wnd.old) then
+		save_wnd(wnd);
+	end
+	wnd.scalemode = "stretch";
+	wnd.autocrop = false;
+	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
+	shader_setup(wnd.canvas, "simple", "noalpha");
+	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
+end
+
 local function center_setup(space)
 	local lin = space:linearize();
 -- nothing in focus region? then use selected window
 	local focus = space.children[2];
+	if (space.children[1]) then
+		if (space.children[1].center_focus) then
+			focus = space.children[1];
+		end
+	end
+
 	if (not focus) then
 		focus = space.selected;
+	end
+
+	if (focus) then
+		center_imgcfg(focus);
 	end
 
 -- nothing to do
@@ -33,6 +94,9 @@ local function center_setup(space)
 	for i=1,#lin do
 		lin[i].vweight = 1.0;
 		if (lin[i] ~= focus) then
+			lin[i].center_focus = false;
+			side_imgcfg(lin[i]);
+
 			if (ctr % 2 == 1) then
 				table.insert(left, lin[i]);
 			else
@@ -87,6 +151,9 @@ local function center_focus(space)
 		return;
 	end
 
+	space.layouter.cw = dst.max_w;
+	space.layouter.ch = dst.max_h;
+
 	if (space.selected == dst) then
 		return;
 	end
@@ -98,14 +165,30 @@ local function center_focus(space)
 	dst:select();
 end
 
+-- trigger if window baseclass changes
+local function reg_h(wnd)
+	save_wnd(wnd);
+	if (wnd.space.children[2] == wnd) then
+		center_imgcfg(wnd);
+	else
+		side_imgcfg(wnd);
+	end
+end
+
+local dh = target_displayhint;
+target_displayhint = function(id, w, h, ...)
+	dh(id, w, h, ...);
+end
+
 -- return true? then we take responsibility for marking selected and insertion
 local function center_added(space, wnd)
 	if (#space.children ~= 3) then
 		table.insert(space.children, wnd);
 		wnd.parent = space;
 		center_setup(space);
-		center_focus(space);
+		table.insert(wnd.handlers.register, reg_h);
 		space:resize();
+		center_focus(space);
 		return true;
 	end
 
@@ -131,6 +214,8 @@ local function center_added(space, wnd)
 	wnd.parent = dst;
 
 -- make sure sizes are fair
+	side_imgcfg(wnd);
+	table.insert(wnd.handlers.register, reg_h);
 	center_focus(space);
 	space:resize();
 	return true;
@@ -140,8 +225,8 @@ local function center_lost(space, wnd, destroy)
 -- priority is balance the first entry
 	if (#space.children ~= 3) then
 		center_setup(space);
-		center_focus(space);
 		space:resize();
+		center_focus(space);
 		return true;
 	end
 
@@ -158,14 +243,43 @@ local function center_lost(space, wnd, destroy)
 		rn.parent = ln;
 	end
 
+	if (not destroy) then
+		restore_wnd(wnd);
+		for k,v in ipairs(wnd.handlers.register) do
+			if (v == reg_h) then
+				table.remove(wnd.handlers.register, k);
+				break;
+			end
+		end
+	end
+
+-- ugly edge condition, if we migrate or destroy a child to the first
+-- or last node, it can be promoted to first level with no event for us to
+-- latch on to, therefore force- reset the weights.
+	space.children[1].weight = 0.3;
+	space.children[3].weight = 0.3;
+
 	center_focus(space);
 	space:resize();
 	return true;
 end
 
-local function center_resize(space, lin, evblock)
+local function center_resize(space, lin, evblock, wnd, cb)
 	if (evblock) then
--- always forward the dimensions of the center space
+-- always forward the dimensions of the center space, block if this
+-- corresponds to last known "column" size as a catch all for some async. races
+		if (space.children[2]) then
+			local mw = space.children[2].max_w;
+			local mh = space.children[2].max_h;
+			local dw = space.children[2].width - space.children[2].effective_w;
+			local dh = space.children[2].height - space.children[2].effective_h;
+
+			if (not space.layouter.scaled or (not space.layouter.cw or
+				(mw == space.layouter.cw and mh == space.layouter.ch))) then
+				cb(mw, mh, mw - dw, mh - dh);
+			end
+		end
+		return true;
 	end
 -- just forward to the next layer
 end
@@ -178,22 +292,60 @@ local function swap_focus(sel)
 		return;
 	end
 
+	local cw = dw.max_w;
+	local ch = dw.max_h;
+	local cx = dw.x;
+	local cy = dw.y;
 	dw.center_focus = false;
-	if (sw ~= dw) then
-		sw.last = dw;
-		sw:swap(dw, false, true);
-		sw.center_focus = true;
 
+-- swap and maipulate allowed / perceived dimensions as the swap function
+-- does not do that, otherwise we risk one additional space- resize
+	if (sw ~= dw) then
+		local rw = sw.max_w;
+		local rh = sw.max_h;
+
+		sw.last = dw;
+		sw.center_focus = true;
+		sw.max_w = cw; sw.max_h = ch;
+		sw:swap(dw, false, true);
+		center_imgcfg(sw);
+		sw:resize(cw, ch);
+		move_image(sw.anchor, cx, cy);
+		dw.x = sw.x; dw.y = sw.y;
+		move_image(dw.anchor, dw.x, dw.y);
+		dw.max_w = rw; dw.max_h = rh;
+		sw.x = cx; sw.y = cy;
+		side_imgcfg(dw);
+
+-- mask the event propagation if we're running in scaled- mode
+		dw:resize(rw, rh, false, true);
+
+-- "swap-in", use [last] reference for the window to swap
 	elseif (dw.last and dw.last.swap) then
-		dw.last.last = dw;
-		dw.last.center_focus = true;
-		dw:swap(dw.last, false, true);
+		local newc = dw.last;
+		newc.last = dw;
+		newc.center_focus = true;
+		dw.max_w = newc.max_w;
+		dw.max_h = newc.max_h;
+		newc.max_w = cw;
+		newc.max_h = ch;
+		dw:swap(newc, false, true);
+		center_imgcfg(newc);
+		newc:resize(cw, ch);
+		move_image(newc.anchor, cx, cy);
+		move_image(dw.anchor, newc.x, newc.y);
+		dw.x = newc.x; dw.y = newc.y;
+		newc.x = cx; newc.y = cy;
+		side_imgcfg(dw);
+		dw:resize(dw.max_w, dw.max_h, false, true);
 	end
 
 	if (sel) then
 		sp.children[2]:select();
 	end
-	sp:resize();
+
+-- due to the manual swap + resize, space relayout isn't needed
+-- sp:resize();
 end
 
 local function center_free(space)
@@ -242,26 +394,29 @@ local layouters = {
 			space.layouter = copy(cfl);
 			center_setup(space);
 			space:resize();
+			center_focus(space);
 		end
 	end,
 },
--- {
---	name = "center_scale",
---	label = "Center Focus (Force-Scale)",
---	kind = "action",
---	eval = function()
---		return active_display().active_space ~= nil;
---	end,
---	handler = function()
---		local space = active_display().active_space;
---		if (space) then
---			space.layouter = copy(cfl);
---			space.layouter.block_rzevent = true;
---			center_setup(space);
---			space:resize();
---		end
---	end
---},
+{
+	name = "center_scale",
+	label = "Center Focus (Force-Scale)",
+	kind = "action",
+	eval = function()
+		return active_display().active_space ~= nil;
+	end,
+	handler = function()
+		local space = active_display().active_space;
+		if (space) then
+			space.layouter = copy(cfl);
+			space.layouter.scaled = true;
+			space.layouter.block_rzevent = true;
+			center_setup(space);
+			space:resize();
+			center_focus(space);
+		end
+	end
+},
 {
 	name = "none",
 	label = "Default",
@@ -276,6 +431,53 @@ local layouters = {
 	end
 }
 }
+
+local function update_space(space)
+	for i,v in ipairs({1, 3}) do
+		local a = space.children[v];
+		while (a) do
+			side_imgcfg(a);
+			a = a.children[1];
+		end
+	end
+end
+
+gconfig_register("autolay_sideopa", 0.5);
+gconfig_listen("autolay_sideopa", "autolayh", function()
+-- find all the workspaces where this layouter is used
+	for tiler in all_tilers_iter() do
+		for i=1,10 do
+-- distinguish between this layouter and others
+			if (tiler.spaces[i] and tiler.spaces[i].layouter and
+				tiler.spaces[i].layouter.scaled and
+				tiler.spaces[i].layouter.resize == center_resize) then
+					update_space(tiler.spaces[i]);
+			end
+		end
+	end
+end);
+
+local laycfg = {
+{
+	name = "sideopa",
+	label = "Side-Opacity(Scaled)",
+	kind = "value",
+	initial = function() return gconfig_get("autolay_sideopa"); end,
+	validator = gen_valid_float(0.0, 1.0),
+	handler = function(ctx, val)
+		gconfig_set("autolay_sideopa", tonumber(val));
+	end
+}
+};
+
+global_menu_register("settings/tools",
+{
+	name = "autolayouts",
+	label = "Auto Layouting",
+	submenu = true,
+	kind = "action",
+	handler = laycfg
+});
 
 global_menu_register("tools",
 {

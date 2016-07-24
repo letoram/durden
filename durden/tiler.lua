@@ -57,6 +57,16 @@ local function run_event(wnd, event, ...)
 	end
 end
 
+local function moveup_children(wnd)
+	local n = 0;
+	local ind = table.find_i(wnd.parent.children, wnd);
+	for i,v in ipairs(wnd.children) do
+		table.insert(wnd.parent.children, ind+i, v);
+		v.parent = wnd.parent;
+	end
+	table.remove(wnd.parent.children, ind);
+end
+
 local function wnd_destroy(wnd)
 	local wm = wnd.wm;
 	if (wnd.delete_protect) then
@@ -104,10 +114,7 @@ local function wnd_destroy(wnd)
 	end
 
 -- re-assign all children to parent
-	for i,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, v);
-		v.parent = wnd.parent;
-	end
+	moveup_children(wnd);
 
 -- now we can run destroy hooks
 	run_event(wnd, "destroy");
@@ -117,7 +124,6 @@ local function wnd_destroy(wnd)
 
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
-	table.remove_match(wnd.parent.children, wnd);
 
 	for i=1,10 do
 		if (wm.spaces[i] and wm.spaces[i].selected == wnd) then
@@ -968,7 +974,7 @@ local function set_tile(space, repos)
 	wm.statusbar.hidden_sb = false;
 	if (space.layouter) then
 		local tbl = linearize(space);
-		if (space.layouter.resize(space, tbl, repos)) then
+		if (space.layouter.resize(space, tbl)) then
 			return;
 		end
 	end
@@ -1234,8 +1240,9 @@ local function wnd_collapse(wnd)
 		return;
 	end
 
+	local i = table.find_i(wnd.parent.children, wnd) + 1;
 	for k,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, v);
+		table.insert(wnd.parent.children, i, v);
 		v.parent = wnd.parent;
 	end
 	wnd.children = {};
@@ -1421,7 +1428,11 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 
 -- delegate resize event to allow some "white lies"
 	if (wnd.space.layouter and wnd.space.layouter.block_rzevent) then
-		wnd.space.layouter.resize(wnd.space, nil, true);
+		wnd.space.layouter.resize(wnd.space, nil, true, wnd,
+			function(neww, newh, effw, effh)
+				run_event(wnd, "resize", neww, newh, effw, effh);
+			end
+		);
 	elseif (not maskev) then
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
@@ -1610,12 +1621,7 @@ local function wnd_reassign(wnd, ind, ninv)
 		newspace = wm.spaces[ind];
 	end
 
--- reparent
-	table.remove_match(wnd.parent.children, wnd);
-	for i,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, v);
-		v.parent = wnd.parent;
-	end
+	moveup_children(wnd);
 
 -- update workspace assignment
 	wnd.children = {};
@@ -2042,17 +2048,12 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		end
 	end
 
--- reassign children to parent
-	for i,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, v);
-	end
+	moveup_children(wnd);
 	wnd.children = {};
 	for i,v in ipairs(get_hier(wnd.anchor)) do
 		rendertarget_attach(tiler.rtgt_id, v, RENDERTARGET_DETACH);
 	end
 	rendertarget_attach(tiler.rtgt_id, wnd.anchor, RENDERTARGET_DETACH);
-	local ind = table.find_i(wnd.parent.children, wnd);
-	table.remove(wnd.parent.children, ind);
 
 	if (wnd.fullscreen) then
 		wnd.space:tile();
@@ -2389,6 +2390,7 @@ local wnd_setup = function(wm, source, opts)
 		relatives = {},
 		handlers = {
 			destroy = {},
+			register = {},
 			resize = {},
 			gained_relative = {},
 			lost_relative = {},
@@ -2724,7 +2726,6 @@ local function tiler_swapleft(wm, deep, resel)
 	end
 
 	local ind = table.find_i(wnd.parent.children, wnd);
-	assert(ind);
 
 	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
 		local li = (ind - 1) == 0 and #wnd.parent.children or (ind - 1);
@@ -2750,7 +2751,6 @@ local function tiler_swapright(wm, deep, resel)
 	end
 
 	local ind = table.find_i(wnd.parent.children, wnd);
-	assert(ind);
 
 	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
 		local li = (ind + 1) > #wnd.parent.children and 1 or (ind + 1);
