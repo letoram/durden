@@ -7,7 +7,7 @@
 -- tick for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
-local wnd_create_handler, update_default_font;
+local wnd_create_handler, update_default_font, update_connection_path;
 
 local argv_cmds = {};
 
@@ -104,6 +104,7 @@ function durden(argv)
 	gconfig_listen("font_fb", "font_fb", update_default_font);
 	gconfig_listen("lbar_tpad", "padupd", update_default_font);
 	gconfig_listen("lbar_bpad", "padupd", update_default_font);
+	gconfig_listen("extcon_path", "pathupd", update_connection_path);
 
 -- preload cursor states
 	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
@@ -168,6 +169,19 @@ argv_cmds["safety_timer"] = function()
 			end
 		end
 	);
+end
+
+update_connection_path = function(key, val)
+	if (val == ":disabled") then
+		val = "";
+	end
+	for tiler in all_tilers_iter() do
+		for i, wnd in ipairs(tiler.windows) do
+			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+				target_devicehint(wnd.external, val);
+			end
+		end
+	end
 end
 
 update_default_font = function(key, val)
@@ -384,6 +398,15 @@ function durden_adopt(vid, kind, title, parent, last)
 	end
 end
 
+if (not target_devicehint) then
+	local warned;
+	function target_devicehint()
+		if (not warned) then
+			warning("missing target_devicehint call, upgrade arcan build");
+		end
+	end
+end
+
 function durden_new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
 		INCOMING_ENDPOINT = target_alloc(
@@ -397,6 +420,7 @@ function durden_new_connection(source, status)
 			if (ap ~= nil) then
 				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
 			end
+			target_devicehint(source, gconfig_get("extcon_path"));
 			durden_launch(source, "", "external");
 		end
 	end

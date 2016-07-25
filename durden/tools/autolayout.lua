@@ -295,7 +295,7 @@ swap_focus = function(sel)
 	local sp = active_display().active_space;
 	local sw = active_display().selected;
 	local dw = sp.children[2];
-	if (not sp or #sp.children <= 2 or not sw) then
+	if (not sp or #sp.children < 2 or not sw) then
 		return;
 	end
 
@@ -317,15 +317,14 @@ swap_focus = function(sel)
 		sw:swap(dw, false, true);
 		center_imgcfg(sw);
 		sw:resize(cw, ch);
-		move_image(sw.anchor, cx, cy);
 		dw.x = sw.x; dw.y = sw.y;
-		move_image(dw.anchor, dw.x, dw.y);
 		dw.max_w = rw; dw.max_h = rh;
 		sw.x = cx; sw.y = cy;
 		side_imgcfg(dw);
 
 -- mask the event propagation if we're running in scaled- mode
 		dw:resize(rw, rh, false, true);
+		dw:reposition();
 
 -- "swap-in", use [last] reference for the window to swap
 	elseif (dw.last and dw.last.swap) then
@@ -339,8 +338,6 @@ swap_focus = function(sel)
 		dw:swap(newc, false, true);
 		center_imgcfg(newc);
 		newc:resize(cw, ch);
-		move_image(newc.anchor, cx, cy);
-		move_image(dw.anchor, newc.x, newc.y);
 		dw.x = newc.x; dw.y = newc.y;
 		newc.x = cx; newc.y = cy;
 		side_imgcfg(dw);
@@ -351,8 +348,7 @@ swap_focus = function(sel)
 		sp.children[2]:select();
 	end
 
--- due to the manual swap + resize, space relayout isn't needed
--- sp:resize();
+ sp:resize(true);
 end
 
 local function center_free(space)

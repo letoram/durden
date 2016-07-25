@@ -224,7 +224,7 @@ function gconfig_register(key, val)
 	end
 end
 
-function gconfig_set(key, val)
+function gconfig_set(key, val, force)
 if (type(val) ~= type(defaults[key])) then
 		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",
 			type(val), type(defaults[key]), key));
@@ -232,6 +232,10 @@ if (type(val) ~= type(defaults[key])) then
 	end
 
 	defaults[key] = val;
+
+	if (force) then
+		store_key(defaults[key], tostring(val));
+	end
 
 	if (listeners[key]) then
 		for k,v in pairs(listeners[key]) do

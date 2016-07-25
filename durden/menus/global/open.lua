@@ -48,6 +48,9 @@ function spawn_terminal(cmd, nolaunch)
 
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal", wnd);
+		if (gconfig_get("extcon_path") ~= ":disabled") then
+			target_devicehint(vid, gconfig_get("extcon_path"));
+		end
 		extevh_default(vid, {
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
 		image_sharestorage(vid, wnd.canvas);
@@ -256,7 +259,7 @@ local function browse_internal()
 	local ffmts = {jpg = imghnd, png = imghnd, bmp = imghnd,
 		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
 		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
-		flv = dechnd, mpg = dechnd, mpeg = dechnd
+		flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
 	};
 
 	local opts = {
