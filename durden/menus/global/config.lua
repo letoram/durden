@@ -304,7 +304,7 @@ local durden_system = {
 			return path == ":disabled" and "[disabled]" or path;
 		end,
 		handler = function(ctx, val)
-			gconfig_set("extcon_path", val);
+			gconfig_set("extcon_path", val, true);
 			if (valid_vid(INCOMING_ENDPOINT)) then
 				delete_image(INCOMING_ENDPOINT);
 				INCOMING_ENDPOINT = nil;
@@ -323,7 +323,7 @@ local durden_system = {
 		hint = "(a..Z_)",
 		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("control_path");
-			return path == ":disabled" and "[disabled]" or path;
+			return path == ":disabled" and "[disabled]" or pth;
 		end,
 		handler = function(ctx, val)
 			if (CONTROL_CHANNEL) then
@@ -337,7 +337,7 @@ local durden_system = {
 			else
 				COMMAND_CHANNEL = open_nonblock("<ipc/" .. val);
 			end
-			gconfig_set("control_path", val);
+			gconfig_set("control_path", val, true);
 		end
 	},
 	{
