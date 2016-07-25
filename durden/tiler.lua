@@ -1783,6 +1783,7 @@ local function convert_mouse_xy(wnd, x, y, rx, ry)
 -- note, this should really take viewport into account (if provided), when
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
+
 	local res = {};
 	local sprop = image_storage_properties(
 		valid_vid(wnd.external) and wnd.external or wnd.canvas);
@@ -1881,6 +1882,22 @@ end
 
 local function wnd_mousemotion(ctx, x, y, rx, ry)
 	local wnd = ctx.tag;
+	if (wnd.mouse_lock_center) then
+		local rt = {
+			kind = "analog",
+			source = "mouse",
+			relative = true,
+			devid = 0,
+			subid = 0;
+			samples = {rx}
+		};
+		target_input(wnd.external, rt);
+		rt.subid = 1;
+		rt.samples = {ry};
+		target_input(wnd.external, rt);
+		return;
+	end
+
 	local mv = convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
