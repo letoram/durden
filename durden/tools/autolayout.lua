@@ -37,6 +37,7 @@ end
 
 -- "center" means normal behavior and the active shader for the window
 local function center_imgcfg(wnd)
+	show_image(wnd.anchor);
 	if (not wnd.space.layouter.scaled) then
 		return;
 	end
@@ -50,6 +51,7 @@ end
 
 -- "side" means stretch, optional blend and a normal shader
 local function side_imgcfg(wnd)
+	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
 	if (not wnd.space.layouter.scaled) then
 		return;
 	end
@@ -61,7 +63,6 @@ local function side_imgcfg(wnd)
 	wnd.autocrop = false;
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
 	shader_setup(wnd.canvas, "simple", "noalpha");
-	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
 end
 
 local function sel_h(wnd, mouse)
@@ -132,18 +133,21 @@ local function center_setup(space)
 		return;
 	end
 
+	local ccount = right[1] and 3 or 2;
+	local mw = ccount * gconfig_get("autolay_centerw");
+	local rw = (ccount - mw) / (ccount - 1);
 -- set horizontal weight to be 10 80 10 or 10 [80 yet expand to 90]
 	space.children = {left[1], focus, right[1]};
 	focus.children = {};
-	focus.weight = right[1] and 2.4 or 1.8;
+	focus.weight = mw;
 	focus.parent = space;
 
 	left[1].parent = space;
-	left[1].weight = 0.3;
+	left[1].weight = rw;
 	left[1].children = {};
 
 	if (right[1]) then
-		right[1].weight = 0.3;
+		right[1].weight = rw;
 		right[1].parent = space;
 		right[1].children = {};
 	end
@@ -260,11 +264,14 @@ local function center_lost(space, wnd, destroy)
 		wnd:drop_handler("select", sel_h);
 	end
 
+	local ccount = #space.children[3];
+	local mw = (ccount - count * gconfig_get("autolay_centerw")) / count;
+
 -- ugly edge condition, if we migrate or destroy a child to the first
 -- or last node, it can be promoted to first level with no event for us to
 -- latch on to, therefore force- reset the weights.
-	space.children[1].weight = 0.3;
-	space.children[3].weight = 0.3;
+	space.children[1].weight = mw;
+	space.children[3].weight = mw;
 
 	center_focus(space);
 	space:resize();
@@ -354,6 +361,7 @@ end
 local function center_free(space)
 	local lst = space:linearize();
 	for k,v in ipairs(lst) do
+		restore_wnd(v);
 		v.weight = 1.0;
 		v.vweight = 1.0;
 		v:drop_handler("register", reg_h);
@@ -385,6 +393,13 @@ local cfl = {
 	block_swap = true
 };
 
+local function set_layouter(space)
+	space.layouter = copy(cfl);
+	center_setup(space);
+	space:resize();
+	center_focus(space);
+end
+
 local layouters = {
 {
 	name = "center",
@@ -396,10 +411,6 @@ local layouters = {
 	handler = function()
 		local space = active_display().active_space;
 		if (space) then
-			space.layouter = copy(cfl);
-			center_setup(space);
-			space:resize();
-			center_focus(space);
 		end
 	end,
 },
@@ -449,6 +460,7 @@ end
 
 gconfig_register("autolay_sideopa", 0.5);
 gconfig_register("autolay_selswap", true);
+gconfig_register("autolay_centerw", 0.8);
 
 gconfig_listen("autolay_sideopa", "autolayh", function()
 -- find all the workspaces where this layouter is used
@@ -487,6 +499,19 @@ local laycfg = {
 		gconfig_set("autolay_selswap", val == LBL_YES);
 	end
 },
+{
+	name = "centersz",
+	label = "Center Weight",
+	kind = "value",
+	initial = function()
+		return gconfig_get("autolay_centerw");
+	end,
+	hint = "0.5 .. 0.9",
+	validator = gen_valid_float(0.5, 0.9),
+	handler = function(ctx, val)
+		gconfig_set("autolay_centerw", tonumber(val));
+	end
+}
 };
 
 global_menu_register("settings/tools",
