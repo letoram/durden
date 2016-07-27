@@ -181,9 +181,8 @@ function(wnd, source, stat)
 -- note that this can be emitted multiple times, it is just the
 -- segment kind that can't / wont change
 	if (wnd.registered) then
-		if (stat.title and string.len(stat.title) > 0) then
-			wnd:set_title(stat.title, true);
-		end
+		wnd.title = title;
+		wnd:set_title(stat.title, true);
 		return;
 	end
 

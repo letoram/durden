@@ -48,14 +48,11 @@ function spawn_terminal(cmd, nolaunch)
 
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", "terminal", wnd);
-		if (gconfig_get("extcon_path") ~= ":disabled") then
-			target_devicehint(vid, gconfig_get("extcon_path"));
-		end
+		durden_devicehint(vid);
+
 		extevh_default(vid, {
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
 		image_sharestorage(vid, wnd.canvas);
---		hide_image(wnd.border);
---		hide_image(wnd.canvas);
 	else
 		active_display():message( "Builtin- terminal support broken" );
 		wnd:destroy();
@@ -66,6 +63,7 @@ local function run_uri(val, feedmode)
 	local vid = launch_avfeed(val, feedmode);
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", feedmode);
+		durden_devicehint(vid);
 	end
 end
 
@@ -194,6 +192,7 @@ local function decwnd(fn, path)
 	local vid = launch_decode(fn, function() end);
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", fn);
+		durden_devicehint(vid);
 	end
 end
 
@@ -201,6 +200,7 @@ local function launch(str, cfg)
 	local vid = launch_target(str, cfg, LAUNCH_INTERNAL, def_handler);
 	if (valid_vid(vid)) then
 		local wnd = durden_launch(vid, cfg, str);
+		durden_devicehint(vid);
 		wnd.config_target = str;
 		wnd.config_config = cfg;
 	end
@@ -291,10 +291,13 @@ return {
 -- missing, hash url, allow hint-set on clipboard url grab
 	handler = function(ctx, val)
 		local vid = launch_avfeed(get_remstr(val), "remoting");
-		durden_launch(vid, "", "remoting");
-		extevh_default(vid, {
-			kind = "registered", segkind = "remoting", title = "", guid = 2});
-	end;
+		if (valid_vid(vid, TYPE_FRAMESERVER)) then
+			durden_devicehint(vid);
+			durden_launch(vid, "", "remoting");
+			extevh_default(vid, {
+				kind = "registered", segkind = "remoting", title = "", guid = 2});
+		end
+	end
 },
 {
 	name = "decode",

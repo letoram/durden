@@ -177,9 +177,7 @@ update_connection_path = function(key, val)
 	end
 	for tiler in all_tilers_iter() do
 		for i, wnd in ipairs(tiler.windows) do
-			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-				target_devicehint(wnd.external, val);
-			end
+			durden_devicehint(wnd.external);
 		end
 	end
 end
@@ -325,6 +323,15 @@ function durden_prelaunch()
 	return active_display():add_window(nsurf);
 end
 
+-- separated from launch etc. as we don't want it for subwindows,
+-- and later this provides a decent entrypoint for load-balancing
+function durden_devicehint(vid)
+	if (valid_vid(vid, TYPE_FRAMESERVER) and
+		gconfig_get("extcon_path") ~= ":disabled") then
+		target_devicehint(vid, gconfig_get("extcon_path"));
+	end
+end
+
 function durden_launch(vid, prefix, title, wnd)
 	if (not valid_vid(vid)) then
 		return;
@@ -371,6 +378,7 @@ function durden_adopt(vid, kind, title, parent, last)
 		return false;
 	end
 
+-- need to re-attach so they don't end up racing to the wrong display
 	local ap = display_attachment();
 	if (ap ~= nil) then
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
@@ -378,24 +386,18 @@ function durden_adopt(vid, kind, title, parent, last)
 
 	if (not valid_vid(parent)) then
 		durden_launch(vid, title);
+		extevh_default(vid, {
+			kind = "registered",
+			segkind = kind,
+			title = string.len(title) > 0 and title or tostring(kind),
+-- a real resized event with the source audio will come immediately
+			source_audio = BADID
+		});
 		return true;
 	end
 
-	local wnd = extevh_get_window(parent);
-	if (kind == "clipboard") then
-		if (wnd ~= nil) then
-			wnd.clipboard = vid;
-			target_updatehandler(vid, function(source, status)
-				extevh_clipboard(wnd, source, status);
-			end);
-			return true;
-		elseif (kind == "encoder") then
-			return false;
-		else
-			warning("suspicious orphan clipboard");
-			return false;
-		end
-	end
+-- we don't save any subsegments, the frameserver should re-request on reset
+-- local wnd = extevh_get_window(parent);
 end
 
 if (not target_devicehint) then
@@ -420,8 +422,8 @@ function durden_new_connection(source, status)
 			if (ap ~= nil) then
 				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
 			end
-			target_devicehint(source, gconfig_get("extcon_path"));
 			durden_launch(source, "", "external");
+			durden_devicehint(source);
 		end
 	end
 end

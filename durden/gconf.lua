@@ -103,6 +103,10 @@ local defaults = {
 -- per window toggle, global default here
 	hide_titlebar = false,
 
+-- %(fmt-char) p (tag) t (title) i (ident) a (archetype)
+-- optional character limit after each entry
+	titlebar_ptn = "<%p> %t - %i",
+
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
 	mouse_focus_event = "click", -- motion, hover
