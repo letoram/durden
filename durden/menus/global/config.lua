@@ -118,6 +118,24 @@ local durden_bars = {
 		handler = tb_buttons
 	},
 	{
+		name = "tb_pattern",
+		label = "Titlebar(Pattern)",
+		kind = "value",
+		initial = function() return gconfig_get("titlebar_ptn"); end,
+		hint = "%p (tag) %t (title.) %i (ident.)",
+		validator = function(str)
+			return string.len(str) > 0 and not string.find(str, "%%", 1, true);
+		end,
+		handler = function(ctx, val)
+			gconfig_set("titlebar_ptn", val);
+			for tiler in all_tilers_iter() do
+				for i, v in ipairs(tiler.windows) do
+					v:set_title();
+				end
+			end
+		end
+	},
+	{
 		name = "tb_hide",
 		label = "Hide Titlebar",
 		kind = "value",

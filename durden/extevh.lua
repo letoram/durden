@@ -153,8 +153,7 @@ end
 
 defhtbl["ident"] =
 function(wnd, source, stat)
-	wnd.ident = stat.message;
-	wnd:set_title(stat.message);
+	wnd:set_ident(stat.message);
 end
 
 defhtbl["terminated"] =
@@ -181,8 +180,7 @@ function(wnd, source, stat)
 -- note that this can be emitted multiple times, it is just the
 -- segment kind that can't / wont change
 	if (wnd.registered) then
-		wnd.title = title;
-		wnd:set_title(stat.title, true);
+		wnd:set_title(stat.title);
 		return;
 	end
 
@@ -223,10 +221,6 @@ function(wnd, source, stat)
 
 	if (atbl.init) then
 		atbl:init(wnd, source);
-	end
-
-	if (stat.title and string.len(stat.title) > 0) then
-		wnd:set_title(stat.title, true);
 	end
 
 -- very rarely needed

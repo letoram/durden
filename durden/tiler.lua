@@ -666,7 +666,7 @@ local function workspace_migrate(ws, newt, disptbl)
 			j.fontfn = newt.font_resfn;
 		end
 		v.titlebar:invalidate();
-		v:set_title(tt);
+		v:set_title();
 	end
 	oldt.spaces[srci] = create_workspace(oldt, false);
 
@@ -1738,23 +1738,17 @@ local function wnd_grow(wnd, w, h)
 	wnd.space:resize();
 end
 
-local function wnd_title(wnd, message, skipresize)
-	if (message ~= nil and string.len(message) > 0) then
-		wnd.title_text = message;
+local function wnd_title(wnd, title)
+	local dsttbl = {gconfig_get("tbar_textstr")};
+	if (title) then
+		wnd.title = title;
 	end
 
-	if (wnd.title_prefix and string.len(wnd.title_prefix) > 0) then
-		message = string.format("%s:%s", wnd.title_prefix,
-			wnd.title_text and wnd.title_text or " ");
-	else
-		message = wnd.title_text and wnd.title_text or " ";
-	end
+	wnd.title_text = suppl_ptn_expand(dsttbl, gconfig_get("titlebar_ptn"), wnd);
 
 	local tbh = tbar_geth(wnd);
 
--- only re-render if the message has changed
-	local lbl = {gconfig_get("tbar_textstr"), message};
-	wnd.titlebar:update("center", 1, lbl);
+	wnd.titlebar:update("center", 1, dsttbl);
 
 -- override if the mode requires it
 	local hide_titlebar = wnd.hide_titlebar;
@@ -1765,18 +1759,13 @@ local function wnd_title(wnd, message, skipresize)
 	if (hide_titlebar) then
 		wnd.titlebar:hide();
 		wnd.pad_top = wnd.border_w;
-		if (not skipresize) then
-			wnd:resize(wnd.width, wnd.height);
-		end
-		return;
+		wnd:resize(wnd.width, wnd.height);
 	else
 		wnd.pad_top = wnd.border_w + tbar_geth(wnd);
+		wnd.titlebar:show();
 	end
 
-	wnd.titlebar:show();
-	if (not skipresize) then
-		wnd.space:resize();
-	end
+	wnd.space:resize(true);
 end
 
 local function convert_mouse_xy(wnd, x, y, rx, ry)
@@ -2028,7 +2017,12 @@ local function wnd_alert(wnd)
 end
 
 local function wnd_prefix(wnd, prefix)
-	wnd.title_prefix = prefix and prefix or "";
+	wnd.prefix = prefix and prefix or "";
+	wnd:set_title();
+end
+
+local function wnd_ident(wnd, ident)
+	wnd.ident = ident and ident or "";
 	wnd:set_title();
 end
 
@@ -2102,7 +2096,7 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		i.fontfn = tiler.font_resfn;
 	end
 	wnd.titlebar:invalidate();
-	wnd:set_title(tt);
+	wnd:set_title();
 	if (wnd.last_font) then
 		wnd:update_font(unpack(wnd.last_font));
 	end
@@ -2467,6 +2461,7 @@ local wnd_setup = function(wm, source, opts)
 		set_message = wnd_message,
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
+		set_ident = wnd_ident,
 		add_handler = wnd_addhandler,
 		drop_handler = wnd_drophandler,
 		set_dispmask = wnd_dispmask,

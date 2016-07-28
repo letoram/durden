@@ -221,7 +221,7 @@ update_default_font = function(key, val)
 -- size information to any external connections
 	for wnd in all_windows() do
 		wnd:update_font(sz, hint, font);
-		wnd:set_title(wnd.title_text and wnd.title_text or "");
+		wnd:set_title();
 		wnd:resize(wnd.width, wnd.height);
 	end
 end
@@ -345,7 +345,7 @@ function durden_launch(vid, prefix, title, wnd)
 
 -- window aesthetics
 	wnd:set_prefix(prefix);
-	wnd:set_title(title and title or "?");
+	wnd:set_title(title, true);
 	wnd:add_handler("resize", tile_changed);
 	wnd:add_handler("select", sel_input);
 	wnd:add_handler("deselect", desel_input);

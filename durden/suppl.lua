@@ -394,6 +394,62 @@ function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 	return dvid, grp, {};
 end
 
+local ptn_lut = {
+	p = "prefix",
+	t = "title",
+	i = "ident",
+	a = "atype"
+};
+
+local function get_ptn_str(cb, wnd)
+	if (string.len(cb) == 0) then
+		return;
+	end
+
+	local field = ptn_lut[string.sub(cb, 1, 1)];
+	if (not field or not wnd[field] or not (string.len(wnd[field]) > 0)) then
+		return;
+	end
+
+	local len = tonumber(string.sub(cb, 2));
+	return string.sub(wnd[field], 1, tonumber(string.sub(cb, 2)));
+end
+
+function suppl_ptn_expand(tbl, ptn, wnd)
+	local i = 1;
+	local cb = "";
+	local inch = false;
+
+	local flush_cb = function()
+		local msg = cb;
+
+		if (inch) then
+			msg = get_ptn_str(cb, wnd);
+			msg = msg and msg or "";
+		end
+		if (string.len(msg) > 0) then
+			table.insert(tbl, msg);
+			table.insert(tbl, ""); -- need to maintain %2
+		end
+		cb = "";
+	end
+
+	while (i <= string.len(ptn)) do
+		local ch = string.sub(ptn, i, i);
+		if (ch == " " and inch) then
+			flush_cb();
+			inch = false;
+		elseif (ch == "%") then
+			flush_cb();
+			inch = true;
+		else
+			cb = cb .. ch;
+		end
+		i = i + 1;
+	end
+	flush_cb();
+end
+
 function suppl_setup_rec(wnd, val)
 	local svid = wnd;
 	local aarr = {};

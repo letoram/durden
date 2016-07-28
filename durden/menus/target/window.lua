@@ -153,7 +153,7 @@ return {
 		handler = function()
 			local wnd = active_display().selected;
 			wnd.hide_titlebar = not wnd.hide_titlebar;
-			wnd:set_title(wnd.title_text);
+			wnd:set_title();
 		end
 	},
 	{
