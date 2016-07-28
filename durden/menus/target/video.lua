@@ -56,14 +56,16 @@ local scalemodes = {
 	}
 };
 
-local function fs_handler(sym, iotbl, path)
+local function fs_handler(wnd, sym, iotbl, path)
 	if (not sym and not iotbl) then
 		display_fullscreen(active_display(
 			false, true).name, BADID, val == "Mode Switch");
 		return;
 	end
-
-
+	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		target_input(wnd.external, iotbl);
+	end
+	return true, sym, iotbl, path;
 end
 
 local advanced = {
@@ -85,7 +87,7 @@ local advanced = {
 -- input routing- wise, and the bindings to escape are not available
 -- and we still get proper relative values
 			dispatch_toggle(function(sym, iot, path)
-				fs_handler(wnd, sym, iot, path); end
+				return fs_handler(wnd, sym, iot, path); end
 			);
 		end
 	}
