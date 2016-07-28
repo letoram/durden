@@ -56,6 +56,16 @@ local scalemodes = {
 	}
 };
 
+local function fs_handler(sym, iotbl, path)
+	if (not sym and not iotbl) then
+		display_fullscreen(active_display(
+			false, true).name, BADID, val == "Mode Switch");
+		return;
+	end
+
+
+end
+
 local advanced = {
 	{
 		name = "source_fs",
@@ -71,6 +81,12 @@ local advanced = {
 			local wnd = active_display().selected;
 			display_fullscreen(active_display(false, true).name,
 				wnd.external, val == "Mode Switch");
+-- mouse locking isn't strictly necessary as we're bound to the display
+-- input routing- wise, and the bindings to escape are not available
+-- and we still get proper relative values
+			dispatch_toggle(function(sym, iot, path)
+				fs_handler(wnd, sym, iot, path); end
+			);
 		end
 	}
 };

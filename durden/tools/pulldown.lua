@@ -228,11 +228,36 @@ local function dterm()
 	dstate.active = true;
 	dispatch_toggle(ldisp);
 
+-- since we don't have clipboard etc. mapping available we just toggle
+-- mouse input mode
+	target_input(dstate.term, {
+		kind = "digital", label = "MOUSE_FORWARD",
+		translated = true,
+		active = true,
+		devid = 8, subid = 8
+	});
+
 	local v, f, w, s = mouse_lockto(dstate.term,
-		function(rx, ry, x, y, state, ind, active)
+		function(rx, ry, x, y, state, ind, act)
 			local props = image_surface_properties(dstate.term);
 			x = x - props.x;
 			y = y - props.y;
+			if (ind) then
+				target_input(dstate.term, {
+					kind = "digital", source = "mouse",
+					active = act, devid = 0, subid = ind
+				});
+			else
+				local iotbl = {
+				kind = "analog", source = "mouse",
+				relative = false, devid = 0, subid = 0,
+				samples = {x}
+				};
+				target_input(dstate.term, iotbl);
+				iotbl.subid = 1;
+				iotbl.samples[1] = y;
+				target_input(dstate.term, iotbl);
+			end
 		end, nil
 	);
 	dstate.lock = {v, f, w, s};

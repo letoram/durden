@@ -659,6 +659,9 @@ function mouse_button_input(ind, active)
 		return;
 	end
 
+	mstate.btns[ind] = active;
+	mstate.btns_clock[ind] = CLOCK;
+
 	if (mstate.lockvid) then
 		return mouse_btnlock(ind, active);
 	end
@@ -696,8 +699,6 @@ function mouse_button_input(ind, active)
 	end
 
 	mstate.in_handler = false;
-	mstate.btns[ind] = active;
-	mstate.btns_clock[ind] = CLOCK;
 end
 
 local function mbh(hists, state)
