@@ -38,6 +38,10 @@ end
 -- "center" means normal behavior and the active shader for the window
 local function center_imgcfg(wnd)
 	show_image(wnd.anchor);
+	if (not wnd.space.layouter) then
+		print("dangling layouter", debug.traceback());
+	end
+
 	if (not wnd.space.layouter.scaled) then
 		return;
 	end
@@ -190,11 +194,6 @@ local function center_focus(space)
 	dst:select();
 end
 
-local dh = target_displayhint;
-target_displayhint = function(id, w, h, ...)
-	dh(id, w, h, ...);
-end
-
 -- return true? then we take responsibility for marking selected and insertion
 local function center_added(space, wnd)
 	if (#space.children ~= 3) then
@@ -264,8 +263,7 @@ local function center_lost(space, wnd, destroy)
 		wnd:drop_handler("select", sel_h);
 	end
 
-	local ccount = #space.children[3];
-	local mw = (ccount - count * gconfig_get("autolay_centerw")) / count;
+	local mw = (3 - 3 * gconfig_get("autolay_centerw")) / 2;
 
 -- ugly edge condition, if we migrate or destroy a child to the first
 -- or last node, it can be promoted to first level with no event for us to
