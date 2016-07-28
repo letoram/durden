@@ -11,7 +11,7 @@ function spawn_terminal(cmd, nolaunch)
 
 	if (not nolaunch) then
 		wnd = durden_prelaunch();
-		wnd:set_title("Terminal");
+		wnd:set_title();
 		wnd.scalemode = "stretch";
 		prepend = string.format(
 			"width=%d:height=%d:", wnd.effective_w, wnd.effective_h);

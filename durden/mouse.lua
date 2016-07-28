@@ -87,7 +87,9 @@ local mstate = {
 -- tables of event_handlers to check for match when
 	handlers = mouse_handlers,
 	eventtrace = false,
-	btns = {false, false, false, false, false},
+	btns = {},
+	btns_clock = {},
+	btns_bounce = {},
 	cur_over = {},
 	hover_track = {},
 	autohide = false,
@@ -121,6 +123,13 @@ local mstate = {
 	scale_w = 1, -- scale factors for cursor drawing
 	scale_h = 1,
 };
+
+-- arbitrary "how many mouse buttons are there today"
+for i=1,20 do
+	mstate.btns[i] = false;
+	mstate.btns_clock[i] = CLOCK;
+	mstate.btns_bounce = 0;
+end
 
 local cursors = {
 };
@@ -646,7 +655,7 @@ end
 -- button update at once for backwards compatibility.
 --
 function mouse_button_input(ind, active)
-	if (ind < 1 or ind > #mstate.btns) then
+	if (ind < 1 or ind > #mstate.btns or mstate.btns[ind] == active) then
 		return;
 	end
 
@@ -688,6 +697,7 @@ function mouse_button_input(ind, active)
 
 	mstate.in_handler = false;
 	mstate.btns[ind] = active;
+	mstate.btns_clock[ind] = CLOCK;
 end
 
 local function mbh(hists, state)
