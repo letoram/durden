@@ -1,15 +1,10 @@
 --
 -- a pulldown terminal that lives outside the normal window manager
--- downside is that input handling and other features behave differently
+-- down/upside is that input handling and other features behave differently
 --
 --
 -- MISSING:
--- display migration (with fonts)
--- mouse injection
--- cut/paste
--- terminal font config synch
--- config- menu injection
--- default keybinding setting(?)
+-- mouse/scroll-lock control, mouse injection, cut/paste
 --
 
 local dstate = {
@@ -25,12 +20,51 @@ gconfig_register("dt_width", 0.5);
 gconfig_register("dt_height", 0.4);
 gconfig_register("dt_opa", 0.8);
 
+-- synch main font and fallback font with the registry
+local function set_font()
+	local tbl = {gconfig_get("term_font")};
+	local fbf = gconfig_get("font_fb");
+	if (not resource(font, SYS_FONT_RESOURCE)) then
+		return;
+	end
+
+	if (resource(fbf, SYS_FONT_RESOURCE)) then
+		tbl[2] = fbf;
+	end
+
+	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
+		target_fonthint(dstate.term, tbl, -1, -1);
+		if (tbl[2]) then
+			target_fonthint(dstate.term, tbl, -1, -1, true);
+		end
+	end
+end
+
+local function set_sz()
+	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
+		target_fonthint(dstate.term,
+			gconfig_get("term_font_sz") * FONT_PT_SZ, -1);
+	end
+end
+
+local function set_hint()
+	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
+		target_fonthint(dstate.term, -1, gconfig_get("term_font_hint"));
+	end
+end
+
+gconfig_listen("term_font", "pdterm", set_font);
+gconfig_listen("term_font_sz", "pdterm_sz", set_sz);
+gconfig_listen("term_font_hint", "pdterm_hint", set_hint);
+
 local function update_size()
 	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
 		local disp = active_display();
 		local neww = disp.width * gconfig_get("dt_width");
 		local newh = disp.height * gconfig_get("dt_height");
-		target_displayhint(dstate.term, neww, newh);
+		target_displayhint(dstate.term, neww, newh, 0,
+			{ppcm = active_display(false, true).ppcm}
+		);
 	end
 end
 
@@ -78,10 +112,11 @@ local dterm_cfg = {
 local atype = extevh_archetype("terminal");
 
 local function drop()
-	reset_image_transform(dstate.term); -- use RV to adjust animation time?
+	reset_image_transform(dstate.term);
 	local props = image_surface_properties(dstate.term);
 	nudge_image(dstate.term,
-		-1 * dstate.dir_x * props.width, -1 * dstate.dir_y * props.height,
+		-1 * dstate.dir_x * props.width,
+		-1 * dstate.dir_y * props.height,
 		gconfig_get("animation")
 	);
 	blend_image(dstate.term, 0.0, gconfig_get("animation"));
@@ -143,8 +178,11 @@ local function dterm()
 	local neww = disp.width * gconfig_get("dt_width");
 	local newh = disp.height * gconfig_get("dt_height");
 
+-- the spawn_terminal() function from global/open takes care of initial
+-- font setup, it's only for dynamic changes the rest is needed
 	if (not valid_vid(dstate.term)) then
-		dstate.term = spawn_terminal(string.format("width=%d:height=%d", neww, newh), true);
+		dstate.term = spawn_terminal(
+			string.format("width=%d:height=%d", neww, newh), true);
 		dstate.disp = disp;
 		target_updatehandler(dstate.term, termh);
 		target_graphmode(dstate.term, gconfig_get("dt_opa"));
@@ -154,8 +192,8 @@ local function dterm()
 	if (dstate.disp ~= active_display()) then
 		target_displayhint(dstate.term, neww, newh);
 		dstate.disp = active_display();
--- send font hint
--- reevaluate width, resize
+		rendertarget_attach(active_display(true), dstate.term, RENDERTARGET_DETACH);
+		update_size();
 	end
 
 -- put us in the "special" overlay order range
@@ -175,10 +213,12 @@ local function dterm()
 		end
 	elseif (dstate.dir_y ~= 0) then
 		newh = newh + dstate.ofs;
-		if (dstate.dir_y > 0) then -- top
+-- top
+		if (dstate.dir_y > 0) then
 			move_image(dstate.term, 0.5 * (disp.width - neww), -newh);
 			nudge_image(dstate.term, 0, newh, gconfig_get("animation"));
-		else -- bottom
+ -- bottom
+		else
 			move_image(dstate.term, 0.5 * (disp.width - neww), disp.height);
 			nudge_image(dstate.term, 0, -newh, gconfig_get("animation"));
 		end
