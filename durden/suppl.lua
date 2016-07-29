@@ -426,6 +426,7 @@ function suppl_ptn_expand(tbl, ptn, wnd)
 		if (inch) then
 			msg = get_ptn_str(cb, wnd);
 			msg = msg and msg or "";
+			msg = string.trim(msg);
 		end
 		if (string.len(msg) > 0) then
 			table.insert(tbl, msg);
