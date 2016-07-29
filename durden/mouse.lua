@@ -1,9 +1,10 @@
 --
--- Copyright 2014-2015, Björn Ståhl
+-- Copyright 2014-2016, Björn Ståhl
 -- License: 3-Clause BSD.
 -- Reference: http://arcan-fe.com
 --
--- all functions are prefixed with mouse_
+-- All functions are prefixed with mouse_ and ignores devid.
+-- This means we only support one global mouse cursor.
 --
 -- setup (takes control of vid):
 --  setup_native(vid, hs_x, hs_y) or
@@ -74,14 +75,14 @@ local mouse_handlers = {
 };
 
 -- convention established mapping for forwarding to game/terminal/...
-MOUSE_LBUTTON = 0;
-MOUSE_RBUTTON = 1;
-MOUSE_MBUTTON = 2;
-MOUSE_WHEELPY = 3;
-MOUSE_WHEELNY = 4;
-MOUSE_WHEELPX = 5;
-MOUSE_WHEELNX = 6;
-MOUSE_AUXBTN  = 7; -- >= 7 really
+MOUSE_LBUTTON = 1;
+MOUSE_RBUTTON = 2;
+MOUSE_MBUTTON = 3;
+MOUSE_WHEELPY = 4;
+MOUSE_WHEELNY = 5;
+MOUSE_WHEELPX = 6;
+MOUSE_WHEELNX = 7;
+MOUSE_AUXBTN  = 8; -- >= 8 really
 
 local mstate = {
 -- tables of event_handlers to check for match when
@@ -90,6 +91,7 @@ local mstate = {
 	btns = {},
 	btns_clock = {},
 	btns_bounce = {},
+	btns_remap = {},
 	cur_over = {},
 	hover_track = {},
 	autohide = false,
@@ -124,15 +126,23 @@ local mstate = {
 	scale_h = 1,
 };
 
--- arbitrary "how many mouse buttons are there today"
-for i=1,20 do
+-- arbitrary "how many mouse buttons are there today", we just
+-- waste a few k to fill the 8-bit spectrum + the possible axis remap
+-- that the evdev platform does
+local cursors = {
+};
+
+for i=1,255 do
+	mstate.btns_remap[i] = i;
 	mstate.btns[i] = false;
 	mstate.btns_clock[i] = CLOCK;
 	mstate.btns_bounce = 0;
 end
 
-local cursors = {
-};
+mstate.btns_remap[256] = MOUSE_WHEELPY;
+mstate.btns_remap[257] = MOUSE_WHEELNY;
+mstate.btns_remap[258] = MOUSE_WHEELPX;
+mstate.btns_remap[259] = MOUSE_WHEELNX;
 
 local function lock_constrain()
 -- locking to surface is slightly odd in that we still need to return
@@ -655,7 +665,8 @@ end
 -- button update at once for backwards compatibility.
 --
 function mouse_button_input(ind, active)
-	if (ind < 1 or ind > #mstate.btns or mstate.btns[ind] == active) then
+	ind = mstate.btns_remap[ind];
+	if (not ind or mstate.btns[ind] == active) then
 		return;
 	end
 
