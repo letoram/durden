@@ -105,7 +105,7 @@ local defaults = {
 
 -- %(fmt-char) p (tag) t (title) i (ident) a (archetype)
 -- optional character limit after each entry, whitespace breaks out of fmt-char
-	titlebar_ptn = "<%p > %t - %i",
+	titlebar_ptn = "%p %t - %i",
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating

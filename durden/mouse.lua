@@ -670,10 +670,9 @@ function mouse_button_input(ind, active)
 		return;
 	end
 
-	mstate.btns[ind] = active;
-	mstate.btns_clock[ind] = CLOCK;
-
 	if (mstate.lockvid) then
+		mstate.btns[ind] = active;
+		mstate.btns_clock[ind] = CLOCK;
 		return mouse_btnlock(ind, active);
 	end
 
@@ -708,6 +707,9 @@ function mouse_button_input(ind, active)
 	if (ind == 3 and active ~= mstate.btns[3]) then
 		rmbhandler(hists, active);
 	end
+
+	mstate.btns[ind] = active;
+	mstate.btns_clock[ind] = CLOCK;
 
 	mstate.in_handler = false;
 end
