@@ -2058,6 +2058,11 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		return;
 	end
 
+-- revert to normal state on fullscreen
+	if (wnd.fullscreen) then
+		wnd.space:tile();
+	end
+
 -- select next in line
 	wnd:prev();
 	if (wnd.wm.selected == wnd) then
@@ -2068,21 +2073,17 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		end
 	end
 
-	moveup_children(wnd);
-	wnd.children = {};
+-- switch rendertarget
 	for i,v in ipairs(get_hier(wnd.anchor)) do
 		rendertarget_attach(tiler.rtgt_id, v, RENDERTARGET_DETACH);
 	end
 	rendertarget_attach(tiler.rtgt_id, wnd.anchor, RENDERTARGET_DETACH);
 
-	if (wnd.fullscreen) then
-		wnd.space:tile();
-	end
-
 -- change association with wm and relayout old one
 	local oldsp = wnd.space;
 	table.remove_match(wnd.wm.windows, wnd);
 	wnd.wm = tiler;
+	oldsp:resize();
 
 -- make sure titlebar sizes etc. match
 	wnd:rebuild_border(gconfig_get("borderw"));
@@ -2090,6 +2091,7 @@ local function wnd_migrate(wnd, tiler, disptbl)
 -- employ relayouting hooks to currently active ws
 	local dsp = tiler.spaces[tiler.space_ind];
 	wnd:assign_ws(dsp, true);
+	wnd.children = {};
 
 -- rebuild border and titlebar to account for changes in font/scale
 	for i in wnd.titlebar:all_buttons() do
