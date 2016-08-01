@@ -391,8 +391,10 @@ local cfl = {
 	block_swap = true
 };
 
-local function set_layouter(space)
+local function set_layouter(space, scaled, block_rz)
 	space.layouter = copy(cfl);
+	space.layouter.scaled = scaled;
+	space.layouter.block_rzevent = block_rz;
 	center_setup(space);
 	space:resize();
 	center_focus(space);
@@ -409,6 +411,7 @@ local layouters = {
 	handler = function()
 		local space = active_display().active_space;
 		if (space) then
+			set_layouter(space, false, false);
 		end
 	end,
 },
@@ -422,12 +425,7 @@ local layouters = {
 	handler = function()
 		local space = active_display().active_space;
 		if (space) then
-			space.layouter = copy(cfl);
-			space.layouter.scaled = true;
-			space.layouter.block_rzevent = true;
-			center_setup(space);
-			space:resize();
-			center_focus(space);
+			set_layouter(space, true, true);
 		end
 	end
 },

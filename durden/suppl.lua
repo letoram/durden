@@ -1182,6 +1182,9 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	opts.label = type(label) == "function" and label() or label;
 	if (opts.domain) then
 		cpath.domain = opts.domain;
+		if (#cpath.domain > #cpath.helper and opts.tag) then
+			hlp_add_btn(cpath.helper, opts.tag);
+		end
 	end
 
 	ctx.wm = wm;
