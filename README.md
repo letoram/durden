@@ -110,7 +110,8 @@ which contain scripts that trigger on a specific global or target menu path.
 A typical example is widgets/ascii.lua that is activated when a utf-8 sequence
 is to be bound.
 The other are tools that add more generic features, examples being a 3d
-modelviewer and an automatic tiling layout manager.
+modelviewer (3dsupport), a quake- style pulldown terminal (pulldown)
+ and an automatic tiling layout manager (autolay).
 
 Timers
 ====
@@ -340,6 +341,7 @@ are being implemented, we have the following list:
     - [x] Autohide / Reveal
     - [ ] Button Reordering
     - [ ] Meta+Click Binding
+    - [ ] Debounce
     - [ ] Abstract Gesture Training
   - [x] Per/Window Keyremapping
   - [ ] Macros
