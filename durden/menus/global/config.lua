@@ -311,6 +311,56 @@ local durden_workspace = {
 	}
 };
 
+local rate_menu = {
+	{
+		name = "rlimit",
+		label = "Rate Limit",
+		initial = function() return gconfig_get("extcon_rlimit"); end,
+-- help = "number of minimum ticks between external connections",
+		kind = "value",
+		hint = "(0: disabled .. 1000)",
+		validator = gen_valid_num(0, 1000),
+		handler = function(ctx, val)
+			gconfig_set("extcon_rlimit", tonumber(val));
+		end
+	},
+	{
+		name = "startdelay",
+		label = "Grace Period",
+-- help = "number of ticks from start with the rate limit is disabled",
+		kind = "value",
+		initial = function() return gconfig_get("extcon_startdelay"); end,
+		validator = gen_valid_num(0, 1000),
+		handler = function(ctx, val)
+			gconfig_set("extcon_startdelay", tonumber(val));
+		end
+	},
+	{
+		name = "extwndlim",
+		label = "External Windows Limit",
+--  help = "number of ticks from start with the rate limit is disabled",
+		kind = "value",
+		initial = function() return gconfig_get("extcon_wndlimit"); end,
+		validator = gen_valid_num(0, 1000),
+		hint = "(0: disabled .. 1000)",
+		handler = function(ctx, val)
+			gconfig_set("extcon_startdelay", tonumber(val));
+		end
+	},
+	{
+		name = "subseglimit",
+		label = "Window Subsegment Limit",
+--  help = "prevent a window from using more than (n) subsegments at once",
+		kind = "value",
+    hint = "(0: disabled, .. 100)",
+		initial = function() return gconfig_get("subwnd_limit"); end,
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx, val)
+			gconfig_set("subwnd_limit", tonumber(val));
+		end
+	}
+};
+
 local durden_system = {
 	{
 		name = "cpath",
@@ -333,6 +383,13 @@ local durden_system = {
 				durden_new_connection();
 			end
 		end
+	},
+	{
+		name = "rate_limit",
+		label = "Rate Limiting",
+		kind = "action",
+		submenu = true,
+		handler = rate_menu
 	},
 	{
 		name = "ctrlpipe",

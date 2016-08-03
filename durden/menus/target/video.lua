@@ -90,6 +90,18 @@ local advanced = {
 				return fs_handler(wnd, sym, iot, path); end
 			);
 		end
+	},
+	{
+		name = "source_hpass",
+		label = "Toggle Handle Passing",
+		kind = "action",
+		eval = function(ctx, val)
+			local wnd = active_display().selected;
+			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
+		end,
+		handler = function(ctx, val)
+			target_flags(active_display().selected.external, TARGET_NOBUFFERPASS, true);
+		end
 	}
 };
 
