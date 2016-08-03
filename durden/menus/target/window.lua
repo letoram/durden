@@ -57,6 +57,12 @@ local moverz_menu = {
 	end
 },
 {
+	name = "fullscreen",
+	label = "Toggle Fullscreen",
+	kind = "action",
+	handler = grab_shared_function("fullscreen")
+},
+{
 	name = "maxtog",
 	label = "Toggle Maximize",
 	kind = "action",

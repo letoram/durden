@@ -78,6 +78,17 @@ local defaults = {
 	output_path = "output",
 	whitelist = false,
 
+-- if > 0, wait n ticks before re-activating external connection path
+-- (default clock, ~25 == 1s.)
+	extcon_rlimit = 25,
+-- ignore rlimit first n ticks after startup (allow initial start burst)
+	extcon_startdelay = 100,
+-- if n > 0: while >= n external windows, disable external windows (
+-- requires extcon_rlimit > 0 as it uses the same timer when evaluating)
+	extcon_wndlimit = 0,
+-- limit subwindows per connection, also covers hidden windows (e.g. clipboard)
+	subwnd_limit = 10,
+
 -- only enabled manually, only passive for now
 	remote_port = 5900,
 	remote_pass = "guest",

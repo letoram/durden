@@ -409,13 +409,19 @@ if (not target_devicehint) then
 	end
 end
 
+local eval_respawn;
+
 function durden_new_connection(source, status)
 	if (status == nil or status.kind == "connected") then
-		INCOMING_ENDPOINT = target_alloc(
-			gconfig_get("extcon_path"), durden_new_connection);
-		if (valid_vid(INCOMING_ENDPOINT)) then
-			image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
+-- allocate a new endpoint? or wait?
+		if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
+			gconfig_get("extcon_startdelay")) then
+			timer_add_periodic("extcon_activation",
+				gconfig_get("extcon_rlimit"), true, eval_respawn, true);
+		else
+			eval_respawn(true);
 		end
+
 		if (status) then
 -- switch attachment immediately to new display
 			local ap = active_display(true);
@@ -425,6 +431,30 @@ function durden_new_connection(source, status)
 			durden_launch(source, "", "external");
 			durden_devicehint(source);
 		end
+	end
+end
+
+eval_respawn = function(manual)
+	local lim = gconfig_get("extcon_wndlimit");
+	local period = gconfig_get("extcon_rlimit");
+	local count = 0;
+
+	for disp in all_tilers_iter() do
+		count = count + #disp.windows;
+	end
+
+-- if it's not the time to allow more connection, schedule a hidden
+-- one-fire timer that re-runs this function
+	if ((lim > 0 and count > lim) and not manual) then
+		timer_add_periodic("extcon_activation", period, true, eval_respawn, true);
+		return;
+	end
+
+	INCOMING_ENDPOINT = target_alloc(
+		gconfig_get("extcon_path"), durden_new_connection);
+
+	if (valid_vid(INCOMING_ENDPOINT)) then
+		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
 	end
 end
 

@@ -140,7 +140,7 @@ use password, or as mentioned in the timers section, be bound to an idle timer
 or similar mechanism.
 
 In addition, it is possible to bind a path to lockscreen success or
-fail "n" times by modifying gconf.lua, look for lock\_ok and lock\_fail_ entries.
+fail "n" times by modifying gconf.lua, look for lock\_ok and lock\_fail entries.
 This can be used for strong effects like starting webcam streaming, running
 external commands or shutting down.
 
@@ -158,7 +158,10 @@ itself for an idea as to when that will be possible.
 
 There is support for running [libretro](http://www.libretro.com) 'cores'
 (dynamically linked libraries that wrap input/output/state management for
-common games and emulators) however.
+common games and emulators) however, and you can find a
+[QEmu backend](https://github.com/letoram/qemu) and a [SDL2](https://github.com/letoram/sdl2) driver. There is also some SDL1 support if arcan is built with
+-DDISABLE\_HIJACK=OFF that can be activated with
+ LD\_PRELOAD=/path/to/libahijack\_sdl12.so /my/sdl12/application
 
 The specifics for downloading/compiling cores and other data that might be
 needed is outside the scope here, but an example on how to add a target:
@@ -427,8 +430,10 @@ are being implemented, we have the following list:
 - [ ] Security and Stability Measures
   - [ ] Visual Privilege Level Indicator
   - [x] Configure/Disable external connections
-  - [ ] Limit subsurfaces per window
+  - [x] Limit subsurfaces per window
   - [ ] Privilege Level indication
+  - [x] Ratelimit external connections
+  - [x] Cap external windows
   - [x] Trusted input path on high-privilege window
   - [ ] Notification on reaching VID limit threshold
         and suspend external/ subsegs temporarily
