@@ -41,12 +41,12 @@ function spawn_terminal(cmd, nolaunch)
 	end
 
 	local vid = launch_avfeed(lstr, "terminal");
-	image_tracetag(vid, "terminal");
 	if (nolaunch) then
 		return vid;
 	end
 
 	if (valid_vid(vid)) then
+		image_tracetag(vid, "terminal");
 		durden_launch(vid, "", "terminal", wnd);
 		durden_devicehint(vid);
 
@@ -54,7 +54,8 @@ function spawn_terminal(cmd, nolaunch)
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
 		image_sharestorage(vid, wnd.canvas);
 	else
-		active_display():message( "Builtin- terminal support broken" );
+		active_display():message(
+			"Terminal failed to open (broken term or out-of-resources)");
 		wnd:destroy();
 	end
 end
@@ -64,6 +65,9 @@ local function run_uri(val, feedmode)
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", feedmode);
 		durden_devicehint(vid);
+	else
+		active_display():message(
+			string.format("Couldn't launch %s (broken or out-of-resources)", feedmode));
 	end
 end
 
@@ -193,6 +197,8 @@ local function decwnd(fn, path)
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", fn);
 		durden_devicehint(vid);
+	else
+		active_display():message("decode- frameserver broken or out-of-resources");
 	end
 end
 
@@ -203,6 +209,8 @@ local function launch(str, cfg)
 		durden_devicehint(vid);
 		wnd.config_target = str;
 		wnd.config_config = cfg;
+	else
+		active_display():message("target broken or out-of-resources");
 	end
 end
 
@@ -289,15 +297,19 @@ return {
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
 	end,
 -- missing, hash url, allow hint-set on clipboard url grab
-	handler = function(ctx, val)
-		local vid = launch_avfeed(get_remstr(val), "remoting");
-		if (valid_vid(vid, TYPE_FRAMESERVER)) then
-			durden_devicehint(vid);
-			durden_launch(vid, "", "remoting");
-			extevh_default(vid, {
-				kind = "registered", segkind = "remoting", title = "", guid = 2});
-		end
+	handler =
+function(ctx, val)
+	local vid = launch_avfeed(get_remstr(val), "remoting");
+	if (valid_vid(vid, TYPE_FRAMESERVER)) then
+		durden_devicehint(vid);
+		durden_launch(vid, "", "remoting");
+		extevh_default(vid, {
+			kind = "registered", segkind = "remoting", title = "", guid = 2});
+	else
+		active_display():message(
+			"remoting frameserver failed, broken or out-of-resources");
 	end
+end
 },
 {
 	name = "decode",

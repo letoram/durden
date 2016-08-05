@@ -294,6 +294,9 @@ function(wnd, source, stat)
 			delete_image(wnd.clipboard)
 		end
 		wnd.clipboard = accept_target();
+		if (not valid_vid(wnd.clipboard)) then
+			return;
+		end
 		link_image(wnd.clipboard, wnd.anchor);
 		target_updatehandler(wnd.clipboard,
 			function(source, status)
