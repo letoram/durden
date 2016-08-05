@@ -344,7 +344,7 @@ local rate_menu = {
 		validator = gen_valid_num(0, 1000),
 		hint = "(0: disabled .. 1000)",
 		handler = function(ctx, val)
-			gconfig_set("extcon_startdelay", tonumber(val));
+			gconfig_set("extcon_wndlimit", tonumber(val));
 		end
 	},
 	{

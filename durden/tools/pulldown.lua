@@ -183,6 +183,9 @@ local function dterm()
 	if (not valid_vid(dstate.term)) then
 		dstate.term = spawn_terminal(
 			string.format("width=%d:height=%d", neww, newh), true);
+		if (not valid_vid(dstate.term)) then
+			return;
+		end
 		dstate.disp = disp;
 		target_updatehandler(dstate.term, termh);
 		target_graphmode(dstate.term, gconfig_get("dt_opa"));

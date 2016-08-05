@@ -455,6 +455,9 @@ eval_respawn = function(manual)
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
 		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
+	else
+		timer_add_periodic("excon_reset", 100, true,
+			function() eval_respawn(true); end, true);
 	end
 end
 
