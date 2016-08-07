@@ -8,6 +8,7 @@
 EVENT_SYNCH = {};
 
 local wnd_create_handler, update_default_font, update_connection_path;
+local eval_respawn;
 
 local argv_cmds = {};
 
@@ -94,7 +95,7 @@ function durden(argv)
 -- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
-		durden_new_connection();
+		eval_respawn(true);
 	end
 
 -- add hooks for changes to all default  font properties
@@ -332,7 +333,7 @@ function durden_devicehint(vid)
 	end
 end
 
-function durden_launch(vid, prefix, title, wnd)
+function durden_launch(vid, prefix, title, wnd, external)
 	if (not valid_vid(vid)) then
 		return;
 	end
@@ -409,27 +410,43 @@ if (not target_devicehint) then
 	end
 end
 
-local eval_respawn;
-
+local extcon_wndcnt = 0;
 function durden_new_connection(source, status)
-	if (status == nil or status.kind == "connected") then
--- allocate a new endpoint? or wait?
-		if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
-			gconfig_get("extcon_startdelay")) then
-			timer_add_periodic("extcon_activation",
-				gconfig_get("extcon_rlimit"), true, eval_respawn, true);
-		else
-			eval_respawn(true);
-		end
+	if (status.kind ~= "connected") then
+-- misplaced event, should really happen
+		return;
+	end
 
-		if (status) then
+-- allocate a new endpoint? or wait?
+	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
+		gconfig_get("extcon_startdelay")) then
+		timer_add_periodic("extcon_activation",
+			gconfig_get("extcon_rlimit"), true, eval_respawn, true);
+	else
+		eval_respawn(true);
+	end
+
 -- switch attachment immediately to new display
-			local ap = active_display(true);
-			if (ap ~= nil) then
-				rendertarget_attach(ap, source, RENDERTARGET_DETACH);
-			end
-			durden_launch(source, "", "external");
-			durden_devicehint(source);
+	local ap = active_display(true);
+	if (ap ~= nil) then
+		rendertarget_attach(ap, source, RENDERTARGET_DETACH);
+	end
+
+-- exceeding limits, ignore for now
+	if (extcon_wndcnt >= gconfig_get("extcon_wndlimit") and
+		gconfig_get("extcon_wndlimit") > 0) then
+		delete_image(source);
+	else
+		extcon_wndcnt = extcon_wndcnt + 1;
+		local wnd = durden_launch(source, "", "external", nil, "external");
+-- tell the new connection where to go in the event of a crash
+		durden_devicehint(source);
+		if (wnd) then
+			wnd:add_handler("destroy",
+				function()
+					extcon_wndcnt = extcon_wndcnt - 1;
+				end
+			);
 		end
 	end
 end
@@ -455,6 +472,7 @@ eval_respawn = function(manual)
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
 		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
+-- OOM, retry later
 	else
 		timer_add_periodic("excon_reset", 100, true,
 			function() eval_respawn(true); end, true);
