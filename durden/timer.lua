@@ -19,7 +19,7 @@ local function run_idle_timers()
 	for i=#idle_timers,1,-1 do
 		if (idle_count >= idle_timers[i].delay and not idle_timers[i].passive
 			and not idle_timers[i].suspended) then
-			idle_timers[i].trigger();
+			local func = idle_timers[i].trigger;
 -- add to front of wakeup queue so we get last-in-first-out
 			if (idle_timers[i].wakeup) then
 				table.insert(wakeups, 1, idle_timers[i].wakeup);
@@ -29,6 +29,7 @@ local function run_idle_timers()
 			else
 				idle_timers[i].passive = true;
 			end
+			func();
 		end
 	end
 end
@@ -47,12 +48,13 @@ function timer_tick(...)
 		if (not timers[i].suspended) then
 			timers[i].count = timers[i].count - 1;
 			if (timers[i].count == 0) then
-				timers[i].trigger();
+				local hfunc = timers[i].trigger;
 				if (timers[i].once) then
 					table.remove(timers, i);
 				else
 					timers[i].count = timers[i].delay;
 				end
+				hfunc();
 			end
 		end
 	end
