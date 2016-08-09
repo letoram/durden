@@ -852,9 +852,9 @@ end
 
 local cpath = menu_path_new();
 
-local function menu_cancel(wm)
+local function menu_cancel(wm, m1_overr, dangerous)
 	local m1, m2 = dispatch_meta();
-	if (m1) then
+	if ((m1 or m1_overr) and not dangerous) then
 		local path, ictx = cpath:pop();
 		launch_menu_path(active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
 	else
@@ -887,13 +887,7 @@ local function seth(ctx, instr, done, lastv)
 		end
 
 		local m1, m2 = dispatch_meta();
-		if (m1 and not ctx.dangerous) then
-			local path, ictx = cpath:pop();
-			launch_menu_path(
-				active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
-		else
-			cpath:reset();
-		end
+		menu_cancel(active_display(), false, ctx.dangerous);
 	end
 end
 
@@ -908,6 +902,12 @@ local function normh(ctx, instr, done, lastv)
 		end
 
 		return true;
+	end
+
+-- special treatment
+	if (instr == "..") then
+		menu_cancel(active_display(), true, ctx.dangerous);
+		return;
 	end
 
 -- validate if necessary
@@ -932,17 +932,7 @@ local function normh(ctx, instr, done, lastv)
 		cpath:reset();
 	else
 		ctx:handler(instr);
-		local m1, m2 = dispatch_meta();
-
--- 'dangerous' here means that global state etc. can have been changed
--- in such a way that trying to return to the last active path is unwise
-		if (m1 and not ctx.dangerous) then
-			local path, ictx = cpath:pop();
-			launch_menu_path(
-				active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
-		else
-			cpath:reset();
-		end
+		menu_cancel(active_display(), false, ctx.dangerous);
 	end
 end
 
@@ -961,9 +951,12 @@ function suppl_widget_path(ctx, anchor, ident)
 	local fi = 0;
 
 	local wident = nil;
+	local wprefix = nil;
+
 	if (string.sub(ident, 1, 1) == "#") then
 		local wnd = active_display().selected;
 		wident = wnd.ident;
+		wprefix = wnd.prefix;
 	end
 
 	local props = image_surface_resolve_properties(anchor);
@@ -976,7 +969,7 @@ function suppl_widget_path(ctx, anchor, ident)
 
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
-			if ((type(j) == "function" and j(ctx, ident, wident))
+			if ((type(j) == "function" and j(ctx, ident, wident, wprefix))
 				or ((type(j) == "string" and j == ident))) then
 -- or query for the number of columns needed assuming a certain height
 				local nc = v.probe and v.probe(ctx, rh) or 1;
@@ -1059,6 +1052,11 @@ end
 local function lbar_fun(ctx, instr, done, lastv, inp_st)
 	if (done) then
 		local tgt = nil;
+		if (instr == "..") then
+			menu_cancel(active_display(), true, ctx.dangerous);
+			return;
+		end
+
 		for k,v in ipairs(ctx.list) do
 			if (v.label and string.lower(v.label) == string.lower(instr)) then
 				tgt = v;

@@ -68,15 +68,32 @@ end
 local function destroy()
 end
 
--- on root path, find the nodes that have a title that matches a certain set
-local function ident(ctx, pathid, strid)
-	if (not strid or string.len(pathid) > 1) then
-		return;
+-- for sub-paths, only check path activation. For the root- level,
+-- check both the program supplied id and the user- supplied optional tag
+local function ident(ctx, pathid, strid, tag)
+	local strset = {};
+	if (string.len(pathid) > 1) then
+		table.insert(strset, pathid);
+	else
+		if (strid) then
+			table.insert(strset, strid);
+		end
+		if (tag) then
+			table.insert(strset, tag);
+		end
 	end
+
 	ctx.sheetset = {};
 	for k,v in pairs(sheets) do
-		if (v[1] == "*" or string.match(strid, v[1])) then
+		if (v[1] == "*") then
 			table.insert(ctx.sheetset, v);
+		else
+			for i,j in ipairs(strset) do
+				if string.match(j, v[1]) then
+					table.insert(ctx.sheetset, v);
+					break;
+				end
+			end
 		end
 	end
 	return #ctx.sheetset > 0;
