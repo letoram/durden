@@ -232,7 +232,13 @@ function display_fullscreen(name, vid, modesw, mapv)
 		return;
 	end
 
-	if (not valid_vid(vid)) then
+	if  not valid_vid(vid) then
+		for i, j in ipairs(displays) do
+			if (valid_vid(j.rt)) then
+				rendertarget_forceupdate(j.rt, -1);
+			end
+		end
+
 -- tell the connected tiler to restore old mode so target_hints,
 -- locking etc. propagate correctly, it's implemented here rather than in
 -- tiler to support different WMs.
@@ -250,8 +256,13 @@ function display_fullscreen(name, vid, modesw, mapv)
 			disp.fs_mode = nil;
 		end
 	else
--- we currently do not disable rendertarget updates, so that memory bw
--- is still currently wasted
+
+		for i,j in ipairs(displays) do
+			if (valid_vid(j.rt)) then
+				rendertarget_forceupdate(j.rt, gconfig_get("display_fs_rtrate"));
+			end
+		end
+
 		disp.monitor_vid = vid;
 		local ws = disp.tiler.spaces[disp.tiler.space_ind];
 		disp.fs_mode = ws.mode;
@@ -428,10 +439,6 @@ function display_manager_init()
 
 	displays.simple = gconfig_get("display_simple");
 
--- this is a workaround for having support for 'non-simple' mode
--- with the SDL platform that currently does not support arbitrary
--- mapping, but we want to be able to test features like display shaders
-	displays.nohide = not map_video_display(WORLDID, 0, HINT_NONE);
 	displays.main = 1;
 	local ddisp = displays[1];
 	ddisp.tiler.name = "default";
@@ -439,13 +446,13 @@ function display_manager_init()
 -- simple mode does not permit us to do much of the fun stuff, like different
 -- color etc. correction shaders or rotate/fit/...
 	if (not displays.simple) then
+		rendertarget_forceupdate(WORLDID, 0);
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
 		ddisp.maphint = HINT_NONE;
 		ddisp.shader = gconfig_get("display_shader");
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		display_load(displays[1]);
-		blend_image(ddisp.rt, displays.nohide and 1 or 0);
 	end
 
 	return displays[1].tiler;
