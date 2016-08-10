@@ -99,6 +99,10 @@ local defaults = {
 	display_simple = false,
 	display_shader = "basic",
 
+-- on dedicated- fullscreen, switch rendertarget refreshrate to the following
+-- cloclvalue (0, disabled entirely, -n every n frame, n every n tick
+	display_fs_rtrate = 2,
+
 -- some people can't handle the flash transition between workspaces,
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
