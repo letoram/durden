@@ -1391,6 +1391,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		return;
 	end
 
+	force = force and force or (wnd.space.mode == "float" and true) or false;
+
 -- now we know dimensions of the window in regards to its current tiling cell
 -- etc. so we can resize the border accordingly (or possibly cascade weights)
 	if (force) then
@@ -2200,7 +2202,9 @@ local titlebar_mh = {
 		local tag = ctx.tag;
 -- TODO: possible to drag outside client area
 		if (tag.space.mode == "float") then
-			nudge_image(tag.anchor, dx, dy);
+			tag.x = tag.x + dx;
+			tag.y = tag.y + dy;
+			move_image(tag.anchor, tag.x, tag.y);
 		end
 -- possibly check for other window in tile hierarchy based on
 -- polling mouse cursor, and do a window swap
@@ -2231,8 +2235,10 @@ local border_mh = {
 		local wnd = ctx.tag;
 		if (wnd.space.mode == "float" and ctx.mask) then
 			wnd.in_drag_rz = true;
-			nudge_image(wnd.anchor, dx * ctx.mask[3], dy * ctx.mask[4]);
-			wnd:resize(wnd.width+dx*ctx.mask[1], wnd.height+dy*ctx.mask[2], true);
+			wnd.x = wnd.x + dx * ctx.mask[3];
+			wnd.y = wnd.y + dy * ctx.mask[4];
+			move_image(wnd.anchor, wnd.x, wnd.y);
+			wnd:resize(wnd.width+dx*ctx.mask[1], wnd.height+dy*ctx.mask[2], true, false);
 		end
 	end,
 	drop = function(ctx)
