@@ -242,7 +242,7 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 -- ignore resize- step limit (terminal) if we are not in drag resize
 			if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or
-			   math.abs(props.height - newh) > wnd.sz_delta[2])) then
+			   math.abs(props.height - efh) > wnd.sz_delta[2])) then
 				target_displayhint(wnd.external, efw, efh, wnd.dispmask);
 			end
 		end
