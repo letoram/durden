@@ -1292,7 +1292,7 @@ end
 
 local function wnd_effective_resize(wnd, neww, newh, force)
 	wnd:resize(neww + wnd.pad_left + wnd.pad_right,
-		newh + wnd.pad_top + wnd.pad_bottom);
+		newh + wnd.pad_top + wnd.pad_bottom, force);
 end
 
 local function wnd_font(wnd, sz, hint, font)
@@ -1831,8 +1831,9 @@ end
 
 local function wnd_toggle_maximize(wnd)
 	if (wnd.float_dim) then
-		move_image(wnd.anchor,
-			wnd.float_dim.x * wnd.wm.width, wnd.float_dim.y * wnd.wm.height);
+		wnd.x = wnd.float_dim.x * wnd.wm.width;
+		wnd.y = wnd.float_dim.y * wnd.wm.height;
+		move_image(wnd.anchor, wnd.x, wnd.y);
 		wnd:resize(wnd.float_dim.w * wnd.wm.width,
 			wnd.float_dim.h * wnd.wm.height, true);
 		wnd.float_dim = nil;
@@ -1844,8 +1845,10 @@ local function wnd_toggle_maximize(wnd)
 		cur.w = wnd.width / wnd.wm.width;
 		cur.h = wnd.height / wnd.wm.height;
 		wnd.float_dim = cur;
+		wnd.x = 0;
+		wnd.y = 0;
+		move_image(wnd.anchor, wnd.x, wnd.y);
 		wnd:resize(wnd.wm.width, wnd.wm.height, true);
-		move_image(wnd.anchor, 0, 0);
 	end
 end
 
@@ -2243,7 +2246,13 @@ local border_mh = {
 	end,
 	drop = function(ctx)
 		local wnd = ctx.tag;
-		wnd:resize(wnd.width, wnd.height, true);
+		if (wnd.sz_delta) then
+			wnd:resize_effective(
+				wnd.effective_w + (wnd.effective_w % wnd.sz_delta[1]),
+				wnd.effective_h + (wnd.effective_h % wnd.sz_delta[2]), true);
+		else
+			wnd:resize(wnd.width, wnd.height, true);
+		end
 		ctx.tag.in_drag_rz = false;
 	end
 };
