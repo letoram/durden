@@ -132,6 +132,21 @@ The file autorun.lua can also be used to add timers that are set when launched,
 Make sure the syntax is correct because the entire file will be ignored in the
 event of parser errors.
 
+Tools
+====
+The scripts in the tools subfolder are scanned on startup and extend the
+existing feature set. It is the intention to move more advanced features to
+this folder, with the explicit criterion that they should be removable without
+any adverse effects to the rest of the environment.
+
+The included example tools cover:
+
+1. 3dmodel - simple 3D model viewer that can map the contents of another window
+2. autolayouter - a set of strategies for automatically controlling weights and
+   balancing the window tree in tiling mode
+3. dropdown - terminal that is 'always on top' with a dedicated input path that
+   should be more 'safe' to use for privileged operations.
+
 Lockscreen
 ====
 
