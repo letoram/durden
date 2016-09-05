@@ -584,7 +584,6 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 	end
 
 	if (not noanim and time > 0 and method ~= "none") then
-
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0, time);
 		elseif (method == "move-v") then
@@ -1206,6 +1205,11 @@ create_workspace = function(wm, anim)
 		res:set_background(wm.background_name);
 	end
 	res:activate(anim);
+
+	if (gconfig_get("ws_preview")) then
+		local scalef = gconfig_get("ws_preview_scale");
+		res.preview = alloc_surface(scalef * wm.width, scalef * wm.height);
+	end
 	return res;
 end
 
@@ -2614,9 +2618,17 @@ local function tiler_switchws(wm, ind)
 		end
 	end
 
+-- don't switch if we're already selected
 	local cw = wm.selected;
 	if (ind == wm.space_ind) then
 		return;
+	end
+
+-- update local preview
+	if (gconfig_get("ws_preview")) then
+		if (space.preview and valid_vid(space.wm.rtgt_id)) then
+			update_preview(space, space.preview, space.wm.rtgt_id);
+		end
 	end
 
 	local nd = wm.space_ind < ind;
@@ -2994,6 +3006,111 @@ local function tiler_switchbg(wm, newbg)
 	end
 end
 
+-- used when/if we have a RT, calctarget + reduction in size with
+-- w * rel_w, h * rel_h and need some values about the aproximation
+-- of the rendertarget. update and cache calculation when swapping ws.
+--
+-- [want_calc] is set if we want the built-in metrics and / or sample_chains
+-- [rel_w, rel_h] are 0..1 multiplier of the RT contents
+-- [update_rate] sets the amount of ticks between each update for the active
+-- workspace
+-- [sample_chain] is a list of callback functions that should be triggered
+-- on the calctarget callback, to get custom measurements
+--
+local function tiler_estimator(want_calc,
+	rel_w, rel_h, postproc_shader, update_rate, sample_chain)
+end
+
+local function toggle_preview(wm, on, scalef, rate, metrics, shader)
+-- no rendertarget support
+	if (not valid_vid(wm.rtgt_id)) then
+		return;
+	end
+
+-- always reset
+	if (valid_vid(wm.preview)) then
+		for i=1,10 do
+			if (wm.spaces[i] and valid_vid(wm.spaces[i].preview)) then
+				delete_image(wm.spaces[i].preview);
+				wm.spaces[i].preview = nil;
+			end
+		end
+		wm.preview = nil;
+		wm.preview_borders = nil;
+	end
+
+	if (not on) then
+		return;
+	end
+
+-- our backing store, we need to change the update rate on this whenever
+-- there's some overlay that should be included, like the lbar
+	wm.preview = alloc_surface(wm.preview, wm.width * scalef,wm.height * scalef);
+	if (not valid_vid(wm.preview)) then
+		return;
+	end
+
+	local props = image_storage_properties(wm.preview);
+	local tmp = null_surface(props.width, props.height);
+	if (not valid_vid(tmp)) then
+		delete_image(wm.preview);
+		wm.preview = nil;
+		return;
+	end
+
+	show_image(tmp);
+	setup_shader(tmp, "basic", shader);
+	image_sharestorage(wm.rtgt_id, tmp);
+
+-- if we want to track average luminosity and have sample copies of the
+-- border, metrics is set to true. this is used to reduce eyestrain in
+-- setting switch times, backlight magnification factor
+	if (metrics) then
+		define_calctarget(wm.preview, {tmp}, RENDERTARGET_DETACH,
+			RENDERTARGET_NOSCALE, rate,
+			function(img, w, h)
+				local ack_luma = 0;
+				for y=0,h-1 do
+					for x=0,w-1 do
+						local r,g,b = img:get(x, y, 3);
+						local lv = 0.299 * r + 0.587 * g + 0.114 * b;
+						ack_luma = ack_luma + lv;
+					end
+				end
+				local avg_luma = ack_luma / (w * h);
+				wm.preview_border = {{}, {}, {}, {}};
+				local dt = wm.preview_border[1];
+				local db = wm.preview_border[2];
+				for x=0,w-1 do
+					local r,g,b = img:get(x, 0, 3);
+					dt[x * 3 + 1] = r;
+					dt[x * 3 + 2] = g;
+					dt[x * 3 + 3] = b;
+					r,g,b = img:get(x, h-1, 3);
+					db[x * 3 + 1] = r;
+					db[x * 3 + 2] = g;
+					db[x * 3 + 3] = b;
+				end
+				dt = wm.preview_border[3];
+				db = wm.preview_border[4];
+				for y=0,h-1 do
+					local r,g,b = img:get(0, y, 3);
+					dt[y * 3 + 1] = r;
+					dt[y * 3 + 2] = g;
+					dt[y * 3 + 3] = b;
+					r,g,b = img:get(w-1, y, 3);
+					db[y * 3 + 1] = r;
+					db[y * 3 + 2] = g;
+					db[y * 3 + 3] = b;
+				end
+			end
+		);
+	else
+		define_rendertarget(wm.preview,
+			{tmp}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, rate);
+	end
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 
@@ -3043,9 +3160,11 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
+		toggle_preview = toggle_preview,
 
 -- unique event handlers
-		on_wnd_create = function() end
+		on_wnd_create = function() end,
+		on_preview_step = function() end
 	};
 
 	res.font_resfn = function() return tiler_fontres(res); end
@@ -3101,5 +3220,12 @@ function tiler_create(width, height, opts)
 	end
 
 	res:tile_update();
+	if (gconfig_get("ws_preview")) then
+		res:toggle_preview(true, gconfig_get("ws_preview_scale"),
+			gconfig_get("ws_preview_rate"), gconfig_get("ws_preview_metrics"),
+			gconfig_get("ws_preview_shader")
+		);
+	end
+
 	return res;
 end

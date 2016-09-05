@@ -353,7 +353,6 @@ end
 
 function display_set_backlight(name, ctrl, ind)
 	local disp = get_disp(name);
-	print("backlight", name, disp);
 	if (not disp) then
 		return;
 	end
@@ -507,7 +506,7 @@ end
 -- override the default shader setting to packval, that can be expanded
 -- upon display identification and shader setup
 function display_shader_uniform(name, uniform, packval)
-	print("update uniform persistance", name, uniform, packval);
+--	print("update uniform persistance", name, uniform, packval);
 end
 
 function display_shader(name, key)
