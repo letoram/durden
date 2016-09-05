@@ -522,10 +522,14 @@ function durden_iostatus_handler(iotbl)
 	end
 end
 
-function durden_display_state(action, id)
+function durden_display_state(action, id, state)
 	local new_wm = display_event_handler(action, id);
 	if (new_wm) then
 		new_wm.on_wnd_create = wnd_create_handler;
+	end
+
+	if (state and state.ledctrl) then
+		display_set_backlight(id, state.ledctrl, state.ledind);
 	end
 end
 

@@ -119,6 +119,22 @@ local function gen_disp_menu(disp)
 		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
+		name = "backlight",
+		label = "Backlight",
+		kind = "value",
+		hint = "(0..1)",
+		initial = disp.backlight,
+		eval = function() return disp.ledctrl ~= nil; end,
+		validator = function(val)
+			local num = tonumber(val);
+			return num and (num >= 0 and num <= 1.0);
+		end,
+		handler = function(ctx, val)
+			disp.backlight = tonumber(val);
+			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
+		end
+		},
+		{
 		name = "orient",
 		label = "Orientation",
 		kind = "action",
