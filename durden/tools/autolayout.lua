@@ -190,8 +190,6 @@ local function center_focus(space)
 	if (space.selected) then
 		space.selected:deselect();
 	end
-
-	dst:select();
 end
 
 -- return true? then we take responsibility for marking selected and insertion

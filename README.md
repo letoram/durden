@@ -73,27 +73,46 @@ are broken and you will be queried for new ones.
 
 Quick! meta1+enter - now you should get a terminal window.
 
-A big point with durden as a desktop environment is to make minimal distinction
-between static configuration and UI directed reconfiguration. The means for
-changing settings should look and feel 'the same' no matter if it means
-exposing configuration changes to external programs using a pipe- command
-channel, mapping it to an input device, UI element like a button or even a
-timer.
+You should also make sure that meta1+g (unless rebound) gives you access to
+the global menu, and meta1+h gives you access to the target menu (see Bindings
+below).
 
-UI directed configuration is made through global and target menus, accessible
-using meta1+g for global and meta1+t for target (if a window is selected).
+Bindings
+=====
 
-The menus are navigated by default using the arrow keys and enter to select and
-you can filter the list of shown items by typing. meta1+escape to go back one
-level, meta1+select to activate but remain in menu, escape to close down.
+Most features are accessed through the global or target menu. These are not
+just UI elements, but rather two namespaces for activating or configuring UI
+features, and is one of the more powerful parts of durden.
 
-Any path or menu item in the global or target menu can be bound to a
-keycombination, and this is done by going to global/input/bind custom. You will
-be prompted to press the binding you like and then navigate to the menu item
-you want to bind it to. To bind a sub-menu, hold meta1 while selecting.
+Any accessible menu path can be bound to a key, button, UI path, mouse
+gesture, timer -- even external IPC, if one so desires.
 
-It is however also possible to tweak/modify the startup defaults (see
-autorun.lua, keybindings.lua and gconf.lua).
+Underneath the surface, these look something like:
+
+     !config/visual/border=1
+     #video/scaling/normal
+     $!config/visual/border=1\n#video/scaling/normal
+
+the first character indicates namespace (! for global, # for target or
+$ for a compound path). Compond paths are a bit special since they group
+multiple actions together into one ordered sequence, allowing you to make
+'macros'.
+
+Configuration Files
+=====
+
+Although most features can be configured directly into the UI, and is stored
+in the active database, there are also a few files that can be modified for
+more permanent change (as the database can be reset with
+arcan\_db drop\_appl durden - see the Database section further below)
+
+These files are:
+
+    autorun.lua -- run once on startup
+    keybindings.lua -- default meta+sym to path mapping
+    gconf.lua -- trim parameters
+
+Along with the 'device maps' covered below.
 
 Device Maps
 =====
@@ -446,7 +465,6 @@ are being implemented, we have the following list:
   - [ ] Visual Privilege Level Indicator
   - [x] Configure/Disable external connections
   - [x] Limit subsurfaces per window
-  - [ ] Privilege Level indication
   - [x] Ratelimit external connections
   - [x] Cap external windows
   - [x] Trusted input path on high-privilege window

@@ -71,6 +71,19 @@ function grab_shared_function(funname)
 	end
 end
 
+-- sym contains multiple symbols embedded, with linefeed as a separator
+local function dispatch_multi(sym, arg, ext)
+	local last_i = 2;
+	local len = string.len(sym, arg, ext);
+	for i=2,len do
+		if ((string.sub(sym, i, i) == '\n' or i == len) and
+			i ~= last_i) then
+			dispatch_symbol(string.sub(sym, last_i, i), arg, ext);
+			last_i = i;
+		end
+	end
+end
+
 function dispatch_symbol(sym, arg, ext)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
@@ -87,6 +100,8 @@ function dispatch_symbol(sym, arg, ext)
 		launch_menu_path(active_display(), sf["target_actions"],
 			string.sub(sym, 2), nil, "#");
 		return;
+	elseif (ch == "$") then
+		dispatch_multi(sym, arg, ext);
 	end
 
 	if (sf[sym] and ms) then

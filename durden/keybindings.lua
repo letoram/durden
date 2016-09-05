@@ -202,8 +202,11 @@ function dispatch_list()
 	return res;
 end
 
-function dispatch_custom(key, val, nomb, wnd, global, falling)
+function dispatch_custom(key, val, nomb, wnd, global, falling, append)
 	if (falling) then
+		if (nomb) then
+			dispatch_custom(key, val, true, wnd, global, false);
+		end
 		key = "f_" .. key;
 	end
 
