@@ -816,8 +816,9 @@ function display_share(disp, args, recfn)
 	else
 -- this one can't handle resolution switching and we ignore audio for the
 -- time being or we'd need to do a lot of attachment tracking
-		disp.share_slot = alloc_surface(disp.w, disp.h, true);
-		local indir = null_surface(disp.w, disp.h);
+		local isp = image_storage_properties(disp.rt);
+		disp.share_slot = alloc_surface(isp.width, isp.height, true);
+		local indir = null_surface(isp.width, isp.height);
 		show_image(indir);
 		image_sharestorage(disp.rt, indir);
 		define_recordtarget(disp.share_slot,
