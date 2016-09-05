@@ -27,10 +27,13 @@ end
 local function get_disp(name)
 	local found, foundi;
 	for k,v in ipairs(displays) do
-		if (v.name == name) then
+		if (type(name) == "string" and v.name == name) then
 			found = v;
 			foundi = k;
 			break;
+		elseif (type(name) == "number" and v.id == name) then
+			found = v;
+			foundi = k;
 		end
 	end
 	return found, foundi;
@@ -346,6 +349,26 @@ local function get_name(id)
 			"monitor %d resolved to %s, serial %s\n", id, model, serial));
 	end
 	return name;
+end
+
+function display_set_backlight(name, ctrl, ind)
+	local disp = get_disp(name);
+	print("backlight", name, disp);
+	if (not disp) then
+		return;
+	end
+
+	if not (ctrl and ctrl >= 0 and ind and ind >= 0) then
+		disp.ledctrl = nil;
+		disp.ledid = nil;
+		return;
+	end
+
+	disp.backlight = 1.0;
+	disp.ledctrl = ctrl;
+	disp.ledid = ind;
+
+	led_intensity(ctrl, ind, 255.0 * disp.backlight);
 end
 
 function display_event_handler(action, id)

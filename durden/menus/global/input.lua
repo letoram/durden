@@ -461,12 +461,6 @@ local keyb_menu = {
 
 local bind_menu = {
 	{
-		name = "basic",
-		kind = "action",
-		label = "Basic",
-		handler = grab_global_function("rebind_basic")
-	},
-	{
 		name = "custom",
 		kind = "action",
 		label = "Custom",
@@ -479,17 +473,23 @@ local bind_menu = {
 		handler = grab_global_function("bind_custom_falling")
 	},
 	{
+		name = "unbind",
+		kind = "action",
+		label = "Unbind",
+		handler = grab_global_function("unbind_combo")
+	},
+	{
 		name = "meta",
 		kind = "action",
 		label = "Meta",
 		handler = grab_global_function("rebind_meta")
 	},
 	{
-		name = "unbind",
+		name = "basic",
 		kind = "action",
-		label = "Unbind",
-		handler = grab_global_function("unbind_combo")
-	},
+		label = "Basic",
+		handler = grab_global_function("rebind_basic")
+	}
 };
 
 return {
