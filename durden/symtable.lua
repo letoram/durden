@@ -639,9 +639,15 @@ symtable.store_translation = function(tbl)
 end
 
 local function tryload(km)
-	local res = system_load("keymaps/" .. km, 0);
+	local kmp = "devmaps/keyboard/" .. km;
+	if (not resource(kmp)) then
+		warning("couldn't locate keymap (devmaps/keyboard/): " .. km);
+		return;
+	end
+
+	local res = system_load(kmp, 0);
 	if (not res) then
-		warning("parsing error loading keymap: " .. km);
+		warning("parsing error loading keymap (devmaps/keyboard/): " .. km);
 		return;
 	end
 
