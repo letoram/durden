@@ -20,7 +20,6 @@
 -- good cases to try it out with is DS "second screen" touch input
 -- and some vectorizer -> chinese OCR style input
 --
-
 local devices = {};
 local profiles = {};
 local classifiers = {};

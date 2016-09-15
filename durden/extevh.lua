@@ -39,36 +39,25 @@ local function cursor_handler(wnd, source, status)
 end
 
 local function default_reqh(wnd, source, ev)
-	local normal = {"lightweight arcan",
-		"multimedia", "game", "vm", "application", "remoting", "browser"};
+	local normal = {"lwa", "multimedia", "game", "vm",
+		"application", "remoting", "browser"};
 
--- we have a different default handler for these or else we could have
--- wnd_subseg->req[icon] icon_subseg->req[icon] etc.
-
-	local blacklist = {
-		"hmd-l", "sensor", "hmd-r", "hmd-sbs-lr", "encoder",
-		"accessibility"
-	};
-
-	if (blacklist[ev.segkind]) then
+-- something that should map to a new / normal window?
+	if (table.find_i(normal, ev.segkind)) then
+		accept_target(function(source, status)
+			print(status.kind);
+		end);
 		return;
 	end
 
-	if (normal[ev.segkind]) then
-		accept_target(source, default_handler);
-		target_updatehandler(source, default_handler);
-		return;
-	end
-
+-- special handling, cursor etc.
 	if (ev.segkind == "titlebar") then
 		if (valid_vid(wnd.titlebar_id)) then
 			delete_image(wnd.titlebar_id);
 		end
-		local props = image_surface_properties(wnd.titlebar);
-		wnd.titlebar_id = accept_target(props.width, props.height);
-		target_updatehandler(wnd.titlebar_id, function() end);
+		wnd.titlebar_id = accept_target(function() end);
 		link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
-		image_sharestorage(wnd.titlebar_id, wnd.titlebar);
+		image_sharestorage(wnd.titlebar_id, wnd.titlebar.anchor);
 		return;
 	elseif (ev.segkind == "cursor") then
 		if (valid_vid(wnd.cursor_id)) then
@@ -91,6 +80,7 @@ local function default_reqh(wnd, source, ev)
 	elseif (ev.segkind == "icon") then
 -- reject for now, can later be used for status icon and for hint
 	end
+	print("reject request for ", ev.segkind);
 end
 
 function extevh_clipboard(wnd, source, status)
@@ -288,6 +278,7 @@ end
 
 defhtbl["segment_request"] =
 function(wnd, source, stat)
+	print("got segment request:", wnd, source, stat.segkind);
 -- eval based on requested subtype etc. if needed
 	if (stat.segkind == "clipboard") then
 		if (wnd.clipboard ~= nil) then

@@ -74,6 +74,10 @@ local mouse_handlers = {
 	rclick = {}
 };
 
+MOUSE_LABELLUT = {
+"left", "right", "middle", "wheel y+", "wheel y-", "wheel x+", "wheel -"
+};
+
 -- convention established mapping for forwarding to game/terminal/...
 MOUSE_LBUTTON = 1;
 MOUSE_RBUTTON = 2;
@@ -136,7 +140,7 @@ for i=1,255 do
 	mstate.btns_remap[i] = i;
 	mstate.btns[i] = false;
 	mstate.btns_clock[i] = CLOCK;
-	mstate.btns_bounce = 0;
+	mstate.btns_bounce[i] = 0;
 end
 
 mstate.btns_remap[256] = MOUSE_WHEELPY;
@@ -667,6 +671,17 @@ end
 function mouse_button_input(ind, active)
 	ind = mstate.btns_remap[ind];
 	if (not ind or mstate.btns[ind] == active) then
+		return;
+	end
+
+-- reject on debounce protection
+	if (active and mstate.btns_bounce[ind] > 0 and
+		CLOCK - mstate.btns_clock[ind] < mstate.btns_bounce[ind]) then
+		return;
+	end
+
+-- protect against shadow releases
+	if (mstate.btns[ind] == active) then
 		return;
 	end
 
