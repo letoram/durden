@@ -1693,19 +1693,17 @@ local function wnd_move(wnd, dx, dy, align, abs)
 	end
 
 	if (align) then
-		local pos = image_surface_properties(wnd.anchor);
-		pos.x = pos.x + dx;
-		pos.y = pos.y + dy;
+		wnd.x = wnd.x + dx;
+		wnd.y = wnd.y + dy;
 		if (dx ~= 0) then
-			pos.x = pos.x + (dx + -1 * dx) * math.fmod(pos.x, math.abs(dx));
+			wnd.x = wnd.x + (dx + -1 * dx) * math.fmod(wnd.x, math.abs(dx));
 		end
 		if (dy ~= 0) then
-			pos.y = pos.y + (dy + -1 * dy) * math.fmod(pos.y, math.abs(dy));
+			wnd.y = wnd.y + (dy + -1 * dy) * math.fmod(wnd.y, math.abs(dy));
 		end
-		pos.x = pos.x < 0 and 0 or pos.x;
-		pos.y = pos.y < 0 and 0 or pos.y;
-
-		move_image(wnd.anchor, pos.x, pos.y);
+		wnd.x = wnd.x < 0 and 0 or wnd.x;
+		wnd.y = wnd.y < 0 and 0 or wnd.y;
+		move_image(wnd.anchor, wnd.x, wnd.y);
 	else
 		nudge_image(wnd.anchor, dx, dy);
 	end

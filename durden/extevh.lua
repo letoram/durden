@@ -45,7 +45,6 @@ local function default_reqh(wnd, source, ev)
 -- something that should map to a new / normal window?
 	if (table.find_i(normal, ev.segkind)) then
 		accept_target(function(source, status)
-			print(status.kind);
 		end);
 		return;
 	end
@@ -80,7 +79,6 @@ local function default_reqh(wnd, source, ev)
 	elseif (ev.segkind == "icon") then
 -- reject for now, can later be used for status icon and for hint
 	end
-	print("reject request for ", ev.segkind);
 end
 
 function extevh_clipboard(wnd, source, status)
@@ -278,7 +276,6 @@ end
 
 defhtbl["segment_request"] =
 function(wnd, source, stat)
-	print("got segment request:", wnd, source, stat.segkind);
 -- eval based on requested subtype etc. if needed
 	if (stat.segkind == "clipboard") then
 		if (wnd.clipboard ~= nil) then
