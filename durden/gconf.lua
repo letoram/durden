@@ -156,6 +156,7 @@ local defaults = {
 
 -- used for keyboard- move step size in float mode
 	float_tile_sz = {16, 16},
+	float_tbar_override = false,
 
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different

@@ -96,6 +96,42 @@ local moverz_menu = {
 	handler = function(ctx, val)
 		active_display().selected:move(0, tonumber(val), true);
 	end
+},
+{
+	name = "x",
+	label = "Set(X)",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	initial = function(val)
+		return tostring(image_surface_properties(
+			active_display().selected.anchor).x);
+	end,
+	validator = function(val) return tonumber(val) ~= nil; end,
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		wnd:move(tonumber(val),
+			image_surface_properties(wnd.anchor).y, false, true);
+	end
+},
+{
+	name = "y",
+	label = "Set(Y)",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	initial = function(val)
+		return tostring(image_surface_properties(
+			active_display().selected.anchor).y);
+	end,
+	validator = function(val) return tonumber(val) ~= nil; end,
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		wnd:move(image_surface_properties(wnd.anchor).x,
+			tonumber(val), false, true);
+	end
 }
 };
 

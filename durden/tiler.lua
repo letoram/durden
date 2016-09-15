@@ -31,7 +31,8 @@ local function linearize(wnd)
 end
 
 local function tbar_mode(mode)
-	return mode == "tile";
+	return mode == "tile" or
+		(mode == "float" and not gconfig_get("float_tbar_override"));
 end
 
 local function tbar_geth(wnd)
@@ -1681,8 +1682,13 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 end
 
-local function wnd_move(wnd, dx, dy, align)
+local function wnd_move(wnd, dx, dy, align, abs)
 	if (wnd.space.mode ~= "float") then
+		return;
+	end
+
+	if (abs) then
+		move_image(wnd.anchor, dx, dy);
 		return;
 	end
 
