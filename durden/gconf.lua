@@ -144,6 +144,16 @@ local defaults = {
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
 
+-- > 0, the minimum clock-delta before a button is accepted again
+	mouse_debounce_1 = 0,
+	mouse_debounce_2 = 0,
+	mouse_debounce_3 = 0,
+	mouse_debounce_4 = 0,
+	mouse_debounce_5 = 0,
+	mouse_debounce_6 = 0,
+	mouse_debounce_7 = 0,
+	mouse_debounce_8 = 0,
+
 -- used for keyboard- move step size in float mode
 	float_tile_sz = {16, 16},
 
@@ -322,6 +332,9 @@ local function gconfig_setup()
 	ms.hover_ticks = defaults.mouse_hovertime;
 	ms.drag_delta = defaults.mouse_dragdelta;
 	ms.hide_base = defaults.mouse_hidetime;
+	for i=1,8 do
+		ms.btns_bounce[i] = defaults["mouse_debounce_" .. tostring(i)];
+	end
 end
 
 -- shouldn't store all of default overrides in database, just from a

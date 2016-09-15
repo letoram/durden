@@ -376,9 +376,9 @@ are being implemented, we have the following list:
     - [x] Follows Selection
     - [x] Lock to Window
     - [x] Autohide / Reveal
-    - [ ] Button Reordering
+    - [x] Button Reordering
     - [ ] Meta+Click Binding
-    - [ ] Debounce
+    - [x] Debounce
     - [ ] Abstract Gesture Training
   - [x] Per/Window Keyremapping
   - [ ] Macros

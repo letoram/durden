@@ -1,10 +1,10 @@
 local function gen_mbutton_menu()
 	local res = {};
-	for i=1,5 do
+	for i=1,7 do
 		table.insert(res, {
 			name = tostring(i),
 			kind = "action",
-			label = tostring(i),
+			label = MOUSE_LABELLUT[i] and MOUSE_LABELLUT[i] or tostring(i),
 			handler = function()
 				mouse_button_input(i, true);
 				mouse_button_input(i, false);
@@ -13,6 +13,61 @@ local function gen_mbutton_menu()
 	end
 	return res;
 end
+
+local function gen_mbounce_menu()
+	local res = {};
+	for i=1,7 do
+		table.insert(res, {
+			name = tostring(i),
+			kind = "value",
+			label = MOUSE_LABELLUT[i] and MOUSE_LABELLUT[i] or tostring(i),
+			hint = string.format("(%d Hz ticks, 0: disable)", CLOCKRATE),
+			initial = tostring(mouse_state().btns_bounce[i]),
+			validator = gen_valid_num(0, 100),
+			handler = function(ctx, val)
+				gconfig_set("mouse_debounce_" .. tostring(i), tonumber(val));
+				mouse_state().btns_bounce[i] = tonumber(val);
+			end
+		});
+	end
+	return res;
+end
+
+local remap_menu = {
+	{
+		name = "remap_123",
+		kind = "action",
+		label = "Left(1),Middle(2),Right(3)",
+		handler = function()
+			local mstate = mouse_state();
+			mstate.btns_remap[1] = 1;
+			mstate.btns_remap[2] = 2;
+			mstate.btns_remap[3] = 3;
+		end
+	},
+	{
+		name = "remap_321",
+		kind = "action",
+		label = "Right(1),Middle(2),Left(3)",
+		handler = function()
+			local mstate = mouse_state();
+			mstate.btns_remap[1] = 3;
+			mstate.btns_remap[2] = 2;
+			mstate.btns_remap[3] = 1;
+		end
+	},
+	{
+		name = "remap_132",
+		kind = "action",
+		label = "Left(1),Right(2),Middle(3)",
+		handler = function()
+			local mstate = mouse_state();
+			mstate.btns_remap[1] = 1;
+			mstate.btns_remap[2] = 3;
+			mstate.btns_remap[3] = 2;
+		end
+	},
+};
 
 local mouse_menu = {
 	{
@@ -65,7 +120,21 @@ local mouse_menu = {
 		label = "Button",
 		submenu = true,
 		kind = "action",
-		handler = gen_mbutton_menu(),
+		handler = gen_mbutton_menu,
+	},
+	{
+		name = "debounce",
+		label = "Debounce",
+		submenu = true,
+		kind = "action",
+		handler = gen_mbounce_menu
+	},
+	{
+		name = "reorder",
+		label = "Reorder",
+		submenu = true,
+		kind = "action",
+		handler = remap_menu
 	},
 	{
 		name = "save_pos",
