@@ -1,4 +1,4 @@
-function spawn_terminal(cmd, nolaunch)
+function spawn_terminal(cmd, nolaunch, group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
@@ -363,5 +363,18 @@ end
 		return tgt ~= nil and #tgt > 0;
 	end,
 	handler = target_submenu
+},
+{
+	name = "terminal_group",
+	label = "Terminal(Group)",
+	kind = "value",
+	hint = "(append arguments)",
+	default = "",
+	eval = function()
+		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+	end,
+	handler = function(ctx, val)
+		spawn_terminal(val, false, true);
+	end
 }
 };

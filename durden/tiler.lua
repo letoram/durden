@@ -2409,6 +2409,18 @@ local function wnd_ws_attach(res)
 	return res;
 end
 
+local function wnd_inputtable(wnd, iotbl, multicast)
+	if valid_vid(wnd.external) then
+		target_input(wnd.external, iotbl);
+	end
+
+	if (multicast or wnd.multicast) then
+		for i,v in ipairs(wnd.children) do
+			wnd_inputtable(v, iotbl, true);
+		end
+	end
+end
+
 -- build an orphaned window that isn't connected to a real workspace yet,
 -- but with all the expected members setup-up and in place. This means that
 -- some operations will be no-ops and the window will not appear in normal
@@ -2509,7 +2521,8 @@ local wnd_setup = function(wm, source, opts)
 		merge = wnd_merge,
 		collapse = wnd_collapse,
 		prev = wnd_prev,
-		move =wnd_move,
+		move = wnd_move,
+		input_table = wnd_inputtable,
 		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
 		swap = wnd_swap,

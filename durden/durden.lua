@@ -608,8 +608,9 @@ function durden_normal_input(iotbl, fromim)
 --			iotbl.devid, iotbl.subid, iotbl.active and "press" or "release"));
 --	end
 
--- when in doubt, just forward to the window
-	target_input(sel.external, iotbl);
+-- when in doubt, just forward to the window, it will take care of
+-- multicast groups etc.
+	sel:input_table(iotbl);
 end
 
 -- special case: (UP, DOWN, LEFT, RIGHT + mouse motion is mapped to
@@ -685,6 +686,8 @@ function durden_shutdown()
 	gconfig_shutdown();
 end
 
+-- we ignore multicast for mouse, so target_input rather than input_table
+-- works fine here and elsewhere
 local function flush_pending()
 	for k,v in pairs(EVENT_SYNCH) do
 		if (valid_vid(v.target)) then
