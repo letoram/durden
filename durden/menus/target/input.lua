@@ -12,9 +12,9 @@ local function run_input_label(wnd, v)
 		subid = 8
 	};
 
-	target_input(wnd.external, iotbl);
+	wnd:input_table(iotbl);
 	iotbl.active = false;
-	target_input(wnd.external, iotbl);
+	wnd:input_table(iotbl);
 end
 
 local function build_labelmenu()
@@ -163,7 +163,7 @@ local kbd_menu = {
 		handler = function(ctx, num)
 			iostatem_repeat(nil, tonumber(num));
 		end
-	},
+	}
 };
 
 local function mouse_lockfun(rx, ry, x, y, wnd, ind, act)
@@ -261,5 +261,21 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = mouse_menu
+	},
+	{
+		name = "multicast",
+		label = "Multicast",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return active_display().selected.multicast and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			if (val == LBL_YES) then
+				active_display().selected.multicast = true;
+			else
+				active_display().selected.multicast = false;
+			end
+		end
 	}
 };

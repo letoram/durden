@@ -361,6 +361,7 @@ are being implemented, we have the following list:
   - [ ] Keyboard/Game Device Mouse Emulation
   - [x] Configurable/Per Window Keyboard Repeat
   - [ ] Keyboard repeat rampup over time (reset on release)
+  - [x] Multicast Groups
   - [x] 'Sticky' Meta (meta press state persist n ticks)
   - [ ] Float Layout
     - [x] Drag Reposition/Resize in Float
