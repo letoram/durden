@@ -95,7 +95,7 @@ function durden(argv)
 -- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
-		eval_respawn(true);
+		eval_respawn(true, cp);
 	end
 
 -- add hooks for changes to all default  font properties
@@ -421,9 +421,10 @@ function durden_new_connection(source, status)
 	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
 		gconfig_get("extcon_startdelay")) then
 		timer_add_periodic("extcon_activation",
-			gconfig_get("extcon_rlimit"), true, eval_respawn, true);
+			gconfig_get("extcon_rlimit"), true,
+			function() eval_respawn(false, status.key); end, true);
 	else
-		eval_respawn(true);
+		eval_respawn(true, gconfig_get("extcon_path"));
 	end
 
 -- switch attachment immediately to new display
@@ -451,7 +452,7 @@ function durden_new_connection(source, status)
 	end
 end
 
-eval_respawn = function(manual)
+eval_respawn = function(manual, path)
 	local lim = gconfig_get("extcon_wndlimit");
 	local period = gconfig_get("extcon_rlimit");
 	local count = 0;
@@ -463,19 +464,19 @@ eval_respawn = function(manual)
 -- if it's not the time to allow more connection, schedule a hidden
 -- one-fire timer that re-runs this function
 	if ((lim > 0 and count > lim) and not manual) then
-		timer_add_periodic("extcon_activation", period, true, eval_respawn, true);
+		timer_add_periodic("extcon_activation", period, true,
+			function() eval_respawn(false, path); end, true);
 		return;
 	end
 
-	INCOMING_ENDPOINT = target_alloc(
-		gconfig_get("extcon_path"), durden_new_connection);
+	INCOMING_ENDPOINT = target_alloc(path, durden_new_connection);
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
 		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
 -- OOM, retry later
 	else
 		timer_add_periodic("excon_reset", 100, true,
-			function() eval_respawn(true); end, true);
+			function() eval_respawn(true, path); end, true);
 	end
 end
 
