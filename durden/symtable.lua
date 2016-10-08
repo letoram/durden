@@ -639,15 +639,15 @@ symtable.store_translation = function(tbl)
 end
 
 local function tryload(km)
-	local kmp = "devmaps/keyboard/" .. km;
+	local kmp = GLOBPATH .. km;
 	if (not resource(kmp)) then
-		warning("couldn't locate keymap (devmaps/keyboard/): " .. km);
+		warning("couldn't locate keymap (" .. GLOBPATH .. "): " .. km);
 		return;
 	end
 
 	local res = system_load(kmp, 0);
 	if (not res) then
-		warning("parsing error loading keymap (devmaps/keyboard/): " .. km);
+		warning("parsing error loading keymap (" .. GLOBPATH .. "): " .. km);
 		return;
 	end
 
@@ -694,8 +694,6 @@ symtable.load_keymap = function(tbl, km)
 			symtable.symlut = res.symmap and res.symmap or {};
 			return true;
 		end
-	else
-		warning(string.format("failed to load keymap: %s", km));
 	end
 
 	return false;
@@ -722,7 +720,7 @@ end
 -- file (ignore the overlay)
 symtable.save_keymap = function(tbl, name)
 	assert(name and type(name) == "string" and string.len(name) > 0);
-	local dst = "/devmaps/keyboard/" .. name .. ".lua";
+	local dst = GLOBPATH .. name .. ".lua";
 	if (resource(dst,SYMTABLE_DOMAIN)) then
 		zap_resource(dst);
 	end

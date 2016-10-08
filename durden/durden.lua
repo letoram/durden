@@ -76,6 +76,7 @@ function durden(argv)
 
 	SYMTABLE = system_load("symtable.lua")();
 	SYMTABLE:load_translation();
+	SYMTABLE:load_keymap("default.lua");
 
 	if (gconfig_get("mouse_hardlock")) then
 		toggle_mouse_grab(MOUSE_GRABON);
