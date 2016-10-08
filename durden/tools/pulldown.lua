@@ -24,7 +24,7 @@ gconfig_register("dt_opa", 0.8);
 local function set_font()
 	local tbl = {gconfig_get("term_font")};
 	local fbf = gconfig_get("font_fb");
-	if (not resource(font, SYS_FONT_RESOURCE)) then
+	if (not resource(tbl[1], SYS_FONT_RESOURCE)) then
 		return;
 	end
 
