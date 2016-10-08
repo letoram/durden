@@ -225,7 +225,7 @@ local function list_keymaps()
 			name = "map_" .. tostring(k),
 			kind = "action",
 			label = v,
-			handler = function() SYMTABLE:load_keymap(v); end
+			handler = function() SYMTABLE:load_keymap(v .. ".lua"); end
 		});
 	end
 	return kmm;
