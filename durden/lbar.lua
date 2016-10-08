@@ -377,8 +377,10 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 		end
 
 		if ((sym == ictx.step_n or sym == ictx.step_p)) then
-			ictx.inp.csel = (sym == ictx.step_n) and
-				(ictx.inp.csel+1) or (ictx.inp.csel-1);
+			if (ictx.inp and ictx.inp.csel) then
+				ictx.inp.csel = (sym == ictx.step_n) and
+					(ictx.inp.csel+1) or (ictx.inp.csel-1);
+			end
 			update_completion_set(wm, ictx, ictx.inp.set);
 			return;
 		end
