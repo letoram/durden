@@ -143,7 +143,12 @@ end
 
 local function run_display_action(disp, cb)
 	local save = displays.main;
-	set_context_attachment(disp.rt);
+
+	if (type(disp) == "number") then
+		set_context_attachment(disp);
+	else
+		set_context_attachment(disp.rt);
+	end
 	cb();
 	set_context_attachment(displays[save].rt);
 end
