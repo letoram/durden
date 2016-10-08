@@ -21,7 +21,7 @@
 
 -- modify to use other namespace
 local SYMTABLE_DOMAIN = APPL_RESOURCE;
-local GLOBPATH = "devmaps/keyboard/*.lua";
+local GLOBPATH = "devmaps/keyboard/";
 
 -- for legacy reasons, we provide an sdl compatible symtable
 local symtable = {};
@@ -671,7 +671,7 @@ end
 
 symtable.list_keymaps = function(tbl, cached)
 	local res = {};
-	local list = glob_resource(GLOBPATH, SYMTABLE_DOMAIN);
+	local list = glob_resource(GLOBPATH .. "*.lua", SYMTABLE_DOMAIN);
 
 	if (list and #list > 0) then
 		for k,v in ipairs(list) do
@@ -687,13 +687,15 @@ symtable.list_keymaps = function(tbl, cached)
 end
 
 symtable.load_keymap = function(tbl, km)
-	if (resource("keymaps/" .. km, SYMTABLE_DOMAIN)) then
+	if (resource(GLOBPATH .. km, SYMTABLE_DOMAIN)) then
 		local res = tryload(km);
 		if (tryload(km)) then
 			symtable.keymap = res;
 			symtable.symlut = res.symmap and res.symmap or {};
 			return true;
 		end
+	else
+		warning(string.format("failed to load keymap: %s", km));
 	end
 
 	return false;
