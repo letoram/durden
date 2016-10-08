@@ -85,6 +85,25 @@ function(id, newv)
 	end
 end);
 
+--
+-- internal launch terminals already got the fonts etc. sent
+-- during setup, here it is deferred until we get the actual
+-- registration
+--
+res.init = function(res, wnd, source)
+	if (wnd.external_connection) then
+		wnd.font_block = false;
+		local tbl = {gconfig_get("term_font")};
+		local fbf = gconfig_get("font_fb");
+		if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
+			tbl[2] = fbf;
+		end
+		wnd:update_font(gconfig_get("term_font_sz"),
+			gconfig_get("term_font_hint"), tbl);
+		wnd.font_block = true;
+	end
+end
+
 res.labels["LEFT"] = "LEFT";
 res.labels["UP"] = "UP";
 res.labels["DOWN"] = "DOWN";
