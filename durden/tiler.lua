@@ -74,6 +74,15 @@ local function wnd_destroy(wnd)
 		return;
 	end
 
+-- need a local copy since the destroy will modify the table
+	local list = {};
+	for i,v in ipairs(wnd.dependents) do
+		list[i] = v;
+	end
+	for i,v in ipairs(list) do
+		v:destroy();
+	end
+
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
 		wm.deactivated.wnd = nil;
 	end
@@ -2421,6 +2430,21 @@ local function wnd_inputtable(wnd, iotbl, multicast)
 	end
 end
 
+--
+-- very special kind of window, it should occupy the same size,
+-- position as the dst but be tied together lifespan, block a number
+-- of menu operations (reassign, etc.)
+--
+local function wnd_forcedep(src, dst)
+	src.parent = dst;
+	src.space = dst.space;
+	src.dependent = true;
+	dst:add_handler("resize", function() end);
+	dst:add_handler("move", function() end);
+
+-- all that uses selected.children and selected.parent matter
+end
+
 -- build an orphaned window that isn't connected to a real workspace yet,
 -- but with all the expected members setup-up and in place. This means that
 -- some operations will be no-ops and the window will not appear in normal
@@ -2442,6 +2466,11 @@ local wnd_setup = function(wm, source, opts)
 -- specific event / keysym bindings
 		labels = {},
 		dispatch = {},
+
+-- dependent subwindows, these are by default hidden and share the same
+-- confines / attachments as the main window (and thus receives the same hints)
+-- but can be swapped / cycled
+		dependents = {},
 
 -- register:able event handlers to relate one window to another
 		relatives = {},
@@ -2504,11 +2533,13 @@ local wnd_setup = function(wm, source, opts)
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
 		add_overlay = wnd_overlay,
+		add_dependent = wnd_dependent,
 		toggle_overlay = wnd_overlay_toggle,
 		delete_overlay = wnd_overlay_delete,
 		synch_overlays = synch_olay_meta,
 		rebuild_border = wnd_rebuild,
 		toggle_maximize = wnd_toggle_maximize,
+		make_dependent = wnd_forcedep,
 		to_front = wnd_tofront,
 		update_font = wnd_font,
 		resize = wnd_resize,
@@ -2597,6 +2628,8 @@ local function wnd_create(wm, source, opts)
 	if (res) then
 		res:ws_attach();
 	end
+-- only valid for a hidden window
+	res.make_dependent = nil;
 	return res;
 end
 
@@ -2976,6 +3009,8 @@ end
 -- window sizes etc.
 local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
+	wm.disptbl = disptbl;
+
 	recalc_fsz(wm);
 	wm:rebuild_border();
 
@@ -3170,6 +3205,7 @@ function tiler_create(width, height, opts)
 		deactivate = tiler_deactivate,
 		set_rendertarget = tiler_rendertarget,
 		add_window = wnd_create,
+		add_hidden_window = wnd_setup,
 		find_window = tiler_find,
 		message = tiler_message,
 		resize = tiler_resize,
