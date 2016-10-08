@@ -439,6 +439,9 @@ function durden_new_connection(source, status)
 		delete_image(source);
 	else
 		extcon_wndcnt = extcon_wndcnt + 1;
+		if (extevh_intercept(status.key, source)) then
+			return;
+		end
 		local wnd = durden_launch(source, "", "external", nil, "external");
 -- tell the new connection where to go in the event of a crash
 		durden_devicehint(source);
@@ -449,6 +452,12 @@ function durden_new_connection(source, status)
 				end
 			);
 		end
+		target_displayhint(source,
+			wnd.max_w - wnd.pad_left - wnd.pad_right,
+			wnd.max_h - wnd.pad_top - wnd.pad_bottom,
+			wnd.dispmask, wnd.wm.disptbl);
+
+		wnd.external_connection = true;
 	end
 end
 

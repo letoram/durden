@@ -1,3 +1,42 @@
+
+-- slightly more involved since we want to create a hidden window (so
+-- still indexable etc.) without causing any relayouting and have it
+-- attached to the right tiler
+local function group_attach(wnd, source)
+	local ddisp = nil;
+	local adisp = nil;
+
+-- problem one: we need the display the window is on, not the wm
+	for d in all_displays_iter() do
+		local wnd = d.tiler:find_window(wnd.canvas);
+		if (wnd) then
+			ddisp = d;
+		end
+		if (not d.tiler.deactivated) then
+			adisp = d;
+		end
+	end
+
+-- should never happen, but safeguard
+	if (not ddisp or not adisp) then
+		warning("group_attach on wnd without tiler");
+		delete_image(source);
+		return;
+	end
+
+-- now we can fake default attachment to..
+	print(debug.traceback());
+	rendertarget_attach(ddisp.rt, source, RENDERTARGET_DETACH);
+	set_context_attachment(ddisp.rt);
+	local newwnd = wnd.wm:add_hidden_window(source);
+	table.insert(wnd.dependents, newwnd);
+	set_context_attachment(adisp.rt);
+
+-- need to subscribe to events in the parent when it comes to resize, ...
+-- and remove those should we disappear
+	newwnd:make_dependent(wnd);
+end
+
 function spawn_terminal(cmd, nolaunch, group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
@@ -8,6 +47,15 @@ function spawn_terminal(cmd, nolaunch, group)
 -- an initial 'flash' before background etc. is applied, we preset one.
 	local wnd;
 	local prepend = "";
+
+-- We want a new connection group that is bound to the lifespan and window
+-- properties of the terminal. This is done with a separate connection path
+-- that shares the same external- limiters as others, but we differentiate
+-- on the path and use that to tie to a window
+	if (group) then
+		cp = group;
+		target_alloc(cp, durden_new_connection);
+	end
 
 	if (not nolaunch) then
 		wnd = durden_prelaunch();
@@ -49,6 +97,17 @@ function spawn_terminal(cmd, nolaunch, group)
 		image_tracetag(vid, "terminal");
 		durden_launch(vid, "", "terminal", wnd);
 		durden_devicehint(vid);
+
+-- second part of setting up a group, we need to register the path
+-- (and deregister on destroy) so we can intercept the window creation
+		if (group) then
+			extevh_intercept(group, function(source)
+				group_attach(wnd, source);
+			end, true);
+			wnd:add_handler("destroy", function()
+				extevh_intercept(group, nil, true);
+			end, true);
+		end
 
 		extevh_default(vid, {
 			kind = "registered", segkind = "terminal", title = "", guid = 1});
@@ -371,10 +430,15 @@ end
 	hint = "(append arguments)",
 	default = "",
 	eval = function()
-		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+		return false;
+--		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 	end,
 	handler = function(ctx, val)
-		spawn_terminal(val, false, true);
+		local str = "durden_term_";
+		for i=1,8 do
+			str = str .. string.char(string.byte("a") + math.random(1,26));
+		end
+		spawn_terminal(val, false, str);
 	end
 }
 };
