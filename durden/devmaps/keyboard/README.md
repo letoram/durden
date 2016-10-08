@@ -1,6 +1,9 @@
 Keyboard Maps
 =======
 
+Initially, durden always tries to load the keymap with the name
+'default' (if such a map exists)
+
 These device configurations files are simply lua scripts that will be
 scanned once upon startup. Each is a keymap that can be loaded manually
 or bound to a normal meta+key-press combination. The actual format is
