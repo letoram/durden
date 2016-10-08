@@ -298,7 +298,6 @@ function allowed_commands(cmd)
 		return false;
 	end
 
-	print("check", cmd, gconfig_get("whitelist"));
 	local rv = string.split(cmd, "=")[1];
 	return gconfig_get("whitelist") == false or
 		allowed[cmd];
