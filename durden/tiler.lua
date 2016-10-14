@@ -1309,6 +1309,11 @@ local function wnd_effective_resize(wnd, neww, newh, force)
 		newh + wnd.pad_top + wnd.pad_bottom, force);
 end
 
+local lfh = target_fonthint;
+target_fonthint = function(id, fn, sz, hint, app)
+	lfh(id, fn, sz, hint, app);
+end
+
 local function wnd_font(wnd, sz, hint, font)
 	if (wnd.font_block) then
 		if (type(wnd.font_block) == "function") then

@@ -25,7 +25,6 @@ local function group_attach(wnd, source)
 	end
 
 -- now we can fake default attachment to..
-	print(debug.traceback());
 	rendertarget_attach(ddisp.rt, source, RENDERTARGET_DETACH);
 	set_context_attachment(ddisp.rt);
 	local newwnd = wnd.wm:add_hidden_window(source);
@@ -37,86 +36,58 @@ local function group_attach(wnd, source)
 	newwnd:make_dependent(wnd);
 end
 
-function spawn_terminal(cmd, nolaunch, group)
+function terminal_build_argenv(group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
 
--- we want the dimensions in beforehand so we can pass them immediately
--- and in that way avoid the cost of a _resize() + signal cycle. To avoid
--- an initial 'flash' before background etc. is applied, we preset one.
-	local wnd;
-	local prepend = "";
-
--- We want a new connection group that is bound to the lifespan and window
--- properties of the terminal. This is done with a separate connection path
--- that shares the same external- limiters as others, but we differentiate
--- on the path and use that to tie to a window
-	if (group) then
-		cp = group;
-		target_alloc(cp, durden_new_connection);
-	end
-
-	if (not nolaunch) then
-		wnd = durden_prelaunch();
-		wnd:set_title();
-		wnd.scalemode = "stretch";
-		prepend = string.format(
-			"width=%d:height=%d:", wnd.effective_w, wnd.effective_h);
-	end
-
-	local ppcm = tostring(active_display(true, true).ppcm);
-	local ppcm = string.gsub(ppcm, ',', '.');
-
 	local lstr = string.format(
-		"%sfont_hint=%s:font=[ARCAN_FONTPATH]/%s:ppcm=%s:"..
-		"font_sz=%d:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
-		prepend, TERM_HINT_RLUT[tonumber(gconfig_get("term_font_hint"))],
-		gconfig_get("term_font"),
-		ppcm, gconfig_get("term_font_sz"),
+		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
 			("env=ARCAN_CONNPATH="..cp) or ""
 	);
+	return lstr;
+end
 
-	local fbf = gconfig_get("font_fb");
-	if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
-		lstr = lstr .. string.format(":font_fb=[ARCAN_FONTPATH]/%s", fbf);
-	end
-
+function spawn_terminal(cmd)
+	local lstr = terminal_build_argenv();
 	if (cmd) then
 		lstr = lstr .. ":" .. cmd;
 	end
 
-	local vid = launch_avfeed(lstr, "terminal");
-	if (nolaunch) then
-		return vid;
-	end
+	launch_avfeed(lstr, "terminal",
+	function(source, status)
+		if (status.kind == "preroll") then
+			local wnd = durden_launch(source, "", "terminal", wnd);
+			if (not wnd) then
+				return;
+			end
+			wnd.scalemode = "stretch";
+			extevh_default(source, {
+				kind = "registered", segkind = "terminal", title = "", guid = 1});
+			local wnd_w = wnd.max_w - wnd.pad_left - wnd.pad_right;
+			local wnd_h = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
+			target_displayhint(source, wnd_w, wnd_h,
+				wnd.dispmask, wnd.wm.disptbl);
+			durden_devicehint(source);
+			print("force fonts:", wnd.external);
 
-	if (valid_vid(vid)) then
-		image_tracetag(vid, "terminal");
-		durden_launch(vid, "", "terminal", wnd);
-		durden_devicehint(vid);
+		elseif (status.kind == "terminated") then
+			delete_image(source);
+		end
+	end);
 
 -- second part of setting up a group, we need to register the path
 -- (and deregister on destroy) so we can intercept the window creation
-		if (group) then
-			extevh_intercept(group, function(source)
-				group_attach(wnd, source);
-			end, true);
-			wnd:add_handler("destroy", function()
-				extevh_intercept(group, nil, true);
-			end, true);
-		end
-
-		extevh_default(vid, {
-			kind = "registered", segkind = "terminal", title = "", guid = 1});
-		image_sharestorage(vid, wnd.canvas);
-	else
-		active_display():message(
-			"Terminal failed to open (broken term or out-of-resources)");
-		wnd:destroy();
-	end
+--		if (group) then
+--			extevh_intercept(group, function(source)
+--				group_attach(wnd, source);
+--			end, true);
+--			wnd:add_handler("destroy", function()
+--				extevh_intercept(group, nil, true);
+--			end, true);
+--		end
 end
 
 local function run_uri(val, feedmode)
