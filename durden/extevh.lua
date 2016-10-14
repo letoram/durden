@@ -136,13 +136,7 @@ function(wnd, source, stat)
 		gconfig_get("global_gain") * wnd.gain);
 	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
-
--- only block after FIRST (need initial dimensions)
-	if (not wnd.resize_block or not wnd.ext_resize) then
-		wnd:resize_effective(stat.width, stat.height);
-	end
 	wnd.ext_resize = true;
--- special case, we mark the resize as 'reposition only'
 	wnd.space:resize(true);
 end
 
