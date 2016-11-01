@@ -71,7 +71,6 @@ function spawn_terminal(cmd)
 			target_displayhint(source, wnd_w, wnd_h,
 				wnd.dispmask, wnd.wm.disptbl);
 			durden_devicehint(source);
-			print("force fonts:", wnd.external);
 
 		elseif (status.kind == "terminated") then
 			delete_image(source);
