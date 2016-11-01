@@ -3014,8 +3014,9 @@ end
 -- window sizes etc.
 local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
-	wm.disptbl = disptbl;
-
+	if (disptbl) then
+		wm.disptbl = disptbl;
+	end
 	recalc_fsz(wm);
 	wm:rebuild_border();
 
@@ -3185,6 +3186,7 @@ function tiler_create(width, height, opts)
 		font_deltav = 0,
 		font_sf = gconfig_get("font_defsf"),
 		scalef = opts.scalef and opts.scalef or 1.0,
+		disptbl = opts.disptbl and opts.disptbl or {ppcm = VPPCM},
 
 -- management members
 		spaces = {},

@@ -461,13 +461,13 @@ function display_manager_init()
 		h = VRESH,
 		name = get_name(0),
 		id = 0,
-		ppcm = VPPCM,
+		ppcm = VPPCM
 	};
 
 	displays.simple = gconfig_get("display_simple");
-
 	displays.main = 1;
 	local ddisp = displays[1];
+	ddisp.tiler.disptbl = {ppcm = VPPCM};
 	ddisp.tiler.name = "default";
 
 -- simple mode does not permit us to do much of the fun stuff, like different

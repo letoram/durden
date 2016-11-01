@@ -535,6 +535,8 @@ symtable.patch = function(tbl, iotbl)
 		tbl.symlut[iotbl.keysym] or tbl[iotbl.keysym];
 	if (not sym) then
 		sym = "UNKN" .. tostring(iotbl.subid);
+	else
+		iotbl.keysym = tbl[sym];
 	end
 	local lutsym = string.len(mods) > 0 and (mods .."_" .. sym) or sym;
 
