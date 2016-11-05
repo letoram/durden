@@ -247,12 +247,12 @@ local function dterm()
 			y = y - props.y;
 			if (ind) then
 				target_input(dstate.term, {
-					kind = "digital", source = "mouse",
+					kind = "digital", mouse = true,
 					active = act, devid = 0, subid = ind
 				});
 			else
 				local iotbl = {
-				kind = "analog", source = "mouse",
+				kind = "analog", mouse = true,
 				relative = false, devid = 0, subid = 0,
 				samples = {x}
 				};

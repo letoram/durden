@@ -214,7 +214,7 @@ end
 
 local function output_mouse_devent(btl, wnd)
 	btl.kind = "digital";
-	btl.source = "mouse";
+	btl.mouse = true;
 
 -- rate limit is used to align input event storms (likely to cause visual
 -- changes that need synchronization) with the logic ticks (where the engine
@@ -1901,7 +1901,7 @@ local function wnd_mousemotion(ctx, x, y, rx, ry)
 	if (wnd.mouse_lock_center) then
 		local rt = {
 			kind = "analog",
-			source = "mouse",
+			mouse = true,
 			relative = true,
 			devid = 0,
 			subid = 0;
@@ -1917,14 +1917,14 @@ local function wnd_mousemotion(ctx, x, y, rx, ry)
 	local mv = convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
-		source = "mouse",
+		mouse = true,
 		devid = 0,
 		subid = 0,
 		samples = {mv[1], mv[2]}
 	};
 	local iotbl2 = {
 		kind = "analog",
-		source = "mouse",
+		mouse = true,
 		devid = 0,
 		subid = 1,
 		samples = {mv[3], mv[4]}

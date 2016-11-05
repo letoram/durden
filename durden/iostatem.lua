@@ -291,11 +291,6 @@ local function get_devlist(eval)
 	return res;
 end
 
--- remap a button press to be re-injected as a mouse press
-function iostatem_mremap(devid, subid, btn_ind)
-
-end
-
 function iostatem_devices(slotted)
 	local lst;
 	if (slotted) then
