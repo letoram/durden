@@ -52,6 +52,8 @@ function durden(argv)
 	system_load("menus/global/global.lua")(); -- desktop related global
 	system_load("menus/target/target.lua")(); -- shared window related global
 
+	kbd_repeat(0, 0);
+
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(list) do
