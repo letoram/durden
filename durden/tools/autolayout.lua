@@ -38,11 +38,11 @@ end
 -- "center" means normal behavior and the active shader for the window
 local function center_imgcfg(wnd)
 	show_image(wnd.anchor);
-	if (not wnd.space.layouter) then
+	if (wnd.space and not wnd.space.layouter) then
 		print("dangling layouter", debug.traceback());
 	end
 
-	if (not wnd.space.layouter.scaled) then
+	if (wnd.space and not wnd.space.layouter.scaled) then
 		return;
 	end
 
@@ -56,7 +56,7 @@ end
 -- "side" means stretch, optional blend and a normal shader
 local function side_imgcfg(wnd)
 	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
-	if (not wnd.space.layouter.scaled) then
+	if (wnd.space and not wnd.space.layouter.scaled) then
 		return;
 	end
 
@@ -79,6 +79,10 @@ end
 
 -- trigger if window baseclass changes
 local function reg_h(wnd)
+	if (not wnd.space) then
+		return;
+	end
+
 	save_wnd(wnd);
 	if (wnd.space.children[2] == wnd) then
 		center_imgcfg(wnd);
