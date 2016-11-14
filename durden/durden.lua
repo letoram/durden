@@ -101,7 +101,7 @@ function durden(argv)
 		eval_respawn(true, cp);
 	end
 
--- add hooks for changes to all default  font properties
+-- add hooks for changes to all default font properties
 	gconfig_listen("font_def", "deffonth", update_default_font);
 	gconfig_listen("font_sz", "deffonth", update_default_font);
 	gconfig_listen("font_hint", "font_hint", update_default_font);
