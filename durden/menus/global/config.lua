@@ -613,6 +613,16 @@ local config_terminal = {
 		end
 	},
 	{
+		name = "palette",
+		label = "Palette",
+		kind = "value",
+		set = {"default", "solarized", "solarized-black", "solarized-white"},
+		initial = function() return gconfig_get("term_palette"); end,
+		handler = function(ctx, val)
+			gconfig_set("term_palette", val);
+		end
+	},
+	{
 		name = "font",
 		label = "Font",
 		kind = "action",

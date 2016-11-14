@@ -57,7 +57,9 @@ local function default_reqh(wnd, source, ev)
 
 -- something that should map to a new / normal window?
 	if (table.find_i(normal, ev.segkind)) then
-		accept_target(function(source, status)
+		local vid = accept_target();
+		target_updatehandler(vid, function(source, status)
+			print("subwindow fail", status.kind);
 		end);
 		return;
 	end

@@ -1311,7 +1311,13 @@ end
 
 local lfh = target_fonthint;
 target_fonthint = function(id, fn, sz, hint, app)
-	lfh(id, fn, sz, hint, app);
+	if (type(fn) == "table") then
+		for k,v in ipairs(fn) do
+			lfh(id, v, sz, hint, k > 1 and 1 or 0);
+		end
+	else
+		lfh(id, fn, sz, hint, app);
+	end
 end
 
 local function wnd_font(wnd, sz, hint, font)
@@ -2126,6 +2132,7 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	end
 	wnd.titlebar:invalidate();
 	wnd:set_title();
+
 	if (wnd.last_font) then
 		wnd:update_font(unpack(wnd.last_font));
 	end

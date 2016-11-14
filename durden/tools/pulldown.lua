@@ -33,10 +33,7 @@ local function set_font()
 	end
 
 	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
-		target_fonthint(dstate.term, tbl, -1, -1);
-		if (tbl[2]) then
-			target_fonthint(dstate.term, tbl, -1, -1, true);
-		end
+		target_fonthint(dstate.term, tbl, gconfig_get("term_font_sz") * FONT_PT_SZ, -1);
 	end
 end
 
@@ -62,9 +59,7 @@ local function update_size()
 		local disp = active_display();
 		local neww = disp.width * gconfig_get("dt_width");
 		local newh = disp.height * gconfig_get("dt_height");
-		target_displayhint(dstate.term, neww, newh, 0,
-			{ppcm = active_display(false, true).ppcm}
-		);
+		target_displayhint(dstate.term, neww, newh, 0, active_display().disptbl);
 	end
 end
 
@@ -181,20 +176,27 @@ local function dterm()
 -- the spawn_terminal() function from global/open takes care of initial
 -- font setup, it's only for dynamic changes the rest is needed
 	if (not valid_vid(dstate.term)) then
-		dstate.term = spawn_terminal(
-			string.format("width=%d:height=%d", neww, newh), true);
+		local targ = terminal_build_argenv();
+		dstate.term = launch_avfeed("", "terminal",
+		function(source, status)
+			if (status.kind == "preroll") then
+				update_size();
+				set_font();
+				target_graphmode(dstate.term, gconfig_get("dt_opa"));
+				target_updatehandler(source, termh);
+			end
+		end
+		);
 		if (not valid_vid(dstate.term)) then
 			return;
 		end
 		dstate.disp = disp;
-		target_updatehandler(dstate.term, termh);
-		target_graphmode(dstate.term, gconfig_get("dt_opa"));
 	end
 
 -- reattach to different output on switch or resize
 	if (dstate.disp ~= active_display()) then
-		target_displayhint(dstate.term, neww, newh);
 		dstate.disp = active_display();
+		target_displayhint(dstate.term, neww, newh, 0, dstate.disp.disptbl);
 		rendertarget_attach(active_display(true), dstate.term, RENDERTARGET_DETACH);
 		update_size();
 	end

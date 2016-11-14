@@ -467,7 +467,7 @@ function display_manager_init()
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
 	local ddisp = displays[1];
-	ddisp.tiler.disptbl = {ppcm = VPPCM};
+	ddisp.tiler.disptbl = {ppcm = VPPCM, width = VRESW, height = VRESH};
 	ddisp.tiler.name = "default";
 
 -- simple mode does not permit us to do much of the fun stuff, like different
@@ -580,6 +580,7 @@ function display_add(name, width, height, ppcm)
 			primary = false,
 			maphint = HINT_NONE
 		};
+		nd.disptbl = {ppcm = ppcm, width = width, height = height};
 		table.insert(displays, nd);
 		nd.tiler.name = name;
 		nd.ind = #displays;
@@ -747,7 +748,8 @@ function display_migrate_wnd(wnd, dstname)
 		return;
 	end
 
-	wnd:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
+	wnd:migrate(dsp2.tiler, {ppcm = dsp2.ppcm,
+		width = dsp2.tiler.width, height = dsp2.tiler.height});
 end
 
 -- migrate the ownership of a single workspace to another display
@@ -758,7 +760,10 @@ function display_migrate_ws(tiler, dstname)
 	end
 
 	if (#tiler.spaces[tiler.space_ind].children > 0) then
-		tiler.spaces[tiler.space_ind]:migrate(dsp2.tiler, {ppcm = dsp2.ppcm});
+		tiler.spaces[tiler.space_ind]:migrate(dsp2.tiler,
+			{ppcm = dsp2.ppcm,
+			width = dsp2.tiler.width, height = dsp2.tiler.height
+		});
 		tiler:tile_update();
 		dsp2.tiler:tile_update();
 	end

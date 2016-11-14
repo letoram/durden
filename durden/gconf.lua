@@ -197,6 +197,8 @@ local defaults = {
 	term_bgcol = {0x00, 0x00, 0x00},
 	term_fgcol = {0xff, 0xff, 0xff},
 	term_opa = 1.0,
+	term_palette = "",
+	term_append_arg = "", -- ci=ind,r,g,b to override individual colors
 
 -- input bar graphics
 	lbar_dim = 0.8,

@@ -40,13 +40,17 @@ function terminal_build_argenv(group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
 	local cp = gconfig_get("extcon_path");
+	local palette = gconfig_get("term_palette");
 
 	local lstr = string.format(
-		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s",
+		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
-		fc[1], fc[2],fc[3], (cp and string.len(cp) > 0) and
-			("env=ARCAN_CONNPATH="..cp) or ""
+		fc[1], fc[2], fc[3],
+			(cp and string.len(cp) > 0) and ("env=ARCAN_CONNPATH="..cp) or "",
+		string.len(palette) > 0 and (":palette="..palette) or "",
+		gconfig_get("term_append_arg")
 	);
+
 	return lstr;
 end
 
