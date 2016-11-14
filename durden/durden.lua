@@ -152,7 +152,8 @@ argv_cmds["dump_menus"] = function()
 		print(v);
 	end
 
-	local wnd = durden_prelaunch();
+	local nsurf = null_surface(32, 32);
+	local wnd = active_display():add_window(nsurf);
 
 	for k,v in ipairs(get_menu_tree(get_shared_menu(), '#')) do
 		print(v);
@@ -320,13 +321,6 @@ local function desel_input(wnd)
 	mouse_switch_cursor("default");
 end
 
--- useful for terminal where we can possibly avoid a resize and
--- the added initial delay by setting the size in beforehand
-function durden_prelaunch()
-	local nsurf = null_surface(32, 32);
-	return active_display():add_window(nsurf);
-end
-
 -- separated from launch etc. as we don't want it for subwindows,
 -- and later this provides a decent entrypoint for load-balancing
 function durden_devicehint(vid)
@@ -341,7 +335,7 @@ function durden_launch(vid, prefix, title, wnd, external)
 		return;
 	end
 	if (not wnd) then
-		wnd = active_display():add_window(vid);
+		wnd = active_display():add_hidden_window(vid);
 	end
 
 -- local keybinding->utf8 overrides, we map this to SYMTABLE

@@ -172,7 +172,7 @@ function iostatem_tick()
 	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
 	evc = 0;
 
-	if (devstate.counter == 0) then
+	if (not devstate.counter or devstate.counter == 0) then
 		return;
 	end
 

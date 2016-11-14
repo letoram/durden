@@ -37,8 +37,8 @@ end
 
 local function tbar_geth(wnd)
 	assert(wnd ~= nil);
-	return (wnd.hide_titlebar and tbar_mode(wnd.space.mode)) and 1 or
-		(wnd.wm.scalef * gconfig_get("tbar_sz"));
+	return (wnd.space and wnd.hide_titlebar and tbar_mode(wnd.space.mode)) and 1
+		or (wnd.wm.scalef * gconfig_get("tbar_sz"));
 end
 
 local function sbar_geth(wm, ign)
@@ -59,6 +59,10 @@ local function run_event(wnd, event, ...)
 end
 
 local function moveup_children(wnd)
+	if (not wnd.parent) then
+		return;
+	end
+
 	local n = 0;
 	local ind = table.find_i(wnd.parent.children, wnd);
 	for i,v in ipairs(wnd.children) do
@@ -94,7 +98,7 @@ local function wnd_destroy(wnd)
 
 	local space = wnd.space;
 
-	if (wnd.fullscreen) then
+	if (space and wnd.fullscreen) then
 		space:tile();
 	end
 
@@ -118,8 +122,8 @@ local function wnd_destroy(wnd)
 -- may be acting outside of convention, so drop possibly dangling
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
-		if (wnd.space.selected == wnd) then
-		wnd.space.selected = nil;
+		if (space and wnd.space.selected == wnd) then
+			space.selected = nil;
 		end
 	end
 
@@ -159,7 +163,8 @@ local function wnd_destroy(wnd)
 	table.remove_match(wm.windows, wnd);
 
 -- rebuild layout
-	if (not (space.layouter and space.layouter.lost(space, wnd, true))) then
+	if (space and
+		not (space.layouter and space.layouter.lost(space, wnd, true))) then
 		space:resize();
 	end
 end
@@ -169,6 +174,10 @@ local function wnd_message(wnd, message, timeout)
 end
 
 local function wnd_deselect(wnd, nopick)
+	if (not wnd.space) then
+		return;
+	end
+
 	local mwm = wnd.space.mode;
 	if (mwm == "tab" or mwm == "vtab") then
 		if (not nopick) then
@@ -365,7 +374,7 @@ local function get_hier(vid)
 end
 
 local function wnd_select(wnd, source, mouse)
-	if (wnd.wm.deactivated) then
+	if (wnd.wm.deactivated or not wnd.space) then
 		return;
 	end
 
@@ -1224,7 +1233,8 @@ create_workspace = function(wm, anim)
 end
 
 local function wnd_merge(wnd)
-	if (wnd.space.layouter and wnd.space.layouter.block_merge) then
+	if (not wnd.space or
+		(wnd.space.layouter and wnd.space.layouter.block_merge)) then
 		return;
 	end
 
@@ -1250,7 +1260,8 @@ local function wnd_merge(wnd)
 end
 
 local function wnd_collapse(wnd)
-	if (wnd.space.layouter and wnd.space.layouter.block_collapse) then
+	if (not wnd.space or
+		(wnd.space.layouter and wnd.space.layouter.block_collapse)) then
 		return;
 	end
 
@@ -1349,7 +1360,11 @@ local function wnd_font(wnd, sz, hint, font)
 end
 
 local function wnd_repos(wnd)
--- reposition within the alotted space
+--reposition within the alotted space
+	if (not wnd.space) then
+		return;
+	end
+
 	if (wnd.centered and wnd.space.mode ~= "float") then
 		if (wnd.space.mode == "tile") then
 			move_image(wnd.anchor,
@@ -1383,7 +1398,8 @@ end
 --  . spawn during float
 --
 local function wnd_resize(wnd, neww, newh, force, maskev)
-	if (wnd.in_drag_rz and not force or not valid_vid(wnd.canvas)) then
+	if (wnd.in_drag_rz and not force or not valid_vid(wnd.canvas)
+		or not wnd.space) then
 		return false;
 	end
 
@@ -1468,6 +1484,10 @@ end
 -- sweep all windows, calculate center-point distance,
 -- and weight based on desired direction (no diagonals)
 local function find_nearest(wnd, wx, wy, rec)
+	if (not wnd.space) then
+		return;
+	end
+
 	local lst = linearize(wnd.space);
 	local ddir = {};
 
@@ -1499,7 +1519,7 @@ local function find_nearest(wnd, wx, wy, rec)
 end
 
 local function wnd_next(mw, level)
-	if (mw.fullscreen) then
+	if (mw.fullscreen or not mw.space) then
 		return;
 	end
 
@@ -1548,7 +1568,7 @@ local function wnd_next(mw, level)
 end
 
 local function wnd_prev(mw, level)
-	if (mw.fullscreen) then
+	if (mw.fullscreen or not mw.space) then
 		return;
 	end
 
@@ -1599,6 +1619,9 @@ local function wnd_reassign(wnd, ind, ninv)
 -- for reassign by name, resolve to index
 	local newspace = nil;
 	local wm = wnd.wm;
+	if (not wnd.space) then
+		return;
+	end
 
 	if (type(ind) == "string") then
 		for k,v in pairs(wm.spaces) do
@@ -1703,7 +1726,7 @@ local function wnd_reassign(wnd, ind, ninv)
 end
 
 local function wnd_move(wnd, dx, dy, align, abs)
-	if (wnd.space.mode ~= "float") then
+	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
 	end
 
@@ -1734,7 +1757,7 @@ end
 -- range and the last cell will always pad to fit
 --
 local function wnd_grow(wnd, w, h)
-	if (wnd.space.mode == "float") then
+	if (not wnd.space or wnd.space.mode == "float") then
 		wnd:resize(wnd.width + (wnd.wm.width*w),
 			wnd.height + (wnd.wm.height*h), true);
 		return;
@@ -1782,7 +1805,8 @@ local function wnd_title(wnd, title)
 
 -- override if the mode requires it
 	local hide_titlebar = wnd.hide_titlebar;
-	if (not tbar_mode(wnd.space.mode)) then
+
+	if (wnd.space and not tbar_mode(wnd.space.mode)) then
 		hide_titlebar = false;
 	end
 
@@ -1795,7 +1819,9 @@ local function wnd_title(wnd, title)
 		wnd.titlebar:show();
 	end
 
-	wnd.space:resize(true);
+	if (wnd.space) then
+		wnd.space:resize(true);
+	end
 end
 
 local function convert_mouse_xy(wnd, x, y, rx, ry)
@@ -1897,7 +1923,7 @@ local function wnd_mousepress(ctx)
 		return;
 	end
 
-	if (wnd.space.mode ~= "float") then
+	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
 	end
 end
@@ -2037,7 +2063,7 @@ end
 local function wnd_alert(wnd)
 	local wm = wnd.wm;
 
-	if (not wm.selected or wm.selected == wnd) then
+	if (not wnd.space or not wm.selected or wm.selected == wnd) then
 		return;
 	end
 
@@ -2092,7 +2118,7 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	end
 
 -- revert to normal state on fullscreen
-	if (wnd.fullscreen) then
+	if (wnd.fullscreen and wnd.space) then
 		wnd.space:tile();
 	end
 
@@ -2113,6 +2139,10 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	rendertarget_attach(tiler.rtgt_id, wnd.anchor, RENDERTARGET_DETACH);
 
 -- change association with wm and relayout old one
+	if (not wnd.space) then
+		return;
+	end
+
 	local oldsp = wnd.space;
 	table.remove_match(wnd.wm.windows, wnd);
 	wnd.wm = tiler;
@@ -2179,6 +2209,10 @@ local function wnd_setsuspend(wnd, val)
 end
 
 local function wnd_tofront(wnd)
+	if (not wnd.space) then
+		return;
+	end
+
 	local wm = wnd.wm;
 	local wnd_i = table.find_i(wm.windows, wnd);
 	if (wnd_i) then
@@ -2814,7 +2848,9 @@ local function tiler_swapup(wm, deep, resel)
 		p1:select();
 	end
 
-	wnd.space:resize();
+	if (wnd.space) then
+		wnd.space:resize();
+	end
 end
 
 local function tiler_swapdown(wm, resel)
@@ -2829,12 +2865,14 @@ local function tiler_swapdown(wm, resel)
 		pl:select();
 	end
 
-	wnd.space:resize();
+	if (wnd.space) then
+		wnd.space:resize();
+	end
 end
 
 local function tiler_swapleft(wm, deep, resel)
 	local wnd = wm.selected;
-	if (not wnd) then
+	if (not wnd or not wnd.space) then
 		return;
 	end
 
@@ -2854,12 +2892,15 @@ local function tiler_swapleft(wm, deep, resel)
 		li = (li - 1) == 0 and #root_node.parent.children or (li - 1);
 		wnd_swap(wnd, root_node.parent.children[li]);
 	end
-	wnd.space:resize();
+
+	if (wnd.space) then
+		wnd.space:resize();
+	end
 end
 
 local function tiler_swapright(wm, deep, resel)
 	local wnd = wm.selected;
-	if (not wnd) then
+	if (not wnd or not wnd.space) then
 		return;
 	end
 
@@ -2880,7 +2921,9 @@ local function tiler_swapright(wm, deep, resel)
 		wnd_swap(wnd, root_node.parent.children[li]);
 	end
 
-	wnd.space:resize();
+	if (wnd.space) then
+		wnd.space:resize();
+	end
 end
 
 local function tiler_message(tiler, msg, timeout)
@@ -3022,7 +3065,9 @@ end
 local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
 	if (disptbl) then
-		wm.disptbl = disptbl;
+		for k,v in pairs(disptbl) do
+			wm.disptbl[k] = v;
+		end
 	end
 	recalc_fsz(wm);
 	wm:rebuild_border();

@@ -693,6 +693,10 @@ sf["fullscreen"] = function(wnd)
 		print(debug.traceback());
 	end
 
+	if (not wnd.space) then
+		return;
+	end
+
 	if (wnd.fullscreen) then
 		wnd.space[wnd.space.last_mode and wnd.space.last_mode or "tile"](wnd.space);
 	else

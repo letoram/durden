@@ -133,6 +133,9 @@ end
 
 defhtbl["resized"] =
 function(wnd, source, stat)
+	if (wnd.ws_attach) then
+		wnd:ws_attach();
+	end
 	wnd.source_audio = stat.source_audio;
 	audio_gain(stat.source_audio, (gconfig_get("global_mute") and 0 or 1) *
 		gconfig_get("global_gain") * wnd.gain);
