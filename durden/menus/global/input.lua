@@ -465,8 +465,10 @@ local keyb_menu = {
 		name = "delay",
 		label = "Initial Delay",
 		kind = "value",
-		initial = function() return tostring(gconfig_get("kbd_delay")); end,
-		hint = "milliseconds (0:disable - 1000)",
+		initial = function()
+			return tostring(gconfig_get("kbd_delay"));
+		end,
+		hint = "ms (0:disable - 1000)",
 		note = "sets as new default, applies to new windows",
 		handler = function(ctx, val)
 			val = tonumber(val);

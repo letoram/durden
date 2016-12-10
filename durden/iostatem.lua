@@ -7,7 +7,11 @@
 
 system_load("touchm.lua")();
 
-local devstate = {};
+local devstate = {
+	counter = 0,
+	delay = 0,
+	period = 0
+};
 local devices = {};
 local def_period = 0;
 local def_delay = 0;
@@ -51,9 +55,11 @@ function iostatem_save()
 end
 
 function iostatem_debug()
-	return string.format("st: %d, ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
+	local res =
+		string.format("st: %d, ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
 		devstate.iotbl and "1" or "0",
-		devstate.counter, devstate.delay, devstate.period, rol_avg, evc);
+		devstate.counter, devstate.delay, 0, rol_avg, evc);
+	return res;
 end
 
 function iostatem_restore(tbl)
@@ -143,6 +149,24 @@ function iostatem_input(iotbl)
 	end
 end
 
+local function set_period(id, val)
+	if (val == nil) then
+		print("set_delay broken", id, val, debug.traceback());
+		return;
+	end
+	def_period = val < 0 and 0 or val;
+end
+
+local function set_delay(id, val)
+	if (val == nil) then
+		print("set_delay broken", id, val, debug.traceback());
+		return;
+	end
+
+	def_delay = val < 0 and 1 or math.ceil(val / 1000 * CLOCKRATE);
+end
+
+
 function iostatem_reset_repeat()
 	devstate.iotbl = nil;
 	devstate.counter = devstate.delay;
@@ -150,16 +174,16 @@ end
 
 -- for the _current_ context, set delay in ms, period in ticks/ch
 function iostatem_repeat(period, delay)
+	if (period == nil and delay == nil) then
+		return devstate.period, devstate.delay;
+	end
+
 	if (period ~= nil) then
-		if (period <= 0) then
-			devstate.period = 0;
-		else
-			devstate.period = period;
-		end
+		devstate.period = period;
 	end
 
 	if (delay ~= nil) then
-		devstate.delay = delay < 0 and 10 or math.ceil(delay / (1000 / CLOCKRATE));
+		devstate.delay = math.ceil(delay  / 1000 * CLOCKRATE);
 		devstate.counter = devstate.delay;
 	end
 end
@@ -343,22 +367,14 @@ local function tryload(map)
 	end
 end
 
-local function set_period(id, val)
-	def_period = val;
-end
-
-local function set_delay(id, val)
-	val = val < 0 and 1 or math.ceil(val / 1000 * CLOCKRATE);
-	def_delay = val;
-end
-
 function iostatem_init()
 	devstate.devices = {};
 	set_period(nil, gconfig_get("kbd_period"));
 	set_delay(nil, gconfig_get("kbd_delay"));
+	iostatem_repeat(gconfig_get("kbd_period"), gconfig_get("kbd_delay"));
+
 	gconfig_listen("kbd_period", "iostatem", set_period);
 	gconfig_listen("kbd_delay", "iostatem", set_delay);
-	devstate.counter = def_delay;
 	local list = glob_resource("devmaps/game/*.lua", DEVMAP_DOMAIN);
 
 -- glob for all devmaps, make sure they match the platform and return
