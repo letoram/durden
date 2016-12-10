@@ -1,6 +1,5 @@
 About
 =====
-
 Durden is a free (3-clause BSD) desktop environment for Arcan, thus it requires
 a working arcan installation, optionally set-up with compatible launch targets
 etc.  See the [Arcan](http://github.com/letoram/arcan) repository and wiki for
@@ -29,7 +28,6 @@ by http://emojione.com
 
 Starting / Configuring
 =====
-
 Make sure that arcan is built with support for builtin frameservers for
 terminal, decode, encode, remoting etc. else those features will be missing.
 Durden probes for available engine features and enables/disables access to
@@ -52,7 +50,7 @@ build dependencies fullfilled and KMS/GBM on) this should land in something like
      cd arcan/external/git; bash ./clone.sh
      cd ../ ; mkdir build ; cd build
      cmake -DVIDEO_PLATFORM=egl-dri -DSTATIC_SQLITE3=ON -DSTATIC_OPENAL=ON
-        -DSTATIC_FREETYPE=ON -DENABLE_HIJACK=ON ../src
+        -DSTATIC_FREETYPE=ON ../src
      make -j 8
      ./arcan ../../durden/durden
 
@@ -77,9 +75,13 @@ You should also make sure that meta1+g (unless rebound) gives you access to
 the global menu, and meta1+h gives you access to the target menu (see Bindings
 below).
 
+Also try double-tapping meta-2 and you should see the titlebar change color.
+This indicates that all normal bindings are ignored and input is forwarded
+raw to the selected window. This is important for clients that need access to
+keys you have bound to various key combinations, like Xarcan-, QEmu, and so on.
+
 Bindings
 =====
-
 Most features are accessed through the global or target menu. These are not
 just UI elements, but rather two namespaces for activating or configuring UI
 features, and is one of the more powerful parts of durden.
@@ -98,9 +100,12 @@ $ for a compound path). Compond paths are a bit special since they group
 multiple actions together into one ordered sequence, allowing you to make
 'macros'.
 
+See README.tree for an estimation of the existing list of target and global
+menu paths (though the validity is evaulated at runtime, so not all paths
+are valid all the time).
+
 Configuration Files
 =====
-
 Although most features can be configured directly into the UI, and is stored
 in the active database, there are also a few files that can be modified for
 more permanent change (as the database can be reset with
@@ -168,7 +173,6 @@ The included example tools cover:
 
 Lockscreen
 ====
-
 A lockscreen can be setup temporarily by accessing system/lock and enter a one-
 use password, or as mentioned in the timers section, be bound to an idle timer
 or similar mechanism.
@@ -182,23 +186,11 @@ Database Configuration
 ====
 The launch bar (default meta1+d) uses preconfigured execution profiles that are
 managed with a separate external tool as part of Arcan, called *arcan_db*,
-check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) for more
-information.
+check the [Arcan Wiki](http://github.com/letoram/arcan/wiki) and the README in
+the main Arcan git repository.
 
-Recall that for now, we don't implement display server protocols like
-X11, Wayland or MIR so the set of programs that can be launched and expected to
-run are fairly limited. See the development progress and timeline for Arcan
-itself for an idea as to when that will be possible.
-
-There is support for running [libretro](http://www.libretro.com) 'cores'
-(dynamically linked libraries that wrap input/output/state management for
-common games and emulators) however, and you can find a
-[QEmu backend](https://github.com/letoram/qemu) and a [SDL2](https://github.com/letoram/sdl2) driver. There is also some SDL1 support if arcan is built with
--DDISABLE\_HIJACK=OFF that can be activated with
- LD\_PRELOAD=/path/to/libahijack\_sdl12.so /my/sdl12/application
-
-The specifics for downloading/compiling cores and other data that might be
-needed is outside the scope here, but an example on how to add a target:
+The specifics for downloading/compiling libretro cores and other data that
+might be needed is outside the scope here, but an example on how to add a target:
 
     arcan_db add_target mycore RETRO [ARCAN_RESOURCEPATH]/.cores/core.so
 
@@ -270,22 +262,6 @@ available when certain preconditions have been fulfilled.
 
 The output ipc channel acts as response for writes to both status and command
 channels.
-
-Performance
-=====
-For lower power devices where multi-screen setups isn't needed, simple display
-mode might be needed. This can be accessed by modifying gconf.lua or while
-running through Config/System/Display Mode (requires a Reset to activate).
-
-Simple display mode disables some other features as well, e.g. orientation
-swap, some forms of recording / sharing and others that build on the main
-surface being rendered to an off-screen buffer.
-
-While somewhat buggy, one might also want to try out mouse\_mode = "native"
-where cursor drawing is treated outside the normal rendering pipeline. This may
-make the cursor feel more 'smooth' (but at the same time can't be used as an
-indicator for slowdowns in the rendering pipeline that might be relevant to
-investigate)
 
 Browser
 =====
@@ -502,6 +478,22 @@ are being implemented, we have the following list:
 Keep in mind that a lot of these features are primarily mapping to what arcan
 already supports and the remaining job is the user interface mapping rather than
 time-consuming hardcore development.
+
+Performance
+=====
+For lower power devices where multi-screen setups isn't needed, simple display
+mode might be needed. This can be accessed by modifying gconf.lua or while
+running through Config/System/Display Mode (requires a Reset to activate).
+
+Simple display mode disables some other features as well, e.g. orientation
+swap, some forms of recording / sharing and others that build on the main
+surface being rendered to an off-screen buffer.
+
+While somewhat buggy, one might also want to try out mouse\_mode = "native"
+where cursor drawing is treated outside the normal rendering pipeline. This may
+make the cursor feel more 'smooth' (but at the same time can't be used as an
+indicator for slowdowns in the rendering pipeline that might be relevant to
+investigate)
 
 Repository
 =====

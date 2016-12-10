@@ -102,6 +102,33 @@ local advanced = {
 		handler = function(ctx, val)
 			target_flags(active_display().selected.external, TARGET_NOBUFFERPASS, true);
 		end
+	},
+	{
+		name = "set_width",
+		label = "Width",
+		kind = "value",
+		eval = function(ctx)
+			return DEBUGLEVEL > 0;
+		end,
+		validator = gen_valid_num(32, VRESW),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			print("set", tonumber(val), wnd.width, wnd.height);
+			wnd:resize(tonumber(val), wnd.height);
+		end
+	},
+	{
+		name = "set_height",
+		label = "Height",
+		kind = "value",
+		eval = function(ctx, val)
+			return DEBUGLEVEL > 0;
+		end,
+		nalidator = gen_valid_num(32, VRESH),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd:resize(wnd.width, tonumber(val));
+		end
 	}
 };
 

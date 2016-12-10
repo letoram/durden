@@ -147,7 +147,10 @@ local kbd_menu = {
 		name = "repeat",
 		label = "Repeat Period",
 		kind = "value",
-		initial = function() return tostring(0); end,
+		initial = function()
+			local rate, delay = iostatem_repeat();
+			return rate;
+		end,
 		hint = "cps (0:disabled - 100)",
 		validator = gen_valid_num(0, 100);
 		handler = function(ctx, num)
@@ -158,7 +161,10 @@ local kbd_menu = {
 		name = "delay",
 		label = "Initial Delay",
 		kind = "value",
-		initial = function() return tostring(0); end,
+		initial = function()
+			local rate, delay = iostatem_repeat();
+			return delay * (1000 / CLOCKRATE);
+		end,
 		hint = "ms (0:disable - 1000)",
 		handler = function(ctx, num)
 			iostatem_repeat(nil, tonumber(num));

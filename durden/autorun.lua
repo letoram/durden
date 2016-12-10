@@ -29,11 +29,13 @@ if (DEBUGLEVEL > 1) then
 				wnd.atype or "unknown", wnd.pastemode and wnd.pastemode or "unknown");
 		end
 
+		local iostate_dbg = iostatem_debug();
+
 		local new_msg = string.format(
 			"wnd: [%s],CB:%d,[SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)]",
 			wndapp, IN_CUSTOM_BIND and 1 or 0,
 			used, total, mouse_handlercount(), m1 and 1 or 0, m2 and 1 or 0,
-			iostatem_debug()
+			iostate_dbg and iostate_dbg or "(iostate-brk)"
 		);
 		if (new_msg ~= periodic_msg) then
 			active_display():message(new_msg);
