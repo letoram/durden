@@ -451,13 +451,13 @@ function suppl_ptn_expand(tbl, ptn, wnd)
 	flush_cb();
 end
 
-function suppl_setup_rec(wnd, val)
+function suppl_setup_rec(wnd, val, noaudio)
 	local svid = wnd;
 	local aarr = {};
 
 	if (type(wnd) == "table") then
 		svid = wnd.external;
-		if (wnd.source_audio) then
+		if (not noaudio and wnd.source_audio) then
 			table.insert(aarr, wnd.source_audio);
 		end
 	end
