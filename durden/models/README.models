@@ -1,7 +1,0 @@
-The 3D support here is mostly a fun 'map a custom display source on a 3d model'
-feature brought back from the AWB appl.
-
-For it to work, it requires models in a very specific and quite retarded format.
-Examples models (with blender sources) can be found @ https://www.bintray.com/letoram/arcan-aux
-
-The actual mesh format is expected to change ~0.7 from CTM to glTF (possibly with an offline/out-of-process json->lua convertion)
