@@ -78,7 +78,8 @@ local retrosub = {
 	label = "Debug-stats",
 	kind = "action",
 	eval = function() return DEBUGLEVEL > 0; end,
-	handler = function(wnd)
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
 		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			local vid = target_alloc(wnd.external, function() end, "debug");
 			durden_launch(vid, "game:debug", "");
@@ -96,7 +97,8 @@ local retrosub = {
 	name = "gamewnd_slotgrab",
 	label = "Slotted-Grab",
 	kind = "action",
-	handler = function(wnd)
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
 		iostatem_slotgrab(wnd);
 	end
 	}

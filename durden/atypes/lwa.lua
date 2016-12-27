@@ -5,7 +5,8 @@ local rtbl = {
 		name = "lwa_debugdisp",
 		label = "Add Display",
 		eval = function() return DEBUGLEVEL > 0; end,
-		handler = function(wnd)
+		handler = function(ctx)
+			local wnd = active_display().selected;
 			if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 				local vid = target_alloc(wnd.external, function() end, "debug");
 				local wnd = durden_launch(vid, ":debug_display", "");
