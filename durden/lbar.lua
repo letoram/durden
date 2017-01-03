@@ -519,8 +519,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	PENDING_FADE = nil;
 	if (active_lbar) then
 		warning("tried to spawn multiple lbars");
-		print(debug.traceback());
-		return;
+        active_lbar:destroy();
 	end
 
 	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
