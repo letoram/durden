@@ -754,8 +754,18 @@ function mouse_reveal_hook(state)
 	end
 end
 
-function mouse_input(x, y, state, noinp)
-	if (not mstate.revmask and mstate.hidden and (x ~= 0 or y ~= 0)) then
+function mouse_over(vid)
+	for i,v in ipairs(mstate.cur_over) do
+		if (v == vid) then
+			return true;
+		end
+	end
+	return false;
+end
+
+function mouse_input(x, y, state, noinp, force)
+	if (not mstate.revmask and mstate.hidden
+		and not force and (x ~= 0 or y ~= 0)) then
 
 		if (mstate.native == nil) then
 			instant_image_transform(mstate.cursor);
@@ -1010,6 +1020,8 @@ function mouse_custom_cursor(ct)
 	mstate.y = mstate.y + hsdy;
 	mstate.hotspot_x = ct.hotspot_x;
 	mstate.hotspot_y = ct.hotspot_y;
+	mstate.active_label = "";
+	mstate.custom_cursor = ct;
 end
 
 function mouse_switch_cursor(label)
@@ -1020,8 +1032,6 @@ function mouse_switch_cursor(label)
 	if (label == mstate.active_label) then
 		return;
 	end
-
-	mstate.active_label = label;
 
 	if (cursors[label] == nil) then
 		if (mstate.native) then
@@ -1034,6 +1044,7 @@ function mouse_switch_cursor(label)
 
 	local ct = cursors[label];
 	mouse_custom_cursor(ct);
+	mstate.active_label = label;
 end
 
 function mouse_hide()
@@ -1129,6 +1140,45 @@ function mouse_querytarget(rt)
 	if (mstate.rt ~= rt) then
 		mstate.rt = rt;
 		mouse_select_end();
+	end
+end
+
+-- needed when we temporary want to undo custom cursor and locked
+-- target, but need to return to it shortly and don't trigger any of
+-- the usual events
+function mouse_state_save()
+	mstate.save = {
+		label = mstate.active_label,
+		lockvid = mstate.lockvid,
+		lockfun = mstate.lockfun,
+		lockwarp = mstate.warp,
+		lockstate = mstate.lockstate,
+		active_label = mstate.active_label,
+		custom_cursor = mstate.custom_cursor
+	};
+	mstate.save.x, mstate.save.y = mouse_xy();
+	mouse_lockto();
+	mstate.active_label = nil;
+	mouse_switch_cursor("default");
+end
+
+function mouse_state_restore(warp)
+	if (not mstate.save) then
+		return;
+	end
+	local save = mstate.save;
+	mstate.save = nil;
+
+	if (valid_vid(save.lockvid)) then
+		mouse_lockto(save.lockvid, save.lockfun, save.lockwarp, save.lockstate);
+	end
+
+	if (warp) then
+		mouse_absinput_masked(save.x, save.y, true);
+	end
+
+	if (save.custom_cursor) then
+		mouse_custom_cursor(save.custom_cursor);
 	end
 end
 

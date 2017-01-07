@@ -206,8 +206,8 @@ local function gen_cmdtbl(cmd)
 		return nil;
 	end
 
-	return {
-		click = function(btn)
+	local res = {
+	click = function(btn)
 			if (string.sub(cmd, 1, 1) == "!" or
 				string.sub(cmd, 1, 1) == "#") then
 				if (allowed_commands(cmd)) then
@@ -219,7 +219,6 @@ local function gen_cmdtbl(cmd)
 				end
 			end
 		end,
-		rclick = click,
 		over = function(btn)
 			btn:switch_state("active");
 		end,
@@ -227,6 +226,8 @@ local function gen_cmdtbl(cmd)
 			btn:switch_state("inactive");
 		end
 	};
+	res.rclick = res.click;
+	return res;
 end
 
 local function poll_status_channel()

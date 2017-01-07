@@ -11,6 +11,7 @@ PENDING_FADE = nil;
 local function drop_bbar(wm)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm:set_input_lock();
+	iostatem_lock(false);
 	local time = gconfig_get("transition");
 	local bar = wm.input_ctx.bar;
 	local anchor = wm.input_ctx.anchor;
@@ -241,6 +242,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 		ctx.clock_fwd(a, b);
 	end
 
+	iostatem_lock(true);
 	iostatem_repeat(0, 0);
 	wm:set_input_lock(key == true and bbar_input_key or
 		((key == false or key == nil)) and bbar_input_combo or bbar_input_keyorcombo);
@@ -267,6 +269,7 @@ function tiler_tbar(wm, msg, timeout, action, cancel)
 	};
 	setup_vids(wm, ctx, gconfig_get("lbar_sz") * 2 *
 		wm.scalef, gconfig_get("transition"));
+	iostatem_lock(true);
 	iostatem_repeat(0, 0);
 
 	_G[APPLID .. "_clock_pulse"] = function(a, b)

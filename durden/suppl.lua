@@ -732,6 +732,10 @@ end
 local function hlp_add_btn(helper, lbl)
 	local yp, tileh, dir = lbar_props();
 	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
+	local current_path = {};
+	for i,v in ipairs(menu_path_current().path) do
+		current_path[i] = v;
+	end
 
 	local btn = uiprim_button(active_display().order_anchor,
 		"lbar_tile", "lbar_tiletext", lbl, pad,
@@ -799,6 +803,7 @@ local function menu_path_reset(ctx, prefix)
 	ctx.helper.add = hlp_add_btn;
 	ctx.path = {};
 	ctx.meta = {};
+	iostatem_restore();
 	ctx.domain = "";
 end
 
@@ -829,7 +834,6 @@ end
 -- [path] needs to be a table of {name, label} pairs
 local function menu_path_force(ctx, path)
 	ctx:reset();
-
 	for i,v in ipairs(path) do
 		ctx:append(v[1], v[2]);
 	end
@@ -851,6 +855,9 @@ function menu_path_new()
 end
 
 local cpath = menu_path_new();
+function menu_path_current()
+	return cpath;
+end
 
 local function menu_cancel(wm, m1_overr, dangerous)
 	local m1, m2 = dispatch_meta();
