@@ -58,7 +58,8 @@ local function default_reqh(wnd, source, ev)
 -- something that should map to a new / normal window?
 	if (table.find_i(normal, ev.segkind)) then
 		local vid = accept_target();
-		target_updatehandler(vid, function(source, status)
+		target_updatehandler(vid,
+			function(source, status)
 			print("subwindow fail", status.kind);
 		end);
 		return;
@@ -69,27 +70,33 @@ local function default_reqh(wnd, source, ev)
 		if (valid_vid(wnd.titlebar_id)) then
 			delete_image(wnd.titlebar_id);
 		end
-		wnd.titlebar_id = accept_target(function() end);
-		link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
-		image_sharestorage(wnd.titlebar_id, wnd.titlebar.anchor);
+		wnd.titlebar_id = accept_target(wnd.w, gconfig_get("tbar_sz"));
+		if (valid_vid(wnd.titlebar_id)) then
+			target_updatehandler(wnd.titlebar_id, function(src, stat) end);
+			link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
+			image_sharestorage(wnd.titlebar_id, wnd.titlebar.anchor);
+		end
 		return;
 	elseif (ev.segkind == "cursor") then
 		if (valid_vid(wnd.cursor_id)) then
 			delete_image(wnd.cursor_id);
 		end
 		local sz = mouse_state().size;
-		wnd.cursor_id = accept_target(sz[1], sz[2]);
-		target_updatehandler(wnd.cursor_id, function(a, b)
-			cursor_handler(wnd, a, b);
-		end);
-		if (wnd.wm.selected == wnd) then
-			mouse_custom_cursor({
-				vid = wnd.cursor_id,
+		local cursor = accept_target(sz[1], sz[2]);
+		if (valid_vid(cursor)) then
+			target_updatehandler(cursor, function(a, b)
+				cursor_handler(wnd, a, b);
+			end);
+			wnd.custom_cursor = {
+				vid = cursor,
+				active = true,
 				width = sz[1], height = sz[2],
-				hotspot_x = 0, hotspot_y = 0
-			});
+				hotspot_x = 0, hotspot_y = 0,
+			};
+-- something to activate if we are already over? just mouse_xy test against
+-- selected canvas?
+			link_image(cursor, wnd.anchor);
 		end
-		link_image(wnd.cursor_id, wnd.anchor);
 		return;
 	elseif (ev.segkind == "icon") then
 -- reject for now, can later be used for status icon and for hint

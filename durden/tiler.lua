@@ -93,13 +93,26 @@ local function wnd_destroy(wnd)
 
 	if (wm.selected == wnd) then
 		wnd:deselect();
-		local mx, my = mouse_xy();
 	end
 
 	local space = wnd.space;
 
 	if (space and wnd.fullscreen) then
 		space:tile();
+	end
+
+-- since the handler is deregistered when the canvas is destroyed,
+-- we need to reset the mouse state no matter what has been done in
+-- the mouse handler but the cursor can be outside of a window in
+-- which case we don't want to trigger the 'out' handler.
+	local mx, my = mouse_xy();
+	if (mouse_over(wnd.canvas)) then
+		mouse_switch_cursor("default");
+		if (wnd.cursor == "hidden") then
+			mouse_hidemask(true);
+			mouse_show();
+			mouse_hidemask(false);
+		end
 	end
 
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
@@ -373,6 +386,28 @@ local function get_hier(vid)
 	return ht;
 end
 
+local function canvas_mouse_activate(wnd)
+-- reset hidden state without running a reveal animation
+	mouse_hidemask(true);
+	mouse_show();
+	mouse_switch_cursor();
+	mouse_hidemask(false);
+
+-- switch to the desired mouse cursor
+	if (wnd.custom_cursor and wnd.custom_cursor.active) then
+		mouse_custom_cursor(wnd.custom_cursor);
+
+	elseif (wnd.cursor_label) then
+		mouse_switch_cursor(wnd.cursor_label);
+	end
+
+	if (wnd.cursor == "hidden") then
+		mouse_hidemask(true);
+		mouse_hide();
+		mouse_hidemask(false);
+	end
+end
+
 local function wnd_select(wnd, source, mouse)
 	if (wnd.wm.deactivated or not wnd.space) then
 		return;
@@ -402,6 +437,9 @@ local function wnd_select(wnd, source, mouse)
 
 	local state = wnd.suspended and "suspended" or "active";
 	shader_setup(wnd.border, "ui", "border", state);
+
+-- we don't want to mess with cursor/selected when it's a hidden wnd
+
 	wnd.titlebar:switch_state(state, true);
 
 	wnd.space.previous = wnd.space.selected;
@@ -414,7 +452,6 @@ local function wnd_select(wnd, source, mouse)
 -- activate all "on-trigger" mouse events, like warping and locking
 	ms = mouse_state();
 	ms.hover_ign = true;
-	local mouse_moved = false;
 
 	local props = image_surface_resolve_properties(wnd.canvas);
 	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
@@ -427,7 +464,8 @@ local function wnd_select(wnd, source, mouse)
 		end
 		mouse_absinput_masked(
 			props.x + px * props.width, props.y + py * props.height, true);
-		mouse_moved = true;
+		canvas_mouse_activate(wnd);
+
 -- won't generate normal over event
 		if (wnd.cursor == "hidden") then
 			mouse_hidemask(true);
@@ -2335,16 +2373,13 @@ local canvas_mh = {
 			"mouse_focus_event") == "motion") then
 			tag:select();
 		end
-
-		if (ctx.tag.cursor == "hidden") then
-			mouse_hidemask(true);
-			mouse_hide();
-		end
+		canvas_mouse_activate(ctx.tag);
 	end,
 
 	out = function(ctx)
 		mouse_hidemask(true);
 		mouse_show();
+		mouse_switch_cursor();
 		mouse_hidemask(false);
 	end,
 
@@ -2417,9 +2452,20 @@ local function wnd_ws_attach(res)
 	link_image(res.anchor, space.anchor);
 
 	if (space.mode == "float") then
--- TODO: this does not respect aspect ratio
-		res.width = math.floor(wm.width * gconfig_get("float_defw"));
-		res.height = math.floor(wm.height * gconfig_get("float_defh"));
+-- this should be improved by allowing w/h/x/y overrides based on history
+-- for the specific source or the class it belongs to
+		local props = image_storage_properties(res.canvas);
+		res.width = props.width;
+		res.height = props.height;
+		if (res.defer_x) then
+			res.x = res.defer_x;
+			res.y = res.defer_y;
+			res.defer_x = nil;
+			res.defer_y = nil;
+		else
+			res.x, res.y = mouse_xy();
+		end
+		move_image(res.anchor, res.x, res.y);
 	else
 	end
 
@@ -2607,6 +2653,9 @@ local wnd_setup = function(wm, source, opts)
 	};
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
+
+-- for float mode
+	res.defer_x, res.defer_y = mouse_xy();
 
 	image_tracetag(res.anchor, "wnd_anchor");
 	image_tracetag(res.border, "wnd_border");

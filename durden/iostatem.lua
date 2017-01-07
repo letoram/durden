@@ -45,12 +45,14 @@ local odst;
 
 function iostatem_save()
 	odst = devstate;
+	if (not devstate.locked) then
 	devstate = {
 		iotbl = nil,
 		delay = def_delay,
 		period = def_period,
 		counter = def_delay
 	};
+	end
 	return odst;
 end
 
@@ -62,11 +64,18 @@ function iostatem_debug()
 	return res;
 end
 
+function iostatem_lock(state)
+	devstate.locked = state;
+end
+
 function iostatem_restore(tbl)
+	if (devstate.locked) then
+		return;
+	end
+
 	if (tbl == nil) then
 		tbl = odst;
 	end
-
 	devstate = tbl;
 	devstate.iotbl = nil;
 	devstate.counter = tbl.delay and tbl.delay or def_delay;

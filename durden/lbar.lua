@@ -45,7 +45,7 @@ local function destroy(wm, ictx)
 	end
 	pending = {};
 	active_lbar = nil;
-	iostatem_restore(ictx.iostate);
+
 	if (not wm.hidden_sb) then
 		wm.statusbar:show();
 	end
@@ -599,7 +599,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret_y = carety,
 		cleanup = opts.cleanup,
 		on_step = opts.on_step,
-		iostate = iostatem_save(),
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};
