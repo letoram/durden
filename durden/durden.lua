@@ -338,6 +338,13 @@ function durden_launch(vid, prefix, title, wnd, external)
 		wnd = active_display():add_hidden_window(vid);
 	end
 
+-- hidden window creation failed or event during creation
+-- triggered destruction immediately, hence the table will be empty
+	if (not wnd or not wnd.set_prefix) then
+		delete_image(vid);
+		return;
+	end
+
 -- local keybinding->utf8 overrides, we map this to SYMTABLE
 	wnd.u8_translation = {};
 
