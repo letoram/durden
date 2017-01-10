@@ -390,7 +390,11 @@ function durden_adopt(vid, kind, title, parent, last)
 	end
 
 	if (not valid_vid(parent)) then
-		durden_launch(vid, title);
+		local wnd = durden_launch(vid, title);
+		if (not wnd) then
+			return;
+		end
+
 		extevh_default(vid, {
 			kind = "registered",
 			segkind = kind,
@@ -398,6 +402,9 @@ function durden_adopt(vid, kind, title, parent, last)
 -- a real resized event with the source audio will come immediately
 			source_audio = BADID
 		});
+		if (wnd.ws_attach) then
+			wnd:ws_attach();
+		end
 		return true;
 	end
 
