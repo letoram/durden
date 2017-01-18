@@ -2814,6 +2814,9 @@ local function tiler_switchws(wm, ind)
 	wm.sbar_ws[wm.space_ind]:switch_state("inactive");
 	wm.sbar_ws[ind]:show();
 	wm.sbar_ws[ind]:switch_state("active");
+	if (wm.space_last_ind ~= wm.space_ind) then
+		wm.space_last_ind = wm.space_ind;
+	end
 	wm.space_ind = ind;
 	wm_update_mode(wm);
 

@@ -64,26 +64,6 @@ local durden_font = {
 	}
 };
 
-local function relay_alldisp()
-end
-
-local tb_buttons = {
-	{
-		name = "add_left",
-		label = "Add(Left)",
-		kind = "action",
-		handler = function()
-			local bar = active_display():lbar(
-				function(ctx, instr, done, lastv)
--- missing: select subpath, actually adding the buttons,
--- altering wnd_create, applying to existing windows,
--- allowing subpath select that takes either global or target path..
--- but then it works for both wnd_title and statusbar
-			end, ctx, {label = "specify byte-sequence:"});
-		end
-	},
-};
-
 local durden_bars = {
 	{
 		name = "sb_top",
@@ -108,14 +88,6 @@ local durden_bars = {
 			gconfig_set("tbar_bpad", tonumber(val));
 			gconfig_set("lbar_bpad", tonumber(val));
 		end
-	},
-	{
-		name = "tb_buttons",
-		label = "Titlebar(Buttons)",
-		kind = "action",
-		eval = function() return false; end,
-		submenu = true,
-		handler = tb_buttons
 	},
 	{
 		name = "tb_pattern",
@@ -337,7 +309,6 @@ local rate_menu = {
 		name = "rlimit",
 		label = "Rate Limit",
 		initial = function() return gconfig_get("extcon_rlimit"); end,
--- help = "number of minimum ticks between external connections",
 		kind = "value",
 		hint = "(0: disabled .. 1000)",
 		validator = gen_valid_num(0, 1000),
@@ -348,8 +319,8 @@ local rate_menu = {
 	{
 		name = "startdelay",
 		label = "Grace Period",
--- help = "number of ticks from start with the rate limit is disabled",
 		kind = "value",
+		hint = "(0: disabled .. 1000)",
 		initial = function() return gconfig_get("extcon_startdelay"); end,
 		validator = gen_valid_num(0, 1000),
 		handler = function(ctx, val)
@@ -359,7 +330,6 @@ local rate_menu = {
 	{
 		name = "extwndlim",
 		label = "External Windows Limit",
---  help = "number of ticks from start with the rate limit is disabled",
 		kind = "value",
 		initial = function() return gconfig_get("extcon_wndlimit"); end,
 		validator = gen_valid_num(0, 1000),
@@ -371,7 +341,6 @@ local rate_menu = {
 	{
 		name = "subseglimit",
 		label = "Window Subsegment Limit",
---  help = "prevent a window from using more than (n) subsegments at once",
 		kind = "value",
     hint = "(0: disabled, .. 100)",
 		initial = function() return gconfig_get("subwnd_limit"); end,

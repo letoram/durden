@@ -21,6 +21,17 @@ local function switch_ws_menu()
 
 	table.insert(spaces,
 	{
+		name = "last",
+		kind = "action",
+		label = "Last Active",
+		eval = function() return active_display().space_last_ind ~= nil; end,
+		handler = function()
+			active_display():switch_ws(active_display().space_last_ind);
+		end
+	});
+
+	table.insert(spaces,
+	{
 		name = "prev",
 		kind = "action",
 		label = "Previous",
