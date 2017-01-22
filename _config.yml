@@ -3,7 +3,7 @@ description: mm
 author: Bjorn Stahl
 author_email: contact@arcan-fe.com
 category_dir: /
-baseurl: /
+baseurl: https://durden.arcan-fe.com
 url: http://durden.arcan-fe.com
 theme: jekyll-theme-hacker
 markdown: kramdown
