@@ -1,1 +1,9 @@
-theme: jekyll-theme-midnight
+name: Durden, a desktop environment for Arcan
+description: mm
+author: Bjorn Stahl
+author_email: contact@arcan-fe.com
+category_dir: /
+baseurl: /
+url: http://durden.arcan-fe.com
+markdown: rdiscount
+permalink: pretty
