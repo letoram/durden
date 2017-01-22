@@ -1,3 +1,16 @@
+---
+layout: default
+---
+
+Maybe this not working because of a missing layout header
+[Linky linky](linky linky)
+
+```lua
+local function test()
+ for v,i in ipairs({1,2,3}) do print(v, i); end
+end
+```
+
 ## Heading
 
 and here we have texty text, what can we do? _this_ should be something, alas
