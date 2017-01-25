@@ -1,0 +1,48 @@
+---
+layout: default
+---
+
+<section>
+	<h2>About</h2>
+<p>
+Durden is a desktop environment for the <a
+href="https://www.arcan-fe.com">Arcan</a> Display Server. It serves both as a
+reference showcase on how to take advantage of some of the features in Arcan,
+and as a very competent entry in the more advanced-user side of the desktop
+environment spectrum. </p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Z4XNtlnl2gQ?list=PLGqpKIeZOSp6quf6CmMOr91Tmj4UppyoR" frameborder="0" allowfullscreen></iframe>
+</section>
+
+<p>
+Although the videos in the playlist above cover some of the current features
+and a quick walkthrough of the basic use, please refer to the links in the menu
+for a more detailed description of features, their purpose, use and upcoming enhancements.
+</p>
+
+<section>
+  <h2>News</h2>
+
+  {% for post in site.posts %}
+    {% assign nth = forloop.index0 | modulo:2 %}
+    <div class="media t-hackcss-media">
+
+      <div class="media-body">
+        <div class="media-heading">
+          <span>{{ post.date | date_to_string }} &raquo;
+            {% if post.external_url %}
+              <a href="{{ post.external_url }}" target="_blank" title="{{ project.name }}">
+                {{ post.title }}
+              </a>
+            {% else %}
+              <a href="{{ post.url | prepend: site.baseurl }}" title="{{ project.name }}">
+                {{ post.title }}
+              </a>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+   </div>
+  {% endfor %}
+</section>

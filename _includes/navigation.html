@@ -1,0 +1,14 @@
+<div class="t-hackcss-navigation">
+  <h2 class="t-hackcss-navigation-heading">Menu</h2>
+
+  <nav class="menu" role="menubar">
+    {% assign url = page.url|remove:'index.html' %}
+    {% for link in site.navigation %}
+      <a class="menu-item {% if url == link.url %}active{% endif %}"
+        role="menuitem" href="{{ link.url | prepend: site.baseurl }}" title="{{ link.title }}">
+        {{ link.text }} <div class="pull-right">»</div>
+      </a>
+    {% endfor %}
+  </nav>
+
+</div>

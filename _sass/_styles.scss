@@ -1,0 +1,88 @@
+// This file contains custom (non hack.css) styles
+
+.t-hackcss {  // Main prefix to avoid collisions
+
+  // navigation.html
+
+  &-navigation {
+    padding-right: $spacing-unit;
+  }
+
+  @at-root .hack &-navigation-heading {
+    padding-top: 20px;
+  }
+
+  // footer.html
+
+  @at-root body &-footer {
+    padding-bottom: $spacing-unit;
+  }
+
+  &-social {
+    display: inline-block;
+  }
+
+  &-social + &-social {
+    padding-left: $spacing-unit;
+  }
+
+  &-sm-reversed-grid.grid {
+    @include media-query($on-palm) {
+      flex-direction: column-reverse;
+    }
+  }
+
+  &-icon {
+    display: inline-block;
+    vertical-align: middle;
+    width: $icon-size;
+    height: $icon-size;
+
+    > svg {
+      width: $icon-size;
+    }
+  }
+
+  // examples.html
+
+  &-media {
+    margin-bottom: 1.25rem;
+  }
+
+  &-media-shift {
+    max-width: $image-size;
+  }
+
+  &-media-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  &-cards {
+    flex-wrap: wrap;
+    @include media-query($on-palm) {
+      flex-wrap: nowrap;
+    }
+  }
+
+  &-cards-cell {
+    padding-bottom: $spacing-unit;
+    padding-right: $spacing-unit;
+  }
+
+  &-cards-text {
+    margin: 0
+  }
+
+  &-cards-image {
+    display: block;
+    max-width: 50%;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  &-cards-link {
+    text-align: center;
+  }
+}

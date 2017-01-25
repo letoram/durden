@@ -1,9 +1,81 @@
-name: Durden
-description: Desktop Environment for Arcan
-author: Bjorn Stahl
-author_email: contact@arcan-fe.com
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely need to edit after that.
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'jekyll serve'. If you change this file, please restart the server process.
+
+# Site settings
+title: Durden
+description: Desktop Enviroment for Arcan
 category_dir: /
 url: http://durden.arcan-fe.com
-theme: jekyll-theme-hacker
+repository: https://github.com/letoram/durden
 markdown: kramdown
-permalink: pretty
+sass:
+  style: compressed
+theme_mode: dark # choices are: 'dark', 'standard', 'markdown'
+
+# Customizations
+your_name: Bjorn Stahl
+email: contact@arcan-fe.com
+
+navigation:
+  - text: Home
+    url: /
+  - text: Setup
+    url: /setup
+  - text: The Menu™
+    url: /menu
+  - text: Display Management
+    url: /display
+  - text: Input
+    url: /input
+  - text: Visual Enhancements
+    url: /visual
+  - text: Clipboard
+    url: /clipboard
+  - text: Statusbar
+    url: /statusbar
+  - text: Workspace/Tile
+    url: /tiling
+  - text: Workspace/Float
+    url: /float
+  - text: Workspace/Autolayout
+    url: /autolay
+  - text: IPC
+    url: /ipc
+  - text: Widgets
+    url: /widgets
+  - text: Lockscreen
+    url: /lockscreen
+  - text: Record/Stream/Share
+    url: /recstr
+  - text: Security/Safety
+    url: /security
+  - text: Timers
+    url: /timers
+  - text: Launch Targets
+    url: /targets
+  - text: Media Browser
+    url: /browser
+  - text: Tools
+    url: /tools
+  - text: LED Controllers
+    url: /led
+
+projects:
+#    description: O
+#    link: https://github.com/
+
+social:
+  - service: github
+    username: letoram
+    link: https://github.com/letoram
+  - service: twitter
+    username: arcan_fe
+    link: https://twitter.com/arcan_fe
+
+# Plugins
+gems:
+  - jekyll-seo-tag

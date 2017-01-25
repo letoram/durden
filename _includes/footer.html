@@ -1,0 +1,21 @@
+<footer class="t-hackcss-footer">
+  <hr />
+
+  <div class="grid t-hackcss-sm-reversed-grid">
+
+    <div class="cell -5of12">
+      <div class="contact-list">
+        {% for social in site.social %}
+          {% assign template = social.service|prepend:"icon-"|append:".html" %}
+          <span class="t-hackcss-social">
+            <i class="t-hackcss-icon">{% include {{ template }} %}</i>
+            <a href="{{ social.link }}">{{ social.username }}</a>
+          </span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="footer-spacer" class="cell -1of12"></div>
+  </div>
+
+</footer>
