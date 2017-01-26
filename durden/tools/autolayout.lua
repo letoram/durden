@@ -535,6 +535,10 @@ shared_menu_register("window/swap",
 	name = "swap",
 	label = "Swap(Focus)",
 	kind = "action",
+	eval = function()
+		return active_display().selected and
+			active_display().selected.space.layouter;
+	end,
 	handler = function() swap_focus(); end
 });
 
@@ -543,6 +547,10 @@ shared_menu_register("window/swap",
 	name = "swap_sel",
 	label = "Swap-Select(Focus)",
 	kind = "action",
+	eval = function()
+		return active_display().selected and
+			active_display().selected.space.layouter;
+	end,
 	handler = function()
 		swap_focus(true);
 	end
