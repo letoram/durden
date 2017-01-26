@@ -429,7 +429,6 @@ global_menu_register("tools",
 {
 	name = "model",
 	label = "Model Viewer",
-	submenu = true,
 	kind = "value",
 	set = function()
 		return model_list()
