@@ -2,7 +2,7 @@
 layout: default
 ---
 
-'The Menu' is a key feature in Arcan, where all the internal features are
+'The Menu' is a key feature in Durden, where all the internal features are
 exposed and controlled. Underneath the surface, the menu covers two directory
 trees (one 'global' and one 'target') where each entry describes either
 a subdirectory, an action or a key/value input. The global tree convers system
@@ -156,3 +156,4 @@ The following changes are planned for the menu in the near future:
  - External Widget ICON subsegment added to statusbar, POPUP tried to
    ICON
  - "Popup"- style for floating layout mode
+ - FUSE- based mountable interface for filesystem- access

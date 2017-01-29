@@ -27,16 +27,18 @@ navigation:
     url: /setup
   - text: The Menu™
     url: /menu
-  - text: Display Management
-    url: /display
   - text: Input
     url: /input
+  - text: Display Management
+    url: /display
   - text: Visual Enhancements
     url: /visual
   - text: Clipboard
     url: /clipboard
   - text: Statusbar
     url: /statusbar
+  - text: Workspaces and Windows
+    url: /workspace
   - text: Workspace/Tile
     url: /tiling
   - text: Workspace/Float
@@ -55,10 +57,16 @@ navigation:
     url: /security
   - text: Timers
     url: /timers
+  - text: Core Options
+    url: coreopts
+  - text: Audio
+    url: audio
   - text: Launch Targets
     url: /targets
   - text: Media Browser
     url: /browser
+  - text: Terminal
+    url: /terminal
   - text: Tools
     url: /tools
   - text: LED Controllers

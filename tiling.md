@@ -2,4 +2,10 @@
 layout: default
 ---
 
-The display management features
+# Tiling Window Management
+
+## Insertion Modes
+
+## Reassigning and Swapping
+
+## Tabbed Modes

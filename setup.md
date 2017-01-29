@@ -2,7 +2,7 @@
 layout: default
 ---
 
-## Downloading/Building
+# Downloading/Building
 Technically speaking, durden is a set of Lua scripts that Arcan can run.
 Arcan is, among other things, a display server, and as such, need tight
 integration with low level system features that can be painful to setup.
@@ -38,7 +38,7 @@ will lack quite a few features and has performance penalties, but is
 complete enough to get a feel for things. This platform works on OS X and
 Linux/BSD with an Xorg setup.
 
-## Offline Configuration
+# Offline Configuration
 
 There are a few command-line options and environment variables for
 configuring arcan, and one static configuration file for Durden. Running
@@ -58,17 +58,22 @@ After running arcan/durdenfor the first time, the configuration is cached in a
 database, which will reflect the current saved settings. You can inspect /
 change these values with the arcan\_db tool. Try arcan\_db show\_appl durden.
 
-## Online Configuration
+# Online Configuration
 
 Running arcan (from the build directory) like this:
 
      ./arcan ../../durden
 
-Should give you a screenshot that looks something like:
+Should give you a screenshot that looks something (anotated) like:
 
-Typing on the keyboard should decrement the counter in the text on the
-statusbar, this is part of a safety feature that is activated on startup and
-cancelled when you input a valid keyboard binding.
+<center><a href="images/iniitial.png">
+	<img alt="menu UI" src="images/initial.png" style="width: 50%"/>
+</a></center>
+
+Typing on the keyboard should decrement the counter in the text that appears in
+the message area, this is part of a safety feature that is activated on startup
+and cancelled when you input a valid keyboard binding. It's reactivated on
+reset or if you plug/unplug the keyboard.
 
 When reaching zero, you will be queried for new keyboard bindings for the
 necessary ones, like meta1, meta2, global menu, target menu, accept, cancel
@@ -78,7 +83,13 @@ Hold- or repeat- press the requested bindings, and when finished, try them
 out by spawning the global menu and navigating the options. See the page on
 [The Menu](/menu) for details on how this subsystem works.
 
-## Basic Use
+     if you break your configuration and want to reset, type:
+            arcan_db drop_appl durden
+
+It is also possible to maintain different configuration databases through
+the -d argument to arcan.
+
+# Basic Use
 
 By now, you should have a working Arcan setup and some important keys bound.
 You should be able to spawn terminals (default, Meta1+enter) and use your
@@ -121,4 +132,3 @@ arcan itself. (-DDISABLE\_HIJACK=OFF as CMake argument). This gives you a
 library that can be used like this:
 
      LD_PRELOAD=/path/to/libahijack_sdl12.so /some/sdl12/game
-
