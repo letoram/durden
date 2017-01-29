@@ -43,7 +43,7 @@ follows:
 - newline separates updates
 - %% escapes %
 - %{fmtcmd} changes the active format (the bar remembers this)
-- | is used as a group separator
+- \| is used as a group separator
 - normal text is just added as it comes (UTF-8)
 
 The fmtcmd values are as follows:
