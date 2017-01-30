@@ -271,7 +271,17 @@ local system_menu = {
 		handler = reset_query
 	},
 	{
-		name = "ouput_msg",
+		name = "status_msg",
+		label = "Status-Message",
+		kind = "value",
+		invisible = true,
+		validator = function(val) return true; end,
+		handler = function(ctx, val)
+			active_display():message(val and val or "");
+		end
+	},
+	{
+		name = "output_msg",
 		label = "IPC-Output",
 		kind = "value",
 		invisible = true,

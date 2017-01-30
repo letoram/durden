@@ -418,6 +418,26 @@ local durden_system = {
 		end
 	},
 	{
+		name = "bridgegamma",
+		label = "Gamma Bridge",
+		kind = "value",
+		initial = function() return gconfig_get("gamma_access"); end,
+		set = {"none", "full"},
+		handler = function(ctx, val)
+			gconfig_set("gamma_access", val);
+		end
+	},
+	{
+		name = "bridgeclip",
+		label = "Clipboard Bridge",
+		kind = "value",
+		initial = function() return gconfig_get("clipboard_access"); end,
+		set = {"none", "full", "passive", "active"},
+		handler = function(ctx, val)
+			gconfig_set("clipboard_access", val);
+		end
+	},
+	{
 		name = "statpipe",
 		label = "Status Pipe",
 		kind = "value",
