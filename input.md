@@ -2,6 +2,8 @@
 layout: default
 ---
 
+[Keyboard](#keyboard) [Mouse](#mouse) [Touchpad](#touchpad) [Game Devices](#gamedev)
+
 # Input
 As mentioned in the section on [The Menu](menu), most paths can be bound to
 device inputs, but that is only a small part of the input system. As with the
@@ -29,8 +31,6 @@ and appear as they are announced in the <i>target/input/labels/input</i> list.
 You can bind these to a supported device on a 'per target basis', or trigger
 an input through [IPC](ipc) or other means through the <i>target/input/bind-</i>
 set of options.
-
-[Keyboard](#keyboard) [Mouse](#mouse) [Touchpad](#touchpad) [Game Devices](#gamedev)
 
 # Keyboard<a name="keyboard"/>
 Keyboard controls can be found in <i>Global/Input/Keyboard</i> and covers

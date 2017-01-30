@@ -5,7 +5,7 @@ layout: default
 The statusbar is the dedicated drawing region at the very top or at the
 very bottom of the screen. Up and running, it may look something like:
 
-<center><a href="images/iniitial.png">
+<center><a href="images/initial.png">
 	<img alt="menu UI" src="images/initial.png" style="width: 50%"/>
 </a></center>
 

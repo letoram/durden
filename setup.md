@@ -66,7 +66,7 @@ Running arcan (from the build directory) like this:
 
 Should give you a screenshot that looks something (anotated) like:
 
-<center><a href="images/iniitial.png">
+<center><a href="images/initial.png">
 	<img alt="menu UI" src="images/initial.png" style="width: 50%"/>
 </a></center>
 

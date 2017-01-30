@@ -2,7 +2,8 @@
 layout: default
 ---
 # Security and Safety Features
-# Fallback
+# Meta Guard
+# Fallback Application
 # External Connections
 # Rate Limiting
 # IPC Controls

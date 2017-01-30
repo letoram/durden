@@ -1,6 +1,9 @@
 ---
 layout: default
 ---
+[Rotation](#rotation) [Multiple Displays](#multidisp) [Density Control](#density)
+[Hotplug](#hotplug) [Color Management](#color)
+
 # Display Management
 Most of this section is written based on arcan using the low level egl-dri
 platform; the other platforms put you inside a window, so there is not much
@@ -17,9 +20,6 @@ Most display changes can be initiated from the <i>Global/Display/Displays</i>
 menu path where there will be explicitly named monitor references, and the
 abstract "Current" that refers to the display that has input focus at the
 moment.
-
-[Rotation](#rotation) [Multiple Displays](#multidisp) [Density Control](#density)
-[Hotplug](#hotplug) [Color Management](#color)
 
 # Rotation / Resolution <a name="rotation"/>
 To switch your current display from horizontal to vertical orientation,

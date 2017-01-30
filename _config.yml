@@ -21,56 +21,58 @@ your_name: Bjorn Stahl
 email: contact@arcan-fe.com
 
 navigation:
-  - text: Home
+  - text: Home #ok
     url: /
-  - text: Setup
+  - text: Setup #ok
     url: /setup
-  - text: The Menu™
+  - text: Default Bindings #ok
+    url: /defbind
+  - text: The Menu™ #ok
     url: /menu
-  - text: Input
+  - text: Input #ok
     url: /input
-  - text: Display Management
+  - text: Display Management #ok
     url: /display
-  - text: Visual Enhancements
+  - text: Visual Enhancements #missing
     url: /visual
-  - text: Clipboard
+  - text: Clipboard #ok
     url: /clipboard
-  - text: Statusbar
+  - text: Statusbar #ok
     url: /statusbar
-  - text: Workspaces and Windows
+  - text: Workspaces and Windows # ok
     url: /workspace
   - text: Workspace/Tile
-    url: /tiling
+    url: /tiling #ok
   - text: Workspace/Float
     url: /float
-  - text: Workspace/Autolayout
+  - text: Workspace/Autolayout # ok
     url: /autolay
-  - text: IPC
+  - text: IPC # ok
     url: /ipc
-  - text: Widgets
+  - text: Widgets #missing SS and text
     url: /widgets
-  - text: Lockscreen
+  - text: Lockscreen # missing SS and text
     url: /lockscreen
-  - text: Record/Stream/Share
+  - text: Record/Stream/Share # missing SS and text
     url: /recstr
-  - text: Security/Safety
+  - text: Security/Safety # missing text
     url: /security
   - text: Timers
-    url: /timers
+    url: /timers # missing text
   - text: Core Options
-    url: coreopts
+    url: coreopt # missing text
   - text: Audio
-    url: audio
+    url: audio # missing text
   - text: Launch Targets
-    url: /targets
+    url: /targets # missing text
   - text: Media Browser
-    url: /browser
+    url: /browser # missing SS and text
   - text: Terminal
-    url: /terminal
+    url: /terminal # missing text
   - text: Tools
-    url: /tools
+    url: /tools # missing text
   - text: LED Controllers
-    url: /led
+    url: /led # missing text
 
 projects:
 #    description: O
