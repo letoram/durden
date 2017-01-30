@@ -300,8 +300,6 @@ sf["wnd_tobg"] = function(wnd)
 	space:set_background(wnd.canvas);
 end
 
-gf["drop_custom"] = dispatch_reset;
-
 local function str_to_u8(instr)
 -- drop spaces and make sure we have %2
 	instr = string.gsub(instr, " ", "");

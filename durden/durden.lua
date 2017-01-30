@@ -37,7 +37,7 @@ function durden(argv)
 
 	update_default_font();
 
-	system_load("keybindings.lua")(); -- static key configuration
+	system_load("dispatch.lua")(); -- UI keyboard routing / management
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
