@@ -46,3 +46,7 @@ It also adds two new paths to <i>target/window/swap</i>, Swap-Focus and
 Swap-Select(Focus). If activated with the center window selected, the
 center window will be swapped with the previous that was last in the center
 window.
+
+# Future Changes
+- Additional auto-layouting modes (spiral etc.)
+

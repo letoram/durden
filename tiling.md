@@ -105,4 +105,3 @@ in [Autolayout](autolay).
 
 # Future Changes
 - Allow tabbed- tiles based on connection hierarchy
-- Additional auto-layouting modes (spiral etc.)

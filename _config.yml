@@ -33,7 +33,7 @@ navigation:
     url: /input
   - text: Display Management #ok
     url: /display
-  - text: Visual Enhancements #missing
+  - text: Visual Enhancements #missing text and SS
     url: /visual
   - text: Clipboard #ok
     url: /clipboard
@@ -49,13 +49,13 @@ navigation:
     url: /autolay
   - text: IPC # ok
     url: /ipc
-  - text: Widgets #missing SS and text
+  - text: Widgets  #ok
     url: /widgets
-  - text: Lockscreen # missing SS and text
+  - text: Lockscreen #ok
     url: /lockscreen
-  - text: Record/Stream/Share # missing SS and text
+  - text: Record/Share # ok
     url: /recstr
-  - text: Security/Safety # missing text
+  - text: Security/Safety # ok
     url: /security
   - text: Timers
     url: /timers # missing text
@@ -70,7 +70,7 @@ navigation:
   - text: Terminal
     url: /terminal # missing text
   - text: Tools
-    url: /tools # missing text
+    url: /tools # missing SS and text
   - text: LED Controllers
     url: /led # missing text
 
