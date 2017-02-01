@@ -40,4 +40,5 @@ following features are planned to be added:
 - Desktop Icons
 - Minimize to Icon, Minize to Statusbar
 - Definable Drag Regions
+- Input forward to background source when no window is selected
 - Alternative menu access UI (popup- style rather than HUD style)

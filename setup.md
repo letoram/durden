@@ -123,7 +123,7 @@ For SDL2 support, there is a separate version maintained at
 [arcan-SDL2](https://github.com/letoram/SDL2). See the README.md in that
 project for more detail.
 
-For wayland support, there is very basic 'waybridge' in the
+For Wayland support, there is very basic 'waybridge' in the
 src/tools/waybridge source tree, with progress being tracked on the
 [wiki](https://github.com/letoram/arcan/wiki/Wayland).
 

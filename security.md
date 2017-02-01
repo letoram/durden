@@ -5,7 +5,7 @@ layout: default
 [Crash Recovery](#crashrec) [Data Sharing](#datashare)
 [Clipboard Access](#clipboard) [Display Control](#dispctrl)
 [Screen Recording](#screenrec) [Rate Limiting](#ratelimit)
-[Protected Terminal](#protterm)
+[Protected Terminal](#protterm) [Delete Protect](#deleteproect)
 
 # Security and Safety Features
 There are a number of mitigations in place to prevent abuse, loss of work and
@@ -19,6 +19,16 @@ The meta guard is the first feature you were exposed to, when active, it waits
 a certain number (~30) of keypresses and expects one of them to be a valid
 meta- menu path. This feature is reactivated if the keyboard device is lost or
 replaced.
+
+# Delete Proect <a name="deleteprotect"/>
+Keyboard repeat actions are disabled on meta bound paths for the reason that
+a possible I/O stall in the wrong moment on a loaded system could trigger
+dangerous cascades like a destroy-window action being triggered accidentally.
+
+To further protect against unwanted destruction of windows with important
+contents, you can enable delete protect through the <i>target/window/delete
+protect</i> path. This blocks the window-destroy action until the delete
+protection is removed.
 
 # Fallback Application <a name="fallback"/>
 This is part of arcan and needs to be enabled explicitly (see the -b argument).
@@ -123,6 +133,6 @@ indication when it is active or not.
 - Enforced sandboxing on frameservers
 - All arcan-side parsers moved to decode frameserver
 - Display-Control LUT safeguards
-- Privilege Level Borders
+- Privilege Level Border indicators (color)
 - Fine-grained GPU access control and load-balancing
 - Event-queue load-balacing factors split into internal/whitelist/external

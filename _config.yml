@@ -33,7 +33,7 @@ navigation:
     url: /input
   - text: Display Management #ok
     url: /display
-  - text: Visual Enhancements #missing text and SS
+  - text: Visual Enhancements #ok
     url: /visual
   - text: Clipboard #ok
     url: /clipboard
@@ -58,21 +58,21 @@ navigation:
   - text: Security/Safety # ok
     url: /security
   - text: Timers
-    url: /timers # missing text
+    url: /timers # ok
   - text: Core Options
-    url: coreopt # missing text
+    url: coreopts # ok
   - text: Audio
-    url: audio # missing text
+    url: audio # ok
   - text: Launch Targets
-    url: /targets # missing text
-  - text: Media Browser
-    url: /browser # missing SS and text
+    url: /targets # ok
+  - text: Media/File Browser
+    url: /browser # ok
   - text: Terminal
-    url: /terminal # missing text
+    url: /terminal # ok
   - text: Tools
-    url: /tools # missing SS and text
+    url: /tools # ok
   - text: LED Controllers
-    url: /led # missing text
+    url: /led # ok
 
 projects:
 #    description: O

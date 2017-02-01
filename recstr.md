@@ -28,8 +28,8 @@ the options found in the region path are:
 When such a path is activated, the cursor turns into a selection region
 that looks something like this:
 
-<center><a href="images/selection.png">
-	<img alt="regsel" src="images/selection.png" style="width: 50%"/>
+<center><a href="images/regsel.png">
+	<img alt="regsel" src="images/regsel.png" style="width: 50%"/>
 </a></center>
 
 Press the meta1 bound key to reposition the origo of the selection region, or
@@ -60,5 +60,6 @@ be placed on the clipboard.
 - Aggregate Area
 - Language Controls
 - Audio Mixing Controls
+- Account for Window-specific shaders
 - Map sharing as a separate display and use multi-display support/management
 - Text-to-Speak/Screen-Reader support

@@ -152,6 +152,8 @@ The following changes are planned for the menu:
  - Mouse and touchpad gesture navigation
  - Mouse Cursor warping to reduce movement
  - Tooltips for each entry
+ - Create macros that conditionally binds mulitple menu path activations
+   into one.
  - Better Widget- area layouting
  - External Widget ICON subsegment added to statusbar, Widget+POPUP tied to
    ICON

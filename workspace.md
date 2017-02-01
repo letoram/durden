@@ -54,6 +54,10 @@ Which would add an 'x' symbol in the left button area for all titlebars.
 When the button is clicked, the <i>target/window/destroy</i> menu path would
 be called.
 
+The fill-area contents of the titlebar is also configurable (text to display)
+via the format string provided in <i>global/config/visual/bars/titlebar</i>.
+
 # Future Changes
 - Titlebar button configuration added to menu
+- stateful buttons to show current values (e.g. volume or sound mute status)
 - Per window or per window-class titlebar custom buttons
