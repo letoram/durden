@@ -227,7 +227,7 @@ local durden_visual = {
 	},
 	{
 		name = "anim_in",
-		label = "In-Animation",
+		label = "Transition-In",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
@@ -237,7 +237,7 @@ local durden_visual = {
 	},
 	{
 		name = "anim_out",
-		label = "Out-Animation",
+		label = "Transition-Out",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_out")); end,

@@ -36,7 +36,7 @@ return {
 	},
 	{
 		name ="vol_set",
-		label = "Gain",
+		label = "Volume",
 		hint = "(0..1)",
 		kind = "value",
 		validator = shared_valid01_float,
