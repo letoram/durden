@@ -60,7 +60,7 @@ navigation:
   - text: Timers
     url: /timers # ok
   - text: Core Options
-    url: coreopts # ok
+    url: coreopt # ok
   - text: Audio
     url: audio # ok
   - text: Launch Targets
