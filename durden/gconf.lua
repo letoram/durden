@@ -70,13 +70,18 @@ local defaults = {
 	enc_presilence = 0,
 	enc_vbr = 0,
 
--- SECURITY: set to :disabled to disable these features, or enable
+-- SECURITY: set _path to :disabled to disable these features, or enable
 -- whitelist and modify whitelist.lua to set allowed commands and paths
 	extcon_path = "durden",
 	status_path = "status",
 	control_path = "control",
 	output_path = "output",
 	whitelist = false,
+
+-- SECURITY: set to passive, active, full or none depending on the default
+-- access permissions to any client that requests to manage gamma or clipboard
+	gamma_access = "none",
+	clipboard_access = "none",
 
 -- if > 0, wait n ticks before re-activating external connection path
 -- (default clock, ~25 == 1s.)

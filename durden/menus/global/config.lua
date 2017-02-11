@@ -227,7 +227,7 @@ local durden_visual = {
 	},
 	{
 		name = "anim_in",
-		label = "In-Animation",
+		label = "Transition-In",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
@@ -237,7 +237,7 @@ local durden_visual = {
 	},
 	{
 		name = "anim_out",
-		label = "Out-Animation",
+		label = "Transition-Out",
 		kind = "value",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_out")); end,
@@ -415,6 +415,26 @@ local durden_system = {
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
 			gconfig_set("whitelist", val == LBL_YES);
+		end
+	},
+	{
+		name = "bridgegamma",
+		label = "Gamma Bridge",
+		kind = "value",
+		initial = function() return gconfig_get("gamma_access"); end,
+		set = {"none", "full"},
+		handler = function(ctx, val)
+			gconfig_set("gamma_access", val);
+		end
+	},
+	{
+		name = "bridgeclip",
+		label = "Clipboard Bridge",
+		kind = "value",
+		initial = function() return gconfig_get("clipboard_access"); end,
+		set = {"none", "full", "passive", "active"},
+		handler = function(ctx, val)
+			gconfig_set("clipboard_access", val);
 		end
 	},
 	{

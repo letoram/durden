@@ -44,7 +44,7 @@ local function shorten(s)
 	return r and r or "";
 end
 
-local function clipboard_histgen(wnd, lst)
+local function clipboard_histgen(wnd, lst, promote)
 	local res = {};
 	for k, v in ipairs(lst) do
 		table.insert(res, {
@@ -52,10 +52,11 @@ local function clipboard_histgen(wnd, lst)
 			label = string.format("%d:%s", k, string.sub(shorten(v), 1, 20)),
 			kind = "action",
 			handler = function()
-				local m1, m2 = dispatch_meta();
-				pastefun(wnd, v);
-				if (m1) then
+				if (promote) then
 					CLIPBOARD:set_global(v);
+				else
+					local m1, m2 = dispatch_meta();
+					pastefun(wnd, v);
 				end
 			end
 		});
@@ -82,9 +83,6 @@ local function clipboard_urls()
 			handler = function()
 				local m1, m2 = dispatch_meta();
 				pastefun(active_display().selected, v);
-				if (m1) then
-					CLIPBOARD:set_global(v);
-				end
 			end
 		});
 	end
@@ -118,11 +116,28 @@ return {
 		label = "History-Local",
 		kind = "action",
 		eval = function()
-		return valid_vid(
-			active_display().selected.external, TYPE_FRAMESERVER);
+			local wnd = active_display().selected;
+			return wnd.clipboard ~= nil and #CLIPBOARD:list_local(wnd.clipboard) > 0;
 		end,
 		submenu = true,
-		handler = clipboard_local_history
+		handler = function()
+			local wnd = active_display().selected;
+			return clipboard_histgen(wnd, CLIPBOARD:list_local(wnd.clipboard));
+		end
+	},
+	{
+		name = "lhistprom",
+		label = "Promote",
+		kind = "action",
+		eval = function()
+			local wnd = active_display().selected;
+			return wnd.clipboard ~= nil and #CLIPBOARD:list_local(wnd.clipboard) > 0;
+		end,
+		submenu = true,
+		handler = function()
+			local wnd = active_display().selected;
+			return clipboard_histgen(wnd, CLIPBOARD:list_local(wnd.clipboard), true);
+		end
 	},
 	{
 		name = "hist",

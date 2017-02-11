@@ -203,8 +203,13 @@ function table.find_key_i(table, field, r)
 end
 
 function table.insert_unique_i(tbl, i, v)
-	if (not table.find_i(tbl, v)) then
+	local ind = table.find_i(tbl, v);
+	if (not ind) then
 		table.insert(tbl, i, v);
+	else
+		local cpy = tbl[i];
+		tbl[i] = tbl[ind];
+		tbl[ind] = cpy;
 	end
 end
 
