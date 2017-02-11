@@ -1,4 +1,4 @@
--- Copyright: 2016, Björn Ståhl
+-- Copyright: 2016-2017, Björn Ståhl
 -- touch, tablet, multitouch support and routing.
 -- each device is assigned a classifier that covers how multitouch
 -- events should be mapped to other device behaviors or explicit

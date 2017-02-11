@@ -1,4 +1,4 @@
--- Copyright: 2015, Björn Ståhl
+-- Copyright: 2015-2017, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Depends: display, shdrmgmt, lbar, suppl, mouse
