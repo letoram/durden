@@ -184,6 +184,15 @@ function(wnd, source, stat)
 		return;
 	end
 
+-- some odd archetype handlers (clipboard, ...) want to evaluate and
+-- intercept the normal creation process
+	if (atbl.intercept) then
+		if (not atbl:intercept(wnd, source, stat)) then
+			wnd:destroy();
+		end
+		return;
+	end
+
 -- note that this can be emitted multiple times, it is just the
 -- segment kind that can't / wont change
 	wnd:set_title(stat.title);

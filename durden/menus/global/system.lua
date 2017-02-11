@@ -62,7 +62,9 @@ idle_wakeup = function(key, failed)
 			iostatem_restore();
 		end,
 		{}, {label = string.format(
-			"Key (%d Failed Attempts):", failed),
+			failed > 0 and
+				"Enter Unlock Key (%d Failed Attempts):" or
+				"Enter Unlock Key:", failed),
 			password_mask = gconfig_get("passmask")
 		}
 	);
@@ -96,6 +98,24 @@ local function lock_value(ctx, val)
 	idle_setup(val, 0);
 end
 
+local function gen_appl_menu()
+	local res = {};
+	local tbl = glob_resource("*", SYS_APPL_RESOURCE);
+	for i,v in ipairs(tbl) do
+		table.insert(res, {
+			name = "switch_" .. tostring(i);
+			label = v,
+			dangerous = true,
+			kind = "action",
+			handler = function()
+				durden_shutdown();
+				system_collapse(v);
+			end,
+		});
+	end
+	return res;
+end
+
 local reset_query = {
 	{
 		name = "no",
@@ -113,6 +133,14 @@ local reset_query = {
 			system_collapse();
 		end
 	},
+	{
+		name = "switch",
+		label = "Switch Appl",
+		kind = "action",
+		submenu = true,
+		eval = function() return #glob_resource("*", SYS_APPL_RESOURCE) > 0; end,
+		handler = gen_appl_menu
+	}
 };
 
 local function query_dump()
@@ -271,7 +299,17 @@ local system_menu = {
 		handler = reset_query
 	},
 	{
-		name = "ouput_msg",
+		name = "status_msg",
+		label = "Status-Message",
+		kind = "value",
+		invisible = true,
+		validator = function(val) return true; end,
+		handler = function(ctx, val)
+			active_display():message(val and val or "");
+		end
+	},
+	{
+		name = "output_msg",
 		label = "IPC-Output",
 		kind = "value",
 		invisible = true,

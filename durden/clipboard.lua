@@ -91,6 +91,14 @@ local function clipboard_save(ctx, fn)
 	return true;
 end
 
+local function clipboard_monitor(ctx, fctx)
+-- set or drop?
+	if (ctx.monitor) then
+		ctx.monitor("", true);
+	end
+	ctx.monitor = fctx;
+end
+
 local function clipboard_load(ctx, fn)
 	if (not resource(fn)) then
 		return;
@@ -173,6 +181,7 @@ return {
 	lost = clipboard_lost,
 	save = clipboard_save,
 	load = clipboard_load,
+	set_monitor = clipboard_monitor,
 	pastemodes = clipboard_pastemodes,
 	set_global = clipboard_setglobal,
 	list_local = clipboard_locals,

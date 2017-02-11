@@ -220,7 +220,7 @@ By default, durden creates three named pipes (FIFO) in the ipc subdirectory of
 the APPLTEMP namespace (default, same as the durden path you run, but can be
 changed with the ARCAN\_APPLTEMPPATH environment variable).
 
-The respective fifos are called (write-only: status, command) and (read-only:
+The respective fifos are called (write-only: status, control) and (read-only:
 output). Status can be used for providing external information, e.g. open
 files, available memory, network status and have it mapped on UI components
 like the status bar. The command protocol is similar to 'lemonbar' (so i3status

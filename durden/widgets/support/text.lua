@@ -34,12 +34,12 @@ return {
 		end
 
 		local tbl, heights, outw, outh, asc = render_text(out);
-		local bdw = outw + outh;
-		local bdh = (heights[#heights]+outh) + outh;
-		local bdw = bdw > props.width and props.width or bdw;
-		local bdh = bdh > props.height and props.height or bdh;
 
 		if (valid_vid(tbl)) then
+			local bdw = outw + outh;
+			local bdh = (heights[#heights]+outh) + outh;
+			local bdw = bdw > props.width and props.width or bdw;
+			local bdh = bdh > props.height and props.height or bdh;
 			local backdrop = fill_surface(bdw, bdh, 20, 20, 20);
 			link_image(backdrop, anchor);
 			link_image(tbl, backdrop);

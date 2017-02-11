@@ -7,7 +7,7 @@ return {
 	},
 	{
 		name = "volume",
-		label = "Global Gain",
+		label = "Volume",
 		kind = "action",
 		hint = "(0..1)",
 		kind = "value",
