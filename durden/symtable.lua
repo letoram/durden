@@ -25,10 +25,6 @@ local GLOBPATH = "devmaps/keyboard/";
 
 -- for legacy reasons, we provide an sdl compatible symtable
 local symtable = {};
- symtable[0] = "UNKNOWN";
- symtable["UNKNOWN"] = 0;
- symtable[0] = "FIRST";
- symtable["FIRST"] = 0;
  symtable[8] = "BACKSPACE";
  symtable["BACKSPACE"] = 8;
  symtable[9] = "TAB";
@@ -531,10 +527,10 @@ symtable.patch = function(tbl, iotbl)
 		end
 
 -- other symbols are described relative to the internal sdl symbols
-	local sym = tbl.symlut[iotbl.keysym] and
-		tbl.symlut[iotbl.keysym] or tbl[iotbl.keysym];
+	local sym = tbl.symlut[iotbl.number] and
+		tbl.symlut[iotbl.number] or tbl[iotbl.keysym];
 	if (not sym) then
-		sym = "UNKN" .. tostring(iotbl.subid);
+		sym = "UNKN" .. tostring(iotbl.number);
 	else
 		iotbl.keysym = tbl[sym];
 	end
