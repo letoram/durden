@@ -10,8 +10,13 @@ local function pastefun(wnd, msg)
 --			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0, function()
 --		end);
 		wnd.clipboard_out = define_nulltarget(wnd.external,
-		function()
+		function(source, status)
+			if (status.kind == "terminated") then
+				delete_image(source);
+				wnd.clipboard_out = nil;
+			end
 		end);
+		link_image(wnd.clipboard_out, wnd.anchor);
 	end
 
 	msg = wnd.pastefilter ~= nil and wnd.pastefilter(msg) or msg;
