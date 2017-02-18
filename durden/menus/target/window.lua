@@ -31,6 +31,33 @@ local swap_menu = {
 	},
 };
 
+local select_menu = {
+	{
+		name = "up",
+		label = "Up",
+		kind = "action",
+		handler = grab_shared_function("step_up")
+	},
+	{
+		name = "down",
+		label = "Down",
+		kind = "action",
+		handler = grab_shared_function("step_down")
+	},
+	{
+		name = "left",
+		label = "Left",
+		kind = "action",
+		handler = grab_shared_function("step_left")
+	},
+	{
+		name = "right",
+		label = "Right",
+		kind = "action",
+		handler = grab_shared_function("step_right")
+	},
+};
+
 local moverz_menu = {
 {
 	name = "grow_shrink_h",
@@ -198,6 +225,13 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = swap_menu
+	},
+	{
+		name = "select",
+		label = "Select",
+		kind = "action",
+		submenu = true,
+		handler = select_menu
 	},
 	{
 		name = "reassign_name",
