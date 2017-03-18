@@ -75,6 +75,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Sensitivity",
 		hint = function() return "(0.01..10)"; end,
+		eval = function() return not mouse_blocked(); end,
 		validator = gen_valid_num(0, 10),
 		initial = function()
 			return tostring(gconfig_get("mouse_factor"));
@@ -90,6 +91,7 @@ local mouse_menu = {
 		name = "dblclick",
 		kind = "value",
 		label = "Double-Click",
+		eval = function() return not mouse_blocked(); end,
 		hint = function() return "(deadline for double click)"; end,
 		validator = gen_valid_num(5, 100),
 		initial = function()
@@ -103,6 +105,7 @@ local mouse_menu = {
 		name = "hover",
 		kind = "value",
 		label = "Hover Delay",
+		eval = function() return not mouse_blocked(); end,
 		hint = function() return "10..80"; end,
 		validator = gen_valid_num(0, 80),
 		initial = function()
@@ -118,6 +121,7 @@ local mouse_menu = {
 	{
 		name = "button",
 		label = "Button",
+		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
 		handler = gen_mbutton_menu,
@@ -125,6 +129,7 @@ local mouse_menu = {
 	{
 		name = "debounce",
 		label = "Debounce",
+		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
 		handler = gen_mbounce_menu
@@ -132,6 +137,7 @@ local mouse_menu = {
 	{
 		name = "reorder",
 		label = "Reorder",
+		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
 		handler = remap_menu
@@ -141,6 +147,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Remember Position",
 		set = {LBL_YES, LBL_NO},
+		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_remember_position") and LBL_YES or LBL_NO;
 		end,
@@ -154,6 +161,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Autohide",
 		set = {LBL_YES, LBL_NO},
+		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_autohide") and LBL_YES or LBL_NO;
 		end,
@@ -167,6 +175,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Reveal/Hide",
 		set = {LBL_YES, LBL_NO},
+		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_reveal") and LBL_YES or LBL_NO;
 		end,
@@ -180,6 +189,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Hard Lock",
 		set = {LBL_YES, LBL_NO},
+		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_hardlock") and LBL_YES or LBL_NO;
 		end,
@@ -192,6 +202,7 @@ local mouse_menu = {
 		name = "hide_delay",
 		kind = "value",
 		label = "Autohide Delay",
+		eval = function() return not mouse_blocked(); end,
 		hint = function() return "40..400"; end,
 		validator = gen_valid_num(0, 400),
 		initial = function()
@@ -208,12 +219,30 @@ local mouse_menu = {
 		name = "focus",
 		kind = "value",
 		label = "Focus Event",
+		eval = function() return not mouse_blocked(); end,
 		set = {"click", "motion", "hover", "none"},
 		initial = function()
 			return gconfig_get("mouse_focus_event");
 		end,
 		handler = function(ctx, val)
 			gconfig_set("mouse_focus_event", val);
+		end
+	},
+	{
+		name = "block",
+		kind = "value",
+		label = "Block",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("mouse_block") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("mouse_block", val == LBL_YES);
+			if (val == LBL_YES) then
+				mouse_block();
+			else
+				mouse_unblock();
+			end
 		end
 	},
 };

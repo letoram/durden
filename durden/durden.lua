@@ -91,6 +91,10 @@ function durden(argv)
 		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
 	end
 
+	if (gconfig_get("mouse_block")) then
+		mouse_block();
+	end
+
 	local nt = display_manager_init();
 	nt.on_wnd_create = wnd_create_handler;
 
@@ -139,6 +143,10 @@ function durden(argv)
 	local cmd = system_load("autorun.lua", 0);
 	if (type(cmd) == "function") then
 		cmd();
+	end
+
+	if (gconfig_get("mouse_block")) then
+		mouse_block();
 	end
 
 	if (gconfig_get("first_run")) then
@@ -604,6 +612,10 @@ function durden_normal_input(iotbl, fromim)
 -- any forwarded input there is based on event reception in listeners
 -- attached to mouse motion or presses.
 	if (iotbl.mouse) then
+		if (mouse_blocked()) then
+			return;
+		end
+
 		if (iotbl.digital) then
 			mouse_button_input(iotbl.subid, iotbl.active);
 		else

@@ -92,6 +92,7 @@ local mstate = {
 -- tables of event_handlers to check for match when
 	handlers = mouse_handlers,
 	eventtrace = false,
+	blocked = false,
 	btns = {},
 	btns_clock = {},
 	btns_bounce = {},
@@ -878,7 +879,18 @@ function mouse_input(x, y, state, noinp, force)
 	mstate.in_handler = false;
 end
 
-mouse_motion = mouse_input;
+local mouse_input_ref = mouse_input;
+function mouse_block()
+	mouse_input = function() end
+	mstate.blocked = true;
+	mouse_hide();
+end
+
+function mouse_unblock()
+	mouse_input = mouse_input_ref;
+	mstate.blocked = false;
+	mouse_show();
+end
 
 --
 -- triggers callbacks in tbl when desired events are triggered.
@@ -1065,7 +1077,15 @@ function mouse_hidemask(st)
 	mstate.revmask = st;
 end
 
+function mouse_blocked()
+	return mstate.blocked;
+end
+
 function mouse_show()
+	if (mstate.blocked) then
+		return;
+	end
+
 	if (mstate.native) then
 		mouse_switch_cursor(mstate.active_label);
 	else
