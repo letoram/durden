@@ -66,7 +66,7 @@ local function side_imgcfg(wnd)
 	wnd.scalemode = "stretch";
 	wnd.autocrop = false;
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
-	shader_setup(wnd.canvas, "simple", "noalpha");
+	shader_setup(wnd.canvas, "simple", wnd.space.layouter.side_shader);
 end
 
 local function sel_h(wnd, mouse)
@@ -295,6 +295,13 @@ local function center_resize(space, lin, evblock, wnd, cb)
 		end
 		return true;
 	end
+	if (not active_display().selected) then
+		if (space.children[2]) then
+			space.children[2]:select();
+		elseif (space.children[1]) then
+			space.children[1]:select();
+		end
+	end
 -- just forward to the next layer
 end
 
@@ -380,23 +387,52 @@ local function copy(intbl)
 	return res;
 end
 
-local cfl = {
-	resize = center_resize,
-	added = center_added,
-	lost = center_lost,
-	cleanup = center_free,
-
--- control all "normal" operations
+local book_layouter = {
+	resize = book_resize,
+	added = book_added,
+	lost = book_lost,
+	cleanup = book_free,
+	side_shader = "noalpha",
 	block_grow = true,
 	block_merge = true,
 	block_collapse = true,
 	block_swap = true
 };
 
-local function set_layouter(space, scaled, block_rz)
-	space.layouter = copy(cfl);
-	space.layouter.scaled = scaled;
-	space.layouter.block_rzevent = block_rz;
+local centerscale_layouter = {
+	resize = center_resize,
+	added = center_added,
+	lost = center_lost,
+	cleanup = center_free,
+
+-- control all "normal" operations
+	side_shader = "noalpha",
+	block_grow = true,
+	block_merge = true,
+	block_collapse = true,
+	block_swap = true,
+	scaled = true,
+	block_rzevent = true
+};
+
+local center_layouter = {
+	resize = center_resize,
+	added = center_added,
+	lost = center_lost,
+	cleanup = center_free,
+
+-- control all "normal" operations
+	side_shader = "noalpha",
+	block_grow = true,
+	block_merge = true,
+	block_collapse = true,
+	block_swap = true,
+	scaled = false,
+	block_rzevent = false
+};
+
+local function set_layouter(space, layouter)
+	space.layouter = copy(layouter);
 	center_setup(space);
 	space:resize();
 	center_focus(space);
@@ -413,7 +449,7 @@ local layouters = {
 	handler = function()
 		local space = active_display().active_space;
 		if (space) then
-			set_layouter(space, false, false);
+			set_layouter(space, center_layouter);
 		end
 	end,
 },
@@ -425,10 +461,19 @@ local layouters = {
 		return active_display().active_space ~= nil;
 	end,
 	handler = function()
-		local space = active_display().active_space;
-		if (space) then
-			set_layouter(space, true, true);
-		end
+		set_layouter(active_display().active_space, centerscale_layouter);
+	end
+},
+{
+	name = "book",
+	label = "Book",
+	kind = "action",
+	eval = function()
+		return false;
+		--active_display().active_space ~= nil;
+	end,
+	handler = function()
+		set_layouter(active_display().active_space, book_layout);
 	end
 },
 {
@@ -436,8 +481,8 @@ local layouters = {
 	label = "Default",
 	kind = "action",
 	eval = function()
-		local d = active_display();
-		return d.active_space and d.active_space.layouter;
+		local d = active_display().active_space;
+		return d and d.layouter;
 	end,
 	handler = function()
 		local space = active_display().active_space;
