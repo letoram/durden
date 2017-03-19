@@ -266,6 +266,7 @@ return {
 		label = "Mouse",
 		kind = "action",
 		submenu = true,
+		eval = function() return not mouse_blocked(); end,
 		handler = mouse_menu
 	},
 	{

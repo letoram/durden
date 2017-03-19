@@ -149,6 +149,9 @@ local defaults = {
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
 
+-- disable all mouse management and related menus
+	mouse_block = false,
+
 -- > 0, the minimum clock-delta before a button is accepted again
 	mouse_debounce_1 = 0,
 	mouse_debounce_2 = 0,
