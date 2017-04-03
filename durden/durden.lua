@@ -34,6 +34,8 @@ function durden(argv)
 	system_load("bbar.lua")(); -- input binding
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
+	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
+	CLIPBOARD:load("clipboard_data.lua");
 
 	update_default_font();
 
@@ -44,8 +46,6 @@ function durden(argv)
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
-	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
-	CLIPBOARD:load("clipboard_data.lua");
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global functions
@@ -338,7 +338,7 @@ function durden_devicehint(vid)
 	end
 end
 
-function durden_launch(vid, prefix, title, wnd, external)
+function durden_launch(vid, prefix, title, wnd)
 	if (not valid_vid(vid)) then
 		return;
 	end
