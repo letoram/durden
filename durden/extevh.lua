@@ -52,17 +52,16 @@ local function cursor_handler(wnd, source, status)
 end
 
 local function default_reqh(wnd, source, ev)
-	local normal = {"lwa", "multimedia", "game", "vm",
-		"application", "remoting", "browser"};
+	local normal = {
+		"lwa", "multimedia", "game", "vm",
+		"application", "remoting", "browser"
+	};
 
 -- something that should map to a new / normal window?
-	if (table.find_i(normal, ev.segkind)) then
+	if ((wnd.allowed_segments and table.find_i(wnd.allowed_segments, ev.segkind))
+		or (not wnd.allowed_segments and table.find_i(normal, ev.segkind))) then
 		local vid = accept_target();
-		target_updatehandler(vid,
-			function(source, status)
-			print("subwindow fail", status.kind);
-		end);
-		return;
+		durden_launch(vid, "", "external", nil);
 	end
 
 -- special handling, cursor etc.

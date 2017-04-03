@@ -194,6 +194,20 @@ local function add_stateref(res, uniforms, shid)
 	end
 end
 
+-- the different shader types:
+-- 'ui' Has states that need to be forwarded. Right now, there is just
+-- one shared for all UI elements because the delete_shader approach for
+-- ugroups is faulty, so we'd have problems after 64k such changes but we
+-- do want to be able to forward more window specific parameters, like
+-- privilege level and so on.
+--
+-- 'simple, audio' are treated as ui, though won't have an instanced state.
+--
+-- displays are inherently single pass.
+--
+-- 'effect' is more complicated as it needs to support multiple passes
+-- with indirect offscreen rendering and will be chainable in the future.
+--
 local function smenu(shdr, grp, name)
 	if (not shdr.uniforms) then
 		return;
@@ -263,6 +277,7 @@ local function dmenu(shdr, grp, name, state)
 	return res;
 end
 
+-- argument one [ setup ], argument two, [ configuration menu ]
 local fmtgroups = {
 	ui = {ssetup, smenu},
 	effect = {

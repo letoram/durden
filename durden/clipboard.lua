@@ -19,6 +19,12 @@ local function clipboard_add(ctx, source, msg, multipart)
 		end
 	end
 
+-- if there's previous multipart tracking, combine them now
+	if (ctx.mpt[source]) then
+		msg = table.concat(ctx.mpt[source], "") .. msg;
+		ctx.mpt[source] = nil;
+	end
+
 -- quick-check for uri. like strings (not that comprehensive), store
 -- in a separate global history that we can grab from at will
 	if (string.len(msg) < 1024) then
@@ -30,18 +36,13 @@ local function clipboard_add(ctx, source, msg, multipart)
 		end
 	end
 
-	if (ctx.mpt[source]) then
-		msg = table.concat(ctx.mpt[source], "") .. msg;
-		ctx.mpt[source] = nil;
-	end
-
 	if (ctx.locals[source] == nil) then
 		ctx.locals[source] = {};
 	end
 
 -- default is promote to global, but less trusted won't be allowed to
 	if (not ctx.locals[source].blocked) then
-		ctx:set_global(msg);
+		ctx:set_global(msg, source);
 	end
 
 -- skip duplicates
@@ -57,10 +58,14 @@ local function clipboard_add(ctx, source, msg, multipart)
 	end
 end
 
-local function clipboard_setglobal(ctx, msg)
+local function clipboard_setglobal(ctx, msg, src)
 	table.insert_unique_i(ctx.globals, 1, msg);
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
+	end
+
+	if (ctx.monitor and type(ctx.monitor) == "function") then
+		ctx:monitor(msg, true, src);
 	end
 end
 
@@ -94,7 +99,7 @@ end
 local function clipboard_monitor(ctx, fctx)
 -- set or drop?
 	if (ctx.monitor) then
-		ctx.monitor("", true);
+		ctx.monitor();
 	end
 	ctx.monitor = fctx;
 end

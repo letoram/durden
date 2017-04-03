@@ -65,6 +65,7 @@ function spawn_terminal(cmd)
 		if (status.kind == "preroll") then
 			local wnd = durden_launch(source, "", "terminal", wnd);
 			if (not wnd) then
+				warning("durden launch preroll state failed");
 				return;
 			end
 			wnd.scalemode = "stretch";
