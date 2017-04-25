@@ -123,7 +123,8 @@ end
 
 defhtbl["alert"] =
 function(wnd, source, stat)
--- FIXME: need multipart concatenation of message
+-- FIXME: need multipart concatenation of message, and forwarding
+-- to a notification listener (if any)
 end
 
 defhtbl["cursorhint"] =
@@ -135,6 +136,30 @@ defhtbl["viewport"] =
 function(wnd, source, stat)
 -- need different behavior for popup here (invisible, parent, ...),
 -- FIXME:	wnd:custom_border(ev->viewport.border);
+end
+
+-- got updated ramps from a client, still need to decide what to
+-- do with them, i.e. set them as active on window select and remove
+-- on window deselect.
+defhtbl["ramp_update"] =
+function(wnd, source, stat)
+	active_display():message("got ramp update");
+	local ramps = video_displaygamma(source, stat.index);
+end
+
+defhtbl["proto_change"] =
+function(wnd, source, stat)
+-- client now has access to color ramps, send either all or
+-- the currently assigned one. Then comes the question what to
+-- do with them,
+	wnd.gamma_controls = stat.cm;
+	if (stat.cm) then
+		for disp in all_displays_iter() do
+			if (disp.ramps) then
+				video_displaygamma(source, disp.ramps, disp.id);
+			end
+		end
+	end
 end
 
 defhtbl["resized"] =
