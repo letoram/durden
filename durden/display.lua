@@ -438,6 +438,9 @@ function display_event_handler(action, id)
 -- etc. but it beats have to cover a number of corner cases / races
 		ddisp.ppcm = ppcm;
 		ddisp.subpx = subpx;
+		if (not ddisp.ramps) then
+			ddisp.ramps = video_displaygamma(ddisp.id);
+		end
 
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
