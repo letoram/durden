@@ -309,5 +309,59 @@ return {
 		kind = "action",
 		handler = moverz_menu,
 		submenu = true
+	},
+	{
+		name = "slice_clone",
+		label = "Slice/Clone",
+		kind = "value",
+		set = {"Active", "Passive"},
+		external_block = true,
+		handler = function(ctx, val)
+-- like with all suppl_region_select calls, this is race:y as the
+-- selection state can go on indefinitely and things might've changed
+-- due to some event (thing wnd being destroyed while select state is
+-- active)
+			local wnd = active_display().selected;
+			local props = image_surface_resolve(wnd.canvas);
+
+			suppl_region_select(255, 0, 255,
+				function(x1, y1, x2, y2)
+-- grab the current values
+					local wnd = active_display().selected;
+					local props = image_surface_resolve(wnd.canvas);
+					local px2 = props.x + props.width;
+					local py2 = props.y + props.height;
+
+-- and actually clamp
+					x1 = x1 < props.x and props.x or x1;
+					y1 = y1 < props.y and props.y or y1;
+					x2 = x2 > px2 and px2 or x2;
+					y2 = y2 > py2 and py2 or y2;
+
+-- safeguard against range problems
+					if (x2-x1 <= 0 or y2 - y1 <= 0) then
+						return;
+					end
+
+-- create clone with proper texture coordinates
+					local new = null_surface(x2-x1, y2-y1);
+					image_sharestorage(wnd.canvas, new);
+					local s1 = (x1-props.x) / props.width;
+					local t1 = (y1-props.y) / props.height;
+					local s2 = (x2-props.x) / props.width;
+					local t2 = (y2-props.y) / props.height;
+					image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
+					show_image(new);
+
+-- bind to a window, with optional input-routing
+					local cwin = active_display():add_window(new, {scalemode = "aspect"});
+					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
+						val == "Active") then
+						cwin.external = wnd.external;
+						cwin.external_prot = true;
+					end
+				end
+			);
+		end
 	}
 };

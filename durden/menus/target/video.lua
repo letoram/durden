@@ -103,18 +103,20 @@ local advanced = {
 			target_flags(active_display().selected.external, TARGET_NOBUFFERPASS, true);
 		end
 	},
-    {
-        name = "source_color",
-        label = "Toggle Color Sync",
-        kind = "action",
-		eval = function(ctx, val)
-			local wnd = active_display().selected;
+	{
+	name = "source_color",
+	label = "Color/Gamma Sync",
+	kind = "value",
+	set = {"None", "Local", "Global"},
+	eval = function(ctx, val)
+		local wnd = active_display().selected;
 			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
-		end,
-		handler = function(ctx, val)
-			target_flags(active_display().selected.external, TARGET_ALLOWCM, true);
-		end
-    }
+	end,
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		target_flags(active_display().selected.external, TARGET_ALLOWCM, true);
+	end
+	}
 };
 
 return {

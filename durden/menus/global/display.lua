@@ -291,6 +291,7 @@ local region_menu = {
 		label = "Snapshot",
 		kind = "action",
 		eval = function() return not mouse_blocked(); end,
+		external_block = true,
 		handler = function()
 			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
@@ -306,6 +307,7 @@ local region_menu = {
 		label = "Monitor",
 		kind = "action",
 		eval = function() return not mouse_blocked(); end,
+		external_block = true,
 		handler = function()
 			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
@@ -327,6 +329,7 @@ local region_menu = {
 		label = "OCR",
 		kind = "action",
 		eval = function() return not mouse_blocked(); end,
+		external_block = true,
 		handler = function()
 			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
 
@@ -376,6 +379,7 @@ local region_menu = {
 		eval = function() return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil;
 		end,
+		e3xternal_block = true,
 		handler = system_load("menus/global/remoting.lua")();
 	},
 	{
@@ -386,6 +390,7 @@ local region_menu = {
 		hintsel = suppl_recarg_set,
 		validator = suppl_recarg_valid,
 		eval = suppl_recarg_eval,
+		external_block = true,
 		handler = function(ctx, val)
 			record_handler(val);
 		end
