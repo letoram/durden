@@ -315,6 +315,7 @@ return {
 		label = "Slice/Clone",
 		kind = "value",
 		set = {"Active", "Passive"},
+		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function(ctx, val)
 -- like with all suppl_region_select calls, this is race:y as the

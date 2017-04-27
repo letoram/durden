@@ -11,6 +11,9 @@ return function()
 	suppl_region_select(127, 255, 64,
 	function(x1, y1, x2, y2)
 		local dvid, vgrp, agrp = suppl_region_setup(x1, y1, x2, y2, true, false);
+		if (not valid_vid(dvid)) then
+			return;
+		end
 		show_image(dvid);
 		local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 		local infn = function(source, status)
