@@ -290,7 +290,6 @@ local region_menu = {
 		name = "snapshot",
 		label = "Snapshot",
 		kind = "action",
-		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function()
 			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
@@ -306,7 +305,6 @@ local region_menu = {
 		name = "monitor",
 		label = "Monitor",
 		kind = "action",
-		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function()
 			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
@@ -328,7 +326,6 @@ local region_menu = {
 		name = "ocr",
 		label = "OCR",
 		kind = "action",
-		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function()
 			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
@@ -428,6 +425,7 @@ return {
 	{
 		name = "region",
 		label = "Region",
+		eval = function() return not mouse_blocked(); end,
 		kind = "action",
 		submenu = true,
 		handler = region_menu
