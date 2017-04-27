@@ -159,6 +159,18 @@ return {
 		handler = set_ws_background,
 	},
 	{
+		name = "drop_bg",
+		label = "Drop Background",
+		kind = "action",
+		eval = function()
+			return valid_vid(
+				active_display().spaces[active_display().space_ind].background);
+		end,
+		handler = function()
+			active_display().spaces[active_display().space_ind]:set_background();
+		end
+	},
+	{
 		name = "rename",
 		label = "Rename",
 		kind = "action",
