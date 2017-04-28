@@ -266,7 +266,12 @@ end
 function gconfig_register(key, val)
 	if (not defaults[key]) then
 		local v = get_key(key);
-		if (v ~= nil and type(v) == type(val)) then
+		if (v ~= nil) then
+			if (type(val) == "number") then
+				v = tonumber(v);
+			elseif (type(val) == "boolean") then
+				v = v == "true";
+			end
 			defaults[key] = v;
 		else
 			defaults[key] = val;

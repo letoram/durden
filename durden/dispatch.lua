@@ -37,6 +37,10 @@ function dispatch_tick()
 	end
 end
 
+function dispatch_locked()
+	return mtrack.ignore ~= false and mtrack.ignore ~= nil;
+end
+
 function dispatch_load(locktog)
 	gconfig_listen("meta_stick_time", "dispatch.lua",
 	function(key, val)
