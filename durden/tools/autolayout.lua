@@ -17,7 +17,8 @@ local function save_wnd(wnd)
 	wnd.old = {
 		autocrop = wnd.autocrop,
 		shader = image_shader(wnd.canvas),
-		scalemode = wnd.scalemode
+		scalemode = wnd.scalemode,
+		hidetbar = wnd.hide_titlebar
 	};
 end
 
@@ -32,7 +33,9 @@ local function restore_wnd(wnd)
 
 	wnd.scalemode = wnd.old.scalemode;
 	wnd.autocrop = wnd.old.autocrop;
+	wnd.hide_titlebar = wnd.old.hide_titlebar;
 	show_image(wnd.anchor);
+	wnd:set_title();
 end
 
 -- "center" means normal behavior and the active shader for the window
@@ -66,11 +69,15 @@ local function side_imgcfg(wnd)
 	wnd.scalemode = "stretch";
 	wnd.autocrop = false;
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
-	shader_setup(wnd.canvas, "simple", wnd.space.layouter.side_shader);
+	if (gconfig_get("autolay_shader")) then
+		shader_setup(wnd.canvas, "simple", gconfig_get("autolay_sideshdr"));
+	end
+	wnd.hide_titlebar = not gconfig_get("autolay_sidetbar");
+	wnd:set_title();
 end
 
 local function sel_h(wnd, mouse)
-	if (mouse) then
+	if (mouse and not dispatch_locked()) then
 		if (gconfig_get("autolay_selswap")) then
 			swap_focus(wnd);
 		end
@@ -379,6 +386,25 @@ local function center_free(space)
 	space:resize();
 end
 
+-- book layouter is a horizontal/flat layout where a specific ration is
+-- designated to the 'main' area (children[1]) and the rest will be 'evenly'
+-- divided across the remaining area. Instad of scaling, we crop by
+-- manipulating texture coordinates. The switch operation works like turning a
+-- page. All pages are resized to fit the main area, so there are no resize
+-- cascades.
+local function book_resize(space, lin, evblock, wnd, cb)
+end
+
+local function book_added(space, wnd)
+end
+
+local function book_lost(space, wnd, destroy)
+end
+
+local function book_free(space)
+
+end
+
 -- ONLY REGISTRATION / MENU SETUP BOILERPLATE BELOW --
 
 local function copy(intbl)
@@ -392,7 +418,6 @@ local book_layouter = {
 	added = book_added,
 	lost = book_lost,
 	cleanup = book_free,
-	side_shader = "noalpha",
 	block_grow = true,
 	block_merge = true,
 	block_collapse = true,
@@ -406,7 +431,6 @@ local centerscale_layouter = {
 	cleanup = center_free,
 
 -- control all "normal" operations
-	side_shader = "noalpha",
 	block_grow = true,
 	block_merge = true,
 	block_collapse = true,
@@ -422,7 +446,6 @@ local center_layouter = {
 	cleanup = center_free,
 
 -- control all "normal" operations
-	side_shader = "noalpha",
 	block_grow = true,
 	block_merge = true,
 	block_collapse = true,
@@ -473,7 +496,7 @@ local layouters = {
 		--active_display().active_space ~= nil;
 	end,
 	handler = function()
-		set_layouter(active_display().active_space, book_layout);
+		set_layouter(active_display().active_space, book_layouter);
 	end
 },
 {
@@ -501,24 +524,34 @@ local function update_space(space)
 	end
 end
 
+-- add new config-db keys
 gconfig_register("autolay_sideopa", 0.5);
 gconfig_register("autolay_selswap", true);
 gconfig_register("autolay_centerw", 0.8);
+gconfig_register("autolay_sidetbar", true);
+gconfig_register("autolay_sideshdr", "noalpha");
+gconfig_register("autolay_shader", false);
 
-gconfig_listen("autolay_sideopa", "autolayh", function()
--- find all the workspaces where this layouter is used
+local function reconfig()
 	for tiler in all_tilers_iter() do
-		for i=1,10 do
--- distinguish between this layouter and others
+-- for all workspaces that uses this layouter, rebuild the layout to
+-- reflect changes in weights, titlebar, etc.
+		for i=1, 10 do
 			if (tiler.spaces[i] and tiler.spaces[i].layouter and
 				tiler.spaces[i].layouter.scaled and
 				tiler.spaces[i].layouter.resize == center_resize) then
-					update_space(tiler.spaces[i]);
+				update_space(tiler.spaces[i]);
 			end
 		end
 	end
-end);
+end
 
+-- and triggers for config change
+gconfig_listen("autolay_sideshdr", "autolayshdr", reconfig);
+gconfig_listen("autolay_sidetbar", "autolaytb", reconfig);
+gconfig_listen("autolay_sideopa", "autolayh", reconfig);
+
+-- and menu entries
 local laycfg = {
 {
 	name = "sideopa",
@@ -535,8 +568,8 @@ local laycfg = {
 	label = "Mouse-SelectSwap",
 	kind = "value",
 	set = {LBL_YES, LBL_NO},
-	initial = function() return gconfig_get(
-		"autolay_selswap") and LBL_YES or LBL_NO;
+	initial = function()
+		return gconfig_get("autolay_selswap") and LBL_YES or LBL_NO;
 	end,
 	handler = function(ctx, val)
 		gconfig_set("autolay_selswap", val == LBL_YES);
@@ -553,6 +586,48 @@ local laycfg = {
 	validator = gen_valid_float(0.5, 0.9),
 	handler = function(ctx, val)
 		gconfig_set("autolay_centerw", tonumber(val));
+	end
+},
+{
+	name = "sidetbar",
+	label = "Side Titlebar",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	initial = function()
+		return gconfig_get("autolay_sidetbar") and LBL_YES or LBL_NO;
+	end,
+	handler = function(ctx, val)
+		gconfig_set("autolay_sidetbar", val == LBL_YES);
+	end
+},
+{
+	name = "sideshader",
+	label = "Side Shader",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	initial = function()
+		return gconfig_get("autolay_shader") and LBL_YES or LBL_NO;
+	end,
+	handler = function(ctx, val)
+		gconfig_set("autolay_shader", val == LBL_YES);
+	end
+},
+{
+	name = "sideshader_value",
+	label = "Side Shader-Select",
+	initial = function()
+		return gconfig_get("autolay_sideshdr");
+	end,
+	eval = function()
+		return gconfig_get("autolay_shader");
+	end,
+	kind = "value",
+	set = function() return shader_list({"effect", "simple"}); end,
+	handler = function(ctx, val)
+		local key, dom = shader_getkey(val, {"effect", "simple"});
+		if (key ~= nil) then
+			gconfig_set("autolay_sideshdr", key);
+		end
 	end
 }
 };
