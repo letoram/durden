@@ -4,7 +4,8 @@
 --
 --
 -- MISSING:
--- mouse/scroll-lock control, mouse injection, cut/paste
+-- mouse/scroll-lock control, mouse injection, cut/paste(?), option to swap
+-- in other windows
 --
 
 local dstate = {
@@ -13,12 +14,17 @@ local dstate = {
 	pos = "top",
 	ofs = 0,
 	width = 0.5,
-	height = 0.3
+	height = 0.3,
+	shadow_color = {0xff, 0xff, 0xff}
 };
 
 gconfig_register("dt_width", 0.5);
 gconfig_register("dt_height", 0.4);
 gconfig_register("dt_opa", 0.8);
+gconfig_register("dt_shadow", 0);
+gconfig_register("dt_shadow_ofs_x", 0);
+gconfig_register("dt_shadow_ofs_y", 0);
+gconfig_register("dt_shadow_opa", 0.3);
 
 -- synch main font and fallback font with the registry
 local function set_font()
@@ -50,9 +56,39 @@ local function set_hint()
 	end
 end
 
+local function update_shadow()
+	if (not valid_vid(dstate.term)) then
+		return;
+	end
+
+	if (valid_vid(dstate.shadow_vid)) then
+		delete_image(dstate.shadow_vid);
+	end
+
+	if (gconfig_get("dt_shadow") < 1) then
+		return;
+	end
+
+	local props = image_surface_resolve(dstate.term);
+	local shadow_sz = gconfig_get("dt_shadow");
+	dstate.shadow_vid = fill_surface(32, 32, unpack(dstate.shadow_color));
+	link_image(dstate.shadow_vid, dstate.term);
+	blend_image(dstate.shadow_vid, gconfig_get("dt_shadow_opa"));
+	order_image(dstate.shadow_vid, 65531);
+	resize_image(dstate.shadow_vid, props.width + shadow_sz, props.height + shadow_sz);
+	move_image(dstate.shadow_vid,
+		gconfig_get("dt_shadow_ofs_x"), gconfig_get("dt_shadow_ofs_y"));
+end
+
 gconfig_listen("term_font", "pdterm", set_font);
 gconfig_listen("term_font_sz", "pdterm_sz", set_sz);
 gconfig_listen("term_font_hint", "pdterm_hint", set_hint);
+
+-- it's so cheap so just rebuild etc. on everything
+gconfig_listen("dt_shadow", "pdterm_shadow", update_shadow);
+gconfig_listen("dt_shadow_opa", "pdterm_shadow_opa", update_shadow);
+gconfig_listen("dt_shadow_ofs_x", "pdterm_shadow_ofs_x", update_shadow);
+gconfig_listen("dt_shadow_ofs_y", "pdterm_shadow_ofs_y", update_shadow);
 
 local function update_size()
 	if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
@@ -60,6 +96,7 @@ local function update_size()
 		local neww = disp.width * gconfig_get("dt_width");
 		local newh = disp.height * gconfig_get("dt_height");
 		target_displayhint(dstate.term, neww, newh, 0, active_display().disptbl);
+		update_shadow();
 	end
 end
 
@@ -100,6 +137,52 @@ local dterm_cfg = {
 		if (valid_vid(dstate.term, TYPE_FRAMESERVER)) then
 			target_graphmode(dstate.term, gconfig_get("dt_opa"));
 		end
+	end
+},
+{
+	name = "shadow",
+	label = "Shadow Size (px)",
+	kind = "value",
+	hint = "(0..100, 0 = disabled)",
+	validator = gen_valid_float(0.0, 100.0),
+	initial = function() return gconfig_get("dt_shadow"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_shadow", tonumber(val));
+		gconfig_set("dt_shadow_ofs_x", -0.5 * val);
+		gconfig_set("dt_shadow_ofs_y", -0.5 * val);
+	end
+},
+{
+	name = "shadow_opa",
+	label = "Shadow Opacity",
+	kind = "value",
+	hint = "(0..1, 1=opaque)",
+	validator = gen_valid_float(0.0, 1.0),
+	initial = function() return gconfig_get("dt_shadow_opa"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_shadow_opa", tonumber(val));
+	end
+},
+{
+	name = "shadow_ofset_x",
+	label = "Shadow Ofset (X)",
+	kind = "value",
+	hint = "-50..50",
+	validator = gen_valid_float(-50, 50),
+	initial = function() return gconfig_get("dt_shadow_ofs_x"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_shadow_ofs_x", tonumber(val));
+	end
+},
+{
+	name = "shadow_ofset_y",
+	label = "Shadow Ofset (Y)",
+	kind = "value",
+	hint = "-50..50",
+	validator = gen_valid_float(-50, 50),
+	initial = function() return gconfig_get("dt_shadow_ofs_y"); end,
+	handler = function(ctx, val)
+		gconfig_set("dt_shadow_ofs_y", tonumber(val));
 	end
 }
 };
@@ -148,9 +231,12 @@ local function ldisp(sym, iotbl, path)
 end
 
 -- different rules apply to input and event response compared to normal windows
+-- we actually trust the terminal to be compliant here as it is launched
+-- authoritatively
 local function termh(source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
+		update_shadow();
 	elseif (status.kind == "terminated") then
 		if (dstate.active) then
 			drop();
