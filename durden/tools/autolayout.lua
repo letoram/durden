@@ -1,17 +1,5 @@
 -- returning true means we took responsibility for attaching to parent
 local swap_focus;
-local function get_depth(node)
-	local depth = 0;
-	local last = node;
-
-	while node do
-		last = node;
-		depth = depth + 1;
-		node = node.children[1];
-	end
-
-	return depth, last;
-end
 
 local function save_wnd(wnd)
 	wnd.old = {
@@ -33,7 +21,8 @@ local function restore_wnd(wnd)
 
 	wnd.scalemode = wnd.old.scalemode;
 	wnd.autocrop = wnd.old.autocrop;
-	wnd.hide_titlebar = wnd.old.hide_titlebar;
+	wnd.hide_titlebar = wnd.old.hidetbar;
+	wnd.displayhint_block_wh = false;
 	show_image(wnd.anchor);
 	wnd:set_title();
 end
@@ -49,6 +38,7 @@ local function center_imgcfg(wnd)
 		return;
 	end
 
+	wnd.displayhint_block_wh = true;
 	if (not wnd.old) then
 		save_wnd(wnd);
 	end
@@ -63,15 +53,20 @@ local function side_imgcfg(wnd)
 		return;
 	end
 
+-- first cache original values so we can restore when reassigning
 	if (not wnd.old) then
 		save_wnd(wnd);
 	end
 	wnd.scalemode = "stretch";
 	wnd.autocrop = false;
+	wnd.displayhint_block_wh = true;
+
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
 	if (gconfig_get("autolay_shader")) then
 		shader_setup(wnd.canvas, "simple", gconfig_get("autolay_sideshdr"));
 	end
+
+-- swap to side, maybe disable titlebar
 	wnd.hide_titlebar = not gconfig_get("autolay_sidetbar");
 	wnd:set_title();
 end
@@ -203,6 +198,21 @@ local function center_focus(space)
 	end
 end
 
+-- find out how many levels of children a specific node has, needed to calc
+-- fair vertical weight when doing column- relayouting
+local function get_depth(node)
+	local depth = 0;
+	local last = node;
+
+	while node do
+		last = node;
+		depth = depth + 1;
+		node = node.children[1];
+	end
+
+	return depth, last;
+end
+
 -- return true? then we take responsibility for marking selected and insertion
 local function center_added(space, wnd)
 	if (#space.children ~= 3) then
@@ -253,6 +263,8 @@ local function center_lost(space, wnd, destroy)
 		return true;
 	end
 
+
+-- rebalance columns if the number of nodes in each gets unevenly distributed
 	local ld, ln = get_depth(space.children[1]);
 	local rd, rn = get_depth(space.children[3]);
 
@@ -514,6 +526,7 @@ local layouters = {
 }
 }
 
+-- recurse down the side columns and make their properties reflect side-cfg
 local function update_space(space)
 	for i,v in ipairs({1, 3}) do
 		local a = space.children[v];

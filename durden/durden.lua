@@ -251,6 +251,12 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			local props = image_storage_properties(wnd.external);
 
+-- edge cases where we want the client to ignore actual sizing
+		if (wnd.displayhint_block_wh) then
+			efw = props.width;
+			efh = props.height;
+		end
+
 -- ignore resize- step limit (terminal) if we are not in drag resize
 			if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or
