@@ -45,9 +45,27 @@ local function sbar_geth(wm, ign)
 	if (ign) then
 		return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 	else
-		return (wm.spaces[wm.space_ind] and
-			wm.spaces[wm.space_ind].mode == "fullscreen") and 0 or
-			math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+		if gconfig_get("sbar_hud") or
+			((wm.spaces[wm.space_ind] and
+				wm.spaces[wm.space_ind].mode == "fullscreen")) then
+					return 0;
+		else
+			return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+		end
+	end
+end
+
+local function sbar_hide(wm)
+	if (not gconfig_get("sbar_hud")) then
+		space.wm.statusbar:hide();
+		space.wm.hidden_sb = true;
+	end
+end
+
+local function sbar_show(wm)
+	if (not gconfig_get("sbar_hud")) then
+		space.wm.statusbar:show();
+		space.wm.hidden_sb = false;
 	end
 end
 
@@ -256,6 +274,7 @@ local function output_mouse_devent(btl, wnd)
 	target_input(wnd.external, btl);
 end
 
+-- set leftmost button to match the layout mode of the workspace
 local function wm_update_mode(wm)
 	if (not wm.spaces[wm.space_ind]) then
 		return;
@@ -265,16 +284,17 @@ local function wm_update_mode(wm)
 	if (modestr == "tile") then
 		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
 	end
---	wm.sbar_ws["left"]:fullscreen();
 	wm.sbar_ws["left"]:update(modestr);
 end
 
 local function tiler_statusbar_update(wm)
+-- synch constraints
 	local statush = sbar_geth(wm);
 	if (statush > 0) then
 		wm.statusbar:resize(wm.width, statush);
 	end
 
+-- reposition
 	if (gconfig_get("sbar_pos") == "top") then
 		wm.statusbar:move(0, -statush);
 		move_image(wm.anchor, 0, statush);
@@ -286,6 +306,8 @@ local function tiler_statusbar_update(wm)
 	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
 		return;
 	end
+
+-- regenerate buttons and labels
 	wm_update_mode(wm);
 	local space = wm.spaces[wm.space_ind];
 	wm.statusbar[space.mode == "fullscreen" and "hide" or "show"](wm.statusbar);
@@ -782,8 +804,10 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 	end
 
 	if (to) then
-		space.wm.statusbar:hide();
-		space.wm.hidden_sb = true;
+		if (not gconfig_get("sbar_hud")) then
+			space.wm.statusbar:hide();
+			space.wm.hidden_sb = true;
+		end
 		workspace_activate(space, false, ndir, oldbg);
 		local lst = linearize(space);
 		for k,v in ipairs(space) do
@@ -791,18 +815,19 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 		end
 			show_image(space.selected.anchor);
 	else
-		space.wm.statusbar:show();
-		space.wm.hidden_sb = false;
+		if (not gconfig_get("sbar_hud")) then
+			space.wm.statusbar:show();
+			space.wm.hidden_sb = false;
+		end
 		workspace_deactivate(space, false, ndir, newbg);
 	end
 end
 
 local function drop_fullscreen(space, swap)
 	workspace_activate(space, true);
-	space.wm.statusbar:show();
-	space.wm.hidden_sb = false;
+	sbar_hide(space.wm);
 
-	if (not space.selected) then
+if (not space.selected) then
 		return;
 	end
 
@@ -961,8 +986,8 @@ local function set_fullscreen(space)
 	dw.fullscreen = true;
 
 -- hide all images + statusbar
-	dw.wm.statusbar:hide();
-	dw.wm.hidden_sb = true;
+	sbar_hide(dw.wm);
+
 	local wnds = linearize(space);
 	for k,v in ipairs(wnds) do
 		hide_image(v.anchor);
@@ -1830,15 +1855,13 @@ local function wnd_grow(wnd, w, h)
 end
 
 local function wnd_title(wnd, title)
-	local dsttbl = {gconfig_get("tbar_textstr")};
 	if (title) then
 		wnd.title = title;
 	end
 
+-- based on new title/ font, apply pattern and set to fill region
+	local dsttbl = {gconfig_get("tbar_textstr")};
 	wnd.title_text = suppl_ptn_expand(dsttbl, gconfig_get("titlebar_ptn"), wnd);
-
-	local tbh = tbar_geth(wnd);
-
 	wnd.titlebar:update("center", 1, dsttbl);
 
 -- override if the mode requires it
@@ -1848,6 +1871,7 @@ local function wnd_title(wnd, title)
 		hide_titlebar = false;
 	end
 
+-- reflect titlebar state in position / padding
 	if (hide_titlebar) then
 		wnd.titlebar:hide();
 		wnd.pad_top = wnd.border_w;
@@ -1857,6 +1881,7 @@ local function wnd_title(wnd, title)
 		wnd.titlebar:show();
 	end
 
+-- not all windows have  a workspace, but if we do, we might need relayouting
 	if (wnd.space) then
 		wnd.space:resize(true);
 	end
