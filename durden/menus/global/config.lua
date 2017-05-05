@@ -130,9 +130,24 @@ local durden_bars = {
 			gconfig_set("sbar_pos", val);
 			active_display():tile_update();
 		end
+	},
+	{
+		name = "sbar_hud",
+		label = "Stautsbar HUD mode",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("sbar_hud") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_hud", val == LBL_YES);
+			active_display():tile_update();
+			for k,v in pairs(active_display().spaces) do
+				v:resize();
+			end
+		end
 	}
-}
-;
+};
 
 local durden_visual = {
 -- thickness is dependent on area, make sure the labels and

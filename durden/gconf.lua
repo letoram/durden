@@ -241,6 +241,7 @@ local defaults = {
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
 	sbar_pos = "top",
+	sbar_hud = false, -- show only on HUD (global/target menu)
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
