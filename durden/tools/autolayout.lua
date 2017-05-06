@@ -17,6 +17,8 @@ local function restore_wnd(wnd)
 
 	if (wnd.old.shader > 0) then
 		image_shader(wnd.canvas, wnd.old.shader);
+	else
+		image_shader(wnd.canvas, "DEFAULT");
 	end
 
 	wnd.scalemode = wnd.old.scalemode;
@@ -215,6 +217,10 @@ end
 
 -- return true? then we take responsibility for marking selected and insertion
 local function center_added(space, wnd)
+	if (not wnd.old) then
+		save_wnd(wnd);
+	end
+
 	if (#space.children ~= 3) then
 		table.insert(space.children, wnd);
 		wnd.parent = space;
