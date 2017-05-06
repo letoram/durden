@@ -410,6 +410,8 @@ end
 
 local function canvas_mouse_activate(wnd)
 -- reset hidden state without running a reveal animation
+	local hidden = mouse_state().hidden;
+
 	mouse_hidemask(true);
 	mouse_show();
 	mouse_switch_cursor();
@@ -423,7 +425,7 @@ local function canvas_mouse_activate(wnd)
 		mouse_switch_cursor(wnd.cursor_label);
 	end
 
-	if (wnd.cursor == "hidden") then
+	if (hidden or wnd.cursor == "hidden") then
 		mouse_hidemask(true);
 		mouse_hide();
 		mouse_hidemask(false);
