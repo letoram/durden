@@ -1064,7 +1064,8 @@ function mouse_hide()
 		mouse_switch_cursor(nil);
 	else
 		instant_image_transform(mstate.cursor);
-		blend_image(mstate.cursor, 0.0, 20, INTERP_EXPOUT);
+		blend_image(mstate.cursor, 0.0,
+			mstate.revmask and 0 or 20, INTERP_EXPOUT);
 	end
 end
 
