@@ -8,7 +8,7 @@
 EVENT_SYNCH = {};
 
 local wnd_create_handler, update_default_font, update_connection_path;
-local eval_respawn;
+local eval_respawn, load_configure_mouse;
 
 local argv_cmds = {};
 
@@ -80,20 +80,7 @@ function durden(argv)
 	SYMTABLE:load_translation();
 	SYMTABLE:load_keymap("default.lua");
 
-	if (gconfig_get("mouse_hardlock")) then
-		toggle_mouse_grab(MOUSE_GRABON);
-	end
-
-	if (gconfig_get("mouse_mode") == "native") then
-		mouse_setup_native(load_image("cursor/default.png"), 0, 0);
-	else
--- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
-		mouse_setup(load_image("cursor/default.png"), 65535, 1, true, false);
-	end
-
-	if (gconfig_get("mouse_block")) then
-		mouse_block();
-	end
+	load_configure_mouse();
 
 	local nt = display_manager_init();
 	nt.on_wnd_create = wnd_create_handler;
@@ -114,24 +101,11 @@ function durden(argv)
 	gconfig_listen("lbar_bpad", "padupd", update_default_font);
 	gconfig_listen("extcon_path", "pathupd", update_connection_path);
 
--- preload cursor states
-	mouse_add_cursor("drag", load_image("cursor/drag.png"), 0, 0); -- 7, 5);
-	mouse_add_cursor("grabhint", load_image("cursor/grabhint.png"), 0, 0); --, 7, 10);
-	mouse_add_cursor("rz_diag_l", load_image("cursor/rz_diag_l.png"), 0, 0); --, 6, 5);
-	mouse_add_cursor("rz_diag_r", load_image("cursor/rz_diag_r.png"), 0, 0); -- , 6, 6);
-	mouse_add_cursor("rz_down", load_image("cursor/rz_down.png"), 0, 0); -- 5, 13);
-	mouse_add_cursor("rz_left", load_image("cursor/rz_left.png"), 0, 0); -- 0, 5);
-	mouse_add_cursor("rz_right", load_image("cursor/rz_right.png"), 0, 0); -- 13, 5);
-	mouse_add_cursor("rz_up", load_image("cursor/rz_up.png"), 0, 0); -- 5, 0);
-	switch_default_texfilter(FILTER_NONE);
-
 	audio_gain(BADID, gconfig_get("global_gain"));
 
 -- load saved keybindings
 	dispatch_load(durden_lock_toggle);
 	iostatem_init();
-
-	mouse_reveal_hook(gconfig_get("mouse_reveal"));
 
 	for i,v in ipairs(argv) do
 		if (argv_cmds[v]) then
@@ -193,6 +167,55 @@ update_connection_path = function(key, val)
 			durden_devicehint(wnd.external);
 		end
 	end
+end
+
+load_configure_mouse = function()
+-- needed when we run in nested settings as mouse scale won't match
+-- device input from external window manager
+	if (gconfig_get("mouse_hardlock")) then
+		toggle_mouse_grab(MOUSE_GRABON);
+	end
+
+-- safe-load that first uses configured set, fallback to default,
+-- and fail-safe with a green box cursor
+	local load_cursor;
+	load_cursor = function(name, set)
+		local vid = load_image(string.format("cursor/%s/%s.png", set, name));
+		if (not valid_vid(vid)) then
+			if (set ~= "default") then
+				return load_cursor(name, "default", 0, 0);
+			else
+				warning("cursor set broken, couldn't load " .. name);
+				vid = fill_surface(8, 8, 0, 255, 0);
+			end
+		end
+		return vid;
+	end
+
+	local set = gconfig_get("mouse_cursorset");
+	if (gconfig_get("mouse_mode") == "native") then
+		mouse_setup_native(load_cursor("default", set), 0, 0);
+	else
+-- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
+		mouse_setup(load_cursor("default", set), 65535, 1, true, false);
+	end
+
+-- preload cursor states
+	mouse_add_cursor("drag", load_cursor("drag", set), 0, 0); -- 7, 5
+	mouse_add_cursor("grabhint", load_cursor("grabhint", set), 0, 0); --, 7, 10);
+	mouse_add_cursor("rz_diag_l", load_cursor("rz_diag_l", set), 0, 0); --, 6, 5);
+	mouse_add_cursor("rz_diag_r", load_cursor("rz_diag_r", set), 0, 0); -- , 6, 6);
+	mouse_add_cursor("rz_down", load_cursor("rz_down", set), 0, 0); -- 5, 13);
+	mouse_add_cursor("rz_left", load_cursor("rz_left", set), 0, 0); -- 0, 5);
+	mouse_add_cursor("rz_right", load_cursor("rz_right", set), 0, 0); -- 13, 5);
+	mouse_add_cursor("rz_up", load_cursor("rz_up", set), 0, 0); -- 5, 0);
+	switch_default_texfilter(FILTER_NONE);
+
+	if (gconfig_get("mouse_block")) then
+		mouse_block();
+	end
+
+	mouse_reveal_hook(gconfig_get("mouse_reveal"));
 end
 
 update_default_font = function(key, val)

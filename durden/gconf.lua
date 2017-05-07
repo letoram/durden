@@ -148,6 +148,7 @@ local defaults = {
 	mouse_hidetime = 120,
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
+	mouse_cursorset = "default",
 
 -- disable all mouse management and related menus
 	mouse_block = false,
