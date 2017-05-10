@@ -304,6 +304,17 @@ local function center_lost(space, wnd, destroy)
 end
 
 local function center_resize(space, lin, evblock, wnd, cb)
+
+-- this layouter can only deal with tiling mode
+	if (space.mode ~= "tile") then
+		if (lin) then
+			for i,v in ipairs(lin) do
+				restore_wnd(v);
+			end
+		end
+		return false;
+	end
+
 	if (evblock) then
 -- always forward the dimensions of the center space, block if this
 -- corresponds to last known "column" size as a catch all for some async. races

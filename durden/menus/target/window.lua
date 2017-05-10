@@ -181,10 +181,29 @@ local moverz_menu = {
 	eval = function(ctx, val)
 		return active_display().selected.space.mode == "float";
 	end,
-	nalidator = gen_valid_num(32, VRESH),
+	validator = gen_valid_num(32, VRESH),
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
 		wnd:resize(wnd.width, tonumber(val));
+	end
+},
+{
+	name = "tiling_float",
+	label = "Float(Tile)",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	eval = function()
+-- missing: window draw order when a window is float disabled
+-- missing: enable controls that are blocked for non-workspace-float
+		return false;
+	end,
+	initial = function(ctx, val)
+		return active_display().selected.tile_ignore and LBL_YES or LBL_NO;
+	end,
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		wnd.tile_ignore = val == LBL_YES;
+		wnd:resize(wnd.width, wnd.height);
 	end
 }
 };

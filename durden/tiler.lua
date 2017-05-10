@@ -37,8 +37,8 @@ end
 
 local function tbar_geth(wnd)
 	assert(wnd ~= nil);
-	return (wnd.space and wnd.hide_titlebar and tbar_mode(wnd.space.mode)) and 1
-		or (wnd.wm.scalef * gconfig_get("tbar_sz"));
+	return (wnd.space and wnd.hide_titlebar and tbar_mode(wnd.space.mode))
+		and 0 or (wnd.wm.scalef * gconfig_get("tbar_sz"));
 end
 
 local function sbar_geth(wm, ign)
@@ -56,16 +56,16 @@ local function sbar_geth(wm, ign)
 end
 
 local function sbar_hide(wm)
-	if (not gconfig_get("sbar_hud")) then
-		space.wm.statusbar:hide();
-		space.wm.hidden_sb = true;
+		if (not gconfig_get("sbar_hud")) then
+		wm.statusbar:hide();
+		wm.hidden_sb = true;
 	end
 end
 
 local function sbar_show(wm)
 	if (not gconfig_get("sbar_hud")) then
-		space.wm.statusbar:show();
-		space.wm.hidden_sb = false;
+		wm.statusbar:show();
+		wm.hidden_sb = false;
 	end
 end
 
@@ -537,8 +537,14 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 -- recurse downwards
 		if (#node.children > 0) then
 			node.max_h = math.floor(fairh * node.vweight);
-			level_resize(node,
-				x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
+
+-- this allows a node to be set to 'float' while still in tile- mode
+			if (node.tile_ignore) then
+				level_resize(node, x, y, node.max_w, h, repos, fairh);
+			else
+				level_resize(node,
+						x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
+			end
 		end
 
 		node:resize(node.max_w, node.max_h, false, repos);
@@ -557,7 +563,7 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 
 		local maxd = depth;
 		for i=1,#node.children do
-			local d = get_depth(node.children[i], depth + 1);
+			local d = get_depth(node.children[i], depth + (node.tile_ignore and 0 or 1));
 				maxd = d > maxd and d or maxd;
 		end
 
@@ -806,10 +812,7 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 	end
 
 	if (to) then
-		if (not gconfig_get("sbar_hud")) then
-			space.wm.statusbar:hide();
-			space.wm.hidden_sb = true;
-		end
+		sbar_hide(space.wm);
 		workspace_activate(space, false, ndir, oldbg);
 		local lst = linearize(space);
 		for k,v in ipairs(space) do
@@ -817,10 +820,7 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 		end
 			show_image(space.selected.anchor);
 	else
-		if (not gconfig_get("sbar_hud")) then
-			space.wm.statusbar:show();
-			space.wm.hidden_sb = false;
-		end
+		sbar_show(space.wm);
 		workspace_deactivate(space, false, ndir, newbg);
 	end
 end
@@ -829,15 +829,18 @@ local function drop_fullscreen(space, swap)
 	workspace_activate(space, true);
 	sbar_hide(space.wm);
 
-if (not space.selected) then
-		return;
-	end
-
+-- show all hidden windows within the space
 	local wnds = linearize(space);
 	for k,v in ipairs(wnds) do
 		show_image(v.anchor);
 	end
 
+-- safe-guard against bad code elsewhere
+	if (not space.selected) then
+		return;
+	end
+
+-- restore 'full-screen only' properties
 	local dw = space.selected;
 	dw.titlebar:show();
 	show_image(dw.border);
@@ -850,7 +853,9 @@ end
 
 local function drop_tab(space)
 	local res = linearize(space);
--- new mode will resize so don't worry about that, just relink
+
+-- relink the titlebars so that they anchor their respective windows rather
+-- than the client window itself.
 	for k,v in ipairs(res) do
 		v.titlebar:reanchor(v.anchor, 2, v.border_w, v.border_w);
 		show_image(v.border);
@@ -865,6 +870,9 @@ end
 local function drop_float(space)
 	space.in_float = false;
 
+-- save positional information relative to the current WM dimensions so that
+-- if the resolution would change between invocations, we can still position
+-- and size proportionally
 	local lst = linearize(space);
 	for i,v in ipairs(lst) do
 		local pos = image_surface_properties(v.anchor);
@@ -892,6 +900,10 @@ end
 local function set_tab(space, repos)
 	local lst = linearize(space);
 	if (#lst == 0) then
+		return;
+	end
+
+	if (space.layouter and space.layouter.resize(space, lst)) then
 		return;
 	end
 
@@ -933,6 +945,10 @@ end
 local function set_vtab(space, repos)
 	local lst = linearize(space);
 	if (#lst == 0) then
+		return;
+	end
+
+	if (space.layouter and space.layouter.resize(space, lst)) then
 		return;
 	end
 
@@ -998,17 +1014,23 @@ local function set_fullscreen(space)
 	dw.titlebar:hide();
 	hide_image(space.selected.border);
 
+-- need to hook switching between workspaces to enable things like the sbar
 	dw.fullscreen = true;
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
 
+-- drop border, titlebar, ...
 	move_image(dw.canvas, 0, 0);
 	move_image(dw.anchor, 0, 0);
 	dw.max_w = dw.wm.width;
 	dw.max_h = dw.wm.height;
+
+-- and send relayout / fullscreen hints that match the size of the WM
 	dw:resize(dw.wm.width, dw.wm.height);
 end
 
+-- floating mode has different rulesets for spawning, sizing and all windows
+-- are "unlocked" for custom drag-resize
 local function set_float(space)
 	if (space.in_float) then
 		return;
@@ -1114,7 +1136,8 @@ local function workspace_set(space, mode)
 -- for float, first reset to tile then switch to get a fair distribution
 -- another option would be to first set their storage dimensions and then
 -- force
-	if (mode == "float" and space.mode ~= "tile") then
+	if (mode == "float" and space.mode ~= "tile" and not space.layouter) then
+		space.layouter = nil;
 		space.mode = "tile";
 		space:resize();
 	end
@@ -2604,11 +2627,14 @@ local wnd_setup = function(wm, source, opts)
 			mouse = {}
 		},
 
--- can be modified to reserve space for scrollbars and other related contents
+-- padding is split into a custom [variable] and a border- area [calculated]
+-- based on which decorations are available and so on. The pad_[lrtd] are the
+-- resolved values and will be updated when decorations are rebuilt etc.
 		pad_left = bw,
 		pad_right = bw,
 		pad_top = bw,
 		pad_bottom = bw,
+		pad_custom = {0, 0, 0, 0},
 
 -- note on multi-PPCM:
 -- scale factor is manipulated by the display manager in order to take pixel
@@ -2651,11 +2677,7 @@ local wnd_setup = function(wm, source, opts)
 		drop_handler = wnd_drophandler,
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
-		add_overlay = wnd_overlay,
 		add_dependent = wnd_dependent,
-		toggle_overlay = wnd_overlay_toggle,
-		delete_overlay = wnd_overlay_delete,
-		synch_overlays = synch_olay_meta,
 		rebuild_border = wnd_rebuild,
 		toggle_maximize = wnd_toggle_maximize,
 		make_dependent = wnd_forcedep,
