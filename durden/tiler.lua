@@ -2274,8 +2274,19 @@ end
 
 -- track suspend state with window so that we can indicate with
 -- border color and make sure we don't send state changes needlessly
-local function wnd_setsuspend(wnd, val)
-	local susp = val;
+local function wnd_setsuspend(wnd, susp)
+	if (susp == nil) then
+		local state;
+		if (wnd.suspended == true) then
+			state = false;
+		else
+			state = true;
+		end
+		wnd_setsuspend(wnd, state);
+		return;
+	end
+
+-- if it's a no-op (suspend+suspend) or there's no external target, leave
 	if ((wnd.suspended and susp) or (not wnd.suspended and not susp) or
 		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
