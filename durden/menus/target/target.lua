@@ -134,15 +134,26 @@ show_shmenu = function(wnd)
 
 	LAST_ACTIVE_MENU = show_shmenu;
 
+-- overlay the window- type specific menu (or even skip the shared-
+-- window entries if that's desired)
 	local ctx = {
 		list = merge_menu(wnd.no_shared and {} or shared_actions, wnd.actions),
 		handler = wnd
 	};
 
-	return launch_menu(active_display(), ctx, true, nil, {
+-- (launch menu: display, menu context, forced completion (or are
+-- partially entered values ok), any prefix label, menu specific
+-- configuration options, and a reference to the last bar
+
+	if (IN_CUSTOM_BIND) then
+		ctx.show_invisible = true;
+		return launch_menu(active_display(), ctx, true, "Bind:");
+	else
+		return launch_menu(active_display(), ctx, true, nil, {
 		tag = "Target",
 		domain = "#"
-	});
+		}, nil);
+	end
 end
 
 register_shared("target_actions", show_shmenu);

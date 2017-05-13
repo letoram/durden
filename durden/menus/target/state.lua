@@ -43,6 +43,15 @@ return {
 		end
 	},
 	{
+		name = "toggle",
+		label = "Toggle",
+		invisible = true,
+		kind = "action",
+		handler = function()
+			active_display().selected:set_suspend();
+		end
+	},
+	{
 		name = "reset",
 		label = "Reset",
 		kind = "action",
