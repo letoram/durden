@@ -136,41 +136,10 @@ local function ssetup(shader, dst, group, name, state)
 	image_shader(dst, shid);
 end
 
--- all the boiler plate needed to figure out the types a uniform has,
--- generate the corresponding menu entry and with validators for type
--- and range, taking locale and separators into accoutn.
-local bdelim = (tonumber("1,01") == nil) and "." or ",";
-local rdelim = (bdelim == ".") and "," or ".";
-
 -- note: boolean and 4x4 matrices are currently ignored
 local utype_lut = {
 i = 1, f = 1, ff = 1, fff = 1, ffff = 1
 };
-
-local function unpack_typestr(typestr, val, lowv, highv)
-	string.gsub(val, rdelim, bdelim);
-	local rtbl = string.split(val, ' ');
-	for i=1,#rtbl do
-		rtbl[i] = tonumber(rtbl[i]);
-		if (not rtbl[i]) then
-			return;
-		end
-		if (lowv and rtbl[i] < lowv) then
-			return;
-		end
-		if (highv and rtbl[i] > highv) then
-			return;
-		end
-	end
-	return rtbl;
-end
-
-local function gen_typestr_valid(utype, lowv, highv, defaultv)
-	return function(val)
-		local tbl = unpack_typestr(utype, val, lowv, highv);
-		return tbl ~= nil and #tbl == string.len(utype);
-	end
-end
 
 local function add_stateref(res, uniforms, shid)
 	for k,v in pairs(uniforms) do
@@ -184,10 +153,10 @@ local function add_stateref(res, uniforms, shid)
 			eval = function()
 				return utype_lut[v.utype] ~= nil;
 			end,
-			validator = gen_typestr_valid(v.utype, v.low, v.high, v.default),
+			validator = suppl_valid_typestr(v.utype, v.low, v.high, v.default),
 			handler = function(ctx, val)
 				shader_uniform(shid, k, v.utype, unpack(
-					unpack_typestr(v.utype, val, v.low, v.high)));
+					suppl_unpack_typestr(v.utype, val, v.low, v.high)));
 			end
 		});
 		end

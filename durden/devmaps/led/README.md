@@ -2,39 +2,58 @@ LED Device
 ==========
 
 These confguration files are lua scripts that are loaded/scanned once on
-startup. They are matched by the label field of the added device event, though
-you can also explicitly bind them to a LED device through the normal menu
-system by either devid or label.
+startup and describe which behaviors that should be associated with known
+LED devices. Majority of the implementation residefs in durden/ledm.lua
 
 There is also support for an engine routed FIFO protocol to be able to hook up
 Led controllers where we don't have built-in support. This is often preferred
 since they often rely on ugly USB protocols where the processing doesn't fit
-well with the model used in the engine code.
+well with the model used in the engine. Up to 9 such devices can be added, and
+the fifo-paths are pointed to through the ext\_led, ext\_led\_2, ext\_led\_3
+and so on keys in the 'arcan' or 'arcan\_lwa' reserved appl in the database.
+
+Adding such a device can thus be done via (example):
+
+    arcan_db add_appl_kv arcan ext_led /tmp/fifo
+
+The corresponding name for matchflt (below) will be (led-fifo num) where
+num represents the device number (1 for ext\_led, 2 for ext\_led\_2 etc).
 
 For more information on this protocol, please see the arcan wiki entry on
 'LED Controllers'.
 
-A valid profile is expected to return a table looking like this:
+Each file is expected to provide ONE profile, as a table returned with a
+number of expected fields. Failure to provide a correct table may lead to
+durden shutting down or the device profile being ignored. Check the syntax
+of the file with 'luac', and make sure the expected fields are present.
+
+An example of a simple profile matching an external fifo controller:
 
     return {
-        label = "User-facing label",
+				label = "FIFO(1)",
+				name = "fifo1",
         role = "passive",
-        matchflt = "Led-Dev-Name",
-        matchdev = 1234
+        matchflt = "(led-fifo 1)"
     }
 
-where the role will determine how durden will make use of the device, the
-matchflt is a normal Lua pattern for matching against the device, or for a
-specific devid (though those are not always reliable / applicable).
+label is a user-presentable string, name is a menu-system integrateable
+name, role is either 'passive', 'displaymap', 'keymap', 'custom'. Depending
+on the role, additional fields may be needed.
 
-If a role is not specified, the 'passive' role is assumed.
+Matchflt is a string to match against the device presented label, or,
+for input-platform specific device matching, a matchdev which corresponds
+to the devid of the related input device. This is used in order to deal
+with LEDs that are part of some aggregated complex device.
 
-Its role indicates how durden will treat the controller and which fields
-are expected to be part of the profile.
+If a role is not specified or a profile is not found for a device,
+the 'passive' role will always be assumed.
 
 Role: "passive"
 No extra fields are needed for this role, all LED control and activation
-comes from explicitly triggering the corresponding menu path.
+comes from explicitly triggering the corresponding menu path, that will
+be global/config/leds/devid or, if a profile override was presented,
+global/config/leds/name-from-profile. There will be a menu entry for
+each supported led (up to 256 depending on the device) where a value
 
 Role: "keymap"
 For this role, durden will colorize LEDs based on current keyboard state
@@ -50,6 +69,7 @@ Add the following fields where num match the corresponding led index:
 			global_destructive_color = {255, 0, 0},
 			target_generic_color = {0, 255, 255},
 			target_destructive_color = {0, 0, 255},
+			target_custom_color = {255, 0, 255},
 
 			symtable =
 			 {
@@ -84,6 +104,8 @@ This is an advanced role map where you decide your own timing. Add the
 following field to the returned structure:
 
         tickrate = 2,
-				clock = function()
+				clock = function(devid)
 				end
 
+where you are free to call set\_led\_rgb and similar functions based on
+some custom data source.

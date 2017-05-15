@@ -1,5 +1,3 @@
-
-
 local function build_list()
 	local res = {};
 	for i,v in ipairs(shader_list({"ui"})) do
@@ -37,7 +35,6 @@ local rebuild_query = {
 		end
 	}
 };
-
 
 return function()
 	return

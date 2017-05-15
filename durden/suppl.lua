@@ -345,6 +345,36 @@ local function build_rt_reg(drt, x1, y1, w, h, srate)
 	return dst, {cont};
 end
 
+-- all the boiler plate needed to figure out the types a uniform has,
+-- generate the corresponding menu entry and with validators for type
+-- and range, taking locale and separators into accoutn.
+local bdelim = (tonumber("1,01") == nil) and "." or ",";
+local rdelim = (bdelim == ".") and "," or ".";
+
+function suppl_unpack_typestr(typestr, val, lowv, highv)
+	string.gsub(val, rdelim, bdelim);
+	local rtbl = string.split(val, ' ');
+	for i=1,#rtbl do
+		rtbl[i] = tonumber(rtbl[i]);
+		if (not rtbl[i]) then
+			return;
+		end
+		if (lowv and rtbl[i] < lowv) then
+			return;
+		end
+		if (highv and rtbl[i] > highv) then
+			return;
+		end
+	end
+	return rtbl;
+end
+
+function suppl_valid_typestr(utype, lowv, highv, defaultv)
+	return function(val)
+		local tbl = suppl_unpack_typestr(utype, val, lowv, highv);
+		return tbl ~= nil and #tbl == string.len(utype);
+	end
+end
 
 function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 	local w = x2 - x1;
