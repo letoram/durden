@@ -43,6 +43,7 @@ function durden(argv)
 	system_load("tiler.lua")(); -- window management
 	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
+	system_load("ledm.lua")(); -- led controllers
 	system_load("display.lua")(); -- multidisplay management
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
@@ -573,10 +574,17 @@ function durden_iostatus_handler(iotbl)
 	end
 
 	if (iotbl.action == "added") then
-		iostatem_added(iotbl);
-
+		if (iotbl.devkind == "led") then
+			ledm_added(iotbl);
+		else
+			iostatem_added(iotbl);
+		end
 	elseif (iotbl.action == "removed") then
-		iostatem_removed(iotbl);
+		if (iotbl.devkind == "led") then
+			ledm_added(iotbl);
+		else
+			iostatem_removed(iotbl);
+		end
 	end
 end
 

@@ -30,6 +30,10 @@ by Archy Studio, http://www.archystudio.com
 The included fallback font, Emoji-One, is provided free (cc-by 4.0 attribution)
 by http://emojione.com
 
+Hacking
+=====
+See the HACKING.md file for information on where/how to extend and modify.
+
 Starting / Configuring
 =====
 Make sure that arcan is built with support for builtin frameservers for

@@ -151,7 +151,7 @@ local pastemodes = {
 		return (string.gsub(instr, "%s+", " ")); end}
 };
 
-function clipboard_pastemodes(ctx, key)
+local function clipboard_pastemodes(ctx, key)
 	local res = {};
 
 -- try match by index, else match by labelstr else default
@@ -179,6 +179,7 @@ return {
 	locals = {}, -- local clipboard history (of history_size size)
 	globals = {},
 	urls = {},
+	modes = pastemodes,
 	history_size = 10,
 	mpt_cutoff = 10,
 	add = clipboard_add,

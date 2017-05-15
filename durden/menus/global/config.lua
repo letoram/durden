@@ -685,6 +685,16 @@ return {
 		handler = system_load("menus/global/timer.lua")()
 	},
 	{
+		name = "led",
+		label = "LEDs",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return #ledm_devices("passive") > 0;
+		end,
+		handler = system_load("menus/global/led.lua")()
+	},
+	{
 		name = "system",
 		label = "System",
 		kind = "action",

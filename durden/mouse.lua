@@ -347,10 +347,6 @@ function mouse_state()
 	return mstate;
 end
 
-function mouse_toxy(x, y, time)
--- disable all event handlers and visibly move cursor to position
-end
-
 function mouse_destroy()
 	mouse_handlers = {};
 	mouse_handlers.click = {};
@@ -987,15 +983,6 @@ function mouse_add_cursor(label, img, hs_x, hs_y)
 		width = props.width,
 		height = props.height
 	};
-end
-
-function mouse_scale(factor)
-	if (not mouse.prescale) then
-		mouse.prescale = {
-		};
-	end
-	cursor.accel_x = mouse.prescale.ax * factor;
-	cursor.accel_y = mouse.prescale.ay * factor;
 end
 
 function mouse_cursor_sf(fx, fy)
