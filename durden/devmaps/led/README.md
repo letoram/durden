@@ -16,7 +16,7 @@ Adding such a device can thus be done via (example):
 
     arcan_db add_appl_kv arcan ext_led /tmp/fifo
 
-The corresponding name for matchflt (below) will be (led-fifo num) where
+The corresponding name for matchlbl (below) will be (led-fifo num) where
 num represents the device number (1 for ext\_led, 2 for ext\_led\_2 etc).
 
 For more information on this protocol, please see the arcan wiki entry on
@@ -33,14 +33,14 @@ An example of a simple profile matching an external fifo controller:
 				label = "FIFO(1)",
 				name = "fifo1",
         role = "passive",
-        matchflt = "(led-fifo 1)"
+        matchlbl = "(led-fifo 1)"
     }
 
 label is a user-presentable string, name is a menu-system integrateable
 name, role is either 'passive', 'displaymap', 'keymap', 'custom'. Depending
 on the role, additional fields may be needed.
 
-Matchflt is a string to match against the device presented label, or,
+Matchlbl is a string to match against the device presented label, or,
 for input-platform specific device matching, a matchdev which corresponds
 to the devid of the related input device. This is used in order to deal
 with LEDs that are part of some aggregated complex device.
