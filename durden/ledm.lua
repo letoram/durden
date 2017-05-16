@@ -13,8 +13,35 @@ local profile_path = "devmaps/led";
 local devices = {};
 local profiles = {};
 
+local function tryload(map)
+	res = system_load(profile_path .. "/" .. map, 0);
+	if (not res) then
+		warning(string.format("ledm, system_load on map %s failed", map));
+		return;
+	end
+
+	local okstate, devtbl = pcall(res);
+	if (not okstate or not type(devtbl) == "table") then
+		warning(string.format("ledm, couldn't load/parse %s", map));
+		return;
+	end
+
+	return devtbl;
+end
+
 local function load_profiles()
---	local list = glob_resources(profile_path .. "/*.lua");
+	local list = glob_resource(profile_path .. "/*.lua");
+	if (not list) then
+		return;
+	end
+
+	table.sort(list);
+	for k,v in ipairs(list) do
+		local res = tryload(v);
+		if (res) then
+			table.insert(profiles, res);
+		end
+	end
 end
 
 function ledm_added(tbl)
@@ -23,7 +50,14 @@ function ledm_added(tbl)
 
 	for i,v in ipairs(profiles) do
 		if (v.matchdev and tbl.domain == "platform" and tbl.devid == v.matchdev) then
-		elseif (v.matchflt == tbl.label) then
+		elseif (v.matchlbl == tbl.label) then
+			local newt = {};
+			for k,v in pairs(v) do
+				newt[k] = v;
+			end
+			newt.devid = tbl.devid;
+			table.insert(devices, newt);
+			return;
 		end
 	end
 -- still here, then it's a passive one
@@ -72,9 +106,9 @@ function ledm_devices(role)
 	return res;
 end
 
-function ledm_clock_pulse()
+function ledm_tick()
 	for k,v in ipairs(devices) do
-		if (v.profile == "custom") then
+		if (v.role == "custom") then
 			if (v.counter == nil or v.counter == 1) then
 				v.counter = v.tickrate;
 				v.clock(v.devid);

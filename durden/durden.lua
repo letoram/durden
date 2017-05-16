@@ -796,6 +796,9 @@ function durden_clock_pulse(n, nt)
 -- anything periodically attached to a single tiler should be done now
 	display_tick();
 
+-- led devices can have custom or periodic effect, so also need clock
+	ledm_tick();
+
 -- forward to third parties
 	flush_pending();
 

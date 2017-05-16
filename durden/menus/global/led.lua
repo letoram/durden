@@ -8,7 +8,7 @@ local function get_ledent(rgb, devid, i)
 				set_led_rgb(devid, i-1, tbl[1], tbl[2], tbl[3], false);
 			end
 		end
-		hint = "(r,g,b 0-255)";
+		hint = "(r g b 0-255)";
 	else
 		validator = gen_valid_float(0, 1);
 		handler = function(ctx, val)
