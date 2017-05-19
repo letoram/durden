@@ -21,7 +21,10 @@ local function load_archetypes()
 			local tbl = system_load("atypes/" .. v, false);
 			tbl = tbl and tbl() or nil;
 			if (tbl and tbl.atype) then
+				print("loaded", tbl.atype);
 				archetypes[tbl.atype] = tbl;
+			else
+				warning("couldn't load atype: " .. v);
 			end
 		end
 	end
@@ -57,14 +60,13 @@ local function default_reqh(wnd, source, ev)
 		"application", "remoting", "browser"
 	};
 
--- something that should map to a new / normal window?
-	if ((wnd.allowed_segments and table.find_i(wnd.allowed_segments, ev.segkind))
-		or (not wnd.allowed_segments and table.find_i(normal, ev.segkind))) then
-		local vid = accept_target();
-		durden_launch(vid, "", "external", nil);
+-- early out if the type is not permitted
+	if (wnd.allowed_segments and
+		not table.find_i(wnd.allowed_segments, ev.segkind)) then
+		return;
 	end
 
--- special handling, cursor etc.
+-- special handling, cursor etc. maybe we should permit subtype handler override
 	if (ev.segkind == "titlebar") then
 		if (valid_vid(wnd.titlebar_id)) then
 			delete_image(wnd.titlebar_id);
@@ -99,6 +101,13 @@ local function default_reqh(wnd, source, ev)
 		return;
 	elseif (ev.segkind == "icon") then
 -- reject for now, can later be used for status icon and for hint
+	else
+-- something that should map to a new / normal window?
+		if (wnd.allowed_segments or
+			(not wnd.allowed_segments and table.find_i(normal, ev.segkind))) then
+			local vid = accept_target();
+			durden_launch(vid, "", "external", nil);
+		end
 	end
 end
 
@@ -204,6 +213,7 @@ end
 defhtbl["registered"] =
 function(wnd, source, stat)
 	local atbl = archetypes[stat.segkind];
+	active_display():message("match " .. stat.segkind .. " ? " .. (atbl and "yes" or "no"));
 	if (atbl == nil or wnd.atype ~= nil) then
 		return;
 	end

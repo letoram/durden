@@ -2328,6 +2328,13 @@ end
 
 local function wnd_rebuild(v, bw)
 	local tbarh = tbar_geth(v);
+	if (wnd.hide_border) then
+		bw = 0;
+		hide_image(wnd.border);
+	else
+		show_image(wnd.border);
+	end
+
 	v.pad_left = bw;
 	v.pad_right = bw;
 	v.pad_top = bw + tbarh;
