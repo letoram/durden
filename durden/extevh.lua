@@ -21,7 +21,6 @@ local function load_archetypes()
 			local tbl = system_load("atypes/" .. v, false);
 			tbl = tbl and tbl() or nil;
 			if (tbl and tbl.atype) then
-				print("loaded", tbl.atype);
 				archetypes[tbl.atype] = tbl;
 			else
 				warning("couldn't load atype: " .. v);
@@ -213,7 +212,6 @@ end
 defhtbl["registered"] =
 function(wnd, source, stat)
 	local atbl = archetypes[stat.segkind];
-	active_display():message("match " .. stat.segkind .. " ? " .. (atbl and "yes" or "no"));
 	if (atbl == nil or wnd.atype ~= nil) then
 		return;
 	end
