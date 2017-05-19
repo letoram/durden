@@ -1,7 +1,7 @@
 --
 -- X11- bridge, for use with Xarcan.
 --
-local res = {
+return {
 	atype = "bridge-x11",
 	default_shader = {"simple", "noalpha"},
 	actions = {
