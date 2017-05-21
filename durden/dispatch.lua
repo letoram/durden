@@ -15,6 +15,44 @@ local mtrack = {
 	mlock = "none"
 };
 
+local function update_meta(m1, m2)
+	mtrack.m1 = m1;
+	mtrack.m2 = m2;
+
+-- forward the state change to the led manager
+	m1, m2 = dispatch_meta();
+	if (m1 or m2) then
+		local pref = (m1 and "m1_" or "") .. (m2 and "m2_" or "");
+		local global = {};
+		local target = {};
+
+-- filter out set of valid bindings
+		for k,v in pairs(tbl) do
+			if (string.sub(k, 1, string.len(pref)) == pref) then
+				if (string.sub(k, string.len(pref)+1, 2) == "m2") then
+-- special case, m1_ on m1_m2__ binding
+				else
+					if (string.sub(v, 1, 1) == "#") then
+						table.insert(target, string.sub(k, string.len(pref)+1));
+					else
+						table.insert(global, string.sub(k, string.len(pref)+1));
+					end
+				end
+			end
+		end
+
+		ledm_kbd_state(m1, m2, dispatch_locked(), global, target);
+	else
+	-- get the default and bound locals
+		ledm_kbd_state(m1, m2, dispatch_locked()
+			-- locked
+			-- globals
+			-- targets
+			-- locals
+		);
+	end
+end
+
 -- the following line can be removed if meta state protection is not needed
 system_load("meta_guard.lua")();
 
@@ -31,8 +69,7 @@ function dispatch_tick()
 	if (mtrack.unstick_ctr > 0) then
 		mtrack.unstick_ctr = mtrack.unstick_ctr - 1;
 		if (mtrack.unstick_ctr == 0) then
-			mtrack.m1 = nil;
-			mtrack.m2 = nil;
+			update_meta(nil, nil);
 		end
 	end
 end
@@ -129,8 +166,7 @@ function dispatch_meta()
 end
 
 function dispatch_meta_reset(m1, m2)
-	mtrack.m1 = m1 and CLOCK or nil;
-	mtrack.m2 = m2 and CLOCK or nil;
+	update_meta(m1 and CLOCK or nil, m2 and CLOCK or nil);
 end
 
 function dispatch_toggle(forcev, state)
@@ -155,6 +191,8 @@ function dispatch_toggle(forcev, state)
 	if (mtrack.locktog) then
 		mtrack.locktog(mtrack.ignore, state);
 	end
+	local m1, m2 = dispatch_meta();
+	ledm_kbd_state(m1, m2, mtrack.ignore);
 end
 
 local function track_label(iotbl, keysym, hook_handler)
@@ -186,7 +224,7 @@ local function track_label(iotbl, keysym, hook_handler)
 
 	if (keysym == SYSTEM_KEYS["meta_1"]) then
 		local m1, m1d = metatrack(mtrack.m1, mtrack.last_m1);
-		mtrack.m1 = m1;
+		update_meta(m1, mtrack.m2);
 		if (m1d and mtrack.mlock == "m1") then
 			if (m1d - mtrack.last_m1 <= mtrack.dblrate) then
 				dispatch_toggle();
@@ -195,7 +233,7 @@ local function track_label(iotbl, keysym, hook_handler)
 		end
 	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
 		local m2, m2d = metatrack(mtrack.m2, mtrack.last_m2);
-		mtrack.m2 = m2;
+		update_meta(mtrack.m1, m2);
 		if (m2d and mtrack.mlock == "m2") then
 			if (m2d - mtrack.last_m2 <= mtrack.dblrate) then
 				dispatch_toggle();
@@ -232,6 +270,14 @@ end
 --
 local last_deferred = nil;
 local deferred_id = 0;
+
+function dispatch_repeatblock(iotbl)
+	if (iotbl.translated) then
+		sym, outsym = SYMTABLE:patch(iotbl);
+		return (sym == SYSTEM_KEYS["meta_1"] or sym == SYSTEM_KEYS["meta_2"]);
+	end
+	return false;
+end
 
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
