@@ -1,7 +1,7 @@
 LED Device
 ==========
 
-These confguration files are lua scripts that are loaded/scanned once on
+These configuration files are lua scripts that are loaded/scanned once on
 startup and describe which behaviors that should be associated with known
 LED devices. Majority of the implementation residefs in durden/ledm.lua
 
@@ -37,7 +37,7 @@ An example of a simple profile matching an external fifo controller:
     }
 
 label is a user-presentable string, name is a menu-system integrateable
-name, role is either 'passive', 'displaymap', 'keymap', 'custom'. Depending
+name, role is either 'passive', 'keymap', 'custom'. Depending
 on the role, additional fields may be needed.
 
 Matchlbl is a string to match against the device presented label, or,
@@ -65,7 +65,7 @@ Add the following fields where num match the corresponding led index:
 			default_color = {255, 255, 255},
 
       -- optional colors below, if missing, default_color will be used
-      global_color = = {0, 255, 0},
+      global_color = {0, 255, 0},
 			global_destructive_color = {255, 0, 0},
 			target_generic_color = {0, 255, 255},
 			target_destructive_color = {0, 0, 255},
@@ -77,27 +77,6 @@ Add the following fields where num match the corresponding led index:
 				SPACE = num,
 				F1 = num
 			 }
-
-Role: displaymap
-This is an advanced role map since you are required to define a sample
-function that describes how the input buffer should map to led commands.
-
-The map function will be called every *samplerate* ticks, with *inbuf*
-being a table that match arcan/doc/define\_calctarget.lua. Return an
-array with a number of elements that are evenly divisible with 4. The
-array will be interpreted packed as [ledind, rval, gval, bval] where
-r,g,bvals in the 0..255 range.
-
-The source- field specifies the source display for the mapping from
-either 'current', 'primary' or a specific display name matching a path
-in global/display/displays.
-
-Add the following fields to the returned structure:
-
-				samplerate = 5, -- update every five ticks
-				source = "current",
-				map = function(inbuf, width, height)
-				end
 
 Role: "custom"
 This is an advanced role map where you decide your own timing. Add the

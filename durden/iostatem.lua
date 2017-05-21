@@ -113,7 +113,8 @@ function iostatem_input(iotbl)
 	end
 
 	if (iotbl.translated) then
-		if (not iotbl.active or SYMTABLE:is_modifier(iotbl)) then
+		if (not iotbl.active or SYMTABLE:is_modifier(iotbl)
+			or dispatch_repeatblock(iotbl)) then
 			devstate.counter = devstate.delay ~= nil and devstate.delay or def_delay;
 			devstate.iotbl = nil;
 			return;
