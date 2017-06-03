@@ -92,6 +92,41 @@ function ledm_removed(tbl)
 	end
 end
 
+-- check and see if there's a specific color to indicate for [path],
+local function resolve_path_color(v, path, fb_col)
+	local res = {255, 255, 255};
+	if (v[fb_col]) then
+		res = v[fb_col];
+	elseif (v.default_color) then
+		res = v.default_color;
+	end
+
+-- it's possible to add custom colors to paths or path prefixes in
+-- order to distinguish between different bindings in a file-grained
+-- manner
+	if (v.path_colors) then
+-- strip out any =value
+		local vt = string.split(pathdescr, "=");
+		if (#vt > 0) then
+			path = vt[1];
+		end
+
+-- always favor exact matches so that we can handle:
+-- !/window/* and !/window/1/weird
+		for k,v in pairs(v.path_colors) do
+			if (k == path) then
+				return v;
+			elseif (string.sub(k, string.len(k)) == "*") then
+				if (path == string.sub(k, 1, string.len(k)-1)) then
+					res = v;
+				end
+			end
+		end
+	end
+
+	return res;
+end
+
 -- updated when selection changes, locked state changes or meta- key state
 -- changes.
 function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
@@ -118,19 +153,19 @@ function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
 		end
 
 		if (globals) then
-			local cl = v.global_color;
 			for i,d in ipairs(globals) do
-				if (v.symtable[d]) then
-					set_led_rgb(v.devid, v.symtable[d], cl[1], cl[2], cl[3], true);
+				if (v.symtable[d[1]]) then
+					local cl = resolve_path_color(v, d[2], "global_color");
+					set_led_rgb(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
 				end
 			end
 		end
 
 		if (targets) then
-			local cl = v.target_generic_color;
 			for i,d in ipairs(targets) do
-				if (v.symtable[d]) then
-					set_led_rgb(v.devid, v.symtable[d], cl[1], cl[2], cl[3], true);
+				if (v.symtable[d[1]]) then
+					local cl = resolve_path_color(v, d[2], "target_generic_color");
+					set_led_rgb(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
 				end
 			end
 		end
