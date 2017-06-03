@@ -71,6 +71,13 @@ Add the following fields where num match the corresponding led index:
 			target_destructive_color = {0, 0, 255},
 			target_custom_color = {255, 0, 255},
 
+      -- special overrides based on action, path or path-prefix
+      path_colors = {
+			 ["destroy"] = {255, 0, 0},
+			 ["!open/target"] = {64, 20, 64},
+			 ["!open/*"] = {20, 64, 80}
+			}
+
 			symtable =
 			 {
 				ESCAPE = num,

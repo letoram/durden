@@ -33,9 +33,9 @@ local function update_meta(m1, m2)
 -- special case, m1_ on m1_m2__ binding
 				else
 					if (string.sub(v, 1, 1) == "#") then
-						table.insert(target, string.sub(k, string.len(pref)+1));
+						table.insert(target, {string.sub(k, string.len(pref)+1), v});
 					else
-						table.insert(global, string.sub(k, string.len(pref)+1));
+						table.insert(global, {string.sub(k, string.len(pref)+1), v});
 					end
 				end
 			end
