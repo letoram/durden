@@ -714,15 +714,21 @@ function display_ressw(name, mode)
 		0.1 * mode.phy_height_mm, mode.width, mode.height);
 
 	run_display_action(disp, function()
+		disp.w = mode.width;
+		disp.h = mode.height;
 		video_displaymodes(disp.id, mode.modeid);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
 			map_video_display(disp.rt, disp.id, display_maphint(disp));
 		end
-		disp.tiler:resize(mode.width, mode.height, true);
+		disp.tiler:resize(mode.width, mode.height) --, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 		set_mouse_scalef();
 	end);
+
+	if (disp.maphint) then
+		display_reorient(name, disp.maphint);
+	end
 
 -- as the dimensions have changed
 	if (active_display(true) == disp.rt) then
@@ -803,8 +809,7 @@ function display_reorient(name, hint)
 
 	run_display_action(disp, function()
 		map_video_display(disp.rt, disp.id, display_maphint(disp));
-		disp.tiler.width = neww;
-		disp.tiler.height = newh;
+		disp.tiler:resize(neww, newh);
 		disp.tiler:update_scalef(disp.tiler.scalef);
 	end);
 
