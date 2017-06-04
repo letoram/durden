@@ -461,7 +461,7 @@ end
 
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status)
-	if (status.kind ~= "connected") then
+	if (not status or status.kind ~= "connected") then
 -- misplaced event, should really happen
 		return;
 	end
@@ -474,6 +474,11 @@ function durden_new_connection(source, status)
 			function() eval_respawn(false, status.key); end, true);
 	else
 		eval_respawn(true, gconfig_get("extcon_path"));
+	end
+
+-- invocation from config change, anything after this isn't relevant
+	if (not valid_vid(source)) then
+		return;
 	end
 
 -- switch attachment immediately to new display
