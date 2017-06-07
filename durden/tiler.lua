@@ -48,6 +48,7 @@ local function sbar_geth(wm, ign)
 		if gconfig_get("sbar_hud") or
 			((wm.spaces[wm.space_ind] and
 				wm.spaces[wm.space_ind].mode == "fullscreen")) then
+					wm.statusbar:hide();
 					return 0;
 		else
 			return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
@@ -310,7 +311,9 @@ local function tiler_statusbar_update(wm)
 -- regenerate buttons and labels
 	wm_update_mode(wm);
 	local space = wm.spaces[wm.space_ind];
-	wm.statusbar[space.mode == "fullscreen" and "hide" or "show"](wm.statusbar);
+	wm.statusbar[
+		(space.mode == "fullscreen" or gconfig_get("sbar_hud")) and "hide" or "show"
+	](wm.statusbar);
 
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
@@ -494,6 +497,7 @@ local function wnd_select(wnd, source, mouse)
 		if (wnd.cursor == "hidden") then
 			mouse_hidemask(true);
 			mouse_hide();
+			mouse_hidemask(false);
 		end
 	end
 	ms.last_hover = CLOCK;
@@ -1075,8 +1079,10 @@ end
 
 local function set_tile(space, repos)
 	local wm = space.wm;
-	wm.statusbar:show();
-	wm.statusbar.hidden_sb = false;
+	if (not gconfig_get("sbar_hud")) then
+		wm.statusbar:show();
+		wm.statusbar.hidden_sb = false;
+	end
 	if (space.layouter) then
 		local tbl = linearize(space);
 		if (space.layouter.resize(space, tbl)) then
