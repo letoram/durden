@@ -142,21 +142,24 @@ local function wnd_destroy(wnd)
 	mouse_droplistener(wnd.handlers.mouse.canvas);
 
 -- mark a new node as selected
-	if (#wnd.children > 0) then
-		wnd.children[1]:select();
-	elseif (wnd.parent and wnd.parent.parent) then
-		wnd.parent:select();
-	else
-		wnd:prev();
+	if (wnd.wm.selected == nil or wnd.wm.selected == wnd) then
+		if (#wnd.children > 0) then
+			wnd.children[1]:select();
+		elseif (wnd.parent and wnd.parent.parent) then
+			wnd.parent:select();
+		else
+			wnd:prev();
+		end
 	end
 
--- but that doesn't always succeed (edge-case, last window) or layouter
--- may be acting outside of convention, so drop possibly dangling
+-- doesn't always hit
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
-		if (space and wnd.space.selected == wnd) then
-			space.selected = nil;
-		end
+	end
+
+-- deregister from space tracking
+	if (space and wnd.space.selected == wnd) then
+		space.selected = nil;
 	end
 
 -- re-assign all children to parent
