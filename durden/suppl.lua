@@ -294,6 +294,13 @@ function suppl_recarg_eval()
 	return string.match(FRAMESERVER_MODES, "encode") ~= nil;
 end
 
+function suppl_region_stop(trig)
+	mouse_select_end(trig);
+	iostatem_restore();
+	durden_input = durden_normal_input;
+	dispatch_symbol_unlock(true);
+end
+
 function suppl_region_select(r, g, b, handler)
 	local col = fill_surface(1, 1, r, g, b);
 	blend_image(col, 0.2);
@@ -301,6 +308,7 @@ function suppl_region_select(r, g, b, handler)
 	mouse_select_begin(col);
 	dispatch_meta_reset();
 	shader_setup(col, "ui", "regsel", "active");
+	dispatch_symbol_lock();
 	durden_input = durden_regionsel_input;
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
