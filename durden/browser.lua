@@ -193,6 +193,8 @@ end
 function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	opts = opts and opts or {};
 
+-- first determine if we should just try and restore the last path
+-- visited or if we should start a new session
 	if (not pathtbl) then
 		pathtbl = last_path;
 		tblmin = last_min;
@@ -200,7 +202,8 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 			opts.restore = last_rest;
 		end
 		local tp = {};
-		if (#browser_path.path ~= #pathtbl) then
+		if (table.concat(browser_path.path, "/") ~=
+			table.concat(pathtbl, "/")) then
 			local tp = {};
 			for i=1,#pathtbl do
 				table.insert(tp, {pathtbl[i], pathtbl[i]});
@@ -226,6 +229,7 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		opts = opts
 	};
 
+-- extend lbar so that we can cleanup allocations made for handling previews
 	local lbar = active_display():lbar(browse_cb, lbctx,
 		{force_completion = true, restore = opts.restore,
 		on_step = preview_handler});

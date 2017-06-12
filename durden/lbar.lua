@@ -142,12 +142,13 @@ local function update_completion_set(wm, ctx, set)
 
 	local on_step = wm.input_ctx.on_step;
 -- clamp and account for paging
-	if (ctx.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
+	if (ctx.inp.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
 		local ocofs = ctx.inp.cofs;
-		ctx.inp.cofs = ctx.inp.cofs - ctx.clastc;
+		ctx.inp.cofs = ctx.inp.cofs - ctx.inp.clastc;
 		ctx.inp.cofs = ctx.inp.cofs <= 0 and 1 or ctx.inp.cofs;
-
-		if (ocofs ~= ctx.inp.cofs and on_step) then on_step(ctx); end
+		if (ocofs ~= ctx.inp.cofs and on_step) then
+			on_step(ctx);
+		end
 	end
 
 -- limitation with this solution is that we can't wrap around negative
@@ -185,7 +186,7 @@ local function update_completion_set(wm, ctx, set)
 	ctx.clim = #set;
 
 	local slide_window = function(i)
-		ctx.clastc = i - ctx.inp.cofs;
+		ctx.inp.clastc = i - ctx.inp.cofs;
 		ctx.inp.cofs = ctx.inp.csel;
 		if (on_step) then on_step(ctx); end
 		return update_completion_set(wm, ctx, set);
