@@ -350,6 +350,7 @@ local region_menu = {
 						last_msg = last_msg and (last_msg .. stat.message) or stat.message;
 						if (not stat.multipart) then
 							CLIPBOARD:add("OCR", last_msg, false);
+							active_display():message("OCR: " .. last_msg);
 							last_msg = nil;
 							delete_image(source);
 						end
