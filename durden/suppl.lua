@@ -248,6 +248,11 @@ function math.clamp(v, min, high)
 	return (v < min and v or min) > high and high or v;
 end
 
+function suppl_strcol_fmt(str, sel)
+	local hv = util.hash(str);
+	return HC_PALETTE[(hv % #HC_PALETTE) + 1];
+end
+
 function hexenc(instr)
 	return string.gsub(instr, "(.)", function(ch)
 		return hb(ch:byte(1));
@@ -1163,7 +1168,11 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 			if (subs[i].submenu) then
 					table.insert(res, {mlbl, msellbl, subs[i].label});
 				else
-					table.insert(res, subs[i].label);
+					if (subs[i].fmt and subs[i].select_fmt) then
+						table.insert(res, {subs[i].fmt, subs[i].select_fmt, subs[i].label});
+					else
+						table.insert(res, subs[i].label);
+					end
 				end
 		end
 	end

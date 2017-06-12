@@ -52,10 +52,13 @@ end
 local function clipboard_histgen(wnd, lst, promote)
 	local res = {};
 	for k, v in ipairs(lst) do
+		local short = shorten(v);
 		table.insert(res, {
 			name = "hist_" .. tostring(k),
-			label = string.format("%d:%s", k, string.sub(shorten(v), 1, 20)),
+			label = string.format("%d:%s", k, string.sub(short, 1, 20)),
 			kind = "action",
+			fmt = suppl_strcol_fmt(short, false),
+			select_fmt = suppl_strcol_fmt(short, true),
 			handler = function()
 				if (promote) then
 					CLIPBOARD:set_global(v);
@@ -81,9 +84,12 @@ end
 local function clipboard_urls()
 	local res = {};
 	for k,v in ipairs(CLIPBOARD.urls) do
+		local short = shorten(v);
 		table.insert(res, {
 			name = "url_" .. tostring(k),
-			label = shorten(v),
+			label = short,
+			fmt = suppl_strcol_fmt(short, false),
+			select_fmt = suppl_strcol_fmt(short, true),
 			kind = "action",
 			handler = function()
 				local m1, m2 = dispatch_meta();
