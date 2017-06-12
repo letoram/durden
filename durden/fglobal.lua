@@ -84,9 +84,37 @@ local function dispatch_multi(sym, arg, ext)
 	end
 end
 
+local dispatch_locked = nil;
+local dispatch_queue = {};
+
+-- take the list of accumulated symbols to dispatch and push them out now,
+-- note that this can trigger another dispatch_symbol_lock and so on..
+function dispatch_symbol_unlock(flush)
+	assert(dispatch_locked == true);
+	local oldq = dispatch_queue;
+	dispatch_queue = {};
+	if (flush) then
+		for k,v in ipairs(oldq) do
+			dispatch_symbol(sym, v[1], v[2]);
+		end
+	end
+	dispatch_locked = nil;
+end
+
+function dispatch_symbol_lock()
+	assert(dispatch_locked == nil);
+	dispatch_locked = true;
+	dispatch_queue = {};
+end
+
 function dispatch_symbol(sym, arg, ext)
 	local ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
+
+	if (dispatch_locked) then
+		table.insert(dispatch_queue, {arg, ext});
+		return;
+	end
 
 	if (DEBUGLEVEL > 2 and active_display().debug_console) then
 		active_display().debug_console:add_symbol(sym);

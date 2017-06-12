@@ -577,7 +577,6 @@ function durden_iostatus_handler(iotbl)
 		if (iotbl.devkind == "led") then
 			ledm_added(iotbl);
 		else
-			iostatem_added(iotbl);
 		end
 	elseif (iotbl.action == "removed") then
 		if (iotbl.devkind == "led") then
@@ -688,23 +687,26 @@ end
 -- ESCAPE cancels the mode, end runs whatever trigger we set (global).
 -- see 'select_region_*' global functions + some button to align
 -- with selected window (if any, like m1 and m2)
-function durden_regionsel_input(iotbl)
+function durden_regionsel_input(iotbl, fromim)
 	if (iotbl.kind == "status") then
 		durden_iostatus_handler(iotbl);
 		return;
+	end
+
+-- feed iostatem so that we get repeats
+	if (not fromim) then
+		if (iostatem_input(iotbl)) then
+			return;
+		end
 	end
 
 	if (iotbl.translated and iotbl.active) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 
 		if (SYSTEM_KEYS["cancel"] == sym) then
-			mouse_select_end();
-			iostatem_restore();
-			durden_input = durden_normal_input;
+			suppl_region_stop();
 		elseif (SYSTEM_KEYS["accept"] == sym) then
-			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
-			iostatem_restore();
-			durden_input = durden_normal_input;
+			suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
 		elseif (SYSTEM_KEYS["meta_1"] == sym) then
 			mouse_select_set();
 		elseif (SYSTEM_KEYS["meta_2"] == sym) then
@@ -714,13 +716,24 @@ function durden_regionsel_input(iotbl)
 			if (#items > 0) then
 				mouse_select_set(items[1]);
 			end
+-- keyboard mouse navigation, could probably be moved to some
+		elseif (SYSTEM_KEYS["caret_left"] == sym) then
+			local mx, my = mouse_xy();
+			mouse_absinput(mx-8, my);
+		elseif (SYSTEM_KEYS["caret_right"] == sym) then
+			local mx, my = mouse_xy();
+			mouse_absinput(mx+8, my);
+		elseif (SYSTEM_KEYS["next"] == sym) then
+			local mx, my = mouse_xy();
+			mouse_absinput(mx, my-8);
+		elseif (SYSTEM_KEYS["previous"] == sym) then
+			local mx, my = mouse_xy();
+			mouse_absinput(mx, my+8);
 		end
 
-	elseif (iotbl.mouse) then
+	elseif (iotbl.mouse and not mouse_blocked()) then
 		if (iotbl.digital) then
-			mouse_select_end(DURDEN_REGIONSEL_TRIGGER);
-			iostatem_restore();
-			durden_input = durden_normal_input;
+			suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
 		else
 			mousemotion(iotbl);
 		end
