@@ -331,7 +331,8 @@ local function center_resize(space, lin, evblock, wnd, cb)
 		end
 		return true;
 	end
-	if (not active_display().selected) then
+	if (not active_display().selected and
+		active_display().active_space == space) then
 		if (space.children[2]) then
 			space.children[2]:select();
 		elseif (space.children[1]) then
@@ -345,7 +346,7 @@ swap_focus = function(sel)
 	local sp = active_display().active_space;
 	local sw = active_display().selected;
 	local dw = sp.children[2];
-	if (not sp or #sp.children < 2 or not sw) then
+	if (not sp or #sp.children < 2 or not sw or sw.space ~= sp) then
 		return;
 	end
 
@@ -398,7 +399,7 @@ swap_focus = function(sel)
 		sp.children[2]:select();
 	end
 
- sp:resize(true);
+	sp:resize(true);
 end
 
 local function center_free(space)
