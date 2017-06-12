@@ -161,16 +161,19 @@ end
 sf["migrate_wnd_bydspname"] = function()
 	local res = {};
 	local wnd = active_display().selected;
+	local cur = active_display(false, true).name;
 
 	for d in all_displays_iter() do
-		table.insert(res, {
-			name = "migrate_" .. hexenc(d.name),
-			label = d.name,
-			kind = "action",
-			handler = function()
-				display_migrate_wnd(wnd, d.name);
-			end
-		});
+		if (cur ~= d.name) then
+			table.insert(res, {
+				name = "migrate_" .. hexenc(d.name),
+				label = d.name,
+				kind = "action",
+				handler = function()
+					display_migrate_wnd(wnd, d.name);
+				end
+			});
+		end
 	end
 
 	return res;
