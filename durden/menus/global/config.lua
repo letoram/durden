@@ -385,7 +385,7 @@ local durden_system = {
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			else
-				durden_new_connection();
+				durden_new_connection(BADID, {key = val});
 			end
 		end
 	},
