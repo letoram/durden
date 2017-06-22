@@ -1,5 +1,5 @@
 --
--- Copyright 2014-2017, Björn Ståhl
+-- Copyright 2014-2016, Björn Ståhl
 -- License: 3-Clause BSD.
 -- Reference: http://arcan-fe.com
 --
@@ -21,7 +21,8 @@
 --
 -- output:
 --  mouse_xy()
---
+--  mouse_rawxy() : "raw" last coordinates, ignoring hotspot
+---
 -- tuning:
 --  autohide() - true or false ; call to flip state, returns new state
 --  acceleration(x_scale_factor, y_scale_factor) ;
@@ -121,6 +122,8 @@ local mstate = {
 	dev = 0,
 	x = 0,
 	y = 0,
+	rel_x = 0,
+	rel_y = 0,
 	min_x = 0,
 	min_y = 0,
 	max_x = VRESW,
@@ -129,6 +132,7 @@ local mstate = {
 	hotspot_y = 0,
 	scale_w = 1, -- scale factors for cursor drawing
 	scale_h = 1,
+	scale_i = true, -- force rounding to nearest integral factor
 };
 
 -- arbitrary "how many mouse buttons are there today", we just
@@ -215,8 +219,8 @@ local function mouse_cursorupd(x, y)
 	if (mstate.native) then
 		move_cursor(mstate.x, mstate.y);
 	else
-		move_image(mstate.cursor, mstate.x + mstate.x_ofs,
-			mstate.y + mstate.y_ofs);
+		local x, y = mouse_hotxy();
+		move_image(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs);
 	end
 
 	return relx, rely;
@@ -245,8 +249,7 @@ local function def_reveal()
 		local seed = math.random(80) - 40;
 		order_image(surf, 65534);
 		local intime = math.random(50);
-		local mx, my = mouse_xy();
-		move_image(surf, mx, my);
+		move_image(surf, mstate.x, mstate.y);
 		nudge_image(surf, math.random(150) - 75,
 			math.random(150) - 75, intime);
 		expire_image(surf, intime);
@@ -291,7 +294,11 @@ local function linear_find_vid(table, vid, state)
 	end
 
 	for a,b in pairs(table) do
-		if (b:own(vid, state)) then
+		if (type(b.own) == "function") then
+			if (b:own(vid, state)) then
+				return b;
+			end
+		elseif b.own == vid then
 			return b;
 		end
 	end
@@ -397,7 +404,14 @@ function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 
 	mstate.cursor = null_surface(1, 1);
 	image_mask_set(mstate.cursor, MASK_UNPICKABLE);
-	mouse_add_cursor("default", cvid, 0, 0);
+	if (valid_vid(cvid)) then
+		mouse_add_cursor("default", cvid, 0, 0);
+		local props = image_surface_properties(cvid);
+		mstate.size = {props.width, props.height};
+	else
+		mstate.size = {32, 32};
+	end
+
 	mstate.rt = rt;
 	mouse_switch_cursor();
 
@@ -406,12 +420,9 @@ function mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
 	end
 
 	move_image(mstate.cursor, mstate.x, mstate.y);
-	local props = image_surface_properties(cvid);
-	mstate.size = {props.width, props.height};
-
 	mstate.pickdepth = pickdepth;
 	order_image(mstate.cursor, clayer);
-	image_mask_set(cvid, MASK_UNPICKABLE);
+	image_mask_set(mstate.cursor, MASK_UNPICKABLE);
 	if (cachepick) then
 		mouse_pickfun = cached_pick;
 	else
@@ -457,6 +468,20 @@ function mouse_absinput_masked(x, y, nofwd)
 	mouse_hidemask(false);
 end
 
+function mouse_warp(x, y)
+	mstate.x = x;
+	mstate.y = y;
+	mstate.press_x = x;
+	mstate.press_y = y;
+
+	if (mstate.native) then
+		move_cursor(mstate.x, mstate.y);
+	else
+		local mx, my = mouse_hotxy();
+		move_image(mstate.cursor, mx + mstate.x_ofs, my + mstate.y_ofs);
+	end
+end
+
 --
 -- Some devices just give absolute movements, convert
 -- these to relative before moving on
@@ -472,15 +497,14 @@ function mouse_absinput(x, y, nofwd)
 
 	mstate.x = x + (arx - rx);
 	mstate.y = y + (ary - ry);
-
 -- also need to constrain the relative coordinates when we clamp
 	local ulx, uly, lrx, lry = lock_constrain();
 
 	if (mstate.native) then
 		move_cursor(mstate.x, mstate.y);
 	else
-		move_image(mstate.cursor, mstate.x + mstate.x_ofs,
-			mstate.y + mstate.y_ofs);
+		local x, y = mouse_hotxy();
+		move_image(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs);
 	end
 
 	if (not nofwd) then
@@ -513,13 +537,22 @@ function mouse_lockto(vid, fun, warp, state)
 	return olv, olf, olw, ols;
 end
 
+function mouse_hotxy()
+	if (mstate.native) then
+		local x, y = cursor_position();
+		return x, y;
+	else
+		return (mstate.x - mstate.hotspot_x * mstate.scale_w),
+			(mstate.y - mstate.hotspot_y * mstate.scale_h);
+	end
+end
+
 function mouse_xy()
 	if (mstate.native) then
 		local x, y = cursor_position();
 		return x, y;
 	else
-		local props = image_surface_resolve_properties(mstate.cursor);
-		return props.x, props.y;
+		return mstate.x, mstate.y;
 	end
 end
 
@@ -688,9 +721,7 @@ function mouse_button_input(ind, active)
 		return mouse_btnlock(ind, active);
 	end
 
-	local hists = mouse_pickfun(
-		mstate.x + mstate.hotspot_x,
-		mstate.y + mstate.hotspot_y, mstate.pickdepth, 1, mstate.rt);
+	local hists = mouse_pickfun(mstate.x, mstate.y, mstate.pickdepth, 1, mstate.rt);
 
 	if (DEBUGLEVEL > 2) then
 		local res = {}
@@ -757,12 +788,34 @@ function mouse_over(vid)
 			return true;
 		end
 	end
-	return false;
 end
 
-function mouse_input(x, y, state, noinp, force)
-	if (not mstate.revmask and mstate.hidden
-		and not force and (x ~= 0 or y ~= 0)) then
+local mid_c = 0;
+local mid_v = {0, 0};
+function mouse_iotbl_input(iotbl)
+	if (iotbl.digital) then
+		mouse_button_input(iotbl.subid, iotbl.active);
+		return;
+	end
+
+	if (iotbl.relative) then
+		if (iotbl.subid == 0) then
+			mouse_input(iotbl.samples[2], 0);
+		else
+			mouse_input(0, iotbl.samples[2]);
+		end
+	else
+		mid_v[iotbl.subid+1] = iotbl.samples[1];
+		mid_c = mid_c + 1;
+		if (mid_c == 2) then
+			mouse_absinput(mid_v[1], mid_v[2]);
+			mid_c = 0;
+		end
+	end
+end
+
+function mouse_input(x, y, state, noinp)
+	if (not mstate.revmask and mstate.hidden and (x ~= 0 or y ~= 0)) then
 
 		if (mstate.native == nil) then
 			instant_image_transform(mstate.cursor);
@@ -958,7 +1011,7 @@ function mouse_droplistener(tbl)
 	end
 end
 
-function mouse_add_cursor(label, img, hs_x, hs_y)
+function mouse_add_cursor(label, img, hs_x, hs_y, opts)
 	if (label == nil or type(label) ~= "string") then
 		if (valid_vid(img)) then
 			delete_image(img);
@@ -974,26 +1027,47 @@ function mouse_add_cursor(label, img, hs_x, hs_y)
 		return warning(string.format(
 			"mouse_add_cursor(%s), missing image", label));
 	end
+	opts = opts and opts or {};
 
 	local props = image_storage_properties(img);
 	cursors[label] = {
 		vid = img,
 		hotspot_x = hs_x,
 		hotspot_y = hs_y,
-		width = props.width,
-		height = props.height
+		width = opts.width and opts.width or props.width,
+		height = opts.height and opts.height or props.height,
+		shader = opts.shader
 	};
+end
+
+function mouse_scale(factor)
+	if (not mouse.prescale) then
+		mouse.prescale = {
+		};
+	end
+	cursor.accel_x = mouse.prescale.ax * factor;
+	cursor.accel_y = mouse.prescale.ay * factor;
 end
 
 function mouse_cursor_sf(fx, fy)
 	mstate.scale_w = fx and fx or 1.0;
 	mstate.scale_h = fy and fy or 1.0;
-	local new_w = mstate.size[1] * mstate.scale_w;
-	local new_h = mstate.size[2] * mstate.scale_h;
+	if (mstate.scale_i) then
+		local i, f = math.modf(mstate.scale_w);
+		mstate.scale_w = (f > 0.5)
+			and math.ceil(mstate.scale_w) or math.floor(mstate.scale_w);
+		i, f = math.modf(mstate.scale_h);
+		mstate.scale_h = (f > 0.5)
+			and math.ceil(mstate.scale_h) or math.floor(mstate.scale_h);
+		i, f = math.modf(mstate.scale_h);
+	end
+
+	local new_w = math.ceil(mstate.size[1] * mstate.scale_w);
+	local new_h = math.ceil(mstate.size[2] * mstate.scale_h);
 
 	if (mstate.native) then
 		resize_cursor(new_w, new_h);
-	else
+	elseif (valid_vid(mstate.cursor)) then
 		resize_image(mstate.cursor, new_w, new_h);
 	end
 end
@@ -1007,10 +1081,14 @@ function mouse_custom_cursor(ct)
 	end
 	mstate.size = {ct.width, ct.height};
 	mouse_cursor_sf(mstate.scale_w, mstate.scale_h);
+	if (ct.shader) then
+		image_shader(mstate.cursor, ct.shader);
+	else
+		image_shader(mstate.cursor, "DEFAULT");
+	end
 
--- hotspot isn't scaled yet
-	local hsdx = mstate.hotspot_x - ct.hotspot_x;
-	local hsdy = mstate.hotspot_y - ct.hotspot_y;
+	local hsdx = mstate.scale_w * (mstate.hotspot_x - ct.hotspot_x);
+	local hsdy = mstate.scale_h * (mstate.hotspot_y - ct.hotspot_y);
 
 -- offset current position (as that might've triggered the event that
 -- incited the caller to switch cursor by the change in label
@@ -1032,6 +1110,8 @@ function mouse_switch_cursor(label)
 		return;
 	end
 
+	mstate.active_label = label;
+
 	if (cursors[label] == nil) then
 		if (mstate.native) then
 			cursor_setstorage(WORLDID);
@@ -1043,7 +1123,10 @@ function mouse_switch_cursor(label)
 
 	local ct = cursors[label];
 	mouse_custom_cursor(ct);
-	mstate.active_label = label;
+end
+
+function mouse_cursors()
+	return cursors;
 end
 
 function mouse_hide()
@@ -1270,9 +1353,8 @@ function mouse_select_set(vid)
 		mouse_cursorupd(0, 0);
 		mstate.lockfun();
 	else
-		local mx, my = mouse_xy();
-		mstate.in_select.x = mx;
-		mstate.in_select.y = my;
+		mstate.in_select.x = mstate.x;
+		mstate.in_select.y = mstate.y;
 		mouse_cursorupd(0, 0);
 		mstate.lockfun();
 	end

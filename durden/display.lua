@@ -395,7 +395,6 @@ function display_event_handler(action, id)
 
 	if (action == "added") then
 		local modes = video_displaymodes(id);
-
 		local dw = VRESW;
 		local dh = VRESH;
 		local ppcm = VPPCM;
@@ -689,9 +688,10 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 		else
 			run_display_action(disp, function()
 				if (video_displaymodes(source, w, h)) then
+					map_video_display(disp.rt, WORLDID, disp.maphint);
 					resize_video_canvas(w, h);
 					image_set_txcos_default(disp.rt);
-					disp.tiler:resize(w, h, true);
+					disp.tiler:resize(w, h);
 					disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
 				end
 			end);
