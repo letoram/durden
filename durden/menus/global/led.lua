@@ -3,7 +3,7 @@ local function get_ledent(rgb, devid, i)
 	if (rgb) then
 		validator = suppl_valid_typestr("fff", 0, 255, 0);
 		handler = function(ctx, val)
-			local tbl = suppl_unpack_typestr("fff", val, 0, 255);
+			local tbl = suppl_unpack_typestr("fff", tonumber(val), 0, 255);
 			if (tbl) then
 				set_led_rgb(devid, i-1, tbl[1], tbl[2], tbl[3], false);
 			end
@@ -12,7 +12,7 @@ local function get_ledent(rgb, devid, i)
 	else
 		validator = gen_valid_float(0, 1);
 		handler = function(ctx, val)
-			set_led(devid, i-1, val > 0.0 and 1 or 0);
+			set_led(devid, i-1, tonumber(val) > 0.0 and 1 or 0);
 		end
 		hint = "(0..1)";
 	end
