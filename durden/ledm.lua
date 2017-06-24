@@ -14,7 +14,6 @@ local devices = {
 	passive = {},
 	keymap = {},
 	custom = {},
-	dispmap = {}
 };
 local profiles = {};
 
@@ -112,13 +111,16 @@ local function resolve_path_color(v, path, fb_col)
 		end
 
 -- always favor exact matches so that we can handle:
--- !/window/* and !/window/1/weird
+-- !window/* and !window/1/weird
 		for k,v in pairs(v.path_colors) do
 			if (k == path) then
 				return v;
 			elseif (string.sub(k, string.len(k)) == "*") then
-				if (path == string.sub(k, 1, string.len(k)-1)) then
+				local ps = string.sub(k, 1, string.len(k)-1);
+				local paths = string.sub(path, 1, string.len(ps));
+				if (paths == ps) then
 					res = v;
+					return res;
 				end
 			end
 		end
@@ -130,10 +132,15 @@ end
 -- updated when selection changes, locked state changes or meta- key state
 -- changes.
 function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
+
 	if (locked) then
 		for k,v in ipairs(devices.keymap) do
 			local cl = v.default_color;
-			set_led_rgb(v.devid, -1, cl[1], cl[2], cl[3]);
+			if (v.proxy) then
+				v.proxy(v.devid, -1, cl[1], cl[2], cl[3]);
+			else
+				ledfun(v.devid, -1, cl[1], cl[2], cl[3]);
+			end
 		end
 		return;
 	end
@@ -141,22 +148,23 @@ function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
 -- reset everything, light up m1/m2 unless they are pressed.
 	for k,v in ipairs(devices.keymap) do
 		local cl = v.default_color;
+		local ledfun = v.proxy and v.proxy or set_led_rgb;
 
-		set_led_rgb(v.devid, -1, 0, 0, 0, false);
+		ledfun(v.devid, -1, 0, 0, 0, true);
 		if (not m1) then
 			local cl = v.m1_color;
-			set_led_rgb(v.devid, v.m1, cl[1], cl[2], cl[3], true);
+			ledfun(v.devid, v.m1, cl[1], cl[2], cl[3], true);
 		end
 		if (not m2) then
 			local cl = v.m2_color;
-			set_led_rgb(v.devid, v.m2, cl[1], cl[2], cl[3], true);
+			ledfun(v.devid, v.m2, cl[1], cl[2], cl[3], true);
 		end
 
 		if (globals) then
 			for i,d in ipairs(globals) do
 				if (v.symtable[d[1]]) then
 					local cl = resolve_path_color(v, d[2], "global_color");
-					set_led_rgb(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
+					ledfun(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
 				end
 			end
 		end
@@ -165,10 +173,12 @@ function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
 			for i,d in ipairs(targets) do
 				if (v.symtable[d[1]]) then
 					local cl = resolve_path_color(v, d[2], "target_generic_color");
-					set_led_rgb(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
+					ledfun(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
 				end
 			end
 		end
+
+		ledfun(v.devid, 255, 0, 0, 0);
 
 --
 -- reserved for now as the shmif- part actually misses the modifier information
@@ -181,7 +191,6 @@ function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
 --		end
 
 -- abuse the last id as a way to commit without tracking more state
-		set_led_rgb(v.devid, 255, 0, 0, 0, false);
 	end
 end
 
@@ -210,12 +219,22 @@ function ledm_devices(role)
 end
 
 function ledm_tick()
-	for k,v in ipairs(devices.custom) do
+	local ledf = function(k, v)
 		if (v.counter == nil or v.counter == 1) then
 			v.counter = v.tickrate;
 			v.clock(v.devid);
 		else
 			v.counter = v.counter - 1;
+		end
+	end
+
+	for k,v in ipairs(devices.custom) do
+		ledf(k, v);
+	end
+
+	for k,v in ipairs(devices.keymap) do
+		if (v.clock) then
+			ledf(k, v);
 		end
 	end
 end

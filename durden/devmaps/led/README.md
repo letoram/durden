@@ -78,6 +78,11 @@ Add the following fields where num match the corresponding led index:
 			 ["!open/*"] = {20, 64, 80}
 			}
 
+      -- optional proxy function when state needs to be mixed
+      proxy = function(devid, ledind, r, g, b, commit)
+				set_led_rgb(devid, ledind, r, g, b, commit)
+			end,
+
 			symtable =
 			 {
 				ESCAPE = num,
