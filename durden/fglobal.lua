@@ -554,7 +554,11 @@ gf["gain_stepv"] = function(val)
 	val = val or 0.1;
 	local gv = gconfig_get("global_gain");
 	gv = gv + val;
-	gv = (gv > 1.0 and 1.0 or gv) < 0.0 and 0.0 or gv;
+	if (gv > 1.0) then
+		gv = 1.0;
+	elseif (gv < 0.0) then
+		gv = 0.0;
+	end
 	gconfig_set("global_gain", gv);
 	allgain(gv);
 end
