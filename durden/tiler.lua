@@ -30,6 +30,19 @@ local function linearize(wnd)
 	return res;
 end
 
+local function get_disptbl(wnd, tbl)
+	if (tbl and wnd.density_override) then
+		local cpy = {};
+		for k,v in pairs(tbl) do
+			cpy[k] = v;
+		end
+		cpy.ppcm = wnd.density_override;
+		return cpy;
+	else
+		return tbl;
+	end
+end
+
 local function tbar_mode(mode)
 	return mode == "tile" or
 		(mode == "float" and not gconfig_get("float_tbar_override"));
@@ -751,7 +764,7 @@ local function workspace_migrate(ws, newt, disptbl)
 		table.remove_match(oldt.windows, v);
 -- send new display properties
 		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
-			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
+			target_displayhint(v.external, 0, 0, v.dispmask, get_disptbl(v, disptbl));
 		end
 
 -- special handling for titlebar
@@ -2266,7 +2279,8 @@ local function wnd_migrate(wnd, tiler, disptbl)
 
 -- propagate pixel density information
 	if (disptbl and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		target_displayhint(wnd.external, 0, 0, wnd.dispmask, disptbl);
+		target_displayhint(wnd.external,
+			0, 0, wnd.dispmask, get_disptbl(wnd, disptbl));
 	end
 
 -- special handling, will be next selected
@@ -2724,6 +2738,7 @@ local wnd_setup = function(wm, source, opts)
 		input_table = wnd_inputtable,
 		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
+		display_table = get_disptbl,
 		swap = wnd_swap,
 		grow = wnd_grow
 	};
@@ -3203,7 +3218,7 @@ local function tiler_scalef(wm, newf, disptbl)
 	for k,v in ipairs(wm.windows) do
 		v:set_title();
 		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
-			target_displayhint(v.external, 0, 0, v.dispmask, disptbl);
+			target_displayhint(v.external, 0, 0, v.dispmask, get_disptbl(v, disptbl));
 		end
 	end
 

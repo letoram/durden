@@ -92,6 +92,23 @@ local advanced = {
 		end
 	},
 	{
+		name = "density_override",
+		label = "Override Density",
+		kind = "value",
+		hint = "(10..100)",
+		eval = function(ctx, val)
+			local wnd = active_display().selected;
+			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
+		end,
+		validator = gen_valid_num(10, 100),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd.density_override = tonumber(val);
+			target_displayhint(wnd.external,
+				0, 0, wnd.dispmask, wnd:display_table(wnd.wm.disptbl));
+		end
+	},
+	{
 		name = "source_hpass",
 		label = "Toggle Handle Passing",
 		kind = "action",
