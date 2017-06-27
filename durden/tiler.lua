@@ -1939,21 +1939,34 @@ local function convert_mouse_xy(wnd, x, y, rx, ry)
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
 
+-- first, remap coordinate range (x, y are absolute)
+	local aprop = image_surface_resolve_properties(wnd.canvas);
+	local locx = x - aprop.x;
+	local locy = y - aprop.y;
+
+	if (wnd.mouse_remap_range) then
+		locx = (wnd.mouse_remap_range[1] * aprop.width) +
+			locx * wnd.mouse_remap_range[3];
+		locy = (wnd.mouse_remap_range[2] * aprop.height) +
+			locy * wnd.mouse_remap_range[4];
+	end
+
+-- take server-side scaling into account
 	local res = {};
 	local sprop = image_storage_properties(
 		valid_vid(wnd.external) and wnd.external or wnd.canvas);
-	local aprop = image_surface_resolve_properties(wnd.canvas);
 	local sfx = sprop.width / aprop.width;
 	local sfy = sprop.height / aprop.height;
-	local lx = sfx * (x - aprop.x);
-	local ly = sfy * (y - aprop.y);
+	local lx = sfx * locx;
+	local ly = sfy * locy;
 
 	res[1] = lx;
 	res[2] = rx and rx or 0;
 	res[3] = ly;
 	res[4] = ry and ry or 0;
 
-	if (wnd.last_ms) then
+-- track mouse sample and try to generate relative motion
+	if (wnd.last_ms and not rx) then
 		res[2] = (wnd.last_ms[1] - res[1]);
 		res[4] = (wnd.last_ms[2] - res[3]);
 	else

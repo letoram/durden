@@ -363,18 +363,35 @@ return {
 						return;
 					end
 
--- create clone with proper texture coordinates
+-- create clone with proper texture coordinates, this has problems with
+-- source windows that do other coordinate transforms as well and switch
+-- back and forth.
 					local new = null_surface(x2-x1, y2-y1);
 					image_sharestorage(wnd.canvas, new);
 					local s1 = (x1-props.x) / props.width;
 					local t1 = (y1-props.y) / props.height;
 					local s2 = (x2-props.x) / props.width;
 					local t2 = (y2-props.y) / props.height;
+					if (wnd.origo_ll) then
+						local tmp_1 = t2;
+						t2 = t1;
+						t1 = tmp_1;
+					end
 					image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
 					show_image(new);
 
 -- bind to a window, with optional input-routing
 					local cwin = active_display():add_window(new, {scalemode = "aspect"});
+					if (not cwin) then
+						return;
+					end
+
+-- define mouse-cursor coordinate range-remap
+					cwin.mouse_remap_range = {
+						s1, t1, s2, t2
+					};
+
+-- add references to the external source
 					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
 						val == "Active") then
 						cwin.external = wnd.external;
