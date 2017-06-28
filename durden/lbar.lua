@@ -105,6 +105,7 @@ local function accept_cancel(wm, accept)
 	end
 end
 
+--
 -- Build chain of single selectable strings, move and resize the marker to each
 -- of them, chain their positions to an anchor so they are easy to delete, and
 -- track an offset for drawing. We rebuild / redraw each cursor modification to
@@ -515,6 +516,10 @@ local function lbar_helper(lbar, domain, arg)
 	end
 end
 
+function tiler_lbar_isactive()
+	return active_lbar ~= nil;
+end
+
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 	local time = gconfig_get("transition");
@@ -525,7 +530,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	PENDING_FADE = nil;
 	if (active_lbar) then
 		warning("tried to spawn multiple lbars");
-        active_lbar:destroy();
+		active_lbar:destroy();
 	end
 
 	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
