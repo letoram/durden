@@ -327,9 +327,12 @@ local function tiler_statusbar_update(wm)
 -- regenerate buttons and labels
 	wm_update_mode(wm);
 	local space = wm.spaces[wm.space_ind];
-	wm.statusbar[
-		(space.mode == "fullscreen" or gconfig_get("sbar_hud")) and "hide" or "show"
-	](wm.statusbar);
+
+-- consider visibility (fullscreen, or HUD mode affects it)
+	local invisible = space.mode == "fullscreen" or
+		(gconfig_get("sbar_hud") and not tiler_lbar_isactive());
+
+	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
@@ -1073,10 +1076,10 @@ local function set_float(space)
 		if (v.last_float) then
 			neww = space.wm.width * v.last_float.width;
 			newh = space.wm.height * v.last_float.height;
-			move_image(v.anchor,
-				space.wm.width * v.last_float.x,
-				space.wm.height * v.last_float.y
-			);
+			v.x = space.wm.width * v.last_float.x;
+			v.y = space.wm.height * v.last_float.y;
+
+			move_image(v.anchor, v.x, v.y);
 -- if window havn't been here before, clamp
 		else
 			neww = props.width + v.pad_left + v.pad_right;
@@ -2872,13 +2875,6 @@ local function tiler_switchws(wm, ind)
 	local cw = wm.selected;
 	if (ind == wm.space_ind) then
 		return;
-	end
-
--- update local preview
-	if (gconfig_get("ws_preview")) then
-		if (space.preview and valid_vid(space.wm.rtgt_id)) then
-			update_preview(space, space.preview, space.wm.rtgt_id);
-		end
 	end
 
 	local nd = wm.space_ind < ind;
