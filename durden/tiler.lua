@@ -2716,6 +2716,7 @@ local wnd_setup = function(wm, source, opts)
 		cursor = "default",
 		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
+		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 
 -- public events to manipulate the window

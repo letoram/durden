@@ -22,7 +22,6 @@ local rtbl = {
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
-		centered = true,
 		default_shader = {"simple", "crop"},
 		scalemode = "stretch",
 		rate_unlimited = true,
