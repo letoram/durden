@@ -65,29 +65,40 @@ local function fs_handler(wnd, sym, iotbl, path)
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_input(wnd.external, iotbl);
 	end
+-- HACK: the dispatch- override wasn't intended for this purpose, but
+-- will forward mouse samples for us as well. The "ok, outsym,.."
+-- value matching in durden_input only interrupts input for digital
+-- sources though as that would otherwise break mouse routing, but that
+-- is what we want here.
+	iotbl.digital = true;
 	return true, sym, iotbl, path;
+end
+
+local function mouse_lockfun(rx, ry, x, y, wnd, ind, act)
+-- simulate the normal mouse motion in the case of constrained input
+	if (true) then return; end
+	if (ind) then
+		wnd.mousebutton({tag = wnd}, ind, act, x, y);
+	else
+		wnd.mousemotion({tag = wnd}, x, y, rx, ry);
+	end
 end
 
 local advanced = {
 	{
 		name = "source_fs",
 		label = "Source-Fullscreen",
-		kind = "action",
+		kind = "value",
 		eval = function() return not display_simple() and valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER); end,
-		initial = function()
-			return gconfig_get("display_source_fs");
-		end,
 		set = {"Stretch", "Mode Switch"},
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			display_fullscreen(active_display(false, true).name,
 				wnd.external, val == "Mode Switch");
--- mouse locking isn't strictly necessary as we're bound to the display
--- input routing- wise, and the bindings to escape are not available
--- and we still get proper relative values
 			dispatch_toggle(function(sym, iot, path)
-				return fs_handler(wnd, sym, iot, path); end
+				return fs_handler(wnd, sym, iot, path);
+			end
 			);
 		end
 	},
