@@ -1,5 +1,5 @@
 --
--- Copyright 2014-2016, Björn Ståhl
+-- Copyright 2014-2017, Björn Ståhl
 -- License: 3-Clause BSD.
 -- Reference: http://arcan-fe.com
 --
@@ -792,6 +792,7 @@ end
 
 local mid_c = 0;
 local mid_v = {0, 0};
+
 function mouse_iotbl_input(iotbl)
 	if (iotbl.digital) then
 		mouse_button_input(iotbl.subid, iotbl.active);
@@ -800,9 +801,9 @@ function mouse_iotbl_input(iotbl)
 
 	if (iotbl.relative) then
 		if (iotbl.subid == 0) then
-			mouse_input(iotbl.samples[2], 0);
+			mouse_input(iotbl.samples[1], 0);
 		else
-			mouse_input(0, iotbl.samples[2]);
+			mouse_input(0, iotbl.samples[1]);
 		end
 	else
 		mid_v[iotbl.subid+1] = iotbl.samples[1];
@@ -812,6 +813,30 @@ function mouse_iotbl_input(iotbl)
 			mid_c = 0;
 		end
 	end
+end
+
+if (API_VERSION_MAJOR == 0 and API_VERSION_MAJOR < 11) then
+mouse_iotbl_input = function(iotbl)
+	if (iotbl.digital) then
+		mouse_button_input(iotbl.subid, iotbl.active);
+		return;
+	end
+
+	if (iotbl.relative) then
+		if (iotbl.subid == 0) then
+			mouse_input(iotbl.samples[2], 0);
+		else
+			mouse_input(0, iotbl.samples[1]);
+		end
+	else
+		mid_v[iotbl.subid+1] = iotbl.samples[1];
+		mid_c = mid_c + 1;
+		if (mid_c == 2) then
+			mouse_absinput(mid_v[1], mid_v[2]);
+			mid_c = 0;
+		end
+	end
+end
 end
 
 function mouse_input(x, y, state, noinp)

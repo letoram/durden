@@ -543,31 +543,6 @@ eval_respawn = function(manual, path)
 	end
 end
 
-local mid_c = 0;
-local mid_v = {0, 0};
-
-local function mousemotion(iotbl)
--- we prefer relative mouse coordinates for proper warping etc.
--- but not all platforms can deliver on that promise and these are
--- split BY AXIS but delivered in pairs (stupid legacy) so we have to
--- merge.
-	if (iotbl.relative) then
-		if (iotbl.subid == 0) then
-			mouse_input(iotbl.samples[2], 0);
-		else
-			mouse_input(0, iotbl.samples[2]);
-		end
-	else
-		mid_v[iotbl.subid+1] = iotbl.samples[1];
-		mid_c = mid_c + 1;
-
-		if (mid_c == 2) then
-			mouse_absinput(mid_v[1], mid_v[2]);
-			mid_c = 0;
-		end
-	end
-end
-
 -- shared between the other input forms (normal, locked, ...)
 function durden_iostatus_handler(iotbl)
 	if (iotbl.label and string.len(iotbl.label) > 0) then
@@ -657,11 +632,7 @@ function durden_normal_input(iotbl, fromim)
 			return;
 		end
 
-		if (iotbl.digital) then
-			mouse_button_input(iotbl.subid, iotbl.active);
-		else
-			mousemotion(iotbl);
-		end
+		mouse_iotbl_input(iotbl);
 		return;
 	end
 
