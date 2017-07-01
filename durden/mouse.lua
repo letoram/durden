@@ -815,7 +815,7 @@ function mouse_iotbl_input(iotbl)
 	end
 end
 
-if (API_VERSION_MAJOR == 0 and API_VERSION_MAJOR < 11) then
+if (API_VERSION_MAJOR == 0 and API_VERSION_MINOR < 11) then
 mouse_iotbl_input = function(iotbl)
 	if (iotbl.digital) then
 		mouse_button_input(iotbl.subid, iotbl.active);
