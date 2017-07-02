@@ -3110,7 +3110,9 @@ local function tiler_rendertarget(wm, set)
 -- the surface we use as rendertarget for compositioning will use the highest
 -- quality internal storage format, and disable the use of the alpha channel
 	if (set == true) then
-		wm.rtgt_id = alloc_surface(wm.width, wm.height, true, 1);
+		local quality = (API_VERSION_MAJOR == 0 and API_VERSION_MINOR < 11)
+			and 1 or ALLOC_QUALITY_NORMAL;
+		wm.rtgt_id = alloc_surface(wm.width, wm.height, true, quality);
 		image_tracetag(wm.rtgt_id, "tiler_rt" .. wm.name);
 		local pitem = null_surface(32, 32); --workaround for rtgt restriction
 		image_tracetag(pitem, "rendertarget_placeholder");
@@ -3401,7 +3403,7 @@ function tiler_create(width, height, opts)
 -- debug
 
 -- kept per/tiler in order to allow custom modes as well
-		scalemodes = {"normal", "stretch", "aspect"},
+		scalemodes = {"normal", "stretch", "aspect", "client"},
 
 -- public functions
 		set_background = tiler_switchbg,
