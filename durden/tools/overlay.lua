@@ -1,5 +1,6 @@
 -- track all our VIDs in this one
 local active = {};
+local ddisplay = nil;
 
 -- and global state that may override per- item opacity
 local hidden = false;
@@ -9,14 +10,18 @@ local hidden = false;
 -- doesn't matter here
 local function relayout()
 	local yofs = 0;
-	local ad = active_display();
-	local maxw = ad.width * gconfig_get("overlay_size");
-	local maxh = ad.height * gconfig_get("overlay_size");
+	if (not ddisplay) then
+		ddisplay = active_display();
+	end
+
+	local maxw = ddisplay.width * gconfig_get("overlay_size");
+	local maxh = ddisplay.height * gconfig_get("overlay_size");
 	local cy = 0;
 	for i=1,#active do
 		local props = image_storage_properties(active[i]);
 		link_image(active[i], active_display().order_anchor);
 		image_inherit_order(active[i], true);
+		rendertarget_attach(ddisplay.rtgt_id, active[i], RENDERTARGET_DETACH);
 		blend_image(active[i], hidden and 0.0 or gconfig_get("overlay_opacity"));
 		local ar = props.width / props.height;
 		local wr = props.width / maxw;
@@ -25,8 +30,8 @@ local function relayout()
 		local outh = hr < wr and maxw / ar or maxh;
 		shader_setup(active[i], "simple", gconfig_get("overlay_shader"));
 		resize_image(active[i], outw, outh);
-		move_image(active[i],
-			gconfig_get("overlay_corner") == "left" and 0 or ad.width - outw, cy);
+		move_image(active[i], gconfig_get("overlay_corner") == "left"
+			and 0 or ddisplay.width - outw, cy);
 		cy = cy + outh;
 	end
 end
@@ -38,6 +43,9 @@ local function delete_overlay(ind)
 
 	delete_image(active[ind]);
 	table.remove(active[ind]);
+	if (#active == 0) then
+		ddisplay = nil;
+	end
 	relayout();
 end
 
@@ -148,6 +156,25 @@ local function gen_delete_menu()
 	return res;
 end
 
+local function gen_migrate_menu()
+	local res = {};
+	local cur = active_display(false, true).name;
+
+	for d in all_displays_iter() do
+		table.insert(res, {
+			name = "migrate_" .. hexenc(d.name),
+			label = d.name,
+			kind = "action",
+			handler = function()
+				ddisplay = d.tiler;
+				relayout();
+			end
+		});
+	end
+
+	return res;
+end
+
 local overlays =
 {
 	{
@@ -166,6 +193,18 @@ local overlays =
 		submenu = true,
 		eval = function() return #active > 0; end,
 		handler = function() return gen_delete_menu(); end
+	},
+	{
+		name = "migrate",
+		kind = "action",
+		label = "Migrate",
+		submenu = true,
+		eval = function()
+			return gconfig_get("display_simple") == false;
+		end,
+		handler = function()
+			return gen_migrate_menu();
+		end
 	}
 };
 
