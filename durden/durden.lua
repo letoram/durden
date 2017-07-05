@@ -711,7 +711,7 @@ function durden_regionsel_input(iotbl, fromim)
 		if (iotbl.digital) then
 			suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
 		else
-			mousemotion(iotbl);
+			mouse_iotbl_input(iotbl);
 		end
 	end
 end
