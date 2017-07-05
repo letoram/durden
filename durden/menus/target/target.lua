@@ -117,7 +117,7 @@ function shared_menu_register(path, entry)
 			end
 		end
 		if (not found) then
-			warning(string.format("attach_global_menu(%s) failed on (%s)",path,v));
+			warning(string.format("attach_shared_menu(%s) failed on (%s)",path,v));
 			return;
 		end
 	end
