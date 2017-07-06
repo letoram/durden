@@ -281,8 +281,16 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 			efh = props.height;
 		end
 
+-- in this mode, just tell the client what the size of the area actually is
+-- we really want different behavior for drag here as well, but that's
+-- something to fix in the float-mode enhancement stage
+		if (wnd.scalemode == "client") then
+			efw = wnd.max_w;
+			efh = wnd.max_h;
+		end
+
 -- ignore resize- step limit (terminal) if we are not in drag resize
-			if (not mouse_state().drag or not wnd.sz_delta or
+		if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or
 			   math.abs(props.height - efh) > wnd.sz_delta[2])) then
 				target_displayhint(wnd.external, efw, efh, wnd.dispmask);

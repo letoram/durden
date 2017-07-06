@@ -6,11 +6,7 @@ return {
 	default_shader = {"simple", "noalpha"},
 	actions = {
 	{
-	name = "bridge",
-	label = "Bridge",
-	kind = "action",
-	submenu = true,
-	handler = retrosub
+-- custom menu goes here
 	},
 -- props will be projected upon the window during setup (unless there
 -- are overridden defaults)
@@ -19,7 +15,7 @@ return {
 		kbd_period = 0,
 		kbd_delay = 0,
 		centered = true,
-		scalemode = "aspect",
+		scalemode = "client",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
 		clipboard_block = true,
@@ -27,7 +23,7 @@ return {
 	},
 	dispatch = {
 		preroll = function(wnd, source, tbl)
-			target_displayhint(source, wnd.width, wnd.height, 0, active_display().disptbl);
+			target_displayhint(source, wnd.max_w, wnd.max_h, 0, active_display().disptbl);
 		end
 	}
 };
