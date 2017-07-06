@@ -12,18 +12,19 @@ return {
 		kbd_period = 0,
 		kbd_delay = 0,
 		centered = true,
-		scalemode = "none",
+		scalemode = "client",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
 		clipboard_block = true,
 		font_block = true,
+-- so, depending on the protocol state we may or may not have decorations
 --		hide_titlebar = true,
 --		hide_border = true,
 		allowed_segments = {"bridge-wayland", "popup", "cursor"},
 	},
 	dispatch = {
---		preroll = function(wnd, source, tbl)
---			target_displayhint(source, wnd.width, wnd.height, 0, active_display().disptbl);
---		end
+		preroll = function(wnd, source, tbl)
+			target_displayhint(source, wnd.max_w, wnd.max_h, 0, active_display().disptbl);
+		end
 	}
 };

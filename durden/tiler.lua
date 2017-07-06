@@ -1391,7 +1391,8 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	local outw = 1;
 	local outh = 1;
 
-	if (wnd.scalemode == "normal" and not force) then
+	if ((wnd.scalemode == "normal" or
+		wnd.scalemode == "client") and not force) then
 		if (props.width > 0 and props.height > 0) then
 			outw = props.width < maxw and props.width or maxw;
 			outh = props.height < maxh and props.height or maxh;

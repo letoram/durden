@@ -53,6 +53,12 @@ local scalemodes = {
 		label = "Aspect",
 		kind = "action",
 		handler = function() set_scalef("aspect"); end
+	},
+	{
+		name = "client",
+		label = "Client",
+		kind = "action",
+		handler = function() set_scalef("client"); end
 	}
 };
 
