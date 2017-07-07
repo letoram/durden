@@ -109,6 +109,8 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 		if (instr == "..") then
 			step_up(ctx);
 			return;
+		elseif (string.sub(instr, 1, 1) == ctx.reserved) then
+
 		elseif (instr == "/") then
 			browser_path:reset();
 			browse_file(ctx.initial, ctx.fltext, ctx.namespace, ctx.trigger, 0);
