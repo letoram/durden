@@ -117,7 +117,7 @@ local advanced = {
 			local wnd = active_display().selected;
 			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
 		end,
-		validator = gen_valid_num(10, 100),
+		validator = gen_valid_num(15, 100),
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			wnd.density_override = tonumber(val);
