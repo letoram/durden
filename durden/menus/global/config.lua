@@ -443,6 +443,17 @@ local durden_system = {
 		end
 	},
 	{
+		name = "gpuauth",
+		label = "GPU delegation",
+		kind = "value",
+		initial = function() return gconfig_get("gpu_auth"); end,
+		eval = function() return TARGET_ALLOWGPU ~= nil; end,
+		set = {"none", "full"},
+		handler = function(ctx, val)
+			gconfig_set("gpu_auth", val);
+		end
+	},
+	{
 		name = "bridgeclip",
 		label = "Clipboard Bridge",
 		kind = "value",
