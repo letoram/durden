@@ -18,6 +18,14 @@ local function toplevel_handler(wnd, source, status)
 	if (status.kind == "terminated") then
 		wnd:destroy();
 		return;
+	elseif (status.kind == "message") then
+		local opts = string.split(status.message, ":");
+		if (opts) then
+			if (opts[1] == "geom" and #opts == 5) then
+				active_display():message(string.format("x: %d, y: %d, w: %d, h: %d"));
+			end
+		end
+
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
@@ -104,8 +112,12 @@ return {
 	dispatch = {
 		preroll = function(wnd, source, tbl)
 			target_displayhint(source, wnd.max_w, wnd.max_h, 0, active_display().disptbl);
+			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
+				target_flags(source, TARGET_ALLOWGPU);
+			end
 			return true;
 		end,
+
 		segment_request = function(wnd, source, stat)
 -- register a new window, but we want control over the window setup so we just
 -- use the 'launch' function to create and register the window then install our

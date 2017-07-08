@@ -1,23 +1,23 @@
 # 0.3.0
   * Now requires arcan >= 0.5.2.
 
+  * Client- defined mouse-cursor support.
+
   * Window slicing: target/window/slice allows mouse-selected
 	  subregion to (active->input forward or passive) bind a subregion
 		of one window to a new window.
-
-  * Tools: added overlay tool
 
   * External clipboard manager support: external clients can be
 	  permitted to read and/or inject entries unto the clipboard. See
 		global/config/system/clipboard-bridge.
 
-  * External Gamma controls: external clients can be permitted to set
-    custom color/ and gamma/ lookup tables, either per window or globally.
+  * Gamma controls: external clients can be permitted to set custom
+	  color/ and gamma/ lookup tables, either per window or globally.
 		See target/video/advanced/color-gamma synch and
 		global/config/system/gamma-bridge.
 
   * LED devices: added support for profile driven LED device control
-	  see devmaps/led/README.md, global/config/led
+	  see devmaps/led/README.md or global/config/led
 
   * Input multicast : added support for input multicast groups.
 	  Enable per window via target/input/multicast. Keyboard input
@@ -30,16 +30,23 @@
 	  side-columns, and allow a different shader on side-columns
 		(see global/config/tools/autolayouting)
 
-  * Client- defined mouse-cursor support.
+	* Tools/Overlay: [new], can now take the contents of a window and add
+	  to a vertical column stack at left or right edge as scaled-down
+		previews.
+
+  * Target/Video/Advanced: allow per-window output density overrides.
+
+  * Atypes/wayland/x11: new scaling mode, 'client' to allow the client to
+	  know about the max dimensions, but let it chose its own actual size
+		within those constraints.
 
   * Fixes:
 	  More consistent font/font-size switching when migrating across
-		displays.
-		Automatically disable/ignore VIVE, PSVR monitors.
-    Defer windows attachment to reduce resize operations.
-    Mouse coordinates should be more consistent in dedicated-fullscreen.
+		displays. Automatically disable/ignore VIVE, PSVR monitors
+    Defer windows attachment to reduce resize operations
 
   * Minor:
+		\+ (arcan > 0.5.2) allow GPU- authentication controls
     \+ Split mouse cursors into sets.
 		\+ menu options for appl- switching (global/system/reset/...)
     \+ hidden bind path for suspend-state toggle (target/state/...)
@@ -51,8 +58,7 @@
 		\+ target menu path for set-x, set-y in float mode
 		\+ mouse button debounce timer support (global/inpput/mouse/debounce)
 		\+ expose backlight controls per display (global/display/displays/...)
-    \+ window centering inconsistencies
-		\+ Tools/pulldown: can now set a shadow/colored border
+		Tools/pulldown: can now set a shadow/colored border
 
   * Moved to a separate webpage, http://durden.arcan-fe.com
     (http because github.io + custom domain = fail, only doc.
