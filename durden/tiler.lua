@@ -572,6 +572,19 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 		else
 			node.max_w = math.floor(fairw * node.weight);
 			node.max_w = (node.max_w % 2) == 0 and node.max_w or node.max_w + 1;
+
+-- align with font size, but safe-guard against bad / broken client
+			if (node.sz_delta and
+				node.sz_delta[1] < gconfig_get("term_font_sz") * 2) then
+				local delta_diff = node.max_w % node.sz_delta[1];
+				if (delta_diff > 0) then
+					if (node.max_w + delta_diff <= w) then
+						node.max_w = node.max_w + delta_diff;
+					elseif (node.max_w - delta_diff > 0) then
+						node.max_w = node.max_w - delta_diff;
+					end
+				end
+			end
 		end
 
 -- recurse downwards
