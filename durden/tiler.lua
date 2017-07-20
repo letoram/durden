@@ -14,6 +14,23 @@ local ent_count = 1;
 
 local create_workspace = function() end
 
+local function wnd_animation_time(wnd, source, decor, position)
+	reset_image_transform(source);
+	if (wnd.attach_time == CLOCK) then
+		return 0;
+	end
+
+	if (position) then
+		return gconfig_get("wnd_animation");
+	end
+
+	if (not wnd.autocrop and ( wnd.space.mode == "tile" or
+		(wnd.space.mode == "float" and not wnd.in_drag_rz))) then
+		return gconfig_get("wnd_animation");
+	end
+	return 0;
+end
+
 local function linearize(wnd)
 	local res = {};
 	local dive = function(wnd, df)
@@ -1079,7 +1096,8 @@ local function set_float(space)
 			v.x = space.wm.width * v.last_float.x;
 			v.y = space.wm.height * v.last_float.y;
 
-			move_image(v.anchor, v.x, v.y);
+			move_image(v.anchor, v.x, v.y,
+				wnd_animation_time(v, v.anchor, false, true));
 -- if window havn't been here before, clamp
 		else
 			neww = props.width + v.pad_left + v.pad_right;
@@ -1413,14 +1431,19 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	outw = math.floor(outw);
 	outh = math.floor(outh);
-	resize_image(src, outw, outh);
+	reset_image_transform(src);
 
 -- for normal where the source is larger than the alloted slot
 	if (wnd.autocrop) then
 		local ip = image_storage_properties(src);
 		image_set_txcos_default(src, wnd.origo_ll);
-		image_scale_txcos(src, outw / ip.width, outh / ip.height);
+		local ss = outw / ip.width;
+		local st = outh / ip.height;
+		image_scale_txcos(src, ss, st);
+	elseif (wnd.in_drag_rz) then
 	end
+	resize_image(src, outw, outh,
+		wnd_animation_time(wnd, src, false, false));
 
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
@@ -1483,7 +1506,8 @@ local function wnd_repos(wnd)
 		if (wnd.space.mode == "tile") then
 			move_image(wnd.anchor,
 				wnd.x + math.floor(0.5 * (wnd.max_w - wnd.width)),
-				wnd.y + math.floor(0.5 * (wnd.max_h - wnd.height))
+				wnd.y + math.floor(0.5 * (wnd.max_h - wnd.height)),
+				wnd_animation_time(wnd, wnd.anchor, false, true)
 			);
 
 		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
@@ -1495,7 +1519,8 @@ local function wnd_repos(wnd)
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
 		end
 	else
-		move_image(wnd.anchor, wnd.x, wnd.y);
+		move_image(wnd.anchor, wnd.x, wnd.y,
+			wnd_animation_time(wnd, wnd.anchor, false, true));
 	end
 end
 
@@ -1570,10 +1595,13 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	local bw = wnd.border_w;
 	local tbh = tbar_geth(wnd);
 	local size_decor = function(w, h)
+		local interp = nil;
 		resize_image(wnd.anchor, w, h);
 		wnd.titlebar:move(bw, bw);
-		wnd.titlebar:resize(w - bw - bw, tbh);
-		resize_image(wnd.border, w, h);
+		wnd.titlebar:resize(w - bw - bw, tbh,
+			wnd_animation_time(wnd, wnd.anchor, true, false));
+		resize_image(wnd.border, w, h,
+			wnd_animation_time(wnd, wnd.border, true, false));
 	end
 
 -- still up for experimentation, but this method favors the canvas size rather
@@ -1839,13 +1867,15 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 end
 
-local function wnd_move(wnd, dx, dy, align, abs)
+local function wnd_move(wnd, dx, dy, align, abs, now)
 	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
 	end
 
+	local time = now and 0 or wnd_animation_time(wnd, wnd.anchor, false, true);
+
 	if (abs) then
-		move_image(wnd.anchor, dx, dy);
+		move_image(wnd.anchor, dx, dy, time);
 		return;
 	end
 
@@ -1860,9 +1890,9 @@ local function wnd_move(wnd, dx, dy, align, abs)
 		end
 		wnd.x = wnd.x < 0 and 0 or wnd.x;
 		wnd.y = wnd.y < 0 and 0 or wnd.y;
-		move_image(wnd.anchor, wnd.x, wnd.y);
+		move_image(wnd.anchor, wnd.x, wnd.y, time);
 	else
-		nudge_image(wnd.anchor, dx, dy);
+		nudge_image(wnd.anchor, dx, dy, time);
 	end
 end
 
@@ -2014,7 +2044,8 @@ local function wnd_toggle_maximize(wnd)
 	if (wnd.float_dim) then
 		wnd.x = wnd.float_dim.x * wnd.wm.width;
 		wnd.y = wnd.float_dim.y * wnd.wm.height;
-		move_image(wnd.anchor, wnd.x, wnd.y);
+		move_image(wnd.anchor, wnd.x, wnd.y,
+			wnd_animation_time(wnd, wnd.anchor, false, true));
 		wnd:resize(wnd.float_dim.w * wnd.wm.width,
 			wnd.float_dim.h * wnd.wm.height, true);
 		wnd.float_dim = nil;
@@ -2028,7 +2059,8 @@ local function wnd_toggle_maximize(wnd)
 		wnd.float_dim = cur;
 		wnd.x = 0;
 		wnd.y = 0;
-		move_image(wnd.anchor, wnd.x, wnd.y);
+		move_image(wnd.anchor, wnd.x, wnd.y,
+			wnd_animation_time(wnd, wnd.anchor, false, true));
 		wnd:resize(wnd.wm.width, wnd.wm.height, true);
 	end
 end
@@ -2548,6 +2580,7 @@ end
 local function wnd_ws_attach(res)
 	local wm = res.wm;
 	res.ws_attach = nil;
+	res.attach_time = CLOCK;
 
 	if (wm.spaces[wm.space_ind] == nil) then
 		wm.spaces[wm.space_ind] = create_workspace(wm);

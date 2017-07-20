@@ -241,6 +241,17 @@ local durden_visual = {
 		end
 	},
 	{
+		name = "wnd_speed",
+		label = "Window Animation Speed",
+		kind = "value",
+		hint = "(0..50)",
+		validator = gen_valid_num(0, 50),
+		initial = function() return tostring(gconfig_get("wnd_animation")); end,
+		handler = function(ctx, val)
+			gconfig_set("wnd_animation", tonumber(val));
+		end
+	},
+	{
 		name = "anim_in",
 		label = "Transition-In",
 		kind = "value",

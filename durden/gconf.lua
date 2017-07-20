@@ -118,6 +118,7 @@ local defaults = {
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
 	animation = 10,
+	wnd_animation = 0,
 
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
