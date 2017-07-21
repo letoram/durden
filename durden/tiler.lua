@@ -867,7 +867,7 @@ end
 
 local function drop_fullscreen(space, swap)
 	workspace_activate(space, true);
-	sbar_hide(space.wm);
+	sbar_show(space.wm);
 
 -- show all hidden windows within the space
 	local wnds = linearize(space);
