@@ -3057,60 +3057,44 @@ local function tiler_swapdown(wm, resel)
 	end
 end
 
-local function tiler_swapleft(wm, deep, resel)
+local function swap_wnd(wm, deep, resel, step)
 	local wnd = wm.selected;
 	if (not wnd or not wnd.space) then
 		return;
 	end
 
-	local ind = table.find_i(wnd.parent.children, wnd);
-
-	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
-		local li = (ind - 1) == 0 and #wnd.parent.children or (ind - 1);
-		local oldi = wnd.parent.children[li];
-		wnd_swap(wnd, oldi, deep);
-		if (resel) then oldi:select(); end
-	elseif (ind == 1 and wnd.parent.parent) then
-		local root_node = wnd.parent;
-		while (root_node.parent.parent) do
-			root_node = root_node.parent;
+	local try_level = function(node, step)
+		local ind = table.find_i(node.parent.children, node);
+		if (ind + step <= 0 or ind + step > #node.parent.children) then
+			return nil;
+		else
+			return node.parent.children[ind + step];
 		end
-		local li = table.find_i(root_node.parent.children, root_node);
-		li = (li - 1) == 0 and #root_node.parent.children or (li - 1);
-		wnd_swap(wnd, root_node.parent.children[li]);
 	end
 
-	if (wnd.space) then
-		wnd.space:resize();
+	local dst = wnd;
+	local next_wnd = try_level(dst, step);
+	while (next_wnd == nil) do
+		 dst = dst.parent;
+		if (not dst.parent) then
+			return;
+		end
+		next_wnd = try_level(dst, step);
 	end
+
+	wnd_swap(wnd, next_wnd, deep);
+	if (resel) then
+		next_wnd:select();
+	end
+	wnd.space:resize();
+end
+
+local function tiler_swapleft(wm, deep, resel)
+	swap_wnd(wm, deep, resel, -1);
 end
 
 local function tiler_swapright(wm, deep, resel)
-	local wnd = wm.selected;
-	if (not wnd or not wnd.space) then
-		return;
-	end
-
-	local ind = table.find_i(wnd.parent.children, wnd);
-
-	if ((ind ~= 1 or wnd.parent.parent == nil) and #wnd.parent.children > 1) then
-		local li = (ind + 1) > #wnd.parent.children and 1 or (ind + 1);
-		local oldi = wnd.parent.children[li];
-		wnd_swap(wnd, oldi, deep);
-		if (resel) then oldi:select(); end
-	elseif (ind == 1 and wnd.parent.parent) then
-		local root_node = wnd.parent;
-		while (root_node.parent.parent) do
-			root_node = root_node.parent;
-		end
-		local li = table.find_i(root_node.parent.children, root_node);
-		li = (li + 1) > #root_node.parent.children and 1 or (li + 1);
-		wnd_swap(wnd, root_node.parent.children[li]);
-	end
-
-	if (wnd.space) then
-		wnd.space:resize();
-	end
+	swap_wnd(wm, deep, resel, 1);
 end
 
 local function tiler_message(tiler, msg, timeout)
