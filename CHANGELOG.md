@@ -1,5 +1,7 @@
 # 0.3.0
-  * Now requires arcan >= 0.5.2.
+  * Now requires arcan >= 0.5.3.
+
+	* Moved to a separate webpage, http://durden.arcan-fe.com
 
   * Client- defined mouse-cursor support.
 
@@ -40,6 +42,9 @@
 	  know about the max dimensions, but let it chose its own actual size
 		within those constraints.
 
+  * Window- relayout/resize animations for float/tile:
+	  disable/enable via config/visual/window animation speed
+
   * Fixes:
 	  More consistent font/font-size switching when migrating across
 		displays. Automatically disable/ignore VIVE, PSVR monitors
@@ -52,6 +57,7 @@
     \+ hidden bind path for suspend-state toggle (target/state/...)
     \+ menu path to reset workspace background (global/workspace/...)
 		\+ menu path for global/workspace/switch/last
+		\+ option to force bitmap font path for terminal
 		\+ a shader for luma (monochrome) - only mode
 		\+ atype- profile for wayland clients
 		\+ option to disable/block mouse (global/input/mouse/block)

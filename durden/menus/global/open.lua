@@ -51,6 +51,10 @@ function terminal_build_argenv(group)
 		gconfig_get("term_append_arg")
 	);
 
+	if (gconfig_get("term_bitmap")) then
+		lstr = lstr .. ":" .. "force_bitmap";
+	end
+
 	return lstr;
 end
 
