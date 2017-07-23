@@ -600,11 +600,23 @@ local config_terminal_font = {
 		name = "font_hint",
 		label = "Hinting",
 		kind = "value",
+		eval = function() return gconfig_get("term_bitmap") ~= true; end,
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[
 		gconfig_get("term_font_hint")]; end,
 		handler = function(ctx, val)
 			gconfig_set("term_font_hint", hint_lut[val]);
+		end
+	},
+	{
+		name = "force_bitmap",
+		label = "Force Bitmap",
+		kind = "value",
+		hint = "(new terminals only)",
+		initial = function() return gconfig_get("term_bitmap") and LBL_YES or LBL_NO; end,
+		set = {LBL_YES, LBL_NO},
+		handler = function(ctx, val)
+			gconfig_set("term_bitmap", val == LBL_YES);
 		end
 	},
 -- should replace with some "font browser" but we don't have asynch font

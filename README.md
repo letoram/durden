@@ -56,7 +56,7 @@ build dependencies fullfilled and KMS/GBM on) this should land in something like
      git clone https://github.com/letoram/arcan.git
      git clone https://github.com/letoram/durden.git
      cd arcan/external/git; bash ./clone.sh
-     cd ../ ; mkdir build ; cd build
+     cd ../../ ; mkdir build ; cd build
      cmake -DVIDEO_PLATFORM=egl-dri -DSTATIC_SQLITE3=ON -DSTATIC_OPENAL=ON
         -DSTATIC_FREETYPE=ON ../src
      make -j 8
