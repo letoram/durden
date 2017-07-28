@@ -18,31 +18,32 @@ local function relayout()
 	local maxh = ddisplay.height * gconfig_get("overlay_size");
 	local cy = 0;
 	for i=1,#active do
-		local props = image_storage_properties(active[i]);
-		link_image(active[i], active_display().order_anchor);
-		image_inherit_order(active[i], true);
-		rendertarget_attach(ddisplay.rtgt_id, active[i], RENDERTARGET_DETACH);
-		blend_image(active[i], hidden and 0.0 or gconfig_get("overlay_opacity"));
+		local props = image_storage_properties(active[i].vid);
+		link_image(active[i].vid, active_display().order_anchor);
+		image_inherit_order(active[i].vid, true);
+		rendertarget_attach(ddisplay.rtgt_id, active[i].vid, RENDERTARGET_DETACH);
+		blend_image(active[i].vid, hidden and 0.0 or gconfig_get("overlay_opacity"));
 		local ar = props.width / props.height;
 		local wr = props.width / maxw;
 		local hr = props.height/ maxh;
 		local outw = hr > wr and maxh * ar or maxw;
 		local outh = hr < wr and maxw / ar or maxh;
-		shader_setup(active[i], "simple", gconfig_get("overlay_shader"));
-		resize_image(active[i], outw, outh);
-		move_image(active[i], gconfig_get("overlay_corner") == "left"
+		shader_setup(active[i].vid, "simple", gconfig_get("overlay_shader"));
+		resize_image(active[i].vid, outw, outh);
+		move_image(active[i].vid, gconfig_get("overlay_corner") == "left"
 			and 0 or ddisplay.width - outw, cy);
 		cy = cy + outh;
 	end
 end
 
 local function delete_overlay(ind)
-	if (active[ind] == nil) then
+	if (active[ind].vid == nil) then
 		return;
 	end
 
-	delete_image(active[ind]);
-	table.remove(active[ind]);
+	delete_image(active[ind].vid);
+	mouse_droplistener(active[ind]);
+	table.remove(active, ind);
 	if (#active == 0) then
 		ddisplay = nil;
 	end
@@ -61,9 +62,32 @@ local function add_overlay(wnd)
 		return;
 	end
 
+	local new = {
+		name = "overlay_hnd",
+		vid = overlay,
+		own = function(ctx, vid) return vid == overlay; end,
+-- on click, locate source window and switch to that one (if alive)
+		click = function()
+			for i,v in ipairs(active_display().windows) do
+				if (v == wnd) then
+					active_display():switch_ws(v.space);
+					v:select();
+					return;
+				end
+			end
+		end,
+		over = function()
+			blend_image(overlay, 1.0);
+		end,
+		out = function()
+			blend_image(overlay, gconfig_get("overlay_opacity"));
+		end,
+	};
+
 -- share the backend, append and place/show
+	mouse_addlistener(new, {"click", "over", "out"});
 	image_sharestorage(wnd.canvas, overlay);
-	table.insert(active, overlay);
+	table.insert(active, new);
 	show_image(overlay);
 	relayout();
 end
@@ -146,9 +170,7 @@ local function gen_delete_menu()
 			kind = "action",
 			handler = function(ctx)
 				if (active[i]) then
-					delete_image(active[i]);
-					table.remove(active, i);
-					relayout();
+					delete_overlay(i);
 				end
 			end
 		});
