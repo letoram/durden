@@ -576,12 +576,13 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 -- align with font size, but safe-guard against bad / broken client
 			if (node.sz_delta and
 				node.sz_delta[1] < gconfig_get("term_font_sz") * 2) then
-				local delta_diff = node.max_w % node.sz_delta[1];
+				local hd = node.pad_left + node.pad_right;
+				local delta_diff = (node.max_w - hd) % node.sz_delta[1];
 				if (delta_diff > 0) then
-					if (node.max_w + delta_diff <= w) then
-						node.max_w = node.max_w + delta_diff;
-					elseif (node.max_w - delta_diff > 0) then
-						node.max_w = node.max_w - delta_diff;
+					if (node.max_w - hd + delta_diff <= w) then
+						node.max_w = node.max_w + delta_diff + hd;
+					elseif (node.max_w - hd + delta_diff > 0) then
+						node.max_w = node.max_w - delta_diff + hd;
 					end
 				end
 			end
@@ -2449,9 +2450,15 @@ local titlebar_mh = {
 		if (ctx.tag.space.mode == "float") then
 			mouse_switch_cursor("drag");
 		end
+
+		if (ctx.tag.space.mode == "tile") then
+			mouse_switch_cursor("drag");
+		end
 	end,
 	release = function(ctx)
-		mouse_switch_cursor("grabhint");
+		if (ctx.tag.space.mode == "tile") then
+			mouse_switch_cursor("grabhint");
+		end
 	end,
 	drop = function(bar)
 	end,
