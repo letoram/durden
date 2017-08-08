@@ -528,7 +528,7 @@ local function wnd_select(wnd, source, mouse)
 		mouse_absinput_masked(
 			props.x + px * props.width, props.y + py * props.height, true);
 		canvas_mouse_activate(wnd);
-
+		ms.hide_count = ms.hide_base;
 -- won't generate normal over event
 		if (wnd.cursor == "hidden") then
 			mouse_hidemask(true);
