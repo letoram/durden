@@ -715,6 +715,9 @@ function mouse_button_input(ind, active)
 		return;
 	end
 
+-- reset auto-hide counter/timer
+	mstate.hide_count = mstate.hide_base;
+
 	if (mstate.lockvid) then
 		mstate.btns[ind] = active;
 		mstate.btns_clock[ind] = CLOCK;
