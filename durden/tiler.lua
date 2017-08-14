@@ -363,6 +363,10 @@ local function tiler_statusbar_update(wm)
 				lbltbl[6] = lbl;
 			end
 			wm.sbar_ws[i]:update(lbltbl);
+			if (wm.spaces[i].background) then
+				move_image(wm.spaces[i].background, 0,
+					gconfig_get("sbar_pos") == "top" and -statush or 0);
+			end
 		else
 			wm.sbar_ws[i]:hide();
 		end
@@ -1295,6 +1299,9 @@ local function workspace_background(ws, bgsrc, generalize)
 		end
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
+		local sb_sz = sbar_geth(ws.wm);
+		move_image(ws.background, 0,
+			gconfig_get("sbar_pos") == "top" and -sb_sz or 0);
 		if (crossfade) then
 			blend_image(ws.background, 0.0, ttime);
 		end
