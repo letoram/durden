@@ -3,16 +3,16 @@ return {
 	version = 1,
 	frag =
 [[
-	uniform vec4 color;
+	uniform vec4 col;
 	uniform float obj_opacity;
 
 	void main()
 	{
-		gl_FragColor = vec4(color.rgb, color.a * obj_opacity);
+		gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
 	}
 ]],
 	uniforms = {
-		color = {
+		col = {
 			label = 'Color',
 			utype = 'ffff',
 			default = {0.0, 0.0, 0.0, 0.8},

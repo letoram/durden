@@ -88,6 +88,7 @@ local function setup_shader(shader, name, group)
 
 	shader.shid = build_shader(dvf, dff, group.."_"..name);
 	if (not shader.shid) then
+		shader.broken = true;
 		warning("building shader failed for " .. group.."_"..name);
 	return false;
 	end
@@ -198,6 +199,14 @@ local function smenu(shdr, grp, name)
 
 	if (shdr.states) then
 		for k,v in pairs(shdr.states) do
+-- build even if it hasn't been used yet, otherwise this might cause menu
+-- entries not being available at start
+			if (not v.shid and not v.broken) then
+				local nsrf = null_surface(1, 1);
+				ssetup(shdr, nsrf, grp, name);
+				delete_image(nsrf);
+			end
+
 			if (v.shid) then
 				table.insert(res, {
 					name = "state_" .. k,

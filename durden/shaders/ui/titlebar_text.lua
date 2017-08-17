@@ -6,17 +6,17 @@ return {
 	frag = [[
 	uniform sampler2D map_tu0;
 	varying vec2 texco;
-	uniform vec3 color;
+	uniform vec3 col;
 	uniform float obj_opacity;
 
 	void main()
 	{
 		float alpha = texture2D(map_tu0, texco).a;
-		gl_FragColor = vec4(color.rgb, alpha * obj_opacity);
+		gl_FragColor = vec4(col.rgb, alpha * obj_opacity);
 	}
 ]],
 	uniforms = {
-		color =	{
+		col=	{
 		label = 'Color',
 		utype = 'fff',
 		default = {1.0, 1.0, 1.0},
@@ -25,7 +25,7 @@ return {
 		}
 	},
 	states = {
-		active = { uniforms = { color = {1.0, 1.0, 1.0} } },
-		inactive = { uniforms = { color = {0.8, 1.0, 0.8} } },
+		active = { uniforms = { col= {1.0, 1.0, 1.0} } },
+		inactive = { uniforms = { col= {0.8, 1.0, 0.8} } },
 	}
 };
