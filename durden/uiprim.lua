@@ -87,7 +87,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- finally make the visual changes
 	image_tracetag(btn.lbl, btn.lbl_tag);
 	reset_image_transform(btn.bg);
-	resize_image(btn.bg, btn.w, btn.h, btn.anim_time);
+	resize_image(btn.bg, btn.w, btn.h, btn.anim_time, btn.anim_func);
 	link_image(btn.lbl, btn.bg);
 	image_mask_set(btn.lbl, MASK_UNPICKABLE);
 	image_clip_on(btn.lbl, CLIP_SHALLOW);
@@ -98,7 +98,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		(0.5 * (btn.w - image_surface_properties(btn.lbl).width));
 
 	reset_image_transform(btn.lbl);
-	move_image(btn.lbl, xofs, offsetf, btn.anim_time);
+	move_image(btn.lbl, xofs, offsetf, btn.anim_time, btn.anim_func);
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -295,9 +295,11 @@ local function bar_resize(bar, neww, newh, time)
 	local domupd = newh ~= bar.height;
 	bar.width = neww;
 	bar.height = newh;
-	resize_image(bar.anchor, bar.width, bar.height, time);
+	resize_image(bar.anchor, bar.width, bar.height, time, INTERP_SMOOTHSTEP);
 
 	bar.anim_time = time;
+	bar.anim_func = INTERP_SMOOTHSTEP;
+
 	if (domupd) then
 		bar:invalidate();
 	else
@@ -308,7 +310,8 @@ end
 
 local function bar_relayout_horiz(bar)
 	reset_image_transform(bar.anchor);
-	resize_image(bar.anchor, bar.width, bar.height, bar.anim_time);
+	resize_image(bar.anchor,
+		bar.width, bar.height, bar.anim_time, bar.anim_func);
 
 -- first figure out area allocations, ignore center if they don't fit
 -- currently don't handle left/right not fitting, return min-sz. also
@@ -321,7 +324,7 @@ local function bar_relayout_horiz(bar)
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			yp = yp < 0 and 0 or yp;
 			reset_image_transform(v.bg);
-			afn(v.bg, lx, yp, bar.anim_time);
+			afn(v.bg, lx, yp, bar.anim_time, bar.anim_func);
 			lx = lx + w;
 		end
 
@@ -332,7 +335,7 @@ local function bar_relayout_horiz(bar)
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			yp = yp < 0 and 0 or yp;
 			reset_image_transform(v.bg);
-			afn(v.bg, rx, yp, bar.anim_time);
+			afn(v.bg, rx, yp, bar.anim_time, bar.anim_func);
 		end
 		return lx, rx;
 	end
@@ -371,7 +374,9 @@ local function bar_relayout_horiz(bar)
 			v.minh = bar.height;
 			v.maxh = bar.height;
 			v.anim_time = bar.anim_time;
+			v.anim_func = bar.anim_func;
 			button_labelupd(v, nil, v.timeout, v.timeout_str);
+			v.anim_func = nil;
 			v.anim_time = nil;
 			move_image(v.bg, lx, 0);
 			lx = lx + fair_sz;
@@ -495,8 +500,10 @@ local function bar_update(bar, group, index, ...)
 	assert(bar.buttons[group] ~= nil);
 	assert(bar.buttons[group][index] ~= nil);
 	bar.buttons[group][index].anim_time = bar.anim_time;
+	bar.buttons[group][index].anim_func = bar.anim_func;
 	bar.buttons[group][index]:update(...);
 	bar.buttons[group][index].anim_time = 0;
+	bar.buttons[group][index].anim_func = nil;
 end
 
 local function bar_invalidate(bar, minw, minh)
