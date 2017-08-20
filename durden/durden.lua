@@ -285,8 +285,8 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 -- we really want different behavior for drag here as well, but that's
 -- something to fix in the float-mode enhancement stage
 		if (wnd.scalemode == "client") then
-			efw = wnd.max_w;
-			efh = wnd.max_h;
+			efw = wnd.max_w - wnd.pad_left - wnd.pad_right;
+			efh = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
 		end
 
 		if (wnd.block_rz_hint) then
@@ -297,6 +297,10 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 		if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or
 			   math.abs(props.height - efh) > wnd.sz_delta[2])) then
+
+-- cache these to help debugging
+				 wnd.hint_w = efw;
+				 wnd.hint_h = efh;
 				target_displayhint(wnd.external, efw, efh, wnd.dispmask);
 			end
 		end
@@ -382,15 +386,24 @@ end
 
 function durden_launch(vid, prefix, title, wnd)
 	if (not valid_vid(vid)) then
+		warning("launch failed, invalid vid provided");
 		return;
 	end
 	if (not wnd) then
 		wnd = active_display():add_hidden_window(vid);
+		if (not wnd) then
+			warning("add_hidden_window on vid failed");
+		end
 	end
 
 -- hidden window creation failed or event during creation
 -- triggered destruction immediately, hence the table will be empty
-	if (not wnd or not wnd.set_prefix) then
+	if (not wnd.set_prefix) then
+		print("set_prefix", debug.traceback());
+		for k,v in pairs(wnd) do
+			print(k, v);
+		end
+
 		delete_image(vid);
 		return;
 	end
