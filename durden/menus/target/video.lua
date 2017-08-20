@@ -255,6 +255,20 @@ return {
 		end
 	},
 	{
+		name = "opacity",
+		label = "Opacity",
+		hint = "(0..1)",
+		initial = function()
+			return
+				image_surface_resolve(active_display().selected.canvas).opacity;
+		end,
+		kind = "value",
+		validator = gen_valid_num(0.0, 1.0),
+		handler = function(ctx, val)
+			blend_image(active_display().selected.canvas, tonumber(val));
+		end
+	},
+	{
 		label = "Advanced",
 		name = "advanced",
 		submenu = true,
