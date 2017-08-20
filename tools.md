@@ -10,8 +10,8 @@ can introduce both visible and non-visibile behavior and are not confined
 to the menu HUD.
 
 The example tools that have been included in the source distribution
-are: [Model Viewer](#model), [Dropdown Terminal](#dropdown) and the
-[Autolayouter](autolay).
+are: [Model Viewer](#model), [Dropdown Terminal](#dropdown) the
+[Autolayouter](autolay) and the [Overlay](#overlay).
 
 # Dropdown Terminal <a name="dropdown"/>
 
@@ -62,6 +62,27 @@ portion of a model.
 
 The <i>target/view</i> switches between two predefined viewing positions/angles.
 
+# Overlay <a name="overlay"/>
+
+This tool goes well with the window slicing effect from <i>target/window/slice</i>
+and is used getting miniature overviews of the contents of a specific window.
+
+It is activated via the <i>target/window/overlay</i> path and creates an aspect
+scaled version that is bound to either the top-left or top-right corner of
+the display that is currently active. These will persist even in normal
+fullscreen and when switching workspaces. You can add as many as will fit in
+the column of your display.
+
+You can find its actions at <i>global/tools/overlay</i> where you have access
+to a toggle visible on/off action, the option to delete individual slots and
+the option to migrate the column to another display (if there are multiple
+displays available).
+
+You can configure the appearance of the column through the <i>global/config/overlay</i>
+submenu where you have controls for the relative maximum size, opacity, active
+corner and active shader.
+
 # Future Changes
 - On-screen Keyboard
 - Touchpad Configuration
+- Flair

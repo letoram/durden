@@ -2,10 +2,6 @@
 layout: default
 ---
 
-Note that the contents here only apply to the upcoming arcan 0.5.2 /
-durden 0.3 versions. The text describes work in progress that is partly
-usable/testable but not in a releasable state.
-
 # LED Controllers
 The LED Controllers feature covers:
 
@@ -20,7 +16,8 @@ backlights. Note that if your laptop backlight control is not working you can
 simulate the effect somewhat by using a display shader that adjusts the color
 channel weights, see [Display Management](display).
 
-Backlights are accessed through, gamepad LED features via their respective
+Backlights are accessed through <i>global/display/list/.../backlight</i>.
+gamepad LED features via their respective
 <i>global/input/all devices</i> subpaths. External controllers receive their
 own path in <i>global/input/all devices</i> with a led- prefix.
 

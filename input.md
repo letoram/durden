@@ -202,4 +202,5 @@ input.
 - Touchpad calibration tool
 - Advanced gesture analysis
 - Keyboard layout conversion tools
+- On touchscreen- activation / deactivation hooks
 - Better analog axis filtering/configuration

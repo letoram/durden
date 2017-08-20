@@ -17,10 +17,12 @@ other tasks.
 # Meta Guard <a name="metaguard"/>
 The meta guard is the first feature you were exposed to, when active, it waits
 a certain number (~30) of keypresses and expects one of them to be a valid
-meta- menu path. This feature is reactivated if the keyboard device is lost or
-replaced.
+meta- menu path. If not, it assumes your keyboard is broken or has switched
+layout and provides an option to rebind the keys necessary to regain control.
 
-# Delete Proect <a name="deleteprotect"/>
+This feature is reactivated if the keyboard device is lost or replaced.
+
+# Delete Protect <a name="deleteprotect"/>
 Keyboard repeat actions are disabled on meta bound paths for the reason that
 a possible I/O stall in the wrong moment on a loaded system could trigger
 dangerous cascades like a destroy-window action being triggered accidentally.
@@ -31,13 +33,17 @@ protect</i> path. This blocks the window-destroy action until the delete
 protection is removed.
 
 # Fallback Application <a name="fallback"/>
+A fallback application is simply an alternate set of scripts that can be
+activated if a scripting error occurs in the ones that are currently running.
+
 This is part of arcan and needs to be enabled explicitly (see the -b argument).
 It can be set to re-run the same application (:self) or switch to another.
 
-This means that unsaved window settings will be lost, along with negotiated
-extra resources and protocols, but a client will retain its primary connection
-and be adopted into a setting where it should be possible to save / recovery
-any important work.
+The engine will try and migrate external to the new script context.  This means
+that unsaved window settings will be lost, along with negotiated extra
+resources and protocols, but a client will retain its primary connection and be
+adopted into a setting where it should be possible to save / recovery any
+important work.
 
 The same feature is used for resetting/reloading (<i>global/system/reset</i>)
 and switching (<i>global/system/reset/switch appl</i>).

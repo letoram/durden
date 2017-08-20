@@ -38,7 +38,7 @@ following features are planned to be added:
 
 - Draw-to-spawn like in prio
 - Desktop Icons
-- Minimize to Icon, Minize to Statusbar
+- Configurable Minimize Action (to icon, statusbar, ...)
 - Definable Drag Regions
 - Input forward to background source when no window is selected
 - Alternative menu access UI (popup- style rather than HUD style)

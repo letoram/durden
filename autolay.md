@@ -30,7 +30,7 @@ center area even when they are in the smaller side columns. This cuts down
 on resize- negotiation, resize- related refreshes and eliminates any
 resize-latency when swapping with center.
 
-There are three configurable options reachable through
+There are five configurable options reachable through
 <i>global/config/tools/auto layouting</i>:
 
 1. Side-Opacity (scaled) applies in center-focus scaled mode and forces a
@@ -41,6 +41,14 @@ There are three configurable options reachable through
 
 3. Center Weight (0.5 to 0.9) determins how much of the screen width that
    should be reserved for the center area.
+
+4. Side Shader (+ Side Shader Select) allows you to set a shader override
+   for the side-column so they can have a different appearance than when
+   in the center region, e.g. blurred or greyscale.
+
+5. Side Titlebar can be used to disable titlebar rendering for the side
+   columns so that they occupy less vertical space, but will still respect
+   the window setting when in the center slot.
 
 It also adds two new paths to <i>target/window/swap</i>, Swap-Focus and
 Swap-Select(Focus). If activated with the center window selected, the

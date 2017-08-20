@@ -17,6 +17,9 @@ resources.
 Holding meta1 while activating a resource will spawn the resource in the
 background while keeping the menu active.
 
+Holding meta1 while pressing ESCAPE will have you go up one level in the
+tree, though typing .. also works.
+
 # Future Changes
 - Allow adding files to a stack than can then be atomically
   packed/deleted/forwarded/transformed/queued for 'playlist'

@@ -56,3 +56,5 @@ bars and are defined on the level of keysyms (<i>symtable.lua</i>).
 | DELETE          | delete character after caret
 | BACKSPACE       | delete character before caret
 
+# Future Changes
+- Move keybindings into devmaps and allow switching sets at runtime
