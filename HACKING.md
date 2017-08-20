@@ -3,14 +3,13 @@ Introduction
 
 Durden as a code-base is relatively young in the sense that it is still
 adding features at a rather quick pace. When that settles down, some of
-a lot of the code is likely to be refactored - so relying on structures
-outside of what is covered here is rather unwise, or it is possible for
-your extensions to become broken over time.
+the code is likely to be refactored - relying on structures that aren't
+covered here is rather unwise, your extensions may break over time.
 
 In addition to the APIs covered here, all the Lua functions that are in
-Arcan also apply here. See the main arcan code repository, the wiki and
-particularly the doc/ folder (there's tools for converting the API docs
-to manpages in there as well) and the exercises.
+Arcan also apply. See the main arcan code repository, the wiki, and the
+doc/ folder (see mangen.rb for conversion to manpages) and the exercise
+sets (in the wiki).
 
 General Tips
 ------

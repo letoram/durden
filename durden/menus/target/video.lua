@@ -150,6 +150,18 @@ local advanced = {
 		local wnd = active_display().selected;
 		target_flags(active_display().selected.external, TARGET_ALLOWCM, true);
 	end
+	},
+	{
+	name = "block_rz",
+	label = "Block Resize Hints",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	initial = function()
+		return active_display().selected.block_rz_hint and LBL_YES or LBL_NO;
+	end,
+	handler = function(ctx, val)
+		active_display().selected.block_rz_hint = val == LBL_YES;
+	end
 	}
 };
 

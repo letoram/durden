@@ -108,16 +108,12 @@ function dispatch_symbol_lock()
 end
 
 function dispatch_symbol(sym, arg, ext)
-	local ms = active_display().selected;
+	local	ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
 
 	if (dispatch_locked) then
 		table.insert(dispatch_queue, {arg, ext});
 		return;
-	end
-
-	if (DEBUGLEVEL > 2 and active_display().debug_console) then
-		active_display().debug_console:add_symbol(sym);
 	end
 
 	if (ch == "!") then
@@ -132,12 +128,11 @@ function dispatch_symbol(sym, arg, ext)
 		dispatch_multi(sym, arg, ext);
 	end
 
+-- old subsystem, to be deprecated in refactoring
 	if (sf[sym] and ms) then
-			sf[sym](ms, arg);
+		sf[sym](ms, arg);
 	elseif (gf[sym]) then
 		gf[sym](arg);
-	else
-		warning("keybinding issue, " .. sym .. " does not match any known function");
 	end
 end
 

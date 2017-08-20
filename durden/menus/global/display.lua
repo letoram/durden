@@ -157,14 +157,12 @@ local function gen_disp_menu(disp)
 		},
 		{
 		name = "resetbg",
-		label = "Reset Background",
+		label = "Reset Backgrounds",
 		kind = "action",
 		handler = function()
 			disp.background = "";
+			disp.tiler:set_background(nil, true);
 		end,
-		eval = function() return
-			disp.background and string.len(disp.background) > 0;
-		end
 		},
 		{
 		name = "primary_hint",
@@ -217,6 +215,14 @@ local function gen_disp_menu(disp)
 		handler = function(ctx, val)
 			save_screenshot("output/" .. val, FORMAT_RAW32, disp.rt);
 		end
+		},
+		{
+		name = "scheme",
+		label = "Scheme",
+		kind = "action",
+		submenu = true,
+		eval = function()	return #(ui_scheme_menu("display", disp)) > 0; end,
+		handler = function() return ui_scheme_menu("display", disp); end
 		}
 	};
 end

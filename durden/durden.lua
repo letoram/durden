@@ -289,6 +289,10 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 			efh = wnd.max_h;
 		end
 
+		if (wnd.block_rz_hint) then
+			return;
+		end
+
 -- ignore resize- step limit (terminal) if we are not in drag resize
 		if (not mouse_state().drag or not wnd.sz_delta or
 				(math.abs(props.width - efw) > wnd.sz_delta[1] or

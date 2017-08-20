@@ -532,7 +532,6 @@ function suppl_setup_rec(wnd, val, noaudio)
 	end
 
 	local argstr, srate, fn = suppl_build_recargs(varr, aarr, false, val);
-
 	define_recordtarget(db, fn, argstr, varr, aarr,
 		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
 		function(source, stat)

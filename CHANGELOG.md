@@ -1,7 +1,8 @@
 # 0.3.0
   * Now requires arcan >= 0.5.3.
 
-	* Moved to a separate webpage, http://durden.arcan-fe.com
+	* Documentation Moved to a separate webpage,
+    http://durden.arcan-fe.com
 
   * Client- defined mouse-cursor support.
 
@@ -45,15 +46,18 @@
   * Window- relayout/resize animations for float/tile:
 	  disable/enable via config/visual/window animation speed
 
-  * Fixes:
-	  More consistent font/font-size switching when migrating across
-		displays. Automatically disable/ignore VIVE, PSVR monitors
-    Defer windows attachment to reduce resize operations
+  * Dynamically switchable visual/action schemes (devmaps/schemes/README.md)
+    that can be used to set a global, per-display, per workspace or per window
+    scheme of fonts and other configuration presets.
 
   * Minor:
 		\+ (arcan > 0.5.2) allow GPU- authentication controls
     \+ Split mouse cursors into sets.
-		\+ menu options for appl- switching (global/system/reset/...)
+    \+ more consistent font/font-size switching when migrating across
+       displays
+		\+ default-off display profiles for vive/psvr
+    \+ defer window attachment to reduce resize operations
+    \+ menu options for appl- switching (global/system/reset/...)
     \+ hidden bind path for suspend-state toggle (target/state/...)
     \+ menu path to reset workspace background (global/workspace/...)
 		\+ menu path for global/workspace/switch/last
@@ -64,11 +68,7 @@
 		\+ target menu path for set-x, set-y in float mode
 		\+ mouse button debounce timer support (global/inpput/mouse/debounce)
 		\+ expose backlight controls per display (global/display/displays/...)
-		Tools/pulldown: can now set a shadow/colored border
-
-  * Moved to a separate webpage, http://durden.arcan-fe.com
-    (http because github.io + custom domain = fail, only doc.
-		 no code/data distributed from here)
+		\+ Tools/pulldown: can now set a shadow/colored border
 
 # 0.2.0 - New features
 

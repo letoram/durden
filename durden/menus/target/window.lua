@@ -330,6 +330,18 @@ return {
 		submenu = true
 	},
 	{
+		name = "schemes",
+		label = "Schemes",
+		kind = "action",
+		submenu = true,
+		eval = function()	return
+			#(ui_scheme_menu("window", active_display().selected)) > 0;
+		end,
+		handler = function()
+			return ui_scheme_menu("window", active_display().selected);
+		end
+	},
+	{
 		name = "slice_clone",
 		label = "Slice/Clone",
 		kind = "value",

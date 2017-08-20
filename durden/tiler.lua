@@ -21,12 +21,12 @@ local function wnd_animation_time(wnd, source, decor, position)
 	end
 
 	if (position) then
-		return gconfig_get("wnd_animation");
+		return gconfig_get("wnd_animation"), INTERP_SMOOTHSTEP;
 	end
 
 	if (not wnd.autocrop and ( wnd.space.mode == "tile" or
 		(wnd.space.mode == "float" and not wnd.in_drag_rz))) then
-		return gconfig_get("wnd_animation");
+		return gconfig_get("wnd_animation"), INTERP_SMOOTHSTEP;
 	end
 	return 0;
 end
