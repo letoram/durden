@@ -215,6 +215,16 @@ return {
 		handler = workspace_layout_menu
 	},
 	{
+		name = "scheme",
+		label = "Scheme",
+		kind = "action",
+		submenu = true,
+		eval = function() return #(ui_scheme_menu("workspace",
+			active_display().spaces[active_display().space_ind])) > 0; end,
+		handler = function() return ui_scheme_menu("workspace",
+			active_display().spaces[active_display().space_ind]); end
+	},
+	{
 		name = "save",
 		label = "Save",
 		kind = "action",

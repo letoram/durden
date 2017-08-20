@@ -62,11 +62,17 @@ build dependencies fullfilled and KMS/GBM on) this should land in something like
      make -j 8
      ./arcan ../../durden/durden
 
-Note: the egl-dri (and egl-nvidia) video platforms are for running this as a
-dedicated desktop, if you just want to try things out, use the _sdl_ platform
-instead. Some features when it comes to display management and input will behave
-differently, and you likely want to bind a toggle for enabling/disabling
-cursor locking.
+If you are on a more limited platform, like raspberry pi, you can try the
+the -DVIDEO\_PLATFORM=egl-gles -DAGP\_PLATFORM=gles2 build, which should work
+with the proprietary drivers. You will also need to activate 'simple' display
+mode which deactivates some features:
+
+     arcan_db add_appl_kv durden display_simple true
+
+Note: the egl-dri video platforms are for running this as a dedicated desktop,
+if you just want to try things out, use the _sdl_ platform instead. Some
+features when it comes to display management and input will behave differently,
+and you likely want to bind a toggle for enabling/disabling cursor locking.
 
 Another option, if your drivers give you accelerated GL in X but not working
 KMS/DRI is to merely run arcan/durden with SDL as the video platform in

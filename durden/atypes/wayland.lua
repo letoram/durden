@@ -108,6 +108,7 @@ local function setup_toplevel_wnd(cl, wnd, id)
 	wnd.kbd_period = 0;
 	wnd.kbd_delay = 0;
 	wnd.hide_border = true;
+	wnd.hide_titlebar = true;
 	wnd.filtermode = FILTER_NONE;
 	wnd.wl_kind = "toplevel";
 	show_image(wnd.canvas);
@@ -139,9 +140,6 @@ return {
 		rate_unlimited = true,
 		clipboard_block = true,
 		font_block = true,
--- so, depending on the protocol state we may or may not have decorations
---		hide_titlebar = true,
---		hide_border = true,
 
 -- for wl_shell or wl_xdg, the translation is bridge->non-visible connection,
 -- application -> toplevel
