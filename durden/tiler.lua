@@ -201,6 +201,8 @@ local function wnd_destroy(wnd)
 		run_event(v, "lost_relative", wnd);
 	end
 
+	wnd:drop_popup(true);
+
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
 
@@ -1918,6 +1920,159 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 end
 
 --
+-- build a popup that is attached to wnd at a fitting spot within
+-- x1,y1,x2,y2 and a bias towards (bias_v) based on the current
+-- window position. Inputs on other windows, etc. will kill the
+-- popup and invoke destroy_cb.
+--
+--
+-- If the bias is 0,it will try and pick 1 or 3 based on if there
+-- are more popups or not.
+-- 1 -- 2 -- 3
+-- |    |    |
+-- 4 -- 5 -- 6
+-- |    |    |
+-- 7 -- 8 -- 9
+--
+--
+-- If there is already a popup on the window, the new popup will
+-- be attached to that one if chain is set - or the current chain
+-- will be destroyed/removed first if chain isn't set.
+--
+-- There are quite a few interesting edge cases here, particularly
+-- in relation to locking and with the conditions that should force-
+-- destroy popup chains, but also when it comes to all possible
+-- presentation modes, like fullscreen etc.
+--
+
+-- compatibility hack
+if not ANCHOR_LC then
+	ANCHOR_CL = ANCHOR_UL;
+	ANCHOR_CR = ANCHOR_UR;
+	ANCHOR_UC = ANCHOR_UL;
+	ANCHOR_LC = ANCHOR_LL;
+end
+
+local bias_lut = {
+	ANCHOR_UL,
+	ANCHOR_UC,
+	ANCHOR_UR,
+	ANCHOR_CL,
+	ANCHOR_C,
+	ANCHOR_CR,
+	ANCHOR_LL,
+	ANCHOR_LC,
+	ANCHOR_LR
+};
+
+local function wnd_popup(wnd, vid, chain, destroy_cb)
+	if (not valid_vid(vid)) then
+		return;
+	end
+
+-- alias canvas to anchor so that it looks like a window
+	local res = {
+		anchor = null_surface(1, 1)
+	};
+	res.canvas = res.anchor;
+
+	if (not valid_vid(res.anchor)) then
+		return;
+	end
+	local dst = wnd;
+
+	if (chain) then
+		if (#wnd.popups > 0) then
+			dst = wnd.popups[#wnd.popups];
+		end
+	end
+
+-- destroying an earlier popup should cascade down the chain
+	res.destroy = function(pop)
+		delete_image(vid);
+		mouse_droplistener(res);
+		for i=#wnd.popups,i>wnd.index,-1 do
+			wnd.popups[i]:destroy();
+		end
+	end
+
+	res.add_popup = function(pop, source, dcb)
+		return wnd:add_popup(source, dcb);
+	end
+
+	res.focus = function(pop, state)
+	end
+
+	res.show = function(pop)
+		show_image(vid);
+	end
+
+	res.hide = function(pop)
+		hide_image(vid);
+	end
+
+-- FIXME: take window constraints into account, can test with mouse cursor
+	res.reposition = function(pop, x1, y1, x2, y2, bias, chain)
+		local ap = bias == 0 and (#wnd.popups > 0 and 3 or 1) or bias;
+			ap = bias_lut[ap] and bias_lut[ap] or ANCHOR_UL;
+		link_image(vid, res.anchor, ap);
+		move_image(res.anchor, x1, y1);
+	end
+
+	link_image(res.anchor, dst.canvas);
+	image_inherit_order(vid, true);
+	image_inherit_order(res.anchor, true);
+	order_image(vid, 1);
+	show_image({vid, res.anchor});
+	table.insert(wnd.popups, res);
+	res.index = #wnd.popups;
+
+-- add mouse handler, each one makes sure any children are killed off
+	image_mask_set(res.anchor, MASK_UNPICKABLE);
+	res.own = function(ctx, vid) return vid == vid; end
+	res.motion = function(ctx, vid, ...)
+--		while (#wnd.popups > res.index) do
+	--		wnd:drop_popup();
+--		end
+-- fixme, forward to client if topmost
+	end
+	res.name = "popup";
+	res.button = function(ctx, ind, pressed, x, y)
+--		while (#wnd.popups > res.index) do
+--			wnd:drop_popup();
+--		end
+		output_mouse_devent({
+			active = pressed, devid = 0, subid = ind}, wnd);
+	end
+	mouse_addlistener(res, {"button", "motion"});
+
+	return res;
+end
+
+local function wnd_droppopup(wnd, all)
+	if (all) then
+		for i=#wnd.popups,1,-1 do
+			v = wnd.popups[i];
+			if (v.on_destroy) then
+				v:on_destroy();
+			end
+			delete_image(v.anchor);
+			mouse_droplistener(v);
+		end
+		wnd.popups = {};
+
+	elseif (#wnd.popups > 0) then
+		local pop = wnd.popups[#wnd.popups];
+		if (pop.on_destroy) then
+			pop:on_destroy();
+		end
+		delete_image(pop.anchor);
+		mouse_droplistener(pop);
+		table.remove(wnd.popups, #wnd.popups);
+	end
+end
+
+--
 -- re-adjust each window weight, they are not allowed to go down to negative
 -- range and the last cell will always pad to fit
 --
@@ -2037,6 +2192,9 @@ local function wnd_mousebutton(ctx, ind, pressed, x, y)
 	local wnd = ctx.tag;
 	if (wnd.wm.selected ~= wnd) then
 		return;
+	elseif (#wnd.popups > 0) then
+		wnd:drop_popup(true);
+		return;
 	end
 
 	output_mouse_devent({
@@ -2049,6 +2207,9 @@ local function wnd_mouseclick(ctx, vid)
 	if (wnd.wm.selected ~= wnd and
 		gconfig_get("mouse_focus_event") == "click") then
 		wnd:select(nil, true);
+		return;
+	elseif (#wnd.popups > 0) then
+		wnd:drop_popup(true);
 		return;
 	end
 
@@ -2087,6 +2248,13 @@ local function wnd_toggle_maximize(wnd)
 end
 
 local function wnd_mousedblclick(ctx)
+	local wnd = ctx.tag;
+
+	if (#wnd.popups > 0) then
+		wnd:drop_popup(true);
+		return;
+	end
+
 	output_mouse_devent({
 		active = true, devid = 0, subid = 0,
 		label = "dblclick", gesture = true}, ctx.tag
@@ -2719,6 +2887,7 @@ local wnd_setup = function(wm, source, opts)
 		border = fill_surface(1, 1, 255, 255, 255),
 		canvas = source,
 		gain = 1.0 * gconfig_get("global_gain"),
+		popups = {},
 
 -- hierarchies used for tile layout
 		children = {},
@@ -2818,7 +2987,9 @@ local wnd_setup = function(wm, source, opts)
 		mousemotion = wnd_mousemotion,
 		display_table = get_disptbl,
 		swap = wnd_swap,
-		grow = wnd_grow
+		grow = wnd_grow,
+		add_popup = wnd_popup,
+		drop_popup = wnd_droppopup,
 	};
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;

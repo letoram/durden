@@ -1,5 +1,7 @@
 UI Schemes
 ============
+Warning: a bad profile may leave the system useless, be careful, especially
+with modifications to default.lua.
 
 These are presets of menu-paths that can be activated as part of some trigger,
 such as a workspace switch or macro keybinding. Although they can be set to
@@ -9,7 +11,7 @@ though it is not enforced via some filter.
 
 Be particularly careful with target prefix actions (#) that would cause some
 destructive change, e.g. window deletion. The same goes for global action that
-would change the setup being operated on, like reassignment etc. Doing
+would change the setup being operated on, like reassignment etc.
 
 For normal 'my' startup actions, still use the autorun.lua mechanism.
 
@@ -33,19 +35,45 @@ return {
 		inactive = {0, 127, 0},
 	},
 
+-- default keybindings, these will not override entries in
+-- custs_ or custg_ (those bound via global/input/bind/... etc)
+-- but when switching profiles, the bindings defined in the last
+-- will be removed
+	bindings = {
+	},
+
+-- since activating many menu paths will updated the saved value
+-- for the next time, the actions in this list will only be ran
+-- when a new profile is installed/switched to.
+	on_install = {
+	},
+
 -- will be ran no matter what context the profile is activated in,
--- target actions (# prefix) apply to the currently selected window
+-- target actions (# prefix) apply to the currently selected window.
+-- An added feature for menu paths here is that it is also possible
+-- to set multiple filter- domains for target actions with the
+-- $prefix, like: $title%pattern or $title=pattern.
+-- these can be chained, like $title%pattern$tag=mytag#window/move
+-- valid filter domains:
+-- mode=float | tabbed | fullscreen | tile | tab | vtab
+-- source=external | internal
+-- atype= terminal | wayland | x11 etc. (see atypes / *.lua)
+-- title= string
+-- tag= string
+
+-- valid
 	actions = {
 		"!action/one",
 		"!action/two"
 	},
 
--- will be run if the profile is set globally (global/config/scheme)
+-- will be ran if the profile is set globally.
+	global = {},
 
 -- will be ran if the profile is set on a display. Target actions
 -- will be applied to all windows in all workspaces on the display.
 	display = {
-	};
+	},
 
 -- will be ran if the profile is set on a workspace. Target actions
 -- (#prefix) will be applied to all windows in the workspace by
@@ -62,5 +90,4 @@ return {
 
 See the default.lua for an example file that can be used to build on. The
 scheme- profiles are combined with the 'flair' tool for controlling visual
-effects, and the "on start" ui profile that defines configuration scheme
-on a higher level.
+effects.

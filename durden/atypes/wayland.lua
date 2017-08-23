@@ -7,8 +7,44 @@ local function wayland_trace(msg)
 	print("WAYLAND", msg);
 end
 
-local function popup_handler(source, status)
-	if (status.kind == "terminated") then
+local function popup_handler(cl, source, status)
+
+-- account for popup being able to resize itself
+	if (status.kind == "resized") then
+		if (wlwnds[source]) then
+			resize_image(source, status.width, status.height);
+			wlwnds[source]:show();
+		end
+-- wayland popups aren't very useful unless there's a relation so
+-- defer until we receive something
+	elseif (status.kind == "viewport") then
+		print(status.parent, "PARENT");
+		if (not wlwnds[status.parent]) then
+			delete_image(source);
+			return;
+		end
+
+		if (not wlwnds[source]) then
+			local pop = wlwnds[status.parent]:add_popup(source, true,
+				function()
+					wlwnds[source] = nil;
+				end);
+			if (not pop) then
+				delete_image(source);
+				return;
+			end
+			wlwnds[source] = pop;
+		end
+		wlwnds[source][status.invisible and "hide" or "show"](wlwnds[source]);
+		wlwnds[source]:hide();
+		wlwnds[source]:reposition(
+			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
+			status.rel_y + status.anchor_h, status.edge);
+		local order = status.rel_order > 5 and 5 or
+			(status.rel_order < -5 and -5 or status.rel_order);
+		order_image(wlwnds[source].anchor, order);
+-- note: additional popups are not created on a popup itself
+	elseif (status.kind == "terminated") then
 		delete_image(source);
 		wlwnds[source] = nil;
 	end
@@ -42,16 +78,23 @@ local function cursor_handler(cl, source, status)
 end
 
 local function toplevel_handler(wnd, source, status)
-	active_display():message("toplevel:", status.kind);
 	if (status.kind == "terminated") then
 		wlwnds[source] = nil;
 		wnd:destroy();
 		return;
 	elseif (status.kind == "message") then
 		local opts = string.split(status.message, ":");
+
 		if (opts) then
 			if (opts[1] == "geom" and #opts == 5) then
-				active_display():message(string.format("x: %d, y: %d, w: %d, h: %d"));
+				local x, y, w, h;
+				x = tonumber(opts[2]);
+				y = tonumber(opts[3]);
+				w = tonumber(opts[4]);
+				h = tonumber(opts[5]);
+				if (w and y and w and h) then
+					wnd.geom = {x, y, w, h};
+				end
 			end
 		end
 
@@ -65,16 +108,31 @@ end
 
 -- so this is fucking retarded, but we can't use the size of the source
 -- storage to figure out anything about what visible size the contents of
--- the client actually has. Why? Client decorations and drop-shadows.
+-- the client actually has. Why? Client decorations and drop-shadows and
+-- quite possibly rotation and scaling nonsense.
 -- The configure event (that's how DISPLAYHINT is translated in waybridge)
 -- is treated by the client as 'ok, w+A,h+B' where it gets to pick A and
 -- B because of decorations. This practically only works on a floating
--- desktop. Our option elsewhere is essentially just to run with autocrop.
+-- desktop. Our option elsewhere is to burn another resize and take
+-- advantage of last known 'geometry event', but since this event only
+-- carries xofs+w,yofs+h we then have to subtract from the storage
+-- dimensions as the padding region doesn't have to be symmetric.
 local function wl_resize(wnd, neww, newh, efw, efh)
-	if (wnd.space.mode == "float") then
-		target_displayhint(wnd.external, neww, newh, wnd.dispmask);
-	elseif (neww > 0 and newh > 0) then
-		target_displayhint(wnd.external, wnd.max_w, wnd.max_h, wnd.dispmask);
+	if (neww > 0 and newh > 0) then
+		efw = wnd.max_w - wnd.pad_left - wnd.pad_right;
+		efh = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
+
+		if (wnd.geom) then
+			local props = image_storage_properties(wnd.canvas);
+			local pad_w = wnd.geom[1] + props.width - (wnd.geom[1] + wnd.geom[3]);
+			local pad_h = wnd.geom[2] + props.height - (wnd.geom[2] + wnd.geom[4]);
+			efw = efw - pad_w;
+			efh = efh - pad_h;
+		end
+
+		wnd.hint_w = efw;
+		wnd.hint_h = efh;
+		target_displayhint(wnd.external, efw, efh, wnd.dispmask);
 	end
 end
 
@@ -92,6 +150,7 @@ end
 
 local function setup_toplevel_wnd(cl, wnd, id)
 	wlwnds[id] = wnd;
+	print("add id", id);
 	wnd.external = id;
 	wnd.wl_client = cl;
 	target_updatehandler(id, function(source, status)
@@ -189,11 +248,8 @@ return {
 					link_image(vid, wnd.anchor);
 				end
 			elseif (stat.segkind == "popup") then
-				local vid = accept_target(popup_handler);
--- just anchor to window, order it above the normal surface
--- and respect viewport hint to position regardless of mode.
--- This likely fails in fullscreen etc.
-				link_image(vid, wnd.anchor);
+-- accept but don't do anything just yet
+				local vid = accept_target(function(a,b) popup_handler(wnd, a, b); end);
 			else
 				wayland_trace("unknown: " .. stat.segkind);
 			end

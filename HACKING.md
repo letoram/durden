@@ -42,6 +42,27 @@ tools/ drop-in system, if possible. Changes that affect behavior should
 also cover updates and pull-requests against the gh-pages branch, where
 applicable. If in doubt, check on the IRC channel first.
 
+Testing
+------
+For any newly developed feature, figuring out what needs testing is not
+an easy task. Fuzzing can be performed by walking the menu tree, poking
+the entries at random. For other features, visual inspection is needed.
+
+For such features, be sure to check with (when applicable):
+
+ * fullscreen and dedicated fullscreen
+ * vtab/htab (rearranges decorations)
+ * float (hierarchies mostly ignored)
+ * window with popups
+ * tile and autolayout mode
+ * multiple screens with different densities
+ * multiple slices of a window
+ * "special" clients, like wayland- ones (very different ruleset) etc.
+
+There are more parameters that should be applied, and in the longer
+perspective, we should really have a tool that simply steps through
+the common corner cases - especially for asynch- related races.
+
 Big Changes
 ------
 As mentioned in the introduction, some of the code will be reworked in
@@ -55,6 +76,8 @@ the near future. A few of the planned changes include:
  * Allowing for multiple- 'tiler.lua' and enforcing better separation
  * Extending the shader interface for multi-pass work
  * Supporting multiple shader dialects
+ * Refactor out the use of active\_display().selected in favor of
+   something that supports multiple cursors/simultaneous users
 
 The translations will be kept seperate and act as replacements for the
 label field in the menus and shouldn't impose much change at all as it
@@ -76,18 +99,18 @@ windows, for terminals, for x11 windows and so on.
 Each atype is expected to return a table with the following fields:
 
     atype (string) - matching type of the segment, shouldn't collide
-		                 with what other files in this folder defines, so
-										 a handler for an atype can be added only once
-		default_shader (group, name) -
-		action (table of tables) - custom menu entries that should be
-		                           added to the target menu for this type,
-															 see the "Menu Integration" section
-		props (table) - a list of window properties that will be projected
-		                over the new window (see "Windows and Displays")
+                     with what other files in this folder defines, so
+                   a handler for an atype can be added only once
+    default_shader (group, name) -
+    action (table of tables) - custom menu entries that should be
+                               added to the target menu for this type,
+                               see the "Menu Integration" section
+    props (table) - a list of window properties that will be projected
+                    over the new window (see "Windows and Displays")
 
     dispatch (table of functions) - key indexed, where each key match
-		 the 'kind' field of an event in the event handler. This will
-		 override the default event handler for this kind/type.
+         the 'kind' field of an event in the event handler. This will
+         override the default event handler for this kind/type.
 
 ## /shaders
 
@@ -97,27 +120,27 @@ elements and so on. Each shader is defined as a .lua file returning a
 specially formatted table that should look something like this:
 
     return {
-		    version = 1,
-				label = "User-visible name",
-				filter = "none", -- can also be linear, bilinear
-        uniforms = { -- user- configurable variables
-				    myuniform = {
-						    label = "My Uniform",
-								utype = "ff",
-								default = {1.0, 0.0}
-						}
-				},
-				frag = [[
-				 uniform sampler 2D map_tu0;
-				 uniform float obj_opacity;
-				 uniform vec2 myuniform;
-				 varying vec2 texco;
-				 void main()
-				 {
-				     gl_FragColor = vec4(texture2D(map_tu0, texco), obj_opacity);
-				 }
-				]]
-		};
+            version = 1,
+                label = "User-visible name",
+                filter = "none", -- can also be linear, bilinear
+                uniforms = { -- user- configurable variables
+                    myuniform = {
+                            label = "My Uniform",
+                                utype = "ff",
+                                default = {1.0, 0.0}
+                        }
+                },
+                frag = [[
+                 uniform sampler 2D map_tu0;
+                 uniform float obj_opacity;
+                 uniform vec2 myuniform;
+                 varying vec2 texco;
+                 void main()
+                 {
+                     gl_FragColor = vec4(texture2D(map_tu0, texco), obj_opacity);
+                 }
+                ]]
+        };
 
 ## /cursor
 
@@ -176,34 +199,34 @@ The clipboard is implemented in clipboard.lua. It can be programmatically
 accessed via the CLIPBOARD global table and expose the following methods:
 
     add(source_vid:number, msg:string, multipart:bool)
-		    add a new message associated with the external clipboard data
-				provider matched to the video-id 'source_vid'.
+            add a new message associated with the external clipboard data
+                provider matched to the video-id 'source_vid'.
 
     set_monitor(monitor_function(ctx, msg, src) )
-		    register a clipboard monitor, this is a singleton and any
-				pre-existing monitor will be disabled. monitor_function will
-				be called every time something is added to the global clipboard,
-				or with a 'nil' msg / src_vid when the monitor will be dropped.
+            register a clipboard monitor, this is a singleton and any
+                pre-existing monitor will be disabled. monitor_function will
+                be called every time something is added to the global clipboard,
+                or with a 'nil' msg / src_vid when the monitor will be dropped.
 
     set_global(msg, src)
-		    add msg to the global clipboard, with src as a reference to the
-				source, which can be a window, a clipboard-segment VID or a
-				custom context.
+            add msg to the global clipboard, with src as a reference to the
+                source, which can be a window, a clipboard-segment VID or a
+                custom context.
 
 
 It also has the following members:
 
     modes: table of key = {label, function(str) return str; end}
            that makes out the available user-selectable paste modes that
-					 filter paste- operations.
+                     filter paste- operations.
 
-		history_size (number): number of unique entries (limit), if the limit
-		                       is exceeded, items will be dropped in a oldest
-													 first order.
+        history_size (number): number of unique entries (limit), if the limit
+                               is exceeded, items will be dropped in a oldest
+                               first order.
 
-		mpt_cutoff (number): limit to number of multipart- append operations
-		                     that a client are allowed to prepare before the
-												 entry is force-marked as finished.
+        mpt_cutoff (number): limit to number of multipart- append operations
+                             that a client are allowed to prepare before the
+                                          entry is force-marked as finished.
 
 Internationalisation
 ------
@@ -235,10 +258,10 @@ The database can be externally manipulated via the arcan\_db tool.
 There are five main functions for dealing with the gconfig- system:
 
     gconfig_register(key, val) - dynamically register a key-value pair
-		gconfig_set(key, val, force) - update an existing key, types must match
-		gconfig_listen(key, id, fun) - invoke [fun] when [key] has been changed
-		gconfig_get(key) -> val - retrieve the current value for a key
-		gconfig_shutdown() - synch/store all the key/value pairs
+        gconfig_set(key, val, force) - update an existing key, types must match
+        gconfig_listen(key, id, fun) - invoke [fun] when [key] has been changed
+        gconfig_get(key) -> val - retrieve the current value for a key
+        gconfig_shutdown() - synch/store all the key/value pairs
 
 Input-Routing
 ------
@@ -376,62 +399,62 @@ It setup using one of the following methods:
 Its state machine is updated by one of the following methods:
 
     mouse_input()
-		mouse_button_input()
+        mouse_button_input()
     mouse_absinput_masked(x, y, nofwd)
     mouse_absinput(x, y, nofwd)
     mouse_state_save(), mouse_state_restore(warp:boolean)
     mouse_tick()
-		mouse_block()
-		mouse_unblock()
-		mouse_cursor_sf(x, y) - change the visible scale factor
-		mouse_custom_cursor(table{
-		 hotspot_x : number, hotspot_y : number,
-		 vid
-		})
-		mouse_switch_cursor(label)
-		mouse_select_begin
-		mouse_select_end
-		mouse_reveal_hook
-		mouse_lockto(vid, function, warp, state)
-		mouse_destroy() - drop all handlers, cursor and tuning
+        mouse_block()
+        mouse_unblock()
+        mouse_cursor_sf(x, y) - change the visible scale factor
+        mouse_custom_cursor(table{
+         hotspot_x : number, hotspot_y : number,
+         vid
+        })
+        mouse_switch_cursor(label)
+        mouse_select_begin
+        mouse_select_end
+        mouse_reveal_hook
+        mouse_lockto(vid, function, warp, state)
+        mouse_destroy() - drop all handlers, cursor and tuning
 
 For querying state properties:
 
     mouse_over(vid) : boolean
-		mouse_xy() : x, y - absolute position
-		mouse_state() : table - get access to the raw state table
+        mouse_xy() : x, y - absolute position
+        mouse_state() : table - get access to the raw state table
 
 For debugging purposes, there are:
 
     mouse_handlercount() : number - returns number of registered handlers
-		mouse_dumphandlers() : dumps all handlers as calls to warning()
+        mouse_dumphandlers() : dumps all handlers as calls to warning()
 
 Where the 'nofwd'
 
 The most relevant bits are how to register and deregister a mouse handler:
 
     mouse_addlistener(listener, event-list) where the event-list represents
-		the list of events that should be registered to this listener.
+        the list of events that should be registered to this listener.
 
     required fields in the listener table:
-		   own => function(vid) : boolean - return true of the handler claims
-			                                  ownership of this vid or not
-			 name => string - identifier to assist with debugging
+           own => function(vid) : boolean - return true of the handler claims
+                                              ownership of this vid or not
+             name => string - identifier to assist with debugging
 
-	  and functions that match each entry in event-list.
+      and functions that match each entry in event-list.
 
     to de-register a mouse listener, use mouse_droplistener(listener) with
-		the same table as reference that was used with mouse_addlistener.
+        the same table as reference that was used with mouse_addlistener.
 
 The possible events are:
     click(
 
-		listener is a table with key(event-name) => function.
+        listener is a table with key(event-name) => function.
 
-		and event-list is a n-indexed table of events that should be associated
-		with the listener (click, drag, drop, button, press, release, dblclick,
-		hover, over, out)
-		}, {"click", "dblclick"});
+        and event-list is a n-indexed table of events that should be associated
+        with the listener (click, drag, drop, button, press, release, dblclick,
+        hover, over, out)
+        }, {"click", "dblclick"});
 
 Menu Subsystem
 ------
@@ -470,15 +493,15 @@ buttonbars, with uiprim\_bar being the most frequently used one.
 
     uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh) => tbl or nil
 
-		tbl-methods:
-	      methods: resize, invalidate, relayout, switch_state, add_button,
-			  update, reanchor, hide, show, move, tick, destroy
+        tbl-methods:
+          methods: resize, invalidate, relayout, switch_state, add_button,
+              update, reanchor, hide, show, move, tick, destroy
 
-	iterators:
-	all_buttons
+    iterators:
+    all_buttons
 
-	properties:
-	 anchor, shader, buttons{left{}, right{}, center{}}
+    properties:
+     anchor, shader, buttons{left{}, right{}, center{}}
 
 **INCOMPLETE**
 (pending: see uiprim.lua, lbar.lua, bbar.lua, suppl.lua)
@@ -497,10 +520,10 @@ user hides- or naviagates away from the menu path).
 A valid widget script returns a table with the following fields:
 
     name(string) : unique identifier
-		paths(table of strings or functions) : paths to trigger on
-		show(function) : invoked with (ctx, anchor, tbl, start_i, stop_i, col_w)
+    paths(table of strings or functions) : paths to trigger on
+    show(function) : invoked with (ctx, anchor, tbl, start_i, stop_i, col_w)
     probe(ctx, yh) : at a fixed number of pixels (yh), return how many groups
-		                 of yh pixels the widget would need.
+                     of yh pixels the widget would need.
 
 The paths can either be normal menu paths, similar to the binding API, or
 an evaluation function(taking a context, pathid, stringid and a tag). For
@@ -526,34 +549,34 @@ path and a configurable suffix where the user setting will persist:
     gconfig_register("ht_suffix", "unset");
 
     local menu = {
-		{
-		    name = "ht_suffix",
-				label = "Hi-There",
-				kind = "value",
-				hint = "(any >0 string)",
-				validator = function(val) return string.len(val) > 0; end,
-				handler = function(ctx, val)
-					gconfig_set("ht_suffix", val);
-				end
-		}
-		};
+        {
+            name = "ht_suffix",
+                label = "Hi-There",
+                kind = "value",
+                hint = "(any >0 string)",
+                validator = function(val) return string.len(val) > 0; end,
+                handler = function(ctx, val)
+                    gconfig_set("ht_suffix", val);
+                end
+        }
+        };
 
     global_menu_register("settings/tools",
-			{
-				name = "ht_suffix",
-				label = "Hi-There",
-				submenu = true,
-				kind = "action",
-				handler = menu
-			}
-		);
+            {
+                name = "ht_suffix",
+                label = "Hi-There",
+                submenu = true,
+                kind = "action",
+                handler = menu
+            }
+        );
 
     global_menu_register("tools", {
-		    name = "hithere", label = "Hi There", kind = "action",
-				handler = function()
-				 active_display():message("hi there: " .. gconfig_get("ht_message"));
-				end
-		});
+            name = "hithere", label = "Hi There", kind = "action",
+                handler = function()
+                 active_display():message("hi there: " .. gconfig_get("ht_message"));
+                end
+        });
 
 The rest is up to creative use of the other APIs mentioned. Like the case with
 any other interactive element in this system, take care to consider activation
