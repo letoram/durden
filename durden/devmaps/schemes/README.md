@@ -15,6 +15,9 @@ would change the setup being operated on, like reassignment etc.
 
 For normal 'my' startup actions, still use the autorun.lua mechanism.
 
+NOTES:
+The bindings, filters and on_install feature are not yet complete.
+
 Schemes in this folder are scanned at startup/reset time and can be found in
 global/config/schemes/name, . it is expected to return a table with the following
 format:

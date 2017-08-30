@@ -1990,25 +1990,28 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 -- destroying an earlier popup should cascade down the chain
 	res.destroy = function(pop)
 		delete_image(vid);
-		mouse_droplistener(res);
-		for i=#wnd.popups,i>wnd.index,-1 do
-			wnd.popups[i]:destroy();
+		mouse_droplistener(pop);
+		for i=#wnd.popups, pop.index, -1 do
+			wnd:drop_popup();
 		end
 	end
 
+-- we chain onwards so the res table exposes mostly the same entry points
+-- as a norml window
 	res.add_popup = function(pop, source, dcb)
 		return wnd:add_popup(source, dcb);
 	end
 
 	res.focus = function(pop, state)
+		wnd.input_focus = pop;
 	end
 
 	res.show = function(pop)
-		show_image(vid);
+		blend_image(vid, 1.0, gconfig_get("animation"));
 	end
 
 	res.hide = function(pop)
-		hide_image(vid);
+		blend_image(vid, 0.0, gconfig_get("animation"));
 	end
 
 -- FIXME: take window constraints into account, can test with mouse cursor
@@ -2023,28 +2026,37 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 	image_inherit_order(vid, true);
 	image_inherit_order(res.anchor, true);
 	order_image(vid, 1);
-	show_image({vid, res.anchor});
+	show_image(res.anchor);
 	table.insert(wnd.popups, res);
 	res.index = #wnd.popups;
 
 -- add mouse handler, each one makes sure any children are killed off
 	image_mask_set(res.anchor, MASK_UNPICKABLE);
 	res.own = function(ctx, vid) return vid == vid; end
-	res.motion = function(ctx, vid, ...)
---		while (#wnd.popups > res.index) do
-	--		wnd:drop_popup();
---		end
--- fixme, forward to client if topmost
+
+-- note, this does not rate-limit
+	res.motion = function(ctx, vid, x, y, rx, ry)
+		local aprops = image_surface_resolve(vid);
+		local lx = x - aprops.x;
+		local ly = y - aprops.y;
+		target_input(vid, {
+			kind = "analog", mouse = true, devid = 0, subid = 0,
+			samples = {lx, rx}
+		});
+		target_input(vid, {
+			kind = "analog", mouse = true, devid = 0, subid = 1,
+			samples = {ly, ry}
+		});
 	end
 	res.name = "popup";
-	res.button = function(ctx, ind, pressed, x, y)
---		while (#wnd.popups > res.index) do
---			wnd:drop_popup();
---		end
-		output_mouse_devent({
-			active = pressed, devid = 0, subid = ind}, wnd);
+
+	res.button = function(ctx, vid, ind, pressed, x, y)
+		target_input(vid, { active = pressed,
+			devid = 0, subid = ind, kind = "digital", mouse = true});
 	end
-	mouse_addlistener(res, {"button", "motion"});
+
+	mouse_addlistener(res,
+		valid_vid(vid, TYPE_FRAMESERVER) and {"button", "motion"} or {});
 
 	return res;
 end
@@ -2060,15 +2072,20 @@ local function wnd_droppopup(wnd, all)
 			mouse_droplistener(v);
 		end
 		wnd.popups = {};
+		wnd.input_focus = nil;
 
 	elseif (#wnd.popups > 0) then
 		local pop = wnd.popups[#wnd.popups];
 		if (pop.on_destroy) then
 			pop:on_destroy();
 		end
-		delete_image(pop.anchor);
+		expire_image(pop.anchor, gconfig_get("animation"));
+		blend_image(pop.anchor, 0.0, gconfig_get("animation"));
 		mouse_droplistener(pop);
 		table.remove(wnd.popups, #wnd.popups);
+		if (wnd.input_focus == pop) then
+			wnd.input_focus = wnd.popups[#wnd.popups];
+		end
 	end
 end
 
