@@ -8,22 +8,23 @@ local function wayland_trace(msg)
 end
 
 local function popup_handler(cl, source, status)
-
 -- account for popup being able to resize itself
 	if (status.kind == "resized") then
 		if (wlwnds[source]) then
 			resize_image(source, status.width, status.height);
 			wlwnds[source]:show();
 		end
+
 -- wayland popups aren't very useful unless there's a relation so
 -- defer until we receive something
 	elseif (status.kind == "viewport") then
-		print(status.parent, "PARENT");
 		if (not wlwnds[status.parent]) then
+-- error condition if the popup doesn't have a real parent
 			delete_image(source);
 			return;
 		end
 
+-- not known in beforehand? (most common)
 		if (not wlwnds[source]) then
 			local pop = wlwnds[status.parent]:add_popup(source, true,
 				function()
@@ -35,17 +36,35 @@ local function popup_handler(cl, source, status)
 			end
 			wlwnds[source] = pop;
 		end
+
+-- hide/show?
 		wlwnds[source][status.invisible and "hide" or "show"](wlwnds[source]);
-		wlwnds[source]:hide();
+
+-- position relative to parent, taking anchor region into account
+-- some difference between anchor edge and positioner edge, not sure
+-- how to deal with this yet
 		wlwnds[source]:reposition(
 			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
 			status.rel_y + status.anchor_h, status.edge);
+
+-- don't allow it to be relatively- ordered outside it's allocated limit
 		local order = status.rel_order > 5 and 5 or
 			(status.rel_order < -5 and -5 or status.rel_order);
 		order_image(wlwnds[source].anchor, order);
+
+-- not all popups require input focus (tooltips!), but when they do, we can
+-- cascade delete any possible children
+		if (status.focus) then
+			wlwnds[source]:focus();
+		end
+
 -- note: additional popups are not created on a popup itself
 	elseif (status.kind == "terminated") then
-		delete_image(source);
+		if (wlwnds[source]) then
+			wlwnds[source]:destroy();
+		else
+			delete_image(source);
+		end
 		wlwnds[source] = nil;
 	end
 end
@@ -150,7 +169,6 @@ end
 
 local function setup_toplevel_wnd(cl, wnd, id)
 	wlwnds[id] = wnd;
-	print("add id", id);
 	wnd.external = id;
 	wnd.wl_client = cl;
 	target_updatehandler(id, function(source, status)
@@ -189,7 +207,7 @@ return {
 -- that will be requested. Due to how wayland works vs. how arcan works,
 -- we need to implement separate handlers for the subsegment requests in
 -- order to activate the correct scalemodes, decoration modes and message-
--- handler hacks t3o have a chance of working around the extension mess.
+-- handler hacks to have a chance of working around the extension mess.
 	props = {
 		kbd_period = 0,
 		kbd_delay = 0,
@@ -208,14 +226,17 @@ return {
 	dispatch = {
 		preroll = function(wnd, source, tbl)
 -- the bridge need privileged GPU access in order to bind display
-			target_displayhint(source, wnd.max_w, wnd.max_h, 0, active_display().disptbl);
+			target_displayhint(source,
+				wnd.max_w, wnd.max_h, 0, active_display().disptbl);
+
 			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
 				target_flags(source, TARGET_ALLOWGPU);
 			end
 			wnd.wl_children = {};
 -- client implements repeat on wayland, se we need to set it here
 			message_target(source,
-				string.format("seat:rate:%d,%d", gconfig_get("kbd_period"), gconfig_get("kbd_delay")));
+				string.format("seat:rate:%d,%d",
+					gconfig_get("kbd_period"), gconfig_get("kbd_delay")));
 			return true;
 		end,
 
