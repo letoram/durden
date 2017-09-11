@@ -107,6 +107,95 @@ function dispatch_symbol_lock()
 	dispatch_queue = {};
 end
 
+--
+-- There is an unfortunate legacy with dispatch_symbol and friends that
+-- should be refactored out ASAP. For new functions and new references,
+-- we go with the menu_eval_path for features and let the dispatch_sym+
+-- launch_menu_path functions remain for the interactive stuff. Worst
+-- set of interactions are timers, menu-path bindings, fallback/initial
+-- bindings.
+--
+-- will return table or table, subpath, remainder if eval failed.
+--
+function menu_resolve_path(line, wnd)
+	local ns = string.sub(line, 1, 1);
+	local path = string.sub(line, 2);
+	local sepind = string.find(line, "=");
+	local val = nil;
+	if (sepind) then
+		path = string.sub(line, 2, sepind-1);
+		val = string.sub(line, sepind+1);
+	end
+
+	local items = string.split(path, "/");
+	local menu = nil;
+
+	for i=#items,1,-1 do
+		if (string.len(items[i]) == 0) then
+			table.remove(items, i);
+		end
+	end
+
+-- REFACTOR NOTE:
+-- move into menu/ and there manually just register symbol+alias to namespace,
+-- thus allowing the same interface for accessing different namespaces
+-- (browser, ..)
+	if (ns == "!") then
+		menu = get_global_menu();
+	elseif (ns == "#") then
+		menu = get_shared_menu();
+	else
+		return nil, "invalid namespace";
+	end
+
+	while #items > 0 do
+		local ent = nil;
+		if (not menu) then
+			return nil, "missing menu", table.concat(items, "/");
+		end
+
+-- first find in current menu
+		for k,v in ipairs(menu) do
+			if (v.name == items[1]) then
+				ent = v;
+				break;
+			end
+		end
+-- validate the fields
+		if (not ent) then
+			return nil, "couldn't find entry", table.concat(items, "/");
+		end
+		if (ent.eval and not ent.eval()) then
+			return nil, "entry not visible", table.concat(items, "/");
+		end
+
+-- action or value assignment
+		if (not ent.submenu) then
+			if (#items ~= 1) then
+				return nil, "path overflow, action node reached", table.concat(items, "/");
+			end
+-- it's up to the caller to validate
+			if ((ent.kind == "value" or ent.kind == "action") and ent.handler) then
+				return ent, "", val;
+			else
+				return nil, "invalid formatted menu entry", items[1];
+			end
+
+-- submenu, just step, though this can be dynamic..
+		else
+			if (type(ent.handler) == "function") then
+				menu = ent.handler();
+			elseif (type(ent.handler) == "table") then
+				menu = ent.handler;
+			else
+				menu = nil;
+			end
+			table.remove(items, 1);
+		end
+	end
+	return menu, "", val;
+end
+
 function dispatch_symbol(sym, arg, ext)
 	local	ms = active_display().selected;
 	local ch = string.sub(sym, 1, 1);
