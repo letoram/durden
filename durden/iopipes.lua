@@ -10,6 +10,7 @@ local cchan_fn = gconfig_get("control_path");
 if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") then
 	zap_resource("ipc/" .. cchan_fn);
 	CONTROL_CHANNEL = open_nonblock("<ipc/" .. cchan_fn);
+	CONTROL_CHANNEL_OUT = open_nonblock("<ipc/" .. cchan_fn .. "_out", true);
 end
 
 local ochan_fn = gconfig_get("output_path");
@@ -283,18 +284,160 @@ local function poll_status_channel()
 	end
 end
 
+local function run_command(line)
+	if (not allowed_commands(line)) then
+		return "EACCESS\n";
+	end
+
+	dispatch_symbol(line, nil, true);
+	return "OK\n";
+end
+
+-- problem:
+-- 1. faktisk path (# vs. /windows/name vs. /target)
+-- 2. resolve på root (# !)
+-- 3. ofärdiga: validate, write
+
+local commands = {
+-- enumerate the contents of a path
+	ls = function(line, res, remainder)
+		if (type(res) == "table") then
+			local list = {};
+			for k,v in ipairs(res) do
+				if (v.name and v.label) then
+					if (v.submenu) then
+						table.insert(list, v.name .. "/");
+					elseif (v.kind == "value") then
+						table.insert(list, v.name .. "=");
+					else
+						table.insert(list, v.name);
+					end
+				end
+			end
+			table.sort(list);
+			local msg = table.concat(list, "\n");
+			return msg .. "\nOK\n";
+		end
+		return "";
+	end,
+
+-- present more detailed information about a single target
+	read = function(line, res, remainder)
+		if (not res.name or not res.label) then
+			return "EINVAL, broken menu entry\n";
+		end
+
+		local ret = {"name: ", res.name, "\n", "label: ", res.label, "\n"};
+		if (res.description and type(res.description) == "string") then
+			table.insert(ret, res.description .. "\n");
+		end
+
+		if (res.kind == "action") then
+			if (res.submenu) then
+				table.insert(ret, "kind: submenu\n");
+			else
+				table.insert(ret, "kind: action\n");
+			end
+			return table.concat(ret, "");
+		else
+			table.insert(ret, "kind: value\n");
+			if (res.initial) then
+				local val = tostring(type(res.initial) ==
+					"function" and res.initial() or res.initial);
+				table.insert(ret, "initial: " .. val .. "\n");
+			end
+			if (res.set) then
+				local lst = res.set;
+				if (type(lst) == "function") then
+					lst = lst();
+				end
+				table.sort(lst);
+				table.insert(ret, "value-set: " .. table.concat(lst, ", ") .. "\n");
+			end
+			if (res.hint) then
+				table.insert(ret, "hint: " ..
+					type(res.hint) == "function" and res.hint() or res.hint .. "\n");
+			end
+			table.insert(ret, "OK\n");
+			return table.concat(ret, "");
+		end
+	end,
+
+-- run a value assignment, first through the validator and then act
+	write = function(line, res, remainder)
+		if (not res.handler) then
+			return "EINVAL, broken menu entry\n";
+		end
+
+		if (res.validator) then
+			if (not res.validator(remainder)) then
+				return "EINVAL, validation failed\n";
+			end
+		end
+
+		res.handler({}, remainder);
+		return "OK\n";
+	end,
+
+-- only evaluate a value assignment
+	eval = function(line, res, remainder)
+		if (not res.handler) then
+			return "EINVAL, broken menu entry\n";
+		end
+
+		if (res.validator) then
+			if (not res.validator(remainder)) then
+				return "EINVAL, validation failed\n";
+			end
+		end
+
+		return "OK\n";
+	end,
+
+-- execute no matter what
+	exec = function(line, res, remainder)
+		if (res and res.handler and not res.submenu and res.kind == "action") then
+			res.handler();
+			return "OK\n";
+		else
+			return "EINVAL: target path is not an executable action.\n";
+		end
+	end
+};
+
 local function poll_control_channel()
 	local line = CONTROL_CHANNEL:read();
 	if (line == nil or string.len(line) == 0) then
 		return;
 	end
 
-	if (not allowed_commands(line)) then
-		warning("unknown/disallowed command: " .. line);
-		return;
+-- Split up and determine command, the initial #, ! check is done in order
+-- to not break backward compatibility. The limitation being that those
+-- commands can't control the target window.
+	local ch = string.sub(line, 1, 1);
+	if (ch == "!" or ch == "#") then
+		cmd = "exec";
+	else
+		local ind = string.find(line, " ");
+		if (not ind) then
+			return;
+		end
+		cmd = string.sub(line, 1, ind-1);
+		line = string.sub(line, ind+1);
 	end
 
-	dispatch_symbol(line, nil, true);
+	if (not commands[cmd]) then
+		CONTROL_CHANNEL_OUT:write(string.format("EINVAL: bad command(%s)\n", cmd));
+		return;
+	else
+		local res, msg, remainder = menu_resolve_path(line);
+		if (not res) then
+			CONTROL_CHANNEL_OUT:write("EINVAL:" .. msg .. "\n");
+		else
+			local msg = commands[cmd](line, res, remainder);
+			CONTROL_CHANNEL_OUT:write(msg);
+		end
+	end
 end
 
 -- open question is if we should check lock-state here and if we're in locked
@@ -305,7 +448,7 @@ function()
 		poll_status_channel();
 	end
 
-	if (CONTROL_CHANNEL) then
+	if (CONTROL_CHANNEL and CONTROL_CHANNEL_OUT) then
 		poll_control_channel();
 	end
 end, true
@@ -322,6 +465,7 @@ durden_shutdown = function()
 	end
 	if (gconfig_get("control_path") ~= ":disabled") then
 		zap_resource("ipc/" .. gconfig_get("control_path"));
+		zap_resource("ipc/" .. gconfig_get("control_path") .. "_out");
 	end
 	if (gconfig_get("output_path") ~= ":disabled") then
 		zap_resource("ipc/" .. gconfig_get("output_path"));

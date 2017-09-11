@@ -19,6 +19,11 @@
 		See target/video/advanced/color-gamma synch and
 		global/config/system/gamma-bridge.
 
+  * Filesystem-like IPC: the iopipes IPC path has been extended to
+    allow ls, read, write and exec like navigation of the menu
+    subsystem. This can be bound to a FUSE-wrapper to fully control
+    durden from a terminal.
+
   * LED devices: added support for profile driven LED device control
 	  see devmaps/led/README.md or global/config/led
 
