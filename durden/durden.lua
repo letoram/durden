@@ -399,11 +399,6 @@ function durden_launch(vid, prefix, title, wnd)
 -- hidden window creation failed or event during creation
 -- triggered destruction immediately, hence the table will be empty
 	if (not wnd.set_prefix) then
-		print("set_prefix", debug.traceback());
-		for k,v in pairs(wnd) do
-			print(k, v);
-		end
-
 		delete_image(vid);
 		return;
 	end

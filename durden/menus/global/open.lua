@@ -67,7 +67,7 @@ function spawn_terminal(cmd)
 	launch_avfeed(lstr, "terminal",
 	function(source, status)
 		if (status.kind == "preroll") then
-			local wnd = durden_launch(source, "", "terminal", wnd);
+			local wnd = durden_launch(source, "", "terminal");
 			if (not wnd) then
 				warning("durden launch preroll state failed");
 				return;
