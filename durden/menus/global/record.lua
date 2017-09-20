@@ -8,8 +8,14 @@ end
 return function(val)
 	suppl_region_select(255, 255, 0,
 	function(x1, y1, x2, y2)
+		x1 = math.floor(x1);
+		y1 = math.floor(y1);
+		x2 = math.ceil(x2);
+		y2 = math.ceil(y2);
+
 		local dw = x2 - x1;
 		local dh = y2 - y1;
+
 		if (dw % 2 > 0) then
 			x2 = x2 + 1;
 		end
