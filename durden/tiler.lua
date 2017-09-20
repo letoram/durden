@@ -464,7 +464,11 @@ local function canvas_mouse_activate(wnd)
 
 -- switch to the desired mouse cursor
 	if (wnd.custom_cursor and wnd.custom_cursor.active) then
-		mouse_custom_cursor(wnd.custom_cursor);
+		if (valid_vid(wnd.custom_cursor.vid)) then
+			mouse_custom_cursor(wnd.custom_cursor);
+		else
+			wnd.custom_cursor = nil;
+		end
 
 	elseif (wnd.cursor_label) then
 		mouse_switch_cursor(wnd.cursor_label);
