@@ -243,6 +243,9 @@ end
 local function launch(str, cfg)
 	local vid = launch_target(str, cfg, LAUNCH_INTERNAL, def_handler);
 	if (valid_vid(vid)) then
+		if (gconfig_get("gamma_access") ~= "none") then
+			target_flags(vid, TARGET_ALLOWCM, true);
+		end
 		local wnd = durden_launch(vid, cfg, str);
 		durden_devicehint(vid);
 		wnd.config_target = str;

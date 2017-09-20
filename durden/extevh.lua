@@ -146,24 +146,27 @@ function(wnd, source, stat)
 -- FIXME:	wnd:custom_border(ev->viewport.border);
 end
 
--- got updated ramps from a client, still need to decide what to
--- do with them, i.e. set them as active on window select and remove
--- on window deselect.
+-- these currently only respect one display
 defhtbl["ramp_update"] =
 function(wnd, source, stat)
-	active_display():message("got ramp update");
 	local ramps = video_displaygamma(source, stat.index);
+
+-- ack the transfer and update the display
+	if (wnd.dst_display) then
+		video_displaygamma(wnd.dst_display, ramps);
+		video_displaygamma(source, ramps, wnd.dst_display);
+	end
 end
 
 defhtbl["proto_change"] =
 function(wnd, source, stat)
--- client now has access to color ramps, send either all or
--- the currently assigned one. Then comes the question what to
--- do with them,
+
+-- forward information about the display the window is currently on
 	wnd.gamma_controls = stat.cm;
 	if (stat.cm) then
 		for disp in all_displays_iter() do
 			if (disp.ramps) then
+				wnd.dst_display = disp.id;
 				video_displaygamma(source, disp.ramps, disp.id);
 			end
 		end
