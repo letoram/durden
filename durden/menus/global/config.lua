@@ -603,11 +603,11 @@ local durden_system = {
 		end
 	},
 	{
-		name = "bridgegamma",
-		label = "Gamma Bridge",
+		name = "source_color",
+		label = "Color/Gamma Sync",
 		kind = "value",
 		initial = function() return gconfig_get("gamma_access"); end,
-		set = {"none", "full"},
+		set = {"none", "trusted", "all"},
 		handler = function(ctx, val)
 			gconfig_set("gamma_access", val);
 		end
@@ -759,7 +759,6 @@ local config_terminal_font = {
 		name = "font_hint",
 		label = "Hinting",
 		kind = "value",
-		eval = function() return gconfig_get("term_bitmap") ~= true; end,
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[
 		gconfig_get("term_font_hint")]; end,

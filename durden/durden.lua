@@ -556,7 +556,9 @@ eval_respawn = function(manual, path)
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
 		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
--- OOM, retry later
+		if (gconfig_get("gamma_access") == "all") then
+			target_flags(INCOMING_ENDPOINT, TARGET_ALLOWCM, true);
+		end
 	else
 		timer_add_periodic("excon_reset", 100, true,
 			function() eval_respawn(true, path); end, true);

@@ -141,13 +141,14 @@ local advanced = {
 	name = "source_color",
 	label = "Color/Gamma Sync",
 	kind = "value",
-	set = {"None", "Local", "Global"},
+	set = {"None", "Global"},
 	eval = function(ctx, val)
 		local wnd = active_display().selected;
 			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
 	end,
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
+		wnd.gamma_mode = string.lower(val);
 		target_flags(active_display().selected.external, TARGET_ALLOWCM, true);
 	end
 	},
