@@ -439,6 +439,7 @@ function display_event_handler(action, id)
 		ddisp.subpx = subpx;
 		if (not ddisp.ramps) then
 			ddisp.ramps = video_displaygamma(ddisp.id);
+			ddisp.active_ramps = ddisp.ramps;
 		end
 
 -- remove on a previous display is more like tagging it as orphan

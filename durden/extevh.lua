@@ -146,28 +146,26 @@ function(wnd, source, stat)
 -- FIXME:	wnd:custom_border(ev->viewport.border);
 end
 
--- these currently only respect one display
+-- got updated ramps from a client, still need to decide what to
+-- do with them, i.e. set them as active on window select and remove
+-- on window deselect.
 defhtbl["ramp_update"] =
 function(wnd, source, stat)
+	print("ramp update!");
 	local ramps = video_displaygamma(source, stat.index);
-
--- ack the transfer and update the display
-	if (wnd.dst_display) then
-		video_displaygamma(wnd.dst_display, ramps);
-		video_displaygamma(source, ramps, wnd.dst_display);
-	end
 end
 
 defhtbl["proto_change"] =
 function(wnd, source, stat)
+	wnd.color_controls = stat.cm;
 
--- forward information about the display the window is currently on
-	wnd.gamma_controls = stat.cm;
+-- send the ramps for the display the client is active on, repeat if we
+-- get migrated to another display
 	if (stat.cm) then
 		for disp in all_displays_iter() do
 			if (disp.ramps) then
-				wnd.dst_display = disp.id;
-				video_displaygamma(source, disp.ramps, disp.id);
+				print("send ramps");
+				video_displaygamma(source, disp.active_ramps, disp.id);
 			end
 		end
 	end

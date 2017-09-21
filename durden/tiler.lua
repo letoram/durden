@@ -724,7 +724,6 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 		if (v.space == space) then
 			if (valid_vid(v.external, TYPE_FRAMESERVER)) then
 				v:set_dispmask(bit.bor(v.dispmask, TD_HINT_INVISIBLE));
-				target_displayhint(v.external, 0, 0, v.dispmask);
 			end
 		end
 	end
@@ -1504,19 +1503,31 @@ local function wnd_font(wnd, sz, hint, font)
 	end
 
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		wnd.last_font = {sz, hint, font};
-		if (font) then
-			local dtbl = {};
-			if (type(font) == "table") then
-				dtbl = font;
-			else
-				dtbl[1] = font;
-			end
+		if (type(font) == "string") then
+			font = {font};
+		end
 
-			target_fonthint(wnd.external, dtbl[1], sz * FONT_PT_SZ, hint);
-			for i=2,#dtbl do
-				target_fonthint(wnd.external, dtbl[i], sz * FONT_PT_SZ, hint, true);
+-- maintain tracking of font settings
+		if (wnd.last_font) then
+			wnd.last_font = {
+				sz ~= -1 and sz or wnd.last_font[1],
+				hint ~= -1 and hint or wnd.last_font[2],
+				font and font or wnd.last_font[3]
+			};
+		else
+			wnd.last_font = {sz, hint, font and font or {""}};
+		end
+		sz = wnd.last_font[1];
+		hint = wnd.last_font[2];
+		assert(type(wnd.last_font[3]) == "table");
+
+-- update font or only attributes?
+		if (font) then
+			for i=1,#wnd.last_font[3] do
+				target_fonthint(wnd.external,
+					wnd.last_font[3][i], sz * FONT_PT_SZ, hint, i ~= 1);
 			end
+-- only attributes
 		else
 			target_fonthint(wnd.external, sz * FONT_PT_SZ, hint);
 		end

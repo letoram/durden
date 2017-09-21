@@ -60,6 +60,7 @@ Minor:
 	* Split mouse cursors into sets.
 	* more consistent font/font-size switching when migrating across displays
 	* default-off display profiles for vive/psvr
+  * per window font override controls
 	* defer window attachment to reduce resize operations
 	* menu options for appl- switching (global/system/reset/...)
 	* hidden bind path for suspend-state toggle (target/state/...)
@@ -72,6 +73,7 @@ Minor:
 	* target menu path for set-x, set-y in float mode
 	* mouse button debounce timer support (global/inpput/mouse/debounce)
 	* expose backlight controls per display (global/display/displays/...)
+  * path for setting workspace background to a solid color
 	* Tools/pulldown: can now set a shadow/colored border
 
 # 0.2.0 - New features
