@@ -1,3 +1,14 @@
+local hint_lut = {
+	none = 0,
+	mono = 1,
+	light = 2,
+	normal = 3,
+	subpixel = 4
+};
+
+local lbl_hint_lut = {};
+for k,v in pairs(hint_lut) do lbl_hint_lut[v] = k; end
+
 local function set_scalef(mode)
 	local wnd = active_display().selected;
 	if (wnd) then
@@ -166,6 +177,91 @@ local advanced = {
 	}
 };
 
+-- simply copied from display and modified to retrieve from window if possible.
+-- this is messier in that we need to manage the font_block property, and work
+-- around the fact that terminal uses its own prefix
+local font_override = {
+	{
+		name = "size",
+		label = "Size",
+		kind = "value";
+		validator = gen_valid_num(1, 100),
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		initial = function()
+			local wnd = active_display().selected;
+			return tostring(wnd.last_font[1]);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd:update_font(tonumber(val), -1);
+			wnd.font_block = ob;
+		end
+	},
+	{
+		name = "hinting",
+		label = "Hinting",
+		kind = "value",
+		set = {"none", "mono", "light", "normal", "subpixel"},
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		initial = function()
+			return lbl_hint_lut[active_display().selected.last_font[2]];
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd:update_font(-1, hint_lut[val]);
+			wnd.font_block = ob;
+		end
+	},
+	{
+		name = "name",
+		label = "Font",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		initial = function()
+			return active_display().selected.last_font[3][1];
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd.last_font[3][1] = val;
+			wnd:update_font(-1, -1, wnd.last_font[3]);
+			wnd.font_block = ob;
+		end
+	},
+	{
+		name = "fbfont",
+		label = "Fallback",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		initial = function()
+			return active_display().selected.last_font[3][2];
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd.last_font[3][2] = val;
+			wnd:update_font(-1, -1, wnd.last_font[3]);
+			wnd.font_block = ob;
+		end
+	}
+};
+
 return {
 	{
 		name = "scaling",
@@ -268,6 +364,14 @@ return {
 		handler = function(ctx, val)
 			blend_image(active_display().selected.canvas, tonumber(val));
 		end
+	},
+	{
+		name = "font",
+		label = "Font",
+		kind = "action",
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		submenu = true,
+		handler = font_override,
 	},
 	{
 		label = "Advanced",
