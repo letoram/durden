@@ -76,6 +76,17 @@ local toplevel = {
 		submenu = true,
 		handler = system_load("menus/global/input.lua")()
 	},
+-- unsure if it is a good idea to expose these for access outside binding etc.
+-- leaning towards 'no' in the current state of things.
+	{
+		name = "windows",
+		label = "Windows",
+		kind = "action",
+		hidden = true,
+		eval = function() return false; end,
+		submenu = true,
+		handler = system_load("menus/global/windows.lua")()
+	},
 	{
 		name = "system",
 		label = "System",

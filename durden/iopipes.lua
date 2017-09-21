@@ -293,11 +293,6 @@ local function run_command(line)
 	return "OK\n";
 end
 
--- problem:
--- 1. faktisk path (# vs. /windows/name vs. /target)
--- 2. resolve på root (# !)
--- 3. ofärdiga: validate, write
-
 local commands = {
 -- enumerate the contents of a path
 	ls = function(line, res, remainder)
