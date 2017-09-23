@@ -1,11 +1,14 @@
 local function inputh(wnd, source, status)
 	if (status.kind == "terminated") then
-		wnd:destroy();
-	else
+		if (wnd.destroy) then
+			wnd:destroy();
+		else
+			delete_image(source);
+		end
 	end
 end
 
-return function(val)
+return function(val, lbl)
 	suppl_region_select(255, 255, 0,
 	function(x1, y1, x2, y2)
 		x1 = math.floor(x1);
@@ -34,9 +37,15 @@ return function(val)
 			inputh(wnd, source, status);
 		end
 
-		local argstr, srate, fn = suppl_build_recargs(vgrp, agrp, false, val);
-		define_recordtarget(dvid, fn, argstr, vgrp, agrp,
-			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate, infn);
-		wnd:set_title("recording");
+		if (valid_vid(val)) then
+			define_recordtarget(dvid, val, "", vgrp, agrp,
+				RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, infn);
+				wnd:set_title("forwarding("..lbl..")");
+		else
+			local argstr, srate, fn = suppl_build_recargs(vgrp, agrp, false, val);
+			define_recordtarget(dvid, fn, argstr, vgrp, agrp,
+				RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate, infn);
+			wnd:set_title("recording");
+		end
 	end);
 end
