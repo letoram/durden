@@ -2465,6 +2465,15 @@ local function wnd_ident(wnd, ident)
 	wnd:set_title();
 end
 
+local function wnd_getname(wnd)
+	local msg = "";
+	if (wnd.title_text and string.len(wnd.title_text) > 0) then
+		return wnd.title_text;
+	else
+		return wnd.name;
+	end
+end
+
 local function wnd_addhandler(wnd, ev, fun)
 	assert(ev);
 	if (wnd.handlers[ev] == nil) then
@@ -2993,6 +3002,7 @@ local wnd_setup = function(wm, source, opts)
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		set_ident = wnd_ident,
+		get_name = wnd_getname,
 		add_handler = wnd_addhandler,
 		drop_handler = wnd_drophandler,
 		set_dispmask = wnd_dispmask,

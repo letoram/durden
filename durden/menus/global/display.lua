@@ -386,6 +386,37 @@ local region_menu = {
 		e3xternal_block = true,
 		handler = system_load("menus/global/remoting.lua")();
 	},
+-- forward means 'create an output segment inside target'
+	{
+		name = "forward",
+		label = "Forward",
+		kind = "action",
+		eval = function()
+			for wnd in all_windows(atype) do
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+					return true;
+				end
+			end
+			return false;
+		end,
+		submenu = true,
+		handler = function()
+			local lst = {};
+			for wnd in all_windows(atype) do
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+					table.insert(lst, {
+						name = wnd.name,
+						label = wnd:get_name(),
+						kind = "action",
+						handler = function(ctx, val)
+							record_handler(wnd.external, wnd:get_name());
+						end
+					});
+				end
+			end
+			return lst;
+		end
+	},
 	{
 		name = "record",
 		label = "Record",
