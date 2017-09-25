@@ -1,3 +1,11 @@
+# 0.3.1
+  * Display region sharing now supports force-pushing into clients
+    that can handle input segments.
+
+  * target/video/advance/migrate - send a migrate request to a
+    client, which may prompt a client to jump to a different
+    connection point.
+
 # 0.3.0
   * Now requires arcan >= 0.5.3.
 

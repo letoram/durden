@@ -174,6 +174,18 @@ local advanced = {
 	handler = function(ctx, val)
 		active_display().selected.block_rz_hint = val == LBL_YES;
 	end
+	},
+	{
+	name = "migrate",
+	label = "Migrate",
+	kind = "value",
+	eval = function(ctx, val)
+		return string.len(val) > 0 and string.len(val) < 31 and
+			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	end,
+	handler = function(ctx, val)
+		target_devicehint(active_display().selected.external, val, false);
+	end
 	}
 };
 
