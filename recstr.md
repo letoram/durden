@@ -24,6 +24,7 @@ the options found in the region path are:
 - [OCR](#ocr)
 - Record
 - Share
+- Forward
 
 When such a path is activated, the cursor turns into a selection region
 that looks something like this:
@@ -52,6 +53,11 @@ the encode frameserver, which processes one frame and is then killed off. If
 the encode frameserver was built with support for the tesseract OCR engine,
 it will attempt to OCR convert the contents to text, and any results will
 be placed on the clipboard.
+
+# Forward <a name="forward"/>
+Forward takes a target window and forwards an output stream of the selected
+region into the process that window represents. This is for directed sharing
+to clients which supports this feature.
 
 # Future Changes
 - Interactive sharing

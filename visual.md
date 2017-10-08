@@ -1,4 +1,4 @@
-c--
+---
 layout: default
 ---
 
@@ -54,12 +54,15 @@ canvas scaling effects and workspace background.
 For cases when you are only interested in a portion of a window, want a clone
 of a window, optionally with different scaling behavior and so on, there's
 the option to create a window slice. The feature can be found via
-<i>target/window/slice_clone=Active</i> or =Passive. This turns the mouse
-cursor into selection mode where you can select the region you want to slice
-out. The difference between _active_ and _passive_ mode is that in _active_
-mode, all input that the window receives will be forwarded to the source.
+<i>target/window/slice_clone=Active</i> or <i>=Passive</i>. This switches the
+mouse cursor to selection mode where you can select the region you want to
+slice out. The difference between _active_ and _passive_ mode is that in
+_active_ mode, all input that the window receives will be forwarded to the
+source.
 
-A trick that can be done here is to combine slicing with the _overlay_
+A trick that can be done here is to combine slicing with the _overlay tool_
+in order to constantly keep track about some important part of a client with
+minimal impact to your normal workflow.
 
 # Per Target Tuning <a name="target"/>
 Default settings for a window comes from its archetype profile. The accepted
@@ -87,19 +90,27 @@ connected client itself has provided, and the display dimension hint that
 is sent to clients as a friendly suggestion will not be the user-set size
 but rather the slot allocated maximum.
 
-You can also enable a post-processing shader via the
-<i>target/video/shader</i> path.
+## Custom Post-processing
+There is a number of post processing shaders that can be applied to adjust
+or filter colors, and for more advanced effects e.g. content-aware upscaling
+of low-resolution data sources. The available ones can be found via the
+<i>target/video/shader</i> path and are stored in the <i>shaders/simple</i>
+path in the source repository.
+
+## Dedicated Fullscreen
+In performance and latency- sensitive applications, it is possible to forego
+compositing, saving precious video memory bandwidth and, if input/output
+formats match, route a client buffer to scanout directly. This can be toggled
+via  <i>target/video/advanced/source fullscreen</i>, best combined with a
+more aggressive synchronization strategy (Check [display management](displays)
+for more details).
 
 ## Density Override
-If you activate <i>target/video/advanced/source fullscreen</i> these settings,
-any shaders and filtering will be ignored in favor of direct mode. Check
-[display management](displays) for more details.
-
-It is also possible to override the expected output density per window. This is
-useful in cases where you'd want the contents of a (density-aware client) to
-appear bigger or smaller. Normally, the client gets these values on a
-per-display basis, but an override can be found at
-<i>target/video/advanced/density_override</i>.
+It is also possible to override the expected output on a per-display or a
+per-window basis. This is useful in cases where you'd want the contents of a
+(density-aware client) to appear bigger or smaller.
+Normally, the client gets these values based on the display it is currently
+bound to, but you can force different values via the <i>target/video/advanced/density_override</i> path.
 
 # Mouse Cursor <a name="cursor"/>
 There are three options that affect the visual look of the mouse cursor.
@@ -114,14 +125,16 @@ The last is the local mouse state, which is partly controlled by the client
 <i>target/input/mouse/cursor</i> where you can force-hide the cursor on a
 client that insists on software rendering its own.
 
-# Borders <a name=borders"/>
+# Borders <a name="borders"/>
 Window border decorations are split in two parameters: border area and border
 thickness. They are accessed via <i>global/config/visual/border area and border
-thickness</i> respectively.
+thickness</i> respectively. The visual effect itself is controlled via the
+<i>shaders/ui/border.lua</i> shader.
 
-Area covers the entire space that will be reserved, and border area is
-constrained to a subset of this space. This is to allow for gaps between
-tiles in tiling workspace mode.
+<i>Border area</i> covers the entire space that will be reserved, and
+<i>border thickness</i> the actual size of the visible border itself. This
+separation is to allow for gaps between tiles in tiling workspace mode, but
+also effects the "drag-resize" mouse state activation regions.
 
 # Animations <a name="animations"/>
 Durden distinguishes between animations and transitions. Animations cover
@@ -131,8 +144,8 @@ view and the menu HUD.
 
 Animation speed can be tuned via the
 <i>global/config/visual/animation speed</i> setting. There is also a separate
-window animation speed property that, if set, adds animations to window resizing,
-movement and swapping when in tile mode and in float mode.
+window animation speed property that, if set, adds animations to window
+resizing, movement and swapping when in tile mode and in float mode.
 
 The 'switch workspaces' transition effect can be controlled from the
 <i>global/config/visual/transition-in,out</i> and you can have different
@@ -146,9 +159,10 @@ Visual schemes are profiles that are scanned on startup from the
 display, per workspace or for a single window. Arbitrary menu paths for both
 the global and the target menu namespace can be added, and also forward color
 scheme information to clients that support that feature. The idea is to provide
-more comprehensive presets to mimic other desktop environments and dynamically
-switch. See the default.lua profile for an example, which is also activated by
-the autorun.lua startup script.
+more comprehensive presets to mimic other desktop environments and let you
+dynamically switch between different schemes. See the default.lua profile for
+an example. This profile is also activated by the included autorun.lua startup
+script.
 
 This is an advanced feature that may terminate or render the current session
 useless if you are not careful. There is no filtering of which menu paths that
