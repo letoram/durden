@@ -516,8 +516,22 @@ local function lbar_helper(lbar, domain, arg)
 	end
 end
 
-function tiler_lbar_isactive()
-	return active_lbar ~= nil;
+function tiler_lbar_isactive(ref)
+	if (ref) then
+		return active_lbar;
+	else
+		return active_lbar ~= nil;
+	end
+end
+
+function tiler_lbar_setactive(slot)
+	if (active_lbar) then
+		active_lbar:destroy()
+	end
+
+	if (slot and slot.destroy) then
+		active_lbar = slot;
+	end
 end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)

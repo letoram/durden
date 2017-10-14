@@ -42,7 +42,10 @@ Durden probes for available engine features and enables/disables access to
 these accordingly.
 
 Install by adding or symlinking the durden subdirectory of the git repository
-to your home appl folder (/home/myuser/.arcan/appl/durden)
+to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan with
+an explicit path reference, e.g.
+
+     arcan /home/myuser/path/to/durden/durden
 
 Start arcan with the resource path set to whatever directory subtree you want
 to be able to access for assets when browsing for images, video etc.
@@ -51,7 +54,8 @@ e.g. arcan -p /home/myuser/stuff durden
 
 There are numerous other ways for setting this up, see the Arcan wiki and
 manpages for configuration options. If you're "lucky" (linux, normal "no-X" VT,
-build dependencies fullfilled and KMS/GBM on) this should land in something like:
+build dependencies fullfilled and KMS/GBM on) the entire process should land in
+something like:
 
      git clone https://github.com/letoram/arcan.git
      git clone https://github.com/letoram/durden.git
@@ -70,26 +74,30 @@ mode which deactivates some features:
      arcan_db add_appl_kv durden display_simple true
 
 Note: the egl-dri video platforms are for running this as a dedicated desktop,
-if you just want to try things out, use the _sdl_ platform instead. Some
+if you just want to try things out, use -DVIDEO\_PLATFORM=sdl instead. Some
 features when it comes to display management and input will behave differently,
-and you likely want to bind a toggle for enabling/disabling cursor locking.
+and you likely want to bind a key for enabling/disabling cursor locking.
 
 Another option, if your drivers give you accelerated GL in X but not working
 KMS/DRI is to merely run arcan/durden with SDL as the video platform in
 fullscreen- mode and only application, essentially making X your "driver".
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
-for the currently mapped defaults. If you don't press any of the META keys
-during the first n (20 or so) keypresses, it is assumed that your meta bindings
-are broken and you will be queried for new ones.
+for the currently mapped defaults. If you don't press any of the valid META +
+key bindings during the first n (20 or so) keypresses, it is assumed that your
+meta bindings are broken and you will be queried for new ones.
 
 Quick! meta1+enter - now you should get a terminal window.
 
 You should also make sure that meta1+g (unless rebound) gives you access to
-the global menu, and meta1+h gives you access to the target menu (see Bindings
-below).
+the global menu, and meta1+h gives you access to the target menu. You can view
+or modify the default keybindings in 'durden/keybindings.lua' or you can bind
+your own menu paths in global/input/bind/custom. This menu path will also show
+the currently custom bound keys.
 
 Also try double-tapping meta-2 and you should see the titlebar change color.
 This indicates that all normal bindings are ignored and input is forwarded
 raw to the selected window. This is important for clients that need access to
 keys you have bound to various key combinations, like Xarcan-, QEmu, and so on.
+
+

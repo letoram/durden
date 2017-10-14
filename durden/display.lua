@@ -11,6 +11,7 @@
 local SIZE_UNIT = 38.4;
 local displays = {};
 local profiles = {};
+local display_listeners = {};
 
 --uncomment to log display events to a separate file, there are so many
 --hw/os/... related issues for plug /unplug edge behaviors that this is
@@ -442,13 +443,30 @@ function display_event_handler(action, id)
 			ddisp.active_ramps = ddisp.ramps;
 		end
 
+		for k,v in ipairs(display_listeners) do
+			v(v, "added", name, ddisp.tiler, id);
+		end
+
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
 	elseif (action == "removed") then
 		display_remove(name, id);
+		for k,v in ipairs(display_listeners) do
+			v("added", name, ddisp.tiler, id);
+		end
 	end
 
 	return newh;
+end
+
+--
+-- a facility to monitor when a display is added or lost
+--
+function display_add_listener(fcon)
+	table.insert(display_listeners, fcon);
+	for i,v in ipairs(displays) do
+		fcon("added", v.name, v.tiler, v.id);
+	end
 end
 
 function display_all_mode(mode)

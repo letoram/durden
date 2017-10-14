@@ -300,10 +300,10 @@ function suppl_recarg_eval()
 end
 
 function suppl_region_stop(trig)
-	mouse_select_end(trig);
 	iostatem_restore();
 	durden_input = durden_normal_input;
 	dispatch_symbol_unlock(true);
+	mouse_select_end(trig);
 end
 
 function suppl_region_select(r, g, b, handler)
