@@ -389,27 +389,29 @@ return {
 						t2 = t1;
 						t1 = tmp_1;
 					end
-					image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
-					show_image(new);
-
--- bind to a window, with optional input-routing
-					local cwin = active_display():add_window(new, {scalemode = "aspect"});
-					if (not cwin) then
-						return;
-					end
-
+-- bind to a window, with optional input-routing but run this as a one-off
+-- timer to handle the odd case where the add-window event would trigger
+-- another selection region to nest.
+					timer_add_periodic("wndspawn", 1, true, function()
+						image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
+						show_image(new);
+						local cwin = active_display():add_window(new, {scalemode = "aspect"});
+						if (not cwin) then
+							delete_image(new);
+							return;
+						end
 -- define mouse-cursor coordinate range-remap
-					cwin.mouse_remap_range = {
-						s1, t1, s2, t2
-					};
-
+						cwin.mouse_remap_range = {
+							s1, t1, s2, t2
+						};
 -- add references to the external source
 					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
 						val == "Active") then
 						cwin.external = wnd.external;
 						cwin.external_prot = true;
 					end
-				end
+				end, true);
+			end
 			);
 		end
 	}

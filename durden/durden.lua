@@ -55,21 +55,6 @@ function durden(argv)
 
 	kbd_repeat(0, 0);
 
--- tools are quick 'drop-ins' to get additional features like modelviewer
-	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
-	for k,v in ipairs(list) do
-		local res = system_load("tools/" .. v, 0);
-		if (not res) then
-			warning(string.format("couldn't parse tool: %s", v));
-		else
-			local okstate, msg = pcall(res);
-			if (not okstate) then
-				warning(string.format("runtime error loading tool: %s - %s", v, msg));
-				print(msg);
-			end
-		end
-	end
-
 -- can't work without a detected keyboard
 	if (not input_capabilities().translated) then
 		warning("arcan reported no available translation capable devices "
@@ -85,6 +70,21 @@ function durden(argv)
 
 	local nt = display_manager_init();
 	nt.on_wnd_create = wnd_create_handler;
+
+-- tools are quick 'drop-ins' to get additional features like modelviewer
+	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(list) do
+		local res = system_load("tools/" .. v, 0);
+		if (not res) then
+			warning(string.format("couldn't parse tool: %s", v));
+		else
+			local okstate, msg = pcall(res);
+			if (not okstate) then
+				warning(string.format("runtime error loading tool: %s - %s", v, msg));
+				print(msg);
+			end
+		end
+	end
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution through configured database and browse
@@ -702,7 +702,7 @@ function durden_regionsel_input(iotbl, fromim)
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 
 		if (SYSTEM_KEYS["cancel"] == sym) then
-			suppl_region_stop();
+			suppl_region_stop(DURDEN_REGIONFAIL_TRIGGER);
 		elseif (SYSTEM_KEYS["accept"] == sym) then
 			suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
 		elseif (SYSTEM_KEYS["meta_1"] == sym) then

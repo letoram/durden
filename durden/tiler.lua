@@ -1562,6 +1562,14 @@ local function wnd_repos(wnd)
 	end
 end
 
+local function wnd_hide(wnd)
+	hide_image(wnd.anchor);
+end
+
+local function wnd_show(wnd)
+	show_image(wnd.anchor);
+end
+
 --
 -- One of the worst functions in the entire project, the amount of
 -- edge cases are considerable. Test for:
@@ -2813,8 +2821,14 @@ local function wnd_swap(w1, w2, deep, force)
 end
 
 -- attach a window to the active workspace, this is a one-time
-local function wnd_ws_attach(res)
+local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
+
+-- can be intercepted by a hook handler that regulates placement
+	if (wm.attach_hook and not from_hook) then
+		return wm:attach_hook(res);
+	end
+
 	res.ws_attach = nil;
 	res.attach_time = CLOCK;
 
@@ -2995,6 +3009,7 @@ local wnd_setup = function(wm, source, opts)
 
 -- public events to manipulate the window
 		alert = wnd_alert,
+		show = wnd_show,
 		hide = wnd_hide,
 		assign_ws = wnd_reassign,
 		destroy = wnd_destroy,
