@@ -1922,6 +1922,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 
 	if (abs) then
 		move_image(wnd.anchor, dx, dy, time);
+		wnd.x = dx;
+		wnd.y = dy;
 		return;
 	end
 

@@ -389,10 +389,13 @@ return {
 						t2 = t1;
 						t1 = tmp_1;
 					end
+
 -- bind to a window, with optional input-routing but run this as a one-off
 -- timer to handle the odd case where the add-window event would trigger
--- another selection region to nest.
-					timer_add_periodic("wndspawn", 1, true, function()
+-- another selection region to nest. setting this too short seems to fail
+-- to trigger the hook altogether (interesting)
+					local source_name = wnd.name;
+					timer_add_periodic("wndspawn", 10, true, function()
 						image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
 						show_image(new);
 						local cwin = active_display():add_window(new, {scalemode = "aspect"});
@@ -404,6 +407,8 @@ return {
 						cwin.mouse_remap_range = {
 							s1, t1, s2, t2
 						};
+						cwin:set_title("Slice");
+						cwin.source_name = wnd.name;
 -- add references to the external source
 					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
 						val == "Active") then

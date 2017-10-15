@@ -35,7 +35,7 @@ local function activate_pending(mx, my)
 		mx, my = mouse_xy();
 	end
 
---	pending:move(mx, my, false, true, true);
+	pending:move(mx, my, false, true, true);
 	pending:show();
 	delete_image(pending_vid);
 	pending = nil;
@@ -62,8 +62,12 @@ local function wnd_attach(wm, wnd)
 		dispatch_meta_reset();
 		dispatch_symbol_lock();
 		durden_input = durden_regionsel_input;
+
+-- the region setup and accept/fail is really ugly, but reworking it
+-- right now is not really an option
 		DURDEN_REGIONFAIL_TRIGGER = function()
 			activate_pending();
+			DURDEN_REGIONFAIL_TRIGGER = nil;
 		end
 		DURDEN_REGIONSEL_TRIGGER = function()
 			activate_pending();
@@ -71,8 +75,12 @@ local function wnd_attach(wm, wnd)
 		end
 	elseif (mode == "draw") then
 		setup_cursor_pick(wm, wnd);
-		suppl_region_select(200, 198, 36, function(x1, y1, x2, y2)
+		DURDEN_REGIONFAIL_TRIGGER = function()
 			activate_pending();
+			DURDEN_REGIONFAIL_TRIGGER = nil;
+		end
+		suppl_region_select(200, 198, 36, function(x1, y1, x2, y2)
+			activate_pending(x1, y1);
 			local w = x2 - x1;
 			local h = y2 - y1;
 			if (w > 64 and h > 64) then
