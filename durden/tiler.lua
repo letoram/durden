@@ -145,9 +145,14 @@ local function wnd_destroy(wnd)
 	end
 
 	local space = wnd.space;
+	if (space) then
+		if (wnd.fullscreen) then
+			space[wnd.fullscreen](space);
+		end
 
-	if (space and wnd.fullscreen) then
-		space:tile();
+		for k,v in pairs(space.listeners) do
+			v(space, k, "lost", wnd);
+		end
 	end
 
 -- since the handler is deregistered when the canvas is destroyed,
@@ -1064,7 +1069,7 @@ local function set_fullscreen(space)
 		fullscreen = false
 	};
 	dw.centered = true;
-	dw.fullscreen = true;
+	dw.fullscreen = space.last_mode;
 
 -- hide all images + statusbar
 	sbar_hide(dw.wm);
@@ -1078,7 +1083,6 @@ local function set_fullscreen(space)
 	hide_image(space.selected.border);
 
 -- need to hook switching between workspaces to enable things like the sbar
-	dw.fullscreen = true;
 	space.mode_hook = drop_fullscreen;
 	space.switch_hook = switch_fullscreen;
 
@@ -1164,6 +1168,10 @@ local function workspace_destroy(space)
 	if (space.mode_hook) then
 		space:mode_hook();
 		space.mode_hook = nil;
+	end
+
+	for k,v in pairs(space.listeners) do
+		v(space, k, "destroy");
 	end
 
 	while (#space.children > 0) do
@@ -1341,6 +1349,10 @@ local function workspace_background(ws, bgsrc, generalize)
 	end
 end
 
+local function workspace_listener(ws, key, cbfun)
+	ws.listeners[key] = cbfun;
+end
+
 create_workspace = function(wm, anim)
 	local res = {
 		activate = workspace_activate,
@@ -1361,6 +1373,10 @@ create_workspace = function(wm, anim)
 
 		set_label = workspace_label,
 		set_background = workspace_background,
+
+-- for workspace destroy, window attach, window detach
+		add_listener = workspace_listener,
+		listeners = {},
 
 -- can be used for clipping / transitions
 		anchor = null_surface(wm.width, wm.height),
@@ -1958,7 +1974,6 @@ end
 -- 4 -- 5 -- 6
 -- |    |    |
 -- 7 -- 8 -- 9
---
 --
 -- If there is already a popup on the window, the new popup will
 -- be attached to that one if chain is set - or the current chain
@@ -2899,6 +2914,10 @@ local function wnd_ws_attach(res, from_hook)
 		res:resize(res.width, res.height);
 	end
 
+	for k,v in pairs(space.listeners) do
+		v(space, k, "attach", wnd);
+	end
+
 	wm:on_wnd_create(res);
 	return res;
 end
@@ -3523,7 +3542,6 @@ end
 
 local function tiler_switchbg(wm, newbg)
 	wm.background_name = newbg;
--- TODO: toggle rendertarget flag on/off on noclear
 
 	if (valid_vid(wm.background_id)) then
 		delete_image(wm.background_id);
