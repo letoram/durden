@@ -529,9 +529,7 @@ function tiler_lbar_setactive(slot)
 		active_lbar:destroy()
 	end
 
-	if (slot and slot.destroy) then
-		active_lbar = slot;
-	end
+	active_lbar = slot;
 end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)
