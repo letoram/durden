@@ -6,6 +6,15 @@
     client, which may prompt a client to jump to a different
     connection point.
 
+  * tools/advfloat - extended float layout mode capabilities:
+    spawn control (draw2spawn)
+
+  * tools/overview - added a HUD- like workspace switcher
+
+Minor:
+ * Destroying a window in fullscreen mode now returns the workspace
+   to the last known mode instead of forcing to tile.
+
 # 0.3.0
   * Now requires arcan >= 0.5.3.
 

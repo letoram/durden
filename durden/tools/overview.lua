@@ -1,14 +1,15 @@
 --
--- tool for "the cube", "exposé" and similar preview windows
--- missing:
--- [ ] finish 'carousel'
---     [ ] keybindings for switching
---     [ ] labels
---     [ ] handle OOB- invalidations (wnd-create/destroy)
--- [ ] better cleanup
--- [ ] relayout cell on window event?
+-- support script for building 'expose' and similar overviews
+-- to add a new, see (tile) as reference on what is typically needed,
+-- and add the new overview to the overview_sub table at the bottom.
+--
+-- most complexity come from the need to be able to rebuild if the
+-- underlying configuration changes while we're active.
 --
 local last_overview;
+local preview_listener =
+function(ws, key, action, target)
+end
 
 local function build_preview_set(newt)
 	local res = {};
@@ -38,6 +39,12 @@ local function build_preview_set(newt)
 				});
 			end
 
+-- sort the windows by order so we don't need to reorder the alias- surfaces
+			table.sort(tt.windows, function(a, b) return a.z <= b.z; end);
+			newt.spaces[i]:add_listener("overview",
+			function(...)
+				preview_listener(...);
+			end);
 			table.insert(res, tt);
 		end
 	end
@@ -85,9 +92,16 @@ local function toggle_ws(cb)
 			if (not gconfig_get("sbar_hud")) then
 				wm.statusbar:show();
 			end
+
+-- drop all listeners
+			for i=1,10 do
+				if (wm.spaces[i]) then
+					wm.spaces[i]:add_listener("overview");
+				end
+			end
+
 			blend_image(bg, gconfig_get("lbar_dim"), 0, INTERP_EXPOUT);
 			expire_image(bg, gconfig_get("lbar_dim"));
-			print("expire", bg, debug.traceback());
 			if (last_overview) then
 				last_overview:destroy(gconfig_get("lbar_dim"));
 				last_overview = nil;
@@ -120,6 +134,20 @@ local function build_setlist(wm, anchor, set, base_w, h, spacing)
 		last = nsrf;
 		move_image(nsrf, (spacing + base_w) * (i-1), 0);
 
+-- and generate some kind of descriptive reference
+		local str = string.format("%s %d<%s>%s",
+			gconfig_get("lbar_textstr"), i, set[i].mode,
+			set[i].label and "\\n\\r" .. set[i].label or "");
+		local label, _, lbl_w = render_text(str);
+
+		if (valid_vid(label)) then
+			image_inherit_order(ns, true);
+			link_image(label, nsrf, ANCHOR_LC);
+			order_image(label, 100);
+			nudge_image(label, -0.5 * lbl_w, 0);
+			show_image(label);
+		end
+
 		local sx = base_w / wm.width;
 		local sy = h / wm.height;
 		res[i][1] = nsrf;
@@ -133,6 +161,7 @@ local function build_setlist(wm, anchor, set, base_w, h, spacing)
 				show_image(ns);
 				order_image(ns, 1);
 				image_sharestorage(wnd.vid, ns);
+				image_mask_set(ns, MASK_UNPICKABLE);
 				move_image(ns, wnd.x * sx, wnd.y * sy);
 				table.insert(res[i], ns);
 			end
@@ -145,6 +174,19 @@ local function build_setlist(wm, anchor, set, base_w, h, spacing)
 	return res;
 end
 
+local function tile_input(wm, sym, iotbl, lutsym, meta)
+	local num = tonumber(lutsym);
+	if (lutsym == SYSTEM_KEYS["cancel"]) then
+		tiler_lbar_setactive();
+	elseif (lutsym == SYSTEM_KEYS["accept"]) then
+	elseif (lutsym == SYSTEM_KEYS["next"]) then
+	elseif (lutsym == SYSTEM_KEYS["previous"]) then
+	elseif (num and wm.spaces[num]) then
+		tiler_lbar_setactive();
+		wm:switch_ws(num);
+	end
+end
+
 -- simple carousel
 -- placement around 1D dominant axis, size based on number of cells
 -- 2x zoom on mouse-over (bias displace in largest neg- or positive)
@@ -154,33 +196,72 @@ end
 -- numbers to switch selected ws
 --
 local function tile(wm, bg, set)
-	local spacing = wm.width * 0.02;
-	local base_w = math.floor((wm.width - #set * spacing) / (#set));
-	base_w = base_w > wm.height * 0.5 and wm.height * 0.5 or base_w;
-	local ar = wm.width / wm.height;
-	local h = math.ceil(base_w / ar);
+	local spacing;
+	local base_w;
+	local ar;
+	local h;
+
+	local calc_size = function()
+		spacing = wm.width * 0.02;
+		base_w = math.floor((wm.width - #set * spacing) / (#set));
+		base_w = base_w > wm.height * 0.5 and wm.height * 0.5 or base_w;
+		ar = wm.width / wm.height;
+		h = math.ceil(base_w / ar);
+	end
+	calc_size();
 
 -- move in from the middle/right (unless we're rebuilding)
-	local anchor = null_surface(1, 10, 0, 255, 0);
-	link_image(anchor, bg);
-	image_inherit_order(anchor, true);
-	show_image(anchor);
-	move_image(anchor, wm.width, 0.5 * (wm.height - h));
-	show_image(anchor);
-	order_image(anchor, 1);
--- first: we just need drawable
--- second: mouse and selection
-	build_setlist(wm, anchor, set, base_w, h, spacing);
+	local anchor;
+	local build_anchor = function(time)
+		anchor = null_surface(1, 1);
+		link_image(anchor, bg);
+		image_inherit_order(anchor, true);
+		show_image(anchor);
+		move_image(anchor, wm.width, 0.5 * (wm.height - h));
+		show_image(anchor);
+		order_image(anchor, 1);
+		move_image(anchor, 0, 0.5 * (wm.height - h), time);
+	end
 
--- move the anchor left
-	move_image(anchor, 0, 0.5 * (wm.height - h), gconfig_get("transition"));
+	build_anchor(gconfig_get("transition"));
+	build_setlist(wm, anchor, set, base_w, h, spacing);
 
 	last_overview = {
 		destroy = function(ctx, time)
 			expire_image(anchor, time and time or 1);
+			wm:set_input_lock();
 		end
 	};
--- register inputs for stepping and mouse cursor action
+
+-- could possibly be made cheaper by detecting change, but hard
+	local rebuild = function()
+		if (not valid_vid(anchor)) then
+			return;
+		end
+
+		delete_image(anchor);
+		calc_size();
+		set = build_preview_set(wm);
+		anchor = null_surface(1, 1);
+		build_anchor(0);
+		build_setlist(wm, anchor, set, base_w, h, spacing);
+	end
+
+-- animations and background changes make this difficult, though
+-- theoretically possible to extract and transfer animation states,
+-- it's just too error-prone. Just go with a refresh timer.
+	preview_listener = function(ws, key, action, target)
+		if (action == "resized") then
+			if (gconfig_get("wnd_animation") > 0) then
+				timer_add_periodic("overview",
+					gconfig_get("wnd_animation")+1, true, rebuild, true);
+			end
+		else
+			rebuild();
+		end
+	end
+
+	wm:set_input_lock(tile_input);
 end
 
 local overview_sub = {

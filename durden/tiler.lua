@@ -149,10 +149,6 @@ local function wnd_destroy(wnd)
 		if (wnd.fullscreen) then
 			space[wnd.fullscreen](space);
 		end
-
-		for k,v in pairs(space.listeners) do
-			v(space, k, "lost", wnd);
-		end
 	end
 
 -- since the handler is deregistered when the canvas is destroyed,
@@ -235,9 +231,14 @@ local function wnd_destroy(wnd)
 	table.remove_match(wm.windows, wnd);
 
 -- rebuild layout
-	if (space and
-		not (space.layouter and space.layouter.lost(space, wnd, true))) then
-		space:resize();
+	if (space) then
+		if (not (space.layouter and space.layouter.lost(space, wnd, true))) then
+			space:resize();
+		end
+
+		for k,v in pairs(space.listeners) do
+			v(space, k, "lost", wnd);
+		end
 	end
 end
 
@@ -1236,6 +1237,10 @@ local function workspace_resize(space, external)
 
 	if (valid_vid(space.background)) then
 		resize_image(space.background, space.wm.width, space.wm.height);
+	end
+
+	for k,v in pairs(space.listeners) do
+		v(space, k, "resized");
 	end
 end
 
@@ -2914,11 +2919,12 @@ local function wnd_ws_attach(res, from_hook)
 		res:resize(res.width, res.height);
 	end
 
+	wm:on_wnd_create(res);
+
 	for k,v in pairs(space.listeners) do
 		v(space, k, "attach", wnd);
 	end
 
-	wm:on_wnd_create(res);
 	return res;
 end
 
