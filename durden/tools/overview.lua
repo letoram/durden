@@ -7,6 +7,8 @@
 -- underlying configuration changes while we're active.
 --
 local last_overview;
+local mh_cache = {};
+
 local preview_listener =
 function(ws, key, action, target)
 end
@@ -50,6 +52,13 @@ local function build_preview_set(newt)
 	end
 
 	return res;
+end
+
+local function drop_mhs()
+	for i=#mh_cache,1,-1 do
+		mouse_droplistener(mh_cache[i]);
+		table.remove(mh_cache, i);
+	end
 end
 
 local function toggle_ws(cb)
@@ -99,6 +108,7 @@ local function toggle_ws(cb)
 					wm.spaces[i]:add_listener("overview");
 				end
 			end
+			drop_mhs();
 
 			blend_image(bg, gconfig_get("lbar_dim"), 0, INTERP_EXPOUT);
 			expire_image(bg, gconfig_get("lbar_dim"));
@@ -133,6 +143,24 @@ local function build_setlist(wm, anchor, set, base_w, h, spacing)
 		show_image(nsrf);
 		last = nsrf;
 		move_image(nsrf, (spacing + base_w) * (i-1), 0);
+		local mh = {
+			over = function()
+				shader_setup(nsrf, "ui", "regmark");
+			end,
+			out = function()
+				image_shader(nsrf, "DEFAULT");
+			end,
+			own = function(ctx, vid)
+				return vid == nsrf;
+			end,
+			click = function()
+				tiler_lbar_setactive();
+				wm:switch_ws(i);
+			end,
+			name = "overview_mh"
+		};
+		table.insert(mh_cache, mh);
+		mouse_addlistener(mh, {"over", "out", "click"});
 
 -- and generate some kind of descriptive reference
 		local str = string.format("%s %d<%s>%s",
@@ -229,6 +257,7 @@ local function tile(wm, bg, set)
 	last_overview = {
 		destroy = function(ctx, time)
 			expire_image(anchor, time and time or 1);
+			drop_mhs();
 			wm:set_input_lock();
 		end
 	};

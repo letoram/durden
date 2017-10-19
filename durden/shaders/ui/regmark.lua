@@ -30,7 +30,7 @@ void main()
 	float bstep_x = border / obj_output_sz.x;
 	float bstep_y = border / obj_output_sz.y;
 
-	bvec2 marg1 = greaterThan(texco, vec2(1.0 - bstep_x, 0.95 - bstep_y));
+	bvec2 marg1 = greaterThan(texco, vec2(1.0 - bstep_x, 0.99 - bstep_y));
 	bvec2 marg2 = lessThan(texco, vec2(bstep_x, bstep_y));
 	float f = float( !(any(marg1) || any(marg2)) );
 
