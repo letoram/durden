@@ -374,6 +374,7 @@ return {
 		kind = "value",
 		validator = gen_valid_num(0.0, 1.0),
 		handler = function(ctx, val)
+			active_display().selected.canvas_opa = tonumber(val);
 			blend_image(active_display().selected.canvas, tonumber(val));
 		end
 	},
