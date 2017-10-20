@@ -25,7 +25,7 @@ local function restore_wnd(wnd)
 	wnd.autocrop = wnd.old.autocrop;
 	wnd.hide_titlebar = wnd.old.hidetbar;
 	wnd.displayhint_block_wh = false;
-	show_image(wnd.anchor);
+	blend_image(wnd.canvas, wnd.canvas_opa and wnd.canvas_opa or 1.0);
 	wnd:set_title();
 end
 
@@ -49,8 +49,21 @@ local function center_imgcfg(wnd)
 end
 
 -- "side" means stretch, optional blend and a normal shader
-local function side_imgcfg(wnd)
-	blend_image(wnd.anchor, gconfig_get("autolay_sideopa"));
+local function side_imgcfg(wnd, btime)
+	local vid = wnd.canvas;
+-- should the blend be animated, we add it as a timer so any unknown
+-- reset-image-transforms don't get in the way
+	if (btime) then
+		timer_add_periodic("layblend", 1, true,
+			function()
+				if (valid_vid(vid)) then
+					blend_image(vid, gconfig_get("autolay_sideopa"), btime);
+				end
+			end, true);
+	else
+		blend_image(wnd.canvas, gconfig_get("autolay_sideopa"));
+	end
+
 	if (wnd.space and not wnd.space.layouter.scaled) then
 		return;
 	end
@@ -253,6 +266,8 @@ local function center_added(space, wnd)
 
 -- make sure sizes are fair
 	side_imgcfg(wnd);
+
+	hijack = true;
 	wnd:add_handler("register", reg_h);
 	wnd:add_handler("select", sel_h);
 	center_focus(space);
@@ -371,7 +386,7 @@ swap_focus = function(sel)
 		dw.x = sw.x; dw.y = sw.y;
 		dw.max_w = rw; dw.max_h = rh;
 		sw.x = cx; sw.y = cy;
-		side_imgcfg(dw);
+		side_imgcfg(dw, gconfig_get("wnd_animation"));
 
 -- mask the event propagation if we're running in scaled- mode
 		dw:resize(rw, rh, false, true);
@@ -391,7 +406,7 @@ swap_focus = function(sel)
 		newc:resize(cw, ch);
 		dw.x = newc.x; dw.y = newc.y;
 		newc.x = cx; newc.y = cy;
-		side_imgcfg(dw);
+		side_imgcfg(dw, gconfig_get("wnd_animation"));
 		dw:resize(dw.max_w, dw.max_h, false, true);
 	end
 
