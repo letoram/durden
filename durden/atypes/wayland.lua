@@ -4,7 +4,27 @@
 local wlwnds = {};
 
 local function wayland_trace(msg)
-	print("WAYLAND", msg);
+	if (DEBUGLEVEL > 0) then
+		print("WAYLAND", msg);
+	end
+end
+
+local function subsurf_handler(cl, source, status)
+	if (status.kind == "resized") then
+		resize_image(source, status.width, status.height);
+	elseif (status.kind == "viewport") then
+-- can't reparent to invalid surface
+		if (not wlwnds[status.parent]) then
+			wayland_trace("broken viewport request from subsurface");
+			delete_image(source);
+		end
+		link_image(source, wlwnds[status.parent].anchor);
+		image_inherit_order(source, true);
+		move_image(source, status.rel_x, status.rel_y);
+		show_image(source);
+	elseif (status.kind == "terminated") then
+		delete_image(source);
+	end
 end
 
 local function popup_handler(cl, source, status)
@@ -117,6 +137,9 @@ local function toplevel_handler(wnd, source, status)
 			end
 		end
 
+	elseif (status.kind == "segment_request") then
+		active_display():message("SEGMENT REQUEST" .. status.segkind);
+
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
@@ -221,6 +244,7 @@ return {
 -- for wl_shell or wl_xdg, the translation is bridge->non-visible connection,
 -- application -> toplevel
 -- toplevel -> popup
+--
 		allowed_segments = {},
 	},
 	dispatch = {
@@ -268,9 +292,21 @@ return {
 -- the resized- handler for the callback
 					link_image(vid, wnd.anchor);
 				end
+-- popups and subsurfaces
 			elseif (stat.segkind == "popup") then
--- accept but don't do anything just yet
 				local vid = accept_target(function(a,b) popup_handler(wnd, a, b); end);
+				if (valid_vid(vid)) then
+					link_image(vid, wnd.anchor);
+				end
+				wayland_trace("popup ok");
+			elseif (stat.segkind == "multimedia") then
+				local vid = accept_target(function(...) subsurf_handler(wnd, ...); end);
+				if (valid_vid(vid)) then
+					link_image(vid, wnd.anchor);
+				end
+				wayland_trace("subsurface ok");
+			elseif (stat.segkind == "CLIPBOARD") then
+				wayland_trace("data device not supported");
 			else
 				wayland_trace("unknown: " .. stat.segkind);
 			end

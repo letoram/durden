@@ -133,7 +133,7 @@ local durden_bars = {
 	},
 	{
 		name = "sbar_hud",
-		label = "Stautsbar HUD mode",
+		label = "Statusbar HUD mode",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
 		initial = function()
