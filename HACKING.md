@@ -465,6 +465,11 @@ Menu Subsystem
 Display Management
 ------
 
+Each virtual display has an output rendertarget, an output display and a tiler.
+The tiler is an instance of the window manager, which can be different for
+different displays. Each tiler has a number of windows that are either pending
+attachment or attached to a workspace.
+
 **INCOMPLETE**
 (pending: see display.lua)
 
@@ -472,6 +477,83 @@ Window Layout / Management
 ------
 
 **INCOMPLETE**
+
+The abstract 'Window' is the most complicated structure around and wasn't
+designed as much as it evolved. A window is a container for clients, both
+internal and external.
+
+Properties marked with an (m) prefix indicates that it is part of a set that is
+a dynamic property that may be unique to the client.
+
+Static Properties:
+name - unique identifier, typically wnd\_(incremenetalcounter)
+cfg\_prefix - prefix for window or type used when loading values from db
+
+Properties (probed, monitored and modified practically everywhere):
+ (m) gain (float) - current audio gain
+ (m) mouse -
+ (m) last\_ms -
+ (m) rate\_unlimited - don't limit mouse sample propagation
+ (m) mouse\_lock\_center -
+ (m) suspended - input / updates blocked
+ (m) sz\_delta - delta- limiter for resize event forwarding
+ (m) kbd\_period - how often held keys should be sent as repeated
+ (m) kbd\_delay - how long time before repeats should be considered
+ (m) allowed\_segments - type specific set of allowed subsegment types
+ (m) save\_gain - per-window audio level
+ (m) hint\_w, hint\_h (debug only) track last hint sent
+ (m) color\_controls - if the client has access to custom color ramps or not
+ (m) source\_audio - reference to aid of external process
+ (ms) external - vid ref to external process
+ (ms) titlebar\_id custom external titlebar store
+ (m) bindings - set of symbol-key bindings for the specific type
+ (m) labels - set of known labelhints
+ (m) dispatch - symbol to action binding for this window
+ (m) coreopt - client- unique key-val settings
+ (m) atype - known/registered type
+ mouse\_lock (fun) - mouse event interceptor
+ attach\_time - timestamp for when the window turned 'alive'
+ in\_drag\_rz - window currently being interactively resized
+ delete\_protect - blocks the destroy command
+ input\_focus - (vid) popup
+ temp\_suspend -
+ clipboard\_block - never permit clipboard operations for this window
+ mouse\_remap\_range - relative (0..1) region slice for mouse coordinates
+ used with
+
+Visual Properties (covers decorations and so on):
+ (m) scalemode - what heuristic should be used to determine the size to send
+ to the client and how the actual window size should be calculated.
+ (m) title\_text - text to display in titlebar
+ (m) cursor (string) - text name of current window cursor state
+ (m) custom\_cursor (vid) - vid to client provided cursor image
+ (m) font\_block (bool, func) - specialized font handler for window
+ (m) last\_font (tbl{xx}) - (set of fonts last sent to client)
+ (m) origo\_ll - indicate if the texture coordinates need to invert the t axis
+ fullscreen - indicate if the window is in a fullscreen mode
+ float\_dim - (tbl(num,num)) display size relative dimensions if in float mode
+ (m) autocrop - (bool) calculate cropping texture coordinates
+ on resize that is desynched to client
+ (m) filtermode - (int) if any of the builtin texture filters should be applied
+  pad (\_left, \_right, \_top, \_bottom - reserved space (pixels) used for
+ decorations e.g. window physical size is canvas + pad-area.
+ border\_w - symmetric (pixels) part of pad area consumed by border
+ dispmask - tracks states for minimized, hidden, maximized, focused etc.
+ that are used to indicate display state to a client
+ effective\_w, effective\_h, max\_w, max\_h, x, y - position, size, limits
+ weight, vweight - used as bias in tile layout
+ hide\_titlebar (bool) - if the titlebar should be shown or not
+ centered (bool) - (tiling mode) set if the window should be centered in
+ its alotted cell area.
+ displayhint\_block\_wh - if the effective w/h should be forwarded or swapped with
+ other, used by autolayouter
+ block\_rz\_hint - (debugging) stop resize hints from being forwarded
+ canvas - shared vid that references whatever storage that should be drawn currently
+
+Special Properties:
+ (m) atype\_props - atype specific subtable
+ wayland: (m) geom (x, y, w, h)
+
 (pending: see tiler.lua)
 
 Visuals

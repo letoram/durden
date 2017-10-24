@@ -127,15 +127,6 @@ local function wnd_destroy(wnd)
 		return;
 	end
 
--- need a local copy since the destroy will modify the table
-	local list = {};
-	for i,v in ipairs(wnd.dependents) do
-		list[i] = v;
-	end
-	for i,v in ipairs(list) do
-		v:destroy();
-	end
-
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
 		wm.deactivated.wnd = nil;
 	end
@@ -198,9 +189,6 @@ local function wnd_destroy(wnd)
 
 -- now we can run destroy hooks
 	run_event(wnd, "destroy");
-	for i,v in ipairs(wnd.relatives) do
-		run_event(v, "lost_relative", wnd);
-	end
 
 	wnd:drop_popup(true);
 
@@ -476,8 +464,10 @@ local function canvas_mouse_activate(wnd)
 			wnd.custom_cursor = nil;
 		end
 
-	elseif (wnd.cursor_label) then
-		mouse_switch_cursor(wnd.cursor_label);
+	elseif (type(wnd.cursor) == "string") then
+		if (wnd.cursor ~= "hidden") then
+			mouse_switch_cursor(wnd.cursor_label);
+		end
 	end
 
 	if (hidden or wnd.cursor == "hidden") then
@@ -2882,7 +2872,7 @@ local function wnd_ws_attach(res, from_hook)
 	else
 	end
 
--- same goes for hierarchical position and relatives
+-- same goes for hierarchical position
 	local insert = space.layouter and space.layouter.added(space,res);
 	if (not insert) then
 		if (not wm.selected or wm.selected.space ~= space) then
@@ -2940,21 +2930,6 @@ local function wnd_inputtable(wnd, iotbl, multicast)
 	end
 end
 
---
--- very special kind of window, it should occupy the same size,
--- position as the dst but be tied together lifespan, block a number
--- of menu operations (reassign, etc.)
---
-local function wnd_forcedep(src, dst)
-	src.parent = dst;
-	src.space = dst.space;
-	src.dependent = true;
-	dst:add_handler("resize", function() end);
-	dst:add_handler("move", function() end);
-
--- all that uses selected.children and selected.parent matter
-end
-
 -- build an orphaned window that isn't connected to a real workspace yet,
 -- but with all the expected members setup-up and in place. This means that
 -- some operations will be no-ops and the window will not appear in normal
@@ -2978,13 +2953,12 @@ local wnd_setup = function(wm, source, opts)
 		labels = {},
 		dispatch = {},
 
--- dependent subwindows, these are by default hidden and share the same
--- confines / attachments as the main window (and thus receives the same hints)
--- but can be swapped / cycled
-		dependents = {},
+-- Sets of type/window/user config specific properties that can be switched
+-- out dynamically. This is to allow multiple external connections to share
+-- the same logical window.
+		alt_sources = {},
 
 -- register:able event handlers to relate one window to another
-		relatives = {},
 		handlers = {
 			destroy = {},
 			register = {},
@@ -3003,7 +2977,6 @@ local wnd_setup = function(wm, source, opts)
 		pad_right = bw,
 		pad_top = bw,
 		pad_bottom = bw,
-		pad_custom = {0, 0, 0, 0},
 
 -- note on multi-PPCM:
 -- scale factor is manipulated by the display manager in order to take pixel
@@ -3049,10 +3022,8 @@ local wnd_setup = function(wm, source, opts)
 		drop_handler = wnd_drophandler,
 		set_dispmask = wnd_dispmask,
 		set_suspend = wnd_setsuspend,
-		add_dependent = wnd_dependent,
 		rebuild_border = wnd_rebuild,
 		toggle_maximize = wnd_toggle_maximize,
-		make_dependent = wnd_forcedep,
 		to_front = wnd_tofront,
 		update_font = wnd_font,
 		resize = wnd_resize,
@@ -3147,8 +3118,6 @@ local function wnd_create(wm, source, opts)
 	if (res) then
 		res:ws_attach();
 	end
--- only valid for a hidden window
-	res.make_dependent = nil;
 	return res;
 end
 

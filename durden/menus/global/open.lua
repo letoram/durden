@@ -1,7 +1,7 @@
-
 -- slightly more involved since we want to create a hidden window (so
 -- still indexable etc.) without causing any relayouting and have it
--- attached to the right tiler
+-- attached to the right tiler. Can't switch to it yet since the window
+-- is not yet fully qualified.
 local function group_attach(wnd, source)
 	local ddisp = nil;
 	local adisp = nil;
@@ -33,13 +33,17 @@ local function group_attach(wnd, source)
 
 -- need to subscribe to events in the parent when it comes to resize, ...
 -- and remove those should we disappear
-	newwnd:make_dependent(wnd);
+	if (not newwnd:make_dependent(wnd)) then
+		newwnd:destoy();
+	end
+
+	newwnd.proxy_window = wnd;
 end
 
 function terminal_build_argenv(group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");
-	local cp = gconfig_get("extcon_path");
+	local cp = group and group or gconfig_get("extcon_path");
 	local palette = gconfig_get("term_palette");
 
 	local lstr = string.format(
@@ -58,8 +62,8 @@ function terminal_build_argenv(group)
 	return lstr;
 end
 
-function spawn_terminal(cmd)
-	local lstr = terminal_build_argenv();
+function spawn_terminal(cmd, group)
+	local lstr = terminal_build_argenv(group);
 	if (cmd) then
 		lstr = lstr .. ":" .. cmd;
 	end
@@ -81,21 +85,31 @@ function spawn_terminal(cmd)
 				wnd.dispmask, wnd.wm.disptbl);
 			durden_devicehint(source);
 
+-- spawn a new listening endpoint if the terminal act as a connection group
+-- but with different controls for connection point respawn (to maintain
+-- respect for rate-limiting etc.)
+			if (group) then
+				local cpoint = target_alloc(group,
+					function(s, st) durden_new_connection(s, st, true); end);
+				link_image(cpoint, wnd.anchor);
+
+-- but "new_function" still routes archetype via extevh.lua so we
+-- need some kind of indirection in order to respawn the connection
+				extevh_intercept(group,
+					function(source, status)
+						group_attach(wnd, source);
+					end, true
+				);
+				wnd:add_handler("destroy", function()
+					print("deregister on destroy");
+					extevh_intercept(group, nil, true);
+				end, true);
+			end
+
 		elseif (status.kind == "terminated") then
 			delete_image(source);
 		end
 	end);
-
--- second part of setting up a group, we need to register the path
--- (and deregister on destroy) so we can intercept the window creation
---		if (group) then
---			extevh_intercept(group, function(source)
---				group_attach(wnd, source);
---			end, true);
---			wnd:add_handler("destroy", function()
---				extevh_intercept(group, nil, true);
---			end, true);
---		end
 end
 
 local function run_uri(val, feedmode)
@@ -412,15 +426,14 @@ end
 	hint = "(append arguments)",
 	default = "",
 	eval = function()
-		return false;
---		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
+		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 	end,
 	handler = function(ctx, val)
 		local str = "durden_term_";
 		for i=1,8 do
-			str = str .. string.char(string.byte("a") + math.random(1,26));
+			str = str .. string.char(string.byte("a") + math.random(1,10));
 		end
-		spawn_terminal(val, false, str);
+		spawn_terminal(val, str);
 	end
 }
 };

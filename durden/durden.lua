@@ -480,7 +480,7 @@ if (not target_devicehint) then
 end
 
 local extcon_wndcnt = 0;
-function durden_new_connection(source, status)
+function durden_new_connection(source, status, norespawn)
 	if (not status or status.kind ~= "connected") then
 -- misplaced event, should really happen
 		return;
