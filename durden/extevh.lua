@@ -78,8 +78,8 @@ local function default_reqh(wnd, source, ev)
 		end
 		return;
 	elseif (ev.segkind == "cursor") then
-		if (valid_vid(wnd.cursor_id)) then
-			delete_image(wnd.cursor_id);
+		if (wnd.custom_cursor and valid_vid(wnd.custom_cursor.vid)) then
+			delete_image(wnd.custom_cursor.vid);
 		end
 		local sz = mouse_state().size;
 		local cursor = accept_target(sz[1], sz[2]);
@@ -151,7 +151,6 @@ end
 -- on window deselect.
 defhtbl["ramp_update"] =
 function(wnd, source, stat)
-	print("ramp update!");
 	local ramps = video_displaygamma(source, stat.index);
 end
 
@@ -164,7 +163,6 @@ function(wnd, source, stat)
 	if (stat.cm) then
 		for disp in all_displays_iter() do
 			if (disp.ramps) then
-				print("send ramps");
 				video_displaygamma(source, disp.active_ramps, disp.id);
 			end
 		end
@@ -181,7 +179,6 @@ function(wnd, source, stat)
 		gconfig_get("global_gain") * wnd.gain);
 	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
-	wnd.ext_resize = true;
 	wnd.space:resize(true);
 end
 
