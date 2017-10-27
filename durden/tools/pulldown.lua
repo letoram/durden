@@ -366,7 +366,7 @@ global_menu_register("tools",
 global_menu_register("settings/tools",
 {
 	name = "dterm",
-	label = "Drop-down Terminal",
+	label = "Dropdown Terminal",
 	kind = "action",
 	submenu = true,
 	handler = dterm_cfg

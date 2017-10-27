@@ -73,9 +73,37 @@ local function set_uniform(dstid, name, typestr, vals, source)
 	return true;
 end
 
+local function load_from_file(relp, lim)
+	local res = {};
+	if (open_rawresource(relp)) then
+		local line = read_rawresource();
+		while (line ~= nil and lim -1 ~= 0) do
+			table.insert(res, line);
+			line = read_rawresource();
+			lim = lim - 1;
+		end
+		close_rawresource();
+	else
+		warning(string.format("shader, load from file: %s failed, EEXIST", relp));
+	end
+
+	return table.concat(res, "\n");
+end
+
 local function setup_shader(shader, name, group)
 	if (shader.shid) then
 		return true;
+	end
+
+-- ugly non-blocking read (note, this does not cover variants)
+	if (not shader.vert and shader.vert_source) then
+		shader.vert = load_from_file(string.format(
+			"shaders/%s/%s", group, shader.vert_source), 1000);
+	end
+
+	if (not shader.frag  and shader.frag_source) then
+		shader.frag = load_from_file(string.format(
+			"shaders/%s/%s", group, shader.frag_source), 1000);
 	end
 
 	local dvf = (shader.vert and
@@ -99,6 +127,33 @@ local function setup_shader(shader, name, group)
 	return true;
 end
 
+local function preload_effect_shader(shdr, group, name)
+	for _,v in ipairs(shdr.passes) do
+		if (not v.shid) then
+			setup_shader(v, name, group);
+		end
+		if (not shdr.scale) then
+			shdr.scale = {1, 1};
+		end
+		if (not shdr.filter) then
+			shdr.filter = "bilinear";
+		end
+		if (not shdr.maps) then
+			shdr.maps = {};
+		else
+			for i,v in ipairs(shdr.maps) do
+				if (type(v) == "string") then
+					shdr.maps[i] = load_image_asynch(
+						string.format("shaders/lut/%s", v),
+-- defer shader application if the LUT can't be loaded?
+						function() end
+					);
+				end
+			end
+		end
+	end
+end
+
 -- for display, state is actually the display name
 local function dsetup(shader, dst, group, name, state)
 	if (not setup_shader(shader, dst, name)) then
@@ -113,6 +168,16 @@ local function dsetup(shader, dst, group, name, state)
 		shader.states[state] = shader_ugroup(shader.shid);
 	end
 	image_shader(dst, shader.states[state]);
+end
+
+local function filter_strnum(fltstr)
+	if (fltstr == "bilinear") then
+		return FILTER_BILINEAR;
+	elseif (fltstr == "linear") then
+		return FILTER_LINEAR;
+	else
+		return FILTER_NONE;
+	end
 end
 
 local function ssetup(shader, dst, group, name, state)
@@ -135,6 +200,78 @@ local function ssetup(shader, dst, group, name, state)
 	local shid = ((state and shader.states and shader.states[state]) and
 		shader.states[state].shid) or shader.shid;
 	image_shader(dst, shid);
+end
+
+local function esetup(shader, dst, group, name)
+	if (not shader.passes or #shader.passes == 0) then
+		return;
+	end
+
+-- Track the order in which the rendertargets are created. This is needed as
+-- each rendertarget is setup with manual update controls as a means of synching
+-- with the frame delivery rate of the source.
+	local rtgt_list = {};
+
+-- the process of taking a pass description, creating an intermediate FBO
+-- applying the pass shader and returning the outcome. Subtle edge conditions
+-- to look out for here.
+	local build_pass = function(invid, pass)
+		local props = image_storage_properties(invid);
+		local fmt = ALLOC_QUALITY_NORMAL;
+		if (pass.float) then
+			fmt = ALLOC_QUALITY_FLOAT16;
+		elseif (pass.float32) then
+			fmt = ALLOC_QUALITY_FLOAT32;
+		end
+		local outw = props.width * pass.scale[1];
+		local outh = props.height * pass.scale[2];
+		local outvid = alloc_surface(outw, outh, true, fmt);
+		if (not valid_vid(outvid)) then
+			return invid;
+		end
+-- FIXME: missing renderset->LUTs (which requires a null surface, detach +
+-- hide on the invid + renderset and sharestorage on the null surface)
+
+-- sanity checks and resource loading/preloading
+		define_rendertarget(outvid, {invid});
+		image_shader(invid, pass.shid);
+		resize_image(invid, outw, outh);
+		table.insert(rtgt_list, outvid);
+		move_image(invid, 0, 0);
+		show_image(invid);
+		show_image(outvid);
+		return outvid;
+	end
+
+-- this is currently quite wasteful, there is both a blit-in allocation/copy
+-- and a blit-out one. The reason is to keep down the number of edge conditions
+-- related to how the rest of the system uses wnd.canvas (the common dst for
+-- effects).
+	local props = image_storage_properties(dst);
+	local invid = null_surface(props.width, props.height);
+	image_sharestorage(dst, invid);
+
+	preload_effect_shader(shader, group, name);
+	for i=1,#shader.passes do
+		invid = build_pass(invid, shader.passes[i]);
+	end
+
+	local outprops = image_storage_properties(invid);
+	local outvid = alloc_surface(outprops.width, outprops.height);
+	define_rendertarget(outvid, {invid});
+	table.insert(rtgtlist, outvid);
+
+	show_image(outvid);
+	if (shader.filter) then
+		image_texfilter(outvid, filter_strnum(shader.filter));
+	end
+
+-- return a function that is used both to rebuild with new sizes as the source
+-- gets resized (which, in turn, modifies scaling etc.) and to deallocate the
+-- shader in the chain
+	return function()
+		print("updated, we need to rebuild!");
+	end;
 end
 
 -- note: boolean and 4x4 matrices are currently ignored
@@ -200,7 +337,8 @@ local function smenu(shdr, grp, name)
 	if (shdr.states) then
 		for k,v in pairs(shdr.states) do
 -- build even if it hasn't been used yet, otherwise this might cause menu
--- entries not being available at start
+-- entries not being available at start - and add stateref needs a shid to
+-- reference the uniform to
 			if (not v.shid and not v.broken) then
 				local nsrf = null_surface(1, 1);
 				ssetup(shdr, nsrf, grp, name);
@@ -225,6 +363,38 @@ local function smenu(shdr, grp, name)
 		add_stateref(res, shdr.uniforms, shdr.shid);
 	end
 
+	return res;
+end
+
+local function emenu(shdr, grp, name, state)
+	if (not shdr.passes or #shdr.passes == 0) then
+		return {};
+	end
+
+	local get_pass_menu = function(pass)
+		local res = {};
+		if (not pass.shid) then
+			setup_shader(pass, name, grp);
+		end
+		add_stateref(res, pass.uniforms, pass.shid);
+		return res;
+	end
+
+	if (#shdr.passes == 1) then
+		return get_pass_menu(shdr.passes[1]);
+	end
+
+	local res = {};
+	for i,pass in ipairs(shdr.passes) do
+		table.insert(res, {
+			submenu = true,
+			kind = "action",
+			name = "pass_" .. tostring(i),
+-- dynamic call this as it might trigger shader compilation which scales poorly
+			handler = function() return get_pass_menu(pass); end,
+			label = tostring(i)
+		});
+	end
 	return res;
 end
 
@@ -258,15 +428,17 @@ end
 -- argument one [ setup ], argument two, [ configuration menu ]
 local fmtgroups = {
 	ui = {ssetup, smenu},
-	effect = {
-		function() warning("effect incomplete"); end,
-		function() return {}; end,
-	},
+	effect = {esetup, emenu},
 	display = {dsetup, dmenu},
 	audio = {ssetup, smenu},
 	simple = {ssetup, smenu}
 };
 
+-- Prepare a shader with the rules applies from [group, name] in the optional
+-- state [state]. If the group is [effect] it will return the output of the
+-- chain using [dst] as initial input - if this is different from [dst] it is
+-- to be treated as a dynamically allocated/resolution sensitive effect chain
+-- with the last stage of the chain applied as effect.
 function shader_setup(dst, group, name, state)
 	if (not fmtgroups[group]) then
 		group = group and group or "no group";
@@ -351,7 +523,7 @@ function shader_getkey(name, domain)
 	for i,j in ipairs(domain) do
 		if (shdrtbl[j]) then
 			for k,v in pairs(shdrtbl[j]) do
-				if (v.label == name) then
+				if (v.label == name or k == name) then
 					return k, j;
 				end
 			end
