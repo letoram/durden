@@ -1,7 +1,7 @@
-local function build_list()
+local function build_list(group)
 	local res = {};
-	for i,v in ipairs(shader_list({"ui"})) do
-		local key, dom = shader_getkey(v, {"ui"});
+	for i,v in ipairs(shader_list({group})) do
+		local key, dom = shader_getkey(v, {group});
 		local rv = shader_uform_menu(key, dom);
 		if (rv and #rv > 0) then
 			table.insert(res, {
@@ -44,9 +44,19 @@ return function()
 		label = "UI",
 		kind = "action",
 		submenu = true,
-		eval = function() return #build_list() > 0; end,
+		eval = function() return #build_list("ui") > 0; end,
 		handler = function()
-			return build_list();
+			return build_list("ui");
+		end
+		},
+		{
+		name = "effect",
+		label = "Effect",
+		kind = "action",
+		submenu = true,
+		eval = function() return #build_list("effect") > 0; end,
+		handler = function()
+			return build_list("effect");
 		end
 		},
 		{

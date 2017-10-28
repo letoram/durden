@@ -6,6 +6,9 @@
     client, which may prompt a client to jump to a different
     connection point.
 
+  * shader subsystem - added a multi-pass effect format along with
+    a handful of initial effects shaders.
+
   * tools/advfloat - extended float layout mode capabilities:
     spawn control (draw2spawn)
 
