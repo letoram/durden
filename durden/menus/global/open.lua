@@ -27,17 +27,10 @@ local function group_attach(wnd, source)
 -- now we can fake default attachment to..
 	rendertarget_attach(ddisp.rt, source, RENDERTARGET_DETACH);
 	set_context_attachment(ddisp.rt);
-	local newwnd = wnd.wm:add_hidden_window(source);
-	table.insert(wnd.dependents, newwnd);
-	set_context_attachment(adisp.rt);
+	local newwnd = wnd.wm:add_hidden_window(source, {
+		alternate = wnd
+	});
 
--- need to subscribe to events in the parent when it comes to resize, ...
--- and remove those should we disappear
-	if (not newwnd:make_dependent(wnd)) then
-		newwnd:destoy();
-	end
-
-	newwnd.proxy_window = wnd;
 end
 
 function terminal_build_argenv(group)
@@ -81,8 +74,8 @@ function spawn_terminal(cmd, group)
 				kind = "registered", segkind = "terminal", title = "", guid = 1});
 			local wnd_w = wnd.max_w - wnd.pad_left - wnd.pad_right;
 			local wnd_h = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
-			target_displayhint(source, wnd_w, wnd_h,
-				wnd.dispmask, wnd.wm.disptbl);
+			target_displayhint(source,
+				wnd_w, wnd_h, wnd.dispmask, wnd.wm.disptbl);
 			durden_devicehint(source);
 
 -- spawn a new listening endpoint if the terminal act as a connection group
@@ -93,16 +86,15 @@ function spawn_terminal(cmd, group)
 					function(s, st) durden_new_connection(s, st, true); end);
 				link_image(cpoint, wnd.anchor);
 
--- but "new_function" still routes archetype via extevh.lua so we
--- need some kind of indirection in order to respawn the connection
-				extevh_intercept(group,
-					function(source, status)
-						group_attach(wnd, source);
-					end, true
+-- register a pre-window creation hook tied to the group- connection path and
+-- use this to associate the new window with the parent window
+				extevh_set_intercept(group,
+					function(path)
+						return {alternate = wnd};
+					end
 				);
 				wnd:add_handler("destroy", function()
-					print("deregister on destroy");
-					extevh_intercept(group, nil, true);
+					extevh_set_intercept(group, nil);
 				end, true);
 			end
 

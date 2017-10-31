@@ -37,14 +37,13 @@ load_archetypes();
 
 -- check / manage external window creation interception
 local extevh_track = {};
-function extevh_intercept(path, data, set)
-	if (set) then
-		extevh_track[path] = data;
-	else
-		if (extevh_track[path]) then
-			extevh_track[path](data);
-			return true;
-		end
+function extevh_set_intercept(path, handler)
+	extevh_track[path] = handler;
+end
+
+function extevh_run_intercept(path)
+	if (extevh_track[path]) then
+		return extevh_track[path](path);
 	end
 end
 

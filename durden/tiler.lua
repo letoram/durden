@@ -131,6 +131,16 @@ local function wnd_destroy(wnd)
 		wm.deactivated.wnd = nil;
 	end
 
+-- edge case: swap alternate and we shouldn't drop from parent
+	local ign_delink = false;
+
+-- activate the next in line and give it our alternate set
+	if (wnd.alternate and #wnd.alternate > 0) then
+		local newwnd = wnd:swap_alternate();
+		table.remove_match(newwnd.alternate, wnd);
+		ign_delink = true;
+	end
+
 	if (wm.selected == wnd) then
 		wnd:deselect();
 	end
@@ -185,7 +195,9 @@ local function wnd_destroy(wnd)
 	end
 
 -- re-assign all children to parent
-	moveup_children(wnd);
+	if (not ign_delink) then
+		moveup_children(wnd);
+	end
 
 -- now we can run destroy hooks
 	run_event(wnd, "destroy");
@@ -431,8 +443,11 @@ end
 local function wm_order(wm)
 	return wm.order_anchor;
 end
+
 -- recursively resolve the relation hierarchy and return a list
--- of vids that are linked to a specific vid
+-- of vids that are linked to a specific vid, this is similar to linearize()
+-- but uses the image hierarchy rather than the logical one, so that popups,
+-- etc. also come with.
 local function get_hier(vid)
 	local ht = {};
 
@@ -2832,9 +2847,111 @@ local function wnd_swap(w1, w2, deep, force)
 	end
 end
 
+local function dump_tree(res)
+	local function do_level(src)
+		local str = "";
+		print(src.name, src.parent.name);
+		for i=1,#src.children do
+			str = str .. src.children[i].name .. "\t"
+		end
+		print(str);
+		for i=1,#src.children do
+			do_level(src.children[i]);
+		end
+	end
+	do_level(res);
+end
+
+local function synch_alternate(res, par)
+	for k,v in ipairs(par.children) do
+		v.parent = res;
+	end
+
+	for _, k in ipairs({
+		"space", "space_ind", "x", "y", "max_w", "max_h", "children",
+		"parent", "weight", "vweight", "wm", "alternate"
+	}) do
+		res[k] = par[k];
+	end
+	link_image(res.anchor, par.space.anchor);
+	move_image(res.anchor, res.x, res.y);
+end
+
+local function verify_level(level)
+	for i,v in ipairs(level.children) do
+		if (v == level or v == level.parent) then
+			error("loop");
+		end
+	end
+end
+
+local function wnd_setalternate(res, ind)
+	if (not ind) then
+		ind = 1;
+	end
+
+	if (not res.alternate[ind]) then
+		warning("set alternate called on broken index");
+		return res;
+	end
+
+	if (res.alternate_parent) then
+		warning("set alternate called on alternate window");
+		return res;
+	end
+
+-- swap the alternate sets, copy/synch attachment and visibility properties,
+-- hide the old window, show the new
+	local new = res.alternate[ind];
+	res.alternate[ind] = res;
+
+-- reference parent-swap -> down.
+	local ind = table.find_i(res.parent.children, res);
+	res.parent.children[ind] = new;
+
+-- copy all relevant properties
+	synch_alternate(new, res);
+
+-- zero-out the old
+	res.alternate = {};
+	res.children = {};
+	new.alternate_parent = nil;
+
+	for i,v in ipairs(new.alternate) do
+		v.alternate_parent = new;
+	end
+
+-- update visibility/selection
+	res:hide();
+	new:show();
+	if (res.wm.selected == res) then
+		new:select();
+	end
+
+-- and rearrange/relayout
+	new.space:resize();
+
+	return new;
+end
+
+local function attach_alternate(res, parent)
+	parent:swap_alternate(1);
+end
+
 -- attach a window to the active workspace, this is a one-time
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
+
+-- if this is an alternate for a pre-existing window, special rules apply
+-- i.e. link/attach but don't add to normal tree structure etc.
+	if (res.alternate_parent) then
+		res.ws_attach = nil;
+		if (res.alternate_parent and not res.alternate_parent.anchor) then
+			res.alternate_parent = nil;
+		else
+			return attach_alternate(res, res.alternate_parent);
+		end
+	end
 
 -- can be intercepted by a hook handler that regulates placement
 	if (wm.attach_hook and not from_hook) then
@@ -2949,14 +3066,12 @@ local wnd_setup = function(wm, source, opts)
 -- hierarchies used for tile layout
 		children = {},
 
+-- hidden swap-set
+		alternate = {},
+
 -- specific event / keysym bindings
 		labels = {},
 		dispatch = {},
-
--- Sets of type/window/user config specific properties that can be switched
--- out dynamically. This is to allow multiple external connections to share
--- the same logical window.
-		alt_sources = {},
 
 -- register:able event handlers to relate one window to another
 		handlers = {
@@ -3045,6 +3160,7 @@ local wnd_setup = function(wm, source, opts)
 		grow = wnd_grow,
 		add_popup = wnd_popup,
 		drop_popup = wnd_droppopup,
+		swap_alternate = wnd_setalternate,
 	};
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
@@ -3074,6 +3190,16 @@ local wnd_setup = function(wm, source, opts)
 	res.titlebar:add_button("center", nil, "titlebar_text",
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
 	res.titlebar:hide();
+
+-- set itself as part of another window's alternate slot, windows that
+-- share one hierarchical/visibility slot that can be swapped.
+	if (opts.alternate) then
+		local pwin = opts.alternate;
+		table.insert(pwin.alternate, res);
+		res.alternate_parent = pwin;
+		res.max_w = pwin.max_w;
+		res.max_h = pwin.max_h;
+	end
 
 -- order canvas so that it comes on top of the border for mouse events
 	order_image(res.canvas, 2);
@@ -3554,96 +3680,6 @@ local function tiler_estimator(want_calc,
 	rel_w, rel_h, postproc_shader, update_rate, sample_chain)
 end
 
-local function toggle_preview(wm, on, scalef, rate, metrics, shader)
--- no rendertarget support
-	if (not valid_vid(wm.rtgt_id)) then
-		return;
-	end
-
--- always reset
-	if (valid_vid(wm.preview)) then
-		for i=1,10 do
-			if (wm.spaces[i] and valid_vid(wm.spaces[i].preview)) then
-				delete_image(wm.spaces[i].preview);
-				wm.spaces[i].preview = nil;
-			end
-		end
-		wm.preview = nil;
-		wm.preview_borders = nil;
-	end
-
-	if (not on) then
-		return;
-	end
-
--- our backing store, we need to change the update rate on this whenever
--- there's some overlay that should be included, like the lbar
-	wm.preview = alloc_surface(wm.preview, wm.width * scalef,wm.height * scalef);
-	if (not valid_vid(wm.preview)) then
-		return;
-	end
-
-	local props = image_storage_properties(wm.preview);
-	local tmp = null_surface(props.width, props.height);
-	if (not valid_vid(tmp)) then
-		delete_image(wm.preview);
-		wm.preview = nil;
-		return;
-	end
-
-	show_image(tmp);
-	setup_shader(tmp, "basic", shader);
-	image_sharestorage(wm.rtgt_id, tmp);
-
--- if we want to track average luminosity and have sample copies of the
--- border, metrics is set to true. this is used to reduce eyestrain in
--- setting switch times, backlight magnification factor
-	if (metrics) then
-		define_calctarget(wm.preview, {tmp}, RENDERTARGET_DETACH,
-			RENDERTARGET_NOSCALE, rate,
-			function(img, w, h)
-				local ack_luma = 0;
-				for y=0,h-1 do
-					for x=0,w-1 do
-						local r,g,b = img:get(x, y, 3);
-						local lv = 0.299 * r + 0.587 * g + 0.114 * b;
-						ack_luma = ack_luma + lv;
-					end
-				end
-				local avg_luma = ack_luma / (w * h);
-				wm.preview_border = {{}, {}, {}, {}};
-				local dt = wm.preview_border[1];
-				local db = wm.preview_border[2];
-				for x=0,w-1 do
-					local r,g,b = img:get(x, 0, 3);
-					dt[x * 3 + 1] = r;
-					dt[x * 3 + 2] = g;
-					dt[x * 3 + 3] = b;
-					r,g,b = img:get(x, h-1, 3);
-					db[x * 3 + 1] = r;
-					db[x * 3 + 2] = g;
-					db[x * 3 + 3] = b;
-				end
-				dt = wm.preview_border[3];
-				db = wm.preview_border[4];
-				for y=0,h-1 do
-					local r,g,b = img:get(0, y, 3);
-					dt[y * 3 + 1] = r;
-					dt[y * 3 + 2] = g;
-					dt[y * 3 + 3] = b;
-					r,g,b = img:get(w-1, y, 3);
-					db[y * 3 + 1] = r;
-					db[y * 3 + 2] = g;
-					db[y * 3 + 3] = b;
-				end
-			end
-		);
-	else
-		define_rendertarget(wm.preview,
-			{tmp}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, rate);
-	end
-end
-
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 
@@ -3695,7 +3731,6 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
-		toggle_preview = toggle_preview,
 
 -- unique event handlers
 		on_wnd_create = function() end,

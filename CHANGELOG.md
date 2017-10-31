@@ -14,6 +14,10 @@
 
   * tools/overview - added a HUD- like workspace switcher
 
+  * terminal-group spawn-mode added, allows a connection primitive
+    to be generated per terminal and clients which connect via this
+    group share the same logical window tree slot.
+
 Minor:
  * Destroying a window in fullscreen mode now returns the workspace
    to the last known mode instead of forcing to tile.

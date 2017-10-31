@@ -384,13 +384,13 @@ function durden_devicehint(vid)
 	end
 end
 
-function durden_launch(vid, prefix, title, wnd)
+function durden_launch(vid, prefix, title, wnd, wargs)
 	if (not valid_vid(vid)) then
 		warning("launch failed, invalid vid provided");
 		return;
 	end
 	if (not wnd) then
-		wnd = active_display():add_hidden_window(vid);
+		wnd = active_display():add_hidden_window(vid, wargs);
 		if (not wnd) then
 			warning("add_hidden_window on vid failed");
 		end
@@ -513,10 +513,10 @@ function durden_new_connection(source, status, norespawn)
 		delete_image(source);
 	else
 		extcon_wndcnt = extcon_wndcnt + 1;
-		if (extevh_intercept(status.key, source)) then
-			return;
-		end
-		local wnd = durden_launch(source, "", "external", nil, "external");
+-- allow 'per connpath' connection interception to modify wnd post creation
+-- but pre-attachment
+		local wargs = extevh_run_intercept(status.key);
+		local wnd = durden_launch(source, "", "external", nil, wargs);
 -- tell the new connection where to go in the event of a crash
 		durden_devicehint(source);
 		if (wnd) then
@@ -526,12 +526,12 @@ function durden_new_connection(source, status, norespawn)
 				end
 			);
 		end
+		wnd.external_connection = true;
+
 		target_displayhint(source,
 			wnd.max_w - wnd.pad_left - wnd.pad_right,
 			wnd.max_h - wnd.pad_top - wnd.pad_bottom,
 			wnd.dispmask, wnd.wm.disptbl);
-
-		wnd.external_connection = true;
 	end
 end
 

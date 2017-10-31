@@ -35,8 +35,10 @@ local function activate_pending(mx, my)
 		mx, my = mouse_xy();
 	end
 
-	pending:move(mx, my, false, true, true);
-	pending:show();
+	if (pending.move) then
+		pending:move(mx, my, false, true, true);
+		pending:show();
+	end
 	delete_image(pending_vid);
 	pending = nil;
 end
