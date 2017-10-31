@@ -208,6 +208,21 @@ local moverz_menu = {
 }
 };
 
+local function gen_altsw(wnd)
+	local res = {};
+	for i=1,#wnd.alternate do
+		table.insert(res, {
+			name = tostring(i),
+			label = tostring(i),
+			kind = "action",
+			handler = function()
+				wnd:swap_alternate(i);
+			end
+		});
+	end
+	return res;
+end
+
 local function gen_wsmove(wnd)
 	local res = {};
 	local adsp = active_display().spaces;
@@ -261,6 +276,18 @@ return {
 		handler = function()
 			return gen_wsmove(active_display().selected);
 		end
+	},
+	{
+		name = "alternate",
+		label = "Alternate-Switch",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return #active_display().selected.alternate > 0;
+		end,
+		handler = function()
+			return gen_altsw(active_display().selected);
+		end,
 	},
 	{
 		name = "canvas_to_bg",
