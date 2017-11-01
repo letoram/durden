@@ -172,10 +172,14 @@ defhtbl["resized"] =
 function(wnd, source, stat)
 	if (wnd.ws_attach) then
 		wnd:ws_attach();
+		assert(wnd.space);
 	end
 	wnd.source_audio = stat.source_audio;
-	audio_gain(stat.source_audio, (gconfig_get("global_mute") and 0 or 1) *
-		gconfig_get("global_gain") * wnd.gain);
+	audio_gain(stat.source_audio,
+		(gconfig_get("global_mute") and 0 or 1) *
+		gconfig_get("global_gain") * wnd.gain
+	);
+
 	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
 	wnd.space:resize(true);

@@ -210,6 +210,35 @@ local moverz_menu = {
 
 local function gen_altsw(wnd)
 	local res = {};
+	if (wnd.alternate_ind and wnd.alternate[wnd.alternate_ind]) then
+		table.insert(res, {
+			name = "last",
+			label = "Last",
+			kind = "action",
+			handler = function()
+				wnd:swap_alternate(wnd.alternate_ind);
+			end
+		});
+		table.insert(res, {
+			name = "step_p",
+			label = "Step+",
+			kind = "action",
+			handler = function()
+				wnd:swap_alternate((wnd.alternate_ind + 1) >
+					#wnd.alternate and 1 or (wnd.alternate_ind + 1));
+			end
+		});
+		table.insert(res, {
+			name = "step_n",
+			label = "Step-",
+			kind = "action",
+			handler = function()
+				wnd:swap_alternate(wnd.alternate_ind > 1 and
+					(wnd.alternate_ind - 1) or #wnd.alternate);
+			end
+		});
+	end
+
 	for i=1,#wnd.alternate do
 		table.insert(res, {
 			name = tostring(i),
