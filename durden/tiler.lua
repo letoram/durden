@@ -1897,6 +1897,9 @@ local function wnd_reassign(wnd, ind, ninv)
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
 	link_image(wnd.anchor, newspace.anchor);
+	for _,v in ipairs(wnd.alternate) do
+		link_image(v.anchor, newspace.anchor);
+	end
 
 -- restore vid structure etc. to the default state
 
@@ -2556,12 +2559,19 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		end
 	end
 
--- switch rendertarget
-	for i,v in ipairs(get_hier(wnd.anchor)) do
-		rendertarget_attach(tiler.rtgt_id, v, RENDERTARGET_DETACH);
+	local reattach_full = function(wnd, dst)
+		for i,v in ipairs(get_hier(wnd.anchor)) do
+			rendertarget_attach(dst, v, RENDERTARGET_DETACH);
+		end
+		rendertarget_attach(dst, wnd.anchor, RENDERTARGET_DETACH);
 	end
-	rendertarget_attach(tiler.rtgt_id, wnd.anchor, RENDERTARGET_DETACH);
 
+	reattach_full(wnd, tiler.rtgt_id);
+	for _,v in ipairs(wnd.alternate) do
+		reattach_full(v, tiler.rtgt_id);
+	end
+
+-- switch rendertarget
 -- change association with wm and relayout old one
 	if (not wnd.space) then
 		return;
@@ -2847,42 +2857,20 @@ local function wnd_swap(w1, w2, deep, force)
 	end
 end
 
-local function dump_tree(res)
-	local function do_level(src)
-		local str = "";
-		print(src.name, src.parent.name);
-		for i=1,#src.children do
-			str = str .. src.children[i].name .. "\t"
-		end
-		print(str);
-		for i=1,#src.children do
-			do_level(src.children[i]);
-		end
-	end
-	do_level(res);
-end
-
-local function synch_alternate(res, par)
+local function synch_alternate(new, par)
 	for k,v in ipairs(par.children) do
-		v.parent = res;
+		v.parent = new;
 	end
 
 	for _, k in ipairs({
 		"space", "space_ind", "x", "y", "max_w", "max_h", "children",
 		"parent", "weight", "vweight", "wm", "alternate"
 	}) do
-		res[k] = par[k];
+		new[k] = par[k];
 	end
-	link_image(res.anchor, par.space.anchor);
-	move_image(res.anchor, res.x, res.y);
-end
-
-local function verify_level(level)
-	for i,v in ipairs(level.children) do
-		if (v == level or v == level.parent) then
-			error("loop");
-		end
-	end
+	assert(new.space);
+	link_image(new.anchor, new.space.anchor);
+	move_image(new.anchor, new.x, new.y);
 end
 
 local function wnd_setalternate(res, ind)
@@ -2906,8 +2894,8 @@ local function wnd_setalternate(res, ind)
 	res.alternate[ind] = res;
 
 -- reference parent-swap -> down.
-	local ind = table.find_i(res.parent.children, res);
-	res.parent.children[ind] = new;
+	local lind = table.find_i(res.parent.children, res);
+	res.parent.children[lind] = new;
 
 -- copy all relevant properties
 	synch_alternate(new, res);
@@ -2916,6 +2904,7 @@ local function wnd_setalternate(res, ind)
 	res.alternate = {};
 	res.children = {};
 	new.alternate_parent = nil;
+	new.alternate_ind = ind;
 
 	for i,v in ipairs(new.alternate) do
 		v.alternate_parent = new;
@@ -2923,6 +2912,7 @@ local function wnd_setalternate(res, ind)
 
 -- update visibility/selection
 	res:hide();
+
 	new:show();
 	if (res.wm.selected == res) then
 		new:select();
@@ -2935,7 +2925,12 @@ local function wnd_setalternate(res, ind)
 end
 
 local function attach_alternate(res, parent)
-	parent:swap_alternate(1);
+-- find the slot where the alternate that is attached is hiding
+	for i=1,#parent.alternate do
+		if (parent.alternate[i] == res) then
+			return parent:swap_alternate(i);
+		end
+	end
 end
 
 -- attach a window to the active workspace, this is a one-time
@@ -2946,6 +2941,9 @@ local function wnd_ws_attach(res, from_hook)
 -- i.e. link/attach but don't add to normal tree structure etc.
 	if (res.alternate_parent) then
 		res.ws_attach = nil;
+
+-- workaround a possible race where the alternate window had died before
+-- we got to a state where attach is feasible
 		if (res.alternate_parent and not res.alternate_parent.anchor) then
 			res.alternate_parent = nil;
 		else
