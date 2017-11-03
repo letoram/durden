@@ -39,6 +39,10 @@ With \! being used to pick the global directory, and the \# for the target
 directory. The =5 in the example above is a binding to setting a specific
 key/value pair (here, setting the mouse cursor scale factor to 5).
 
+<b>All the path references in the documentation or elsewhere points to a
+logic 'name' which may be different from the language- specific 'label' that
+is presented when navigating the UI.</b>
+
 Due to key naming restrictions, paths currently bound to custom keys will
 have a slightly diffferent format in the database. Inspecting them will look
 something like this:

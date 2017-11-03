@@ -21,3 +21,20 @@ through the <i>global/config/terminal</i> menu path.
 
 The default settings and behavior for the terminal archetype can be low-level
 inspected via the <i>durden/atypes/terminal.lua</i> source.
+
+# Terminal (group)
+This mode looks and feels just like the terminal, but with one important
+distinction. A unique connection point is generated for the terminal, and all
+clients that are spawned within the terminal will be routed to that connection
+point. Connections that are initiated via this connection point will be
+attached as an 'alternate' window to the terminal window.
+
+An 'alternate' window is one that shares the position and hierarchy with
+another window, and can be swapped in and out. This assists in tiling modes as
+you can now force clients to be inserted in a tab-like way and swap back and
+forth without causing the mess that a new window insertion might.
+
+A window that is in grouped mode gets additional menu paths in
+<i>target/window/alternate</i> where each alternate window can be activated
+by its current slot position (creation order), swapped with the last active
+or cycled forward/backwards.

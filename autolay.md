@@ -11,10 +11,12 @@ comes in two variants, center-focus and center-focus (force scale).
 
 You can activate this mode by going to
 <i>global/tools/auto layouting/center-focus</i> and revert back from it with
-<i>global/tools/auto layouting/default</i>. This mode works with three or
-more windows and split the screen into three columns: a center area (the
-intended focus) and two side columns. New windows will spawn de-selected evenly
-divided in the side columns, as shown in this screenshot:
+<i>global/tools/auto layouting/default</i>.
+
+This mode works with three or more windows and split the screen into three
+columns: a center area (the intended focus) and two side columns. New windows
+will spawn de-selected evenly divided in the side columns, as shown in this
+screenshot:
 
 <center><a href="images/autolay.png">
 	<img alt="menu UI" src="images/autolay.png" style="width: 50%"/>
@@ -56,5 +58,5 @@ center window will be swapped with the previous that was last in the center
 window.
 
 # Future Changes
-- Additional auto-layouting modes (spiral etc.)
+- Additional auto-layouting modes (spiral, book, etc.)
 

@@ -33,7 +33,7 @@ an input through [IPC](ipc) or other means through the <i>target/input/bind-</i>
 set of options.
 
 # Keyboard<a name="keyboard"/>
-Keyboard controls can be found in <i>Global/Input/Keyboard</i> and covers
+Keyboard controls can be found in <i>global/input/keyboard</i> and covers
 things like <i>repeat behavior</i> (delay, rate), <a href="#rawlock">raw
 lock</a> and active keyboard map. It is also possible to remap custom UTF-8
 sequences to various keyboard combinations.
@@ -82,7 +82,7 @@ arcan-wayland can actually not bind correctly.
 ## Sticky Meta
 Sticky meta adds a delay to the meta1- and meta2- bound keys that will defer
 the release of a meta key a certain number of ticks (in ~40ms steps). This
-feature can be configured through <i>Global/Input/Keyboard/Sticky Meta</i>.
+feature can be configured through <i>global/input/keyboard/sticky meta</i>.
 
 ## Raw Lock<a name="rawlock"/>
 If you double-tap the META2 (default) key, you may see the statusbar turning

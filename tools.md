@@ -4,14 +4,15 @@ layout: default
 
 The <i>durden/tools</i> source folder is scanned for scripts on startup.
 Anything in this folder can be removed safely without loss of any critical
-functions, and are provided as a means for extending durden features in
-a way similar to [Widgets](widgets), but with a more generic focus as they
-can introduce both visible and non-visibile behavior and are not confined
-to the menu HUD.
+functions, and are provided as a means for extending durden features in a way
+similar to [Widgets](widgets), but with a more generic focus as they can
+introduce both visible and non-visibile behavior and are not confined to the
+Menu HUD.
 
-The example tools that have been included in the source distribution
-are: [Model Viewer](#model), [Dropdown Terminal](#dropdown) the
-[Autolayouter](autolay) and the [Overlay](#overlay).
+The included tools are:
+[Model Viewer](#model), [Dropdown Terminal](#dropdown)
+[Autolayouter](autolay), [Advanced Float](#advfloat), [Overview](#overview)
+and the [Overlay](#overlay).
 
 # Dropdown Terminal <a name="dropdown"/>
 
@@ -23,15 +24,15 @@ fullscreen mode as it can spawn, but won't be visible).
 	<img alt="dropdown terminal" src="images/dropdown.png" style="width: 50%"/>
 </a></center>
 
-It is also a [safety/security](security) feature (see that page for more
-detail), and deliberately avoids sharing settings with the normal
-[terminal](terminal). It also introduces these additional settings:
+It is also a [safety/security](security) and deliberately avoids sharing
+settings with the normal [terminal](terminal). It also introduces these
+additional settings:
 
 - Width: percentage of active display width to allocate
 - Height: percentage of active display height to allocate
 
 Its settings are registered on the path
-<i>global/config/tools/dropdown terminal</i> and the terminal itself is
+<i>global/settings/tools/dropdown terminal</i> and the terminal itself is
 activated via the <i>global/tools/dropdown terminal</i> path. To be efficient,
 it should be bound to a keyboard combination.
 
@@ -64,8 +65,9 @@ The <i>target/view</i> switches between two predefined viewing positions/angles.
 
 # Overlay <a name="overlay"/>
 
-This tool goes well with the window slicing effect from <i>target/window/slice</i>
-and is used getting miniature overviews of the contents of a specific window.
+This tool goes well with the window slicing effect from
+<i>target/window/slice</i> and is used getting miniature overviews of the
+contents of a specific window.
 
 It is activated via the <i>target/window/overlay</i> path and creates an aspect
 scaled version that is bound to either the top-left or top-right corner of
@@ -78,11 +80,53 @@ to a toggle visible on/off action, the option to delete individual slots and
 the option to migrate the column to another display (if there are multiple
 displays available).
 
-You can configure the appearance of the column through the <i>global/config/overlay</i>
-submenu where you have controls for the relative maximum size, opacity, active
-corner and active shader.
+You can configure the appearance of the column through the
+<i>global/settings/overlay</i> submenu where you have controls for the relative
+maximum size, opacity, active corner and active shader.
+
+# Advanced Float <a name="advfloat"/>
+The float capabilities of the normal layout mode only cover the bare necessities:
+drag-resize, drag-move, toggle maximize and so on. The advanced float tool extends
+these capabilities with:
+
+## Spawn Control
+From the <i>global/settings/wspaces/float/spawn_action</i> path it is possible
+to change how window spawns are treated when a workspace in float mode is
+active. The default is that the window manager simply picks a place, typically
+based on a known mouse cursor position or the most fitting continuous region of
+non-occluded space exists.
+
+If the method is set to <i>click</i> the cursor will get a preview window of the new
+window attached, and the window will be spawned at the current mouse cursor position
+when a mouse click is registered or if there occurs another window spawn before that
+has happened.
+
+If the method is set to <i>draw</i> the cursor will switch into region select mode,
+and both the cursor and the marked region will be use to position and size-suggest
+the new window.
+
+# Overview <a name="overview"/>
+This tool is activated via a subpath of <i>global/tools/ws_overview</i> and, if
+there are more than one populated workspace on the current display, switches
+the display into the HUD mode and presents some kind of overview navigation.
+
+The look and behavior of the overview navigation depends on which subpath was
+taken, and the following ones exists currently:
+
+## Workspace(Tile)
+The tile overview simply generates miniature versions of each workspace ordered
+from lowest index to highest, centered vertically on the screen. Keybindings
+match the directional keys and accept- for switching between workspaces along
+with the number keys for immediately activating a specific workspace.
+
+## Window
+The window overview distributes all windows for a 'click to activate' the
+workspaces in which the selected window resides.
 
 # Future Changes
 - On-screen Keyboard
 - Touchpad Configuration
+- More overview modes
+- More advanced float features
+- Notification Agents
 - Flair

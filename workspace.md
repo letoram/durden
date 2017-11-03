@@ -14,12 +14,12 @@ will be reflected in the workspace indicators as part of the statusbar.
 A workspace belongs to a window manager, which in turn is tied to a display.
 A window manager has access to ten slots, and when switching the active
 workspace slot to one that has not been used, a new workspace will be created
-with the default mode controlled by the <i>global/config/workspaces/default
+with the default mode controlled by the <i>global/settings/workspaces/default
 mode</i> path.
 
 If a workspace gets deselected without any windows, name or background set, it
 will be destroyed by default. To change this behavior, you can look at the
-<i>global/config/workspaces/autodelete</i> path.
+<i>global/settings/workspaces/autodelete</i> path.
 
 With multiple displays, you can migrate a workspace to another display via
 the <i>global/workspace/migrate</i> path. All windows within that workspace
@@ -28,7 +28,7 @@ properties so density-aware windows can relayout and update accordingly.
 
 If the backing display is disconnected, orphaned workspaces will be migrated
 to the next available display and migrate back when the display re-appears. To
-disable this behavior, change <i>global/config/workspace/autoadopt</i>.
+disable this behavior, change <i>global/settings/workspace/autoadopt</i>.
 
 # Window
 Window behavior, layout and size vary with the workspace. A window consists of
@@ -38,9 +38,9 @@ properties, see the page on [visuals](visual).
 
 The window titlebar can be disabled on a per-window basis
 (<i>target/titlebar/on,off</i>) or have a default enabled or disabled
-policy through <i>global/config/visual/bars/hide titlebar</i> with an
+policy through <i>global/settings/visual/bars/hide titlebar</i> with an
 optional exception for the float layout mode via the
-<i>global/config/workspaces/float/force-titlebar</i> path.
+<i>global/settings/workspaces/float/force-titlebar</i> path.
 
 Although the feature has not been UI mapped yet, it is possible to change the
 buttons that are added as part of the titlebar. By default, the titlebar has
@@ -55,7 +55,7 @@ When the button is clicked, the <i>target/window/destroy</i> menu path would
 be called.
 
 The fill-area contents of the titlebar is also configurable (text to display)
-via the format string provided in <i>global/config/visual/bars/titlebar</i>.
+via the format string provided in <i>global/settings/visual/bars/titlebar</i>.
 
 # Future Changes
 - Titlebar button configuration added to menu

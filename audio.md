@@ -3,8 +3,8 @@ layout: default
 ---
 
 # Audio
-Audio subsystem controls are limited to adjusting volume output globally
-and on a per-window basis. Global controls are accessible through
+The Audio subsystem controls are limited to adjusting volume output globally
+and on a per-window basis for now. Global controls are accessible through
 <i>global/audio</i> and covers:
 
 - Toggle (On / Off)

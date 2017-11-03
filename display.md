@@ -109,7 +109,3 @@ path for code templates to copy and modify.
  - Specify lookup texture to display shader
 
  - Vector- defined icons for perfect scaling in mixed DPI settings
-
- - With Arcan 0.5.2 / Durden 0.3, other processes can be put in charge of
-   managing color for one or several displays. This feature is enabled per
-   target basis through <i>target/video/advanced/toggle color sync</i>.

@@ -9,13 +9,13 @@ layout: default
 # Visual Enhancements
 Most parts of the user interface can be tuned to look more or less bland,
 and almost all tuning can be accessed from [the menu](menu) from either the
-<i>global/config/visual</i> path or the <i>target/video</i> path
+<i>global/settings/visual</i> path or the <i>target/video</i> path
 with the exception of some minor details like the palette used to colorize
 widget text (see <i>durden/gconf.lua</i>).
 
 # Workspace Background <a name="workspace"/>
 Workspace background image is set with the
-<i>global/config/workspace/background and default-background</i> paths.
+<i>global/settings/workspace/background and default-background</i> paths.
 The default-background path changes the global default for newly created
 workspaces. To unset, simply cancel the browser being spawned.
 
@@ -26,7 +26,7 @@ source. This feature is accessed with the
 # Fonts <a name="fonts"/>
 The same font settings are used for all windows except terminals and
 [TUI](https://github.com/letoram/arcan/wiki/TUI) clients. Font settings are
-found via the <i>global/config/visual/font</i> menu path and covers the size,
+found via the <i>global/settings/visual/font</i> menu path and covers the size,
 hinting, typeface and a fallback. The fallback is used when a specific glyph
 (for internationalization or emojii support) is not found in the main typeface.
 
@@ -41,7 +41,7 @@ component. These can be found in the source tree as <i>durden/shaders/ui</i>
 and cover some lua- defined metadata an a vertex/fragment step in GLSL120.
 
 The uniforms defined in a shader can be accessed in-UI from
-<i>global/config/visual/shaders/*target*/*shader state*</i>.
+<i>global/settings/visual/shaders/*target*/*shader state*</i>.
 
 Values changed in this way do not currently persist, either change the default
 values in the shader file, or activate the menu path through the
@@ -116,7 +116,7 @@ bound to, but you can force different values via the <i>target/video/advanced/de
 There are three options that affect the visual look of the mouse cursor.
 
 The first is the scale parameter, controlled by
-<i>global/config/visual/mouse scale</i>. The second is the reveal animation
+<i>global/settings/visual/mouse scale</i>. The second is the reveal animation
 from <i>global/input/mouse/reveal,hide</i> that spawns little green squared
 when returning from a hidden state.
 
@@ -127,7 +127,7 @@ client that insists on software rendering its own.
 
 # Borders <a name="borders"/>
 Window border decorations are split in two parameters: border area and border
-thickness. They are accessed via <i>global/config/visual/border area and border
+thickness. They are accessed via <i>global/settings/visual/border area and border
 thickness</i> respectively. The visual effect itself is controlled via the
 <i>shaders/ui/border.lua</i> shader.
 
@@ -143,15 +143,15 @@ larger shifts from switching between workspaces and going between workspace
 view and the menu HUD.
 
 Animation speed can be tuned via the
-<i>global/config/visual/animation speed</i> setting. There is also a separate
+<i>global/settings/visual/animation speed</i> setting. There is also a separate
 window animation speed property that, if set, adds animations to window
 resizing, movement and swapping when in tile mode and in float mode.
 
 The 'switch workspaces' transition effect can be controlled from the
-<i>global/config/visual/transition-in,out</i> and you can have different
+<i>global/settings/visual/transition-in,out</i> and you can have different
 behavior for the workspace that is leaving and the workspace that is entering.
 
-The speed is controlled from the <i>global/config/visual/transition speed</i>.
+The speed is controlled from the <i>global/settings/visual/transition speed</i>.
 
 # Schemes <a name="schemes"/>
 Visual schemes are profiles that are scanned on startup from the

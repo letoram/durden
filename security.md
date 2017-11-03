@@ -51,7 +51,7 @@ and switching (<i>global/system/reset/switch appl</i>).
 # External Connections <a name="extcon"/>
 The default settings expose an external connection point with the name 'durden'.
 You can rename this connection point through the
-<i>global/config/system/connection path</i> menu path.
+<i>global/settings/system/connection path</i> menu path.
 
 Doing so can help you to avoid conflicts if you want to run multiple instances,
 or set it to the special ':disabled' to remove support for external connections
@@ -73,7 +73,7 @@ if desired.
 ## Clipboard Access <a name="clipboard"/>
 As mentioned in [clipboard](clipboard), external clipboard
 managers are disabled by default but can be activated via the
-<i>global/config/system/clipboard bridge</i> path, allowing clients that
+<i>global/settings/system/clipboard bridge</i> path, allowing clients that
 identify with their primary segment id as CLIPBOARD and CLIPBOARD\_PASTE to
 inject and/or monitor global clipboard events.
 
@@ -87,7 +87,7 @@ This can be toggled on a client-by-client basis via the
 malfunctioning client can make the screen contents unreadable.
 
 It can also be globally allowed via the
-<i>global/config/system/gamma bridge</i> path, with the added risk of clients
+<i>global/settings/system/gamma bridge</i> path, with the added risk of clients
 fighting eachother for control over the LUTs. This will be mitigated later by
 allowing LUT state to follow client window selection.
 
@@ -103,7 +103,7 @@ To protect against fork-bombing style denial of service (clients stalling the
 server by requesting lots of connections or subsegments), there is configurable
 rate-limiting in place, though it is not enabled by default.
 
-The relevant menu paths are found in <i>global/config/system/rate limiting</i>:
+The relevant menu paths are found in <i>global/settings/system/rate limiting</i>:
 
  - Rate Limit : Force n ticks between each accepted external connection
  - Grace Period : Disable Rate Limit for the n first ticks (faster recovery)
@@ -124,8 +124,8 @@ The <i>control, status and output</i> IPC pipes are only protected by their
 default unix permissions. There is no authentication step and preventing access
 to the appl\_path is the responsibility of the user when setting up arcan
 namespacing. To disable these features, simply set their respective names to
-<i>:disabled</i>, or enable whitelisting (<i>global/config/</i>) and only permit certain
-menu paths from being activated via external IPC.
+<i>:disabled</i>, or enable whitelisting (<i>global/settings/</i>) and only
+permit certain menu paths from being activated via external IPC.
 
 # Protected Terminal <a name="protterm"/>
 The [drop-down terminal tool](tools) is designed to be used for a command-line
