@@ -33,8 +33,9 @@ local res = {
 		scalemode = "stretch",
 		autocrop = true,
 		font_block = true,
-		filtermode = FILTER_NONE
-	}
+		filtermode = FILTER_NONE,
+		allowed_segments = {"tui"}
+	},
 };
 
 -- globally listen for changes to the default opacity and forward
