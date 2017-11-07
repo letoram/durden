@@ -560,6 +560,28 @@ local function bar_tick(bar)
 	end
 end
 
+local function bar_updatemh(bar, mouseh)
+	if (mouseh) then
+		image_mask_clear(bar.anchor, MASK_UNPICKABLE);
+		bar.own = function(ctx, vid)
+			return vid == bar.anchor;
+		end
+
+		local lsttbl = {};
+		bar.name = "uiprim_bar_handler";
+		for k,v in pairs(mouseh) do
+			bar[k] = function(ctx, ...)
+				v(bar, ...);
+			end
+			table.insert(lsttbl, k);
+		end
+
+		mouse_addlistener(bar, lsttbl);
+	else
+		image_mask_set(bar.anchor, MASK_UNPICKABLE);
+	end
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -586,6 +608,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		switch_state = bar_state,
 		add_button = bar_button,
 		update = bar_update,
+		update_mh = bar_updatemh,
 		reanchor = bar_reanchor,
 		all_buttons = bar_iter,
 		hide = bar_hide,
@@ -602,25 +625,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 
 	res:resize(width, height);
 	res:switch_state("active");
-
-	if (mouseh) then
-		res.own = function(ctx, vid)
-			return vid == res.anchor;
-		end
-
-		local lsttbl = {};
-		res.name = "uiprim_bar_handler";
-		for k,v in pairs(mouseh) do
-			res[k] = function(ctx, ...)
-				v(res, ...);
-			end
-			table.insert(lsttbl, k);
-		end
-
-		mouse_addlistener(res, lsttbl);
-	else
-		image_mask_set(res.anchor, MASK_UNPICKABLE);
-	end
+	res:update_mh(mouseh);
 
 	return res;
 end
