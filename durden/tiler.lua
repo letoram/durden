@@ -2895,7 +2895,9 @@ local function wnd_setalternate(res, ind)
 
 -- reference parent-swap -> down.
 	local lind = table.find_i(res.parent.children, res);
-	res.parent.children[lind] = new;
+	if (lind) then
+		res.parent.children[lind] = new;
+	end
 
 -- copy all relevant properties
 	synch_alternate(new, res);
