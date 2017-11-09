@@ -204,6 +204,11 @@ local function wnd_destroy(wnd)
 
 	wnd:drop_popup(true);
 
+-- assigned a shader hook?
+	if (wnd.shader_hook) then
+		wnd:shader_hook();
+	end
+
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
 
@@ -221,6 +226,7 @@ local function wnd_destroy(wnd)
 
 	if (valid_vid(wnd.external) and not wnd.external_prot) then
 		delete_image(wnd.external);
+		EVENT_SYNCH[wnd.external] = nil;
 	end
 
 	for k,v in pairs(wnd) do
@@ -1457,6 +1463,9 @@ local function wnd_collapse(wnd)
 	wnd.space:resize();
 end
 
+-- these rules are quite complicated in order to account for all different
+-- kinds of custom scaling, effect scaling, cropping, client-preferred,
+-- user overrides etc.
 local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	local outw = 1;
 	local outh = 1;
@@ -1622,7 +1631,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		newh = wnd.max_h > newh and newh or wnd.max_h;
 	end
 
-	local props = image_storage_properties(wnd.canvas);
+	local props = wnd.canvas_props
+		and wnd.canvas_props or image_storage_properties(wnd.canvas);
 
 -- to save space for border width, statusbar and other properties
 	local decw = wnd.pad_left + wnd.pad_right;
@@ -3054,12 +3064,25 @@ end
 local wnd_setup = function(wm, source, opts)
 	if (opts == nil) then opts = {}; end
 	local bw = gconfig_get("borderw");
+
+-- burn a slot for external storages so we get .external != .canvas for easier
+-- detach or filter actions that rely on indirection
+	local nsrf = nil;
+	local extvid = nil;
+	if (valid_vid(source, TYPE_FRAMESERVER)) then
+		local nsrf = null_surface(32, 32);
+		image_sharestorage(source, nsrf);
+		source = nsrf;
+		extvid = source;
+	end
+
 	local res = {
 		wm = wm,
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
 		border = fill_surface(1, 1, 255, 255, 255),
 		canvas = source,
+		external = extvid,
 		gain = 1.0 * gconfig_get("global_gain"),
 		popups = {},
 

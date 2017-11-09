@@ -85,7 +85,7 @@ local function toggle_ws(cb)
 	PENDING_FADE = nil;
 
 -- set shader and background based on config
-	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
+	local bg = fill_surface(wm.width, wm.height, 0, 0, 0);
 	blend_image(bg, gconfig_get("overview_tilebg_opa"), time, INTERP_SMOOTHSTEP);
 	image_tracetag(bg, "overview_bg");
 	local lookup_key = gconfig_get("overview_tilebg_shader");

@@ -218,13 +218,23 @@ local function esetup(shader, dst, group, name)
 	local build_pass = function(invid, pass)
 		local props = image_storage_properties(invid);
 		local fmt = ALLOC_QUALITY_NORMAL;
+
 		if (pass.float) then
 			fmt = ALLOC_QUALITY_FLOAT16;
 		elseif (pass.float32) then
 			fmt = ALLOC_QUALITY_FLOAT32;
 		end
+		if (pass.filter) then
+			image_texfilter(invid, filter_strnum(pass.filter));
+		end
+
+-- min-clamp as there's a limit for the rendertarget backend store,
+-- note that scaling doesn't work with all modes (e.g. autocrop) or client types
 		local outw = props.width * pass.scale[1];
 		local outh = props.height * pass.scale[2];
+		outw = outw < 32 and 32 or outw;
+		outh = outh < 32 and 32 or outh;
+
 		local outvid = alloc_surface(outw, outh, true, fmt);
 		if (not valid_vid(outvid)) then
 			return invid;
@@ -233,44 +243,66 @@ local function esetup(shader, dst, group, name)
 -- hide on the invid + renderset and sharestorage on the null surface)
 
 -- sanity checks and resource loading/preloading
-		define_rendertarget(outvid, {invid});
+		define_rendertarget(outvid, {invid},
+			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
 		image_shader(invid, pass.shid);
 		resize_image(invid, outw, outh);
-		table.insert(rtgt_list, outvid);
 		move_image(invid, 0, 0);
-		show_image(invid);
-		show_image(outvid);
+		show_image({invid, outvid});
+		table.insert(rtgt_list, outvid);
+		rendertarget_forceupdate(outvid);
 		return outvid;
 	end
 
--- this is currently quite wasteful, there is both a blit-in allocation/copy
--- and a blit-out one. The reason is to keep down the number of edge conditions
--- related to how the rest of the system uses wnd.canvas (the common dst for
--- effects).
-	local props = image_storage_properties(dst);
-	local invid = null_surface(props.width, props.height);
-	image_sharestorage(dst, invid);
+-- this is currently quite wasteful, there is a blit-out copy stage in order
+-- to get an output buffer that can simply be sharestorage()d into the canvas
+-- slot rather than all the complications with swap-in-out.
+	local function build_passes()
+		local props = image_storage_properties(dst);
+		local invid = null_surface(props.width, props.height);
+		image_sharestorage(dst, invid);
+
+		for i=1,#shader.passes do
+			invid = build_pass(invid, shader.passes[i]);
+		end
+
+-- chain finished and stored in invid, final blitout pass so we have a
+-- shareable storage format
+		local outprops = image_storage_properties(invid);
+		local outvid = alloc_surface(outprops.width, outprops.height);
+		define_rendertarget(outvid, {invid},
+			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
+		table.insert(rtgt_list, outvid);
+--		show_image(outvid);
+		if (shader.filter) then
+			image_texfilter(outvid, filter_strnum(shader.filter));
+		end
+		return outvid;
+	end
 
 	preload_effect_shader(shader, group, name);
-	for i=1,#shader.passes do
-		invid = build_pass(invid, shader.passes[i]);
-	end
+	local outvid = build_passes();
+	rendertarget_forceupdate(outvid);
+	hide_image(outvid);
 
-	local outprops = image_storage_properties(invid);
-	local outvid = alloc_surface(outprops.width, outprops.height);
-	define_rendertarget(outvid, {invid});
-	table.insert(rtgtlist, outvid);
-
-	show_image(outvid);
-	if (shader.filter) then
-		image_texfilter(outvid, filter_strnum(shader.filter));
-	end
-
--- return a function that is used both to rebuild with new sizes as the source
--- gets resized (which, in turn, modifies scaling etc.) and to deallocate the
--- shader in the chain
-	return function()
-		print("updated, we need to rebuild!");
+-- return a reference to the video object, a refresh function and a
+-- rebuild-or-destroy function.
+	return outvid, function()
+		for i,v in ipairs(rtgt_list) do
+			rendertarget_forceupdate(v);
+		end
+	end,
+	function(vid, destroy)
+		for i,v in ipairs(rtgt_list) do
+			delete_image(v);
+		end
+		rtgt_list = {};
+-- this is unnecessarily expensive, better approach would be to re-enumerate
+-- the passes and just resize rendertarget and inputs / outputs
+		if (not destroy and valid_vid(vid)) then
+			dst = vid;
+			return build_passes();
+		end
 	end;
 end
 

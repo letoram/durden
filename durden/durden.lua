@@ -420,7 +420,7 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 		wnd.dispatch = shared_dispatch();
 		wnd.external = vid;
 		extevh_register_window(vid, wnd);
-		EVENT_SYNCH[wnd.external and wnd.external or wnd.canvas] = {
+		EVENT_SYNCH[wnd.external] = {
 			queue = {},
 			target = vid
 		};
@@ -428,7 +428,6 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 			wnd:set_dispmask(TD_HINT_UNFOCUSED);
 		end
 	end
-
 	return wnd;
 end
 
