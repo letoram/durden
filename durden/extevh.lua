@@ -123,9 +123,11 @@ end
 
 local defhtbl = {};
 
-defhtbl["framestatus"] =
+defhtbl["frame"] =
 function(wnd, source, stat)
--- don't do any state / performance tracking right now
+	if (wnd.shader_frame_hook) then
+		wnd:shader_frame_hook();
+	end
 end
 
 defhtbl["alert"] =
@@ -181,7 +183,10 @@ function(wnd, source, stat)
 	);
 
 	wnd.origo_ll = stat.origo_ll;
-	image_set_txcos_default(wnd.canvas, stat.origo_ll == true);
+	image_set_txcos_default(wnd.canvas, wnd.origo_ll == true);
+	if (wnd.shader_hook) then
+		wnd.shader_hook();
+	end
 	wnd.space:resize(true);
 end
 
@@ -381,7 +386,6 @@ end
 
 function extevh_default(source, stat)
 	local wnd = swm[source];
-
 	if (not wnd) then
 		warning("event on missing window");
 		return;

@@ -358,8 +358,48 @@ return {
 		set = function() return shader_list({"effect", "simple"}); end,
 		handler = function(ctx, val)
 			local key, dom = shader_getkey(val, {"effect", "simple"});
+
 			if (key ~= nil) then
-				shader_setup(active_display().selected.canvas, dom, key);
+				local wnd = active_display().selected;
+
+-- advanced shaders have custom output, a hook, update and destroy stage
+				if (wnd.shader_hook) then
+					wnd.shader_hook(true);
+					wnd.shader_hook = nil;
+					wnd.shader_frame_hook = nil;
+					if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+						image_sharestorage(wnd.external, wnd.canvas);
+						target_verbose(wnd.external, false);
+					end
+					wnd.shader_outvid = nil;
+				end
+
+				local a, b, c =
+					shader_setup(active_display().selected.canvas, dom, key);
+
+				if (a) then
+-- enable per-frame reporting, this needs special support for sliced/interactive
+					if (valid_vid(wnd.external)) then
+						target_verbose(wnd.external, true);
+						wnd.shader_frame_hook = b;
+					end
+					image_sharestorage(a, wnd.canvas);
+					image_set_txcos_default(wnd.canvas, wnd.origo_ll == true);
+
+-- need to reshare the new storage and replace outvid as a resize can trigger
+-- the hook to update which can case a delete + rebuild of the effect chain
+					wnd.shader_hook = function(destr)
+						local res = c(wnd.external, destr);
+						if (res) then
+							image_sharestorage(res, wnd.canvas);
+							image_set_txcos_default(wnd.canvas, wnd.origo_ll == true);
+							resize_image(wnd.canvas, wnd.effective_w, wnd.effective_h);
+							wnd.shader_outvid = res;
+						end
+					end;
+
+					wnd.shader_outvid = a;
+				end
 			end
 		end
 	},
