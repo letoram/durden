@@ -1445,6 +1445,7 @@ local function wnd_merge(wnd)
 		end
 	end
 
+	wnd:recovertag();
 	wnd.space:resize();
 end
 
@@ -1703,6 +1704,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	elseif (not maskev) then
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
+
+	wnd:recovertag();
 end
 
 -- sweep all windows, calculate center-point distance,
@@ -1981,6 +1984,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 	else
 		nudge_image(wnd.anchor, dx, dy, time);
 	end
+
+	wnd:recovertag();
 end
 
 --
@@ -2627,6 +2632,9 @@ local function wnd_migrate(wnd, tiler, disptbl)
 			my = 0.5 * tiler.height
 		};
 	end
+
+-- update
+	wnd:recovertag();
 end
 
 -- track suspend state with window so that we can indicate with
@@ -2865,6 +2873,8 @@ local function wnd_swap(w1, w2, deep, force)
 		w1.children = w2.children;
 		w2.children = wc;
 	end
+
+	wnd:recovertag();
 end
 
 local function synch_alternate(new, par)
@@ -3045,6 +3055,42 @@ local function wnd_ws_attach(res, from_hook)
 	return res;
 end
 
+-- use the image_tracetag option to pack a string that can be used
+-- to reassign the window to the correct position, weight, workspace,
+-- layout mode and so on
+local function wnd_recovertag(wnd, restore)
+	if (not valid_vid(wnd.external)) then
+		return;
+	end
+
+	if (restore) then
+		local str = image_tracetag(wnd.external);
+		local cmd = string.sub(str, 8);
+		local pre = string.sub(str, 1, 6);
+		if (string.sub(str, 1, 6) ~= "durden") then
+			return;
+		end
+
+		active_display():message(str);
+		local entries = string.split(cmd, ":");
+		for k,v in ipairs(entries) do
+-- actually apply the string, prefered tiling hierarchy swapping and
+-- weighting is performed in the rebalance stage
+-- we also need a config dst if that is possible based on uuid or
+-- launch_target settings.
+		end
+		return;
+	end
+
+	local recoverstr = "durden";
+	if (wnd.atype) then
+		recoverstr = recoverstr .. ":_atype=" .. wnd.atype;
+	end
+
+-- split on :, Pkey=value where P dictates decode / application use
+	image_tracetag(wnd.external, recoverstr);
+end
+
 local function wnd_inputtable(wnd, iotbl, multicast)
 	if valid_vid(wnd.external) then
 		target_input(wnd.external, iotbl);
@@ -3145,29 +3191,26 @@ local wnd_setup = function(wm, source, opts)
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 
--- public events to manipulate the window
+-- visual attribute- functions
 		alert = wnd_alert,
 		show = wnd_show,
 		hide = wnd_hide,
-		assign_ws = wnd_reassign,
-		destroy = wnd_destroy,
 		set_message = wnd_message,
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		set_ident = wnd_ident,
-		get_name = wnd_getname,
-		add_handler = wnd_addhandler,
-		drop_handler = wnd_drophandler,
-		set_dispmask = wnd_dispmask,
-		set_suspend = wnd_setsuspend,
 		rebuild_border = wnd_rebuild,
+		set_dispmask = wnd_dispmask,
 		toggle_maximize = wnd_toggle_maximize,
 		to_front = wnd_tofront,
 		update_font = wnd_font,
 		resize = wnd_resize,
-		migrate = wnd_migrate,
+		display_table = get_disptbl,
+		grow = wnd_grow,
+
+-- position/hierarchy/selection
 		reposition = wnd_repos,
-		resize_effective = wnd_effective_resize,
+		assign_ws = wnd_reassign,
 		select = wnd_select,
 		deselect = wnd_deselect,
 		next = wnd_next,
@@ -3175,12 +3218,24 @@ local wnd_setup = function(wm, source, opts)
 		collapse = wnd_collapse,
 		prev = wnd_prev,
 		move = wnd_move,
+		swap = wnd_swap,
+
+-- lifecycle
+		set_suspend = wnd_setsuspend,
+		destroy = wnd_destroy,
+		get_name = wnd_getname,
+		add_handler = wnd_addhandler,
+		drop_handler = wnd_drophandler,
+		migrate = wnd_migrate,
+		resize_effective = wnd_effective_resize,
+		recovertag = wnd_recovertag,
+
+-- input
 		input_table = wnd_inputtable,
 		mousebutton = wnd_mousebutton,
 		mousemotion = wnd_mousemotion,
-		display_table = get_disptbl,
-		swap = wnd_swap,
-		grow = wnd_grow,
+
+-- special windows
 		add_popup = wnd_popup,
 		drop_popup = wnd_droppopup,
 		swap_alternate = wnd_setalternate,
