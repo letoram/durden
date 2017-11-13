@@ -142,6 +142,18 @@ local function set_mouse_scalef()
 		sf * displays[displays.main].tiler.scalef);
 end
 
+function display_tiler_action(tiler, cb)
+	for i,v in ipairs(displays) do
+		if (v.tiler == tiler) then
+			local save = displays.main;
+			set_context_attachment(v.rt);
+			cb();
+			set_context_attachment(displays[save].rt);
+			return;
+		end
+	end
+end
+
 local function run_display_action(disp, cb)
 	local save = displays.main;
 

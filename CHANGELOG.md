@@ -7,16 +7,27 @@
     connection point.
 
   * shader subsystem - added a multi-pass effect format along with
-    a handful of initial effects shaders.
+    some initial effects.
 
   * tools/advfloat - extended float layout mode capabilities:
     spawn control (draw2spawn)
 
   * tools/overview - added a HUD- like workspace switcher
 
+	* tools/flair - added a visual effects layers and some initial
+	  effects
+
   * terminal-group spawn-mode added, allows a connection primitive
     to be generated per terminal and clients which connect via this
     group share the same logical window tree slot.
+
+  * Tui/terminal clients are now allowed to spawn additional tui
+	  subsegments. This match the new support in afsrv_terminal that
+		allows the window to be cloned into a copy-window.
+
+  * improved handling for wayland features like popups and subsurfaces
+
+  * retain some window properties across script errors / resets
 
 Minor:
  * Destroying a window in fullscreen mode now returns the workspace
