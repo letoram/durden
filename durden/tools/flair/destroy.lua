@@ -5,7 +5,7 @@ local shaders = {
 -- like distribution, weight that with the contents and the distance
 -- to the last known mouse cursor position, with an edge gradient
 -- using yellow-red-blacks for the burn.
-burn = {nil, nil, [[
+dissolve = {nil, nil, [[
 uniform sampler2D map_tu0;
 varying vec2 texco;
 uniform float trans_blend;
@@ -26,6 +26,7 @@ void main()
 
 -- on-demand compile shaders
 local function synch_shader(key)
+	print("try to synch:", key);
 	local sk = shaders[key];
 	assert(sk);
 
