@@ -21,6 +21,12 @@ function build_shader(vertex, fragment, label)
 		#endif
 	]] .. fragment) or nil;
 
+--
+--  [ dump to get real line numbers ]
+--	local debug = string.split(fragment, "\n");
+--	for i,v in ipairs(debug) do print(i, v); end
+--
+--
 	return old_build(vertex, fragment, label);
 end
 end
@@ -230,10 +236,8 @@ local function esetup(shader, dst, group, name)
 
 -- min-clamp as there's a limit for the rendertarget backend store,
 -- note that scaling doesn't work with all modes (e.g. autocrop) or client types
-		local outw = props.width * pass.scale[1];
-		local outh = props.height * pass.scale[2];
-		outw = outw < 32 and 32 or outw;
-		outh = outh < 32 and 32 or outh;
+		local outw = math.clamp(props.width * pass.scale[1], 32);
+		local outh = math.clamp(props.height * pass.scale[2], 32);
 
 		local outvid = alloc_surface(outw, outh, true, fmt);
 		if (not valid_vid(outvid)) then

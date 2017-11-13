@@ -33,6 +33,16 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
+function math.clamp(val, low, high)
+	if (low and val < low) then
+		return low;
+	end
+	if (high and val > high) then
+		return high;
+	end
+	return val;
+end
+
 function string.utf8forward(src, ofs)
 	if (ofs <= string.len(src)) then
 		repeat
@@ -242,10 +252,6 @@ local function hb(ch)
 	local fd = math.floor(ch/16);
 	local sd = ch - fd * 16;
 	return th[fd+1] .. th[sd+1];
-end
-
-function math.clamp(v, min, high)
-	return (v < min and v or min) > high and high or v;
 end
 
 function suppl_strcol_fmt(str, sel)
@@ -1190,6 +1196,11 @@ end
 
 function gen_valid_num(lb, ub)
 	return function(val)
+		if (not val) then
+			warning("validator activated with missing val");
+			return false;
+		end
+
 		if (string.len(val) == 0) then
 			return true;
 		end

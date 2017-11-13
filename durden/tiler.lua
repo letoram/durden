@@ -209,6 +209,13 @@ local function wnd_destroy(wnd)
 		wnd:shader_hook();
 	end
 
+-- last step before deletion, any per-tiler hook?
+	if (space) then
+		for i,v in ipairs(wm.on_wnd_destroy) do
+			v(wm, wnd, space, space == wm.active_space);
+		end
+	end
+
 -- drop references, cascade delete from anchor
 	delete_image(wnd.anchor);
 
@@ -224,11 +231,13 @@ local function wnd_destroy(wnd)
 
 	wnd.titlebar:destroy();
 
+-- external references are tracked separate from the canvas
 	if (valid_vid(wnd.external) and not wnd.external_prot) then
 		delete_image(wnd.external);
 		EVENT_SYNCH[wnd.external] = nil;
 	end
 
+-- destroy all keys so any dangling references can be detected as such
 	for k,v in pairs(wnd) do
 		wnd[k] = nil;
 	end
@@ -1624,12 +1633,12 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		return false;
 	end
 
--- first clamp
-	neww = wnd.wm.min_width > neww and wnd.wm.min_width or neww;
-	newh = wnd.wm.min_height > newh and wnd.wm.min_height or newh;
+	neww = math.clamp(neww, wnd.wm.min_width);
+	newh = math.clamp(newh, wnd.wm.min_height);
+
 	if (not force) then
-		neww = wnd.max_w > neww and neww or wnd.max_w;
-		newh = wnd.max_h > newh and newh or wnd.max_h;
+		neww = math.clamp(neww, nil, wnd.max_w);
+		newh = math.clamp(newh, nil, wnd.max_h);
 	end
 
 	local props = wnd.canvas_props
@@ -2700,6 +2709,10 @@ local function wnd_rebuild(v, bw)
 		show_image(v.border);
 	end
 
+	if (not bw) then
+		bw = v.border_w and v.border_w or gconfig_get("borderw");
+	end
+
 	v.pad_left = bw;
 	v.pad_right = bw;
 	v.pad_top = bw + tbarh;
@@ -2739,15 +2752,29 @@ local titlebar_mh = {
 			mouse_switch_cursor("grabhint");
 		end
 	end,
-	drop = function(bar)
+	drop = function(ctx)
+		local tag = ctx.tag;
+		if (tag.space.mode == "float") then
+			mouse_switch_cursor("grabhint");
+			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
+				v(tag.space.wm, tag, dx, dy, true);
+			end
+		end
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local tag = ctx.tag;
--- TODO: possible to drag outside client area
+-- no constraint or collision solver here, might be needed?
 		if (tag.space.mode == "float") then
-			tag.x = tag.x + dx;
-			tag.y = tag.y + dy;
-			move_image(tag.anchor, tag.x, tag.y);
+			if (tag.space.drag_solver) then
+				tag.space.drag_solver(tag);
+			else
+				tag.x = tag.x + dx;
+				tag.y = tag.y + dy;
+				move_image(tag.anchor, tag.x, tag.y);
+			end
+			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
+				v(tag.space.wm, tag, dx, dy);
+			end
 		end
 -- possibly check for other window in tile hierarchy based on
 -- polling mouse cursor, and do a window swap
@@ -3046,7 +3073,9 @@ local function wnd_ws_attach(res, from_hook)
 		res:resize(res.width, res.height);
 	end
 
-	wm:on_wnd_create(res);
+	for k,v in ipairs(wm.on_wnd_create) do
+		v(wm, wnd, space, space == wm.active_space);
+	end
 
 	for k,v in pairs(space.listeners) do
 		v(space, k, "attach", wnd);
@@ -3810,8 +3839,12 @@ function tiler_create(width, height, opts)
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
 
+-- shared event handlers, primarily for effects and layouting
+		on_wnd_create = {},
+		on_wnd_destroy = {},
+		on_wnd_drag = {},
+
 -- unique event handlers
-		on_wnd_create = function() end,
 		on_preview_step = function() end
 	};
 

@@ -69,7 +69,7 @@ function durden(argv)
 	load_configure_mouse();
 
 	local nt = display_manager_init();
-	nt.on_wnd_create = wnd_create_handler;
+	table.insert(nt.on_wnd_create, wnd_create_handler);
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
@@ -591,7 +591,7 @@ end
 function durden_display_state(action, id, state)
 	local new_wm = display_event_handler(action, id);
 	if (new_wm) then
-		new_wm.on_wnd_create = wnd_create_handler;
+		table.insert(new_wm, wnd_create_handler);
 	end
 
 	if (state and state.ledctrl) then
