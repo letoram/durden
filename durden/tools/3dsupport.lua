@@ -181,7 +181,7 @@ local function get_valid_windows(cwin, model)
 				label = wnd.title_text and wnd.title_text or wnd.name,
 				handler = function()
 					mesh_shader(model.vid, display, model.display_mesh);
-					set_image_as_frame(model.vid, wnd.external, model.display_slot);
+					set_image_as_frame(model.vid, wnd.canvas, model.display_slot);
 					cwin.menu_input_disable = false;
 					cwin.menu_state_disable = false;
 					cwin.external = wnd.external;
