@@ -326,12 +326,22 @@ return {
 	},
 	{
 		name = "titlebar_toggle",
-		label = "Titlebar On/Off",
+		label = "Titlebar Toggle",
 		kind = "action",
 		handler = function()
 			local wnd = active_display().selected;
 			wnd.hide_titlebar = not wnd.hide_titlebar;
 			wnd:set_title();
+		end
+	},
+	{
+		name = "border_toggle",
+		label = "Border Toggle",
+		kind = "action",
+		handler = function()
+			local wnd = active_display().selected;
+			wnd.hide_border = not wnd.hide_border;
+			wnd:rebuild_border();
 		end
 	},
 	{

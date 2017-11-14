@@ -355,6 +355,11 @@ end
 -- mouse locking and update border states
 --
 function durden_lock_toggle(newst, state)
+	if (not active_display().selected and newst) then
+		dispatch_toggle(false);
+		return;
+	end
+
 	for i in all_tilers_iter() do
 		i.sbar_ws["msg"]:switch_state(newst and "locked" or "active");
 	end
