@@ -33,6 +33,11 @@ Minor:
  * Destroying a window in fullscreen mode now returns the workspace
    to the last known mode instead of forcing to tile.
 
+ * Double-tap input-lock automatically unlocks if the locked window
+   is closed
+
+ * Double-tap input-lock without a selected windows is now a no-op
+
 # 0.3.0
   * Now requires arcan >= 0.5.3.
 

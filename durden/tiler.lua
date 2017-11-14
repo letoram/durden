@@ -187,6 +187,11 @@ local function wnd_destroy(wnd)
 -- doesn't always hit
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
+-- force auto-lock off so destroy on a selected window that has raw input
+-- dosn't stick, but only if the tiler is the active display
+		if (active_display() == wnd.wm) then
+			dispatch_toggle(false);
+		end
 	end
 
 -- deregister from space tracking
@@ -2232,7 +2237,7 @@ local function wnd_title(wnd, title)
 		wnd.titlebar:show();
 	end
 
--- not all windows have  a workspace, but if we do, we might need relayouting
+-- not all windows have a workspace, but if we do, we might need relayouting
 	if (wnd.space) then
 		wnd.space:resize(true);
 	end
@@ -3217,6 +3222,7 @@ local wnd_setup = function(wm, source, opts)
 		cursor = "default",
 		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
+		hide_border = false,
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 

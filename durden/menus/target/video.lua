@@ -274,6 +274,70 @@ local font_override = {
 	}
 };
 
+local font_override = {
+	{
+		name = "size",
+		label = "Size",
+		kind = "value";
+		validator = gen_valid_num(1, 100),
+		initial = function()
+			local wnd = active_display().selected;
+			if (wnd.last_font and wnd.last_font[1] > 0) then
+				return tostring(wnd.last_font[1]);
+			end
+			return tostring(gconfig_get("font_sz"));
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd:update_font(tonumber(val), -1);
+			wnd.font_block = ob;
+		end
+	},
+	{
+		name = "hinting",
+		label = "Hinting",
+		kind = "value",
+		set = {"none", "mono", "light", "normal", "subpixel"},
+		initial = function() return TERM_HINT_RLUT[gconfig_get("font_hint")]; end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local ob = wnd.font_block;
+			wnd:update_font(-1, newv);
+			wnd.font_block = ob;
+		end
+	},
+	{
+		name = "name",
+		label = "Font",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		initial = function() return gconfig_get("font_def"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_def", val);
+		end
+	},
+	{
+		name = "fbfont",
+		label = "Fallback",
+		kind = "value",
+		set = function()
+			local set = glob_resource("*", SYS_FONT_RESOURCE);
+			set = set ~= nil and set or {};
+			return set;
+		end,
+		initial = function() return gconfig_get("font_fb"); end,
+		handler = function(ctx, val)
+			gconfig_set("font_fb", val);
+		end
+	}
+};
+
 return {
 	{
 		name = "scaling",
