@@ -1,7 +1,11 @@
 --
--- Wayland- bridge, for use with src/tools/waybridge.
+-- Wayland- bridge, special protocol considerations for use with
+-- arcan/src/tools/wlbridge
 --
-local wlwnds = {};
+
+local wlwnds = {}; -- vid->window allocation tracking
+local wlsurf = {}; -- segment cookie->vid tracking
+local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
 local function wayland_trace(msg)
 	if (DEBUGLEVEL > 0) then
@@ -12,18 +16,44 @@ end
 local function subsurf_handler(cl, source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
+
 	elseif (status.kind == "viewport") then
+-- all subsurfaces need to specify a parent
+		if (status.parent == 0) then
+			return;
+		end
+
+-- it can be either another subsurface or a window
+		local pvid;
+		if (wlsubsurf[status.parent]) then
+			pvid = wlsubsurf[status.parent];
+		elseif (wlsurf[status.parent]) then
+			pvid = wlsurf[status.parent];
+			if (pvid and wlwnds[pvid]) then
+				pvid = wlwnds[pvid].canvas;
+			else
+				pvid = nil;
+			end
+		end
+
 -- can't reparent to invalid surface
-		if (not wlwnds[status.parent]) then
+		if (not valid_vid(pvid)) then
 			wayland_trace("broken viewport request from subsurface");
 			delete_image(source);
+			return;
 		end
-		link_image(source, wlwnds[status.parent].anchor);
+
+-- easy for a malicious client to subsurface->hierarchy its way to go
+-- outside the range of allowed client order values
+		link_image(source, pvid);
 		image_inherit_order(source, true);
 		move_image(source, status.rel_x, status.rel_y);
 		show_image(source);
+		order_image(source, status.rel_order);
+
 	elseif (status.kind == "terminated") then
 		delete_image(source);
+		wlsubsurf[source] = nil;
 	end
 end
 
@@ -38,15 +68,17 @@ local function popup_handler(cl, source, status)
 -- wayland popups aren't very useful unless there's a relation so
 -- defer until we receive something
 	elseif (status.kind == "viewport") then
-		if (not wlwnds[status.parent]) then
--- error condition if the popup doesn't have a real parent
+		local pid = wlsurf[status.parent];
+		if (not pid or not wlwnds[pid]) then
+			wayland_trace("broken viewport request on popup");
+			wlwnds[source] = nil;
 			delete_image(source);
 			return;
 		end
 
--- not known in beforehand? (most common)
+-- a popup shares a window container with others
 		if (not wlwnds[source]) then
-			local pop = wlwnds[status.parent]:add_popup(source, true,
+			local pop = wlwnds[pid]:add_popup(source, true,
 				function()
 					wlwnds[source] = nil;
 				end);
@@ -57,28 +89,30 @@ local function popup_handler(cl, source, status)
 			wlwnds[source] = pop;
 		end
 
+		local wnd = wlwnds[source];
 -- hide/show?
-		wlwnds[source][status.invisible and "hide" or "show"](wlwnds[source]);
+		wnd[status.invisible and "hide" or "show"](wlwnds[source]);
 
--- position relative to parent, taking anchor region into account
--- some difference between anchor edge and positioner edge, not sure
--- how to deal with this yet
-		wlwnds[source]:reposition(
+-- the positioning rules here vary with xdg- and seems related to both
+-- anchoring and the currently specified geography, hard to know what's
+-- the "right" way to do this
+		wnd:reposition(
 			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
 			status.rel_y + status.anchor_h, status.edge);
 
 -- don't allow it to be relatively- ordered outside it's allocated limit
 		local order = status.rel_order > 5 and 5 or
 			(status.rel_order < -5 and -5 or status.rel_order);
-		order_image(wlwnds[source].anchor, order);
+		order_image(wnd.anchor, order);
 
--- not all popups require input focus (tooltips!), but when they do, we can
--- cascade delete any possible children
+-- not all popups require input focus (tooltips!), but when they do,
+-- we can cascade delete any possible children
 		if (status.focus) then
-			wlwnds[source]:focus();
+			wnd:focus();
 		end
 
--- note: additional popups are not created on a popup itself
+-- note: additional popups are not created on a popup itself, but rather
+-- derived from the main client connection
 	elseif (status.kind == "terminated") then
 		if (wlwnds[source]) then
 			wlwnds[source]:destroy();
@@ -136,10 +170,8 @@ local function toplevel_handler(wnd, source, status)
 				end
 			end
 		end
-
 	elseif (status.kind == "segment_request") then
-		active_display():message("SEGMENT REQUEST" .. status.segkind);
-
+		wayland_trace("segment request on toplevel");
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
@@ -148,17 +180,26 @@ local function toplevel_handler(wnd, source, status)
 	end
 end
 
+--
 -- so this is fucking retarded, but we can't use the size of the source
 -- storage to figure out anything about what visible size the contents of
 -- the client actually has. Why? Client decorations and drop-shadows and
--- quite possibly rotation and scaling nonsense.
+-- quite possibly rotation and scaling nonsense and arbitrary subsurfaces
+-- with subsurfaces on top of that. The only possible way, it seems, is to
+-- actually walk the geometry and the subsurface position+dimensions. This
+-- is problematic for tiling to the point that when we do sizing hints, we
+-- should actually take the client area, then subtract each subsurface/ etc.
+-- but hey, there's no constraints or clipping, so GLHF. A "simple" protocol
+-- indeed.
+--
 -- The configure event (that's how DISPLAYHINT is translated in waybridge)
 -- is treated by the client as 'ok, w+A,h+B' where it gets to pick A and
 -- B because of decorations. This practically only works on a floating
 -- desktop. Our option elsewhere is to burn another resize and take
--- advantage of last known 'geometry event', but since this event only
--- carries xofs+w,yofs+h we then have to subtract from the storage
+-- advantage of the last known 'geometry event', but since this event
+-- only carries xofs+w,yofs+h we then have to subtract from the storage
 -- dimensions as the padding region doesn't have to be symmetric.
+--
 local function wl_resize(wnd, neww, newh, efw, efh)
 	if (neww > 0 and newh > 0) then
 		efw = wnd.max_w - wnd.pad_left - wnd.pad_right;
@@ -197,20 +238,27 @@ local function setup_toplevel_wnd(cl, wnd, id)
 	target_updatehandler(id, function(source, status)
 		toplevel_handler(wnd, source, status);
 	end);
+
 	wnd:add_handler("resize", wl_resize);
 	wnd:add_handler("select", wl_select);
 	wnd:add_handler("deselect", wl_deselect);
 	wnd:add_handler("destroy", wl_destroy);
+
 	wnd.scalemode = "client";
 	wnd.rate_unlimited = true;
 	wnd.font_block = true;
 	wnd.clipboard_block = true;
+
+-- client- enforced repeat...
 	wnd.kbd_period = 0;
 	wnd.kbd_delay = 0;
-	wnd.hide_border = true;
-	wnd.hide_titlebar = true;
 	wnd.filtermode = FILTER_NONE;
 	wnd.wl_kind = "toplevel";
+
+-- CSDs...
+	wnd.hide_border = true;
+	wnd.hide_titlebar = true;
+
 	show_image(wnd.canvas);
 
 -- We can't be sure of the order here, but this gets updated
@@ -270,10 +318,15 @@ return {
 -- own handler
 			wayland_trace("request: " .. stat.segkind);
 			if (stat.segkind == "application") then
-				local id = accept_target();
+				local id, aid, cookie = accept_target();
 				if (not valid_vid(id)) then
 					return true;
 				end
+
+				if (cookie > 0) then
+					wlsurf[cookie] = id;
+				end
+
 				local newwnd = active_display():add_hidden_window(id);
 				setup_toplevel_wnd(wnd, newwnd, id);
 				table.insert(wnd.wl_children, newwnd);
@@ -292,19 +345,26 @@ return {
 -- the resized- handler for the callback
 					link_image(vid, wnd.anchor);
 				end
--- popups and subsurfaces
+-- popups
 			elseif (stat.segkind == "popup") then
-				local vid = accept_target(function(a,b) popup_handler(wnd, a, b); end);
+				local vid, aid, cookie = accept_target(
+					function(a,b) popup_handler(wnd, a, b); end);
 				if (valid_vid(vid)) then
+					wlsurf[cookie] = vid;
 					link_image(vid, wnd.anchor);
+					wayland_trace("popup ok");
 				end
-				wayland_trace("popup ok");
+-- hack to allow subsurfaces
 			elseif (stat.segkind == "multimedia") then
-				local vid = accept_target(function(...) subsurf_handler(wnd, ...); end);
+				local vid, aid, cookie =
+					accept_target(function(...) subsurf_handler(wnd, ...); end);
+				wlsubsurf[vid] = cookie;
+
 				if (valid_vid(vid)) then
 					link_image(vid, wnd.anchor);
 				end
 				wayland_trace("subsurface ok");
+-- aka "data devices"
 			elseif (stat.segkind == "CLIPBOARD") then
 				wayland_trace("data device not supported");
 			else
