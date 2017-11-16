@@ -19,6 +19,8 @@ local function subsurf_handler(cl, source, status)
 
 	elseif (status.kind == "viewport") then
 -- all subsurfaces need to specify a parent
+		wayland_trace(string.format("viewport(%d,%d+%d)<-%d",
+			status.rel_x, status.rel_y, status.rel_order, status.parent));
 		if (status.parent == 0) then
 			return;
 		end
@@ -96,6 +98,11 @@ local function popup_handler(cl, source, status)
 -- the positioning rules here vary with xdg- and seems related to both
 -- anchoring and the currently specified geography, hard to know what's
 -- the "right" way to do this
+		local ox = wlwnds[pid].geom and wlwnds[pid].geom[1] or 0;
+		local oy = wlwnds[pid].geom and wlwnds[pid].geom[2] or 0;
+		print("offset popup", ox, oy);
+		status.rel_x = status.rel_x + ox;
+		status.rel_y = status.rel_y + oy;
 		wnd:reposition(
 			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
 			status.rel_y + status.anchor_h, status.edge);
