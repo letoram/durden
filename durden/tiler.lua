@@ -2533,7 +2533,6 @@ local function wnd_ident(wnd, ident)
 end
 
 local function wnd_getname(wnd)
-	local msg = "";
 	if (wnd.title_text and string.len(wnd.title_text) > 0) then
 		return wnd.title_text;
 	else
@@ -3849,6 +3848,7 @@ function tiler_create(width, height, opts)
 		on_wnd_create = {},
 		on_wnd_destroy = {},
 		on_wnd_drag = {},
+		on_wnd_hide = {},
 
 -- unique event handlers
 		on_preview_step = function() end
