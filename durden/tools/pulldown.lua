@@ -243,6 +243,7 @@ local function termh(source, status)
 		end
 		delete_image(source);
 		dstate.term = nil;
+		dstate.disp.lock_override = false;
 	end
 end
 
@@ -277,11 +278,14 @@ local function dterm()
 			return;
 		end
 		dstate.disp = disp;
+		dstate.disp.lock_override = true;
 	end
 
 -- reattach to different output on switch or resize
 	if (dstate.disp ~= active_display()) then
+		dstate.disp.lock_override = false;
 		dstate.disp = active_display();
+		dstate.disp.lock_override = true;
 		target_displayhint(dstate.term, neww, newh, 0, dstate.disp.disptbl);
 		rendertarget_attach(active_display(true), dstate.term, RENDERTARGET_DETACH);
 		update_size();

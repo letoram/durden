@@ -355,7 +355,8 @@ end
 -- mouse locking and update border states
 --
 function durden_lock_toggle(newst, state)
-	if (not active_display().selected and newst) then
+	if ((not active_display().selected and
+		not active_display().lock_override) and newst) then
 		dispatch_toggle(false);
 		return;
 	end
