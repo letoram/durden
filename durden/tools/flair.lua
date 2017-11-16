@@ -10,24 +10,28 @@
 
 -- the cloth effect has a rather verbose setup and use, so split
 -- it up into two stages, the simulation and the config/setup
-local cloth = system_load("tools/flair/cloth.lua")();
 local destroy_effects = system_load("tools/flair/destroy.lua")();
 local create_effects = system_load("tools/flair/create.lua")();
+local drag_effects = system_load("tools/flair/drag.lua")();
 
-local drag_effects = { cloth };
 local drag_effect = nil;
-
 -- just route the drag/drop events with extra states for begin/end
 local function flair_drag_hook(wm, wnd, dx, dy, last)
-	if (drag_effect) then
+	if (in_drag) then
 		if (last) then
-			drag_effect.stop(wnd);
-			drag_effect= nil;
+			if (drag_effect) then
+				drag_effect.stop(wnd);
+				drag_effect = nil;
+			end
+			in_drag = false;
+			show_image(wnd.anchor);
 		else
 			drag_effect.update(wnd, dx, dy);
 		end
 	else
 		local cv = gconfig_get("flair_drag");
+		in_drag = true;
+		blend_image(wnd.anchor, gconfig_get("flair_drag_opacity"));
 		for i,v in ipairs(drag_effects) do
 			if (v.label == cv) then
 				drag_effect = v;
@@ -65,6 +69,7 @@ end
 gconfig_register("flair_drag", "disabled");
 gconfig_register("flair_destroy", "disabled");
 gconfig_register("flair_speed", 50);
+gconfig_register("flair_drag_opacity", 1.0);
 
 local drag_set = {"disabled"};
 for k,v in ipairs(drag_effects) do
@@ -135,6 +140,18 @@ local flair_config_menu = {
 			gconfig_set("flair_speed", tonumber(val));
 		end
 	},
+	{
+		name = "drag_opacity",
+		label = "Drag Opacity",
+		kind = "value",
+		initial = function()
+			return gconfig_get("flair_drag_opacity");
+		end,
+		validator = gen_valid_float(0.1, 1.0),
+		handler = function(ctx, val)
+			gconfig_set("flair_drag_opacity", tonumber(val));
+		end
+	}
 };
 
 for i,v in ipairs(drag_effects) do

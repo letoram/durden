@@ -26,7 +26,6 @@ void main()
 
 -- on-demand compile shaders
 local function synch_shader(key)
-	print("try to synch:", key);
 	local sk = shaders[key];
 	assert(sk);
 
