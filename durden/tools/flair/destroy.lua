@@ -45,14 +45,11 @@ local function run_shader(key, wm, wnd, space, space_active, popup)
 		return;
 	end
 
-	local props = image_surface_resolve(wnd.canvas);
-	local vid = null_surface(props.width, props.height);
-	show_image(vid);
-	move_image(vid, props.x, props.y);
-	image_sharestorage(wnd.canvas, vid);
-	expire_image(vid, gconfig_get("flair_speed")+1);
-	blend_image(vid, 0.0, gconfig_get("flair_speed"));
-	image_shader(vid, synch_shader("dissolve"));
+	local vid = flair_supp_clone(wnd);
+	if (valid_vid(vid)) then
+		blend_image(vid, 0.0, gconfig_get("flair_speed"));
+		image_shader(vid, synch_shader("dissolve"));
+	end
 end
 
 return {

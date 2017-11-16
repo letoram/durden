@@ -11,6 +11,8 @@
 -- that the window will have a compliant state afterwards, but we
 -- can hide
 gconfig_register("advfloat_spawn", "auto");
+gconfig_register("advfloat_hide", "statusbar");
+
 local mode = gconfig_get("advfloat_spawn");
 local pending, pending_vid;
 
@@ -93,7 +95,7 @@ local function wnd_attach(wm, wnd)
 end
 
 -- hook displays so we can decide spawn mode between things like
--- spawn minimized, cursor-click to position, draw to spawn
+-- spawn hidden, cursor-click to position, draw to spawn
 display_add_listener(
 function(event, name, tiler, id)
 	if (event == "added" and tiler) then
@@ -101,6 +103,79 @@ function(event, name, tiler, id)
 	end
 end
 );
+
+local function do_hide(wnd, tgt)
+	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
+		local btn;
+		local wm = wnd.wm;
+		local pad = gconfig_get("sbar_tpad") * wm.scalef;
+		local str = string.sub(tgt, 11);
+		btn = wm.statusbar:add_button(str, "sbar_item_bg",
+			"sbar_item", wnd:get_name(), pad, wm.font_resfn, nil, wm.statusbar.height,
+			{
+				click = function()
+					local props = image_surface_resolve(btn.bg);
+					btn:destroy();
+					if (#wm.on_wnd_hide > 0) then
+						for k,v in ipairs(wm.on_wnd_hide) do
+							v(wm, wnd, props.x, props.y, props.width, props.height, false);
+						end
+					else
+						wnd:show();
+					end
+				end
+			}
+		);
+		if (not btn) then
+			warning("hide-to-button: creation failed");
+			return;
+		end
+
+-- safeguard against show being called from somewhere else
+		local old_show = wnd.show;
+		wnd.show = function(wnd)
+			if (btn.bg) then
+				btn:click();
+			end
+			wnd.show = old_show;
+			old_show(wnd);
+		end
+
+		if (#wm.on_wnd_hide > 0) then
+			local props = image_surface_resolve(btn.bg);
+			for k,v in ipairs(wm.on_wnd_hide) do
+				v(wm, wnd, props.x, props.y, props.width, props.height, true);
+			end
+		else
+			wnd:hide();
+		end
+	else
+		warning("unknown hide target: " .. tgt);
+	end
+end
+
+-- all_spaces_iter
+
+shared_menu_register("window",
+{
+	kind = "action",
+	name = "hide",
+	label = "Hide",
+	kind = "action",
+	eval = function()
+		return
+			gconfig_get("advfloat_hide") ~= "disabled" and
+				active_display().selected.space.mode == "float";
+	end,
+	handler = function()
+		local wnd = active_display().selected;
+		if (not wnd.hide) then
+			return;
+		end
+		local tgt = gconfig_get("advfloat_hide");
+		do_hide(wnd, tgt);
+	end
+});
 
 global_menu_register("settings/wspaces/float",
 {
@@ -113,5 +188,29 @@ global_menu_register("settings/wspaces/float",
 	handler = function(ctx, val)
 		mode = val;
 		gconfig_set("advfloat_spawn", val);
+	end
+});
+
+global_menu_register("settings/wspaces/float",
+{
+	kind = "value",
+	name = "hide_target";
+	initial = gconfig_get("advfloat_hide"),
+	label = "Hide Target",
+	set = {"disabled", "statusbar-left", "statusbar-right"},
+	handler = function(ctx, val)
+		gconfig_set("advfloat_hide", val);
+	end
+});
+
+global_menu_register("settings/wspaces/float",
+{
+	kind = "value",
+	name = "icons",
+	label = "Icons",
+	set = {"disabled", "global", "workspace"},
+	initial = gconfig_get("advfloat_icon"),
+	handler = function(ctx, val)
+		gconfig_set("advfloat_icon", val);
 	end
 });

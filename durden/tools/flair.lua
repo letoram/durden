@@ -3,6 +3,20 @@
 -- currently quite barebone, but intended to grow over time
 -- to surpass what we would get from something like compiz
 --
+
+-- reused with many effects
+flair_supp_clone = function(wnd)
+	local props = image_surface_resolve(wnd.canvas);
+	local vid = null_surface(props.width, props.height);
+	if (valid_vid(vid)) then
+		show_image(vid);
+		move_image(vid, props.x, props.y);
+		image_sharestorage(wnd.canvas, vid);
+		expire_image(vid, gconfig_get("flair_speed")+1);
+	end
+	return vid;
+end
+
 -- we keep the shaders and support script separate from the other
 -- subsystems so that the effects are easier to develop, test and
 -- share outside a full durden setup
@@ -13,6 +27,7 @@
 local destroy_effects = system_load("tools/flair/destroy.lua")();
 local create_effects = system_load("tools/flair/create.lua")();
 local drag_effects = system_load("tools/flair/drag.lua")();
+local hide_effects = system_load("tools/flair/hide.lua")();
 
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
@@ -56,6 +71,22 @@ local function flair_wnd_destroy(wm, wnd, space, space_active, popup)
 	end
 end
 
+local function flair_wnd_hide(wm, wnd, dx, dy, dw, dh, hide)
+	local heffect = gconfig_get("flair_hide");
+
+	if (hide_effects[heffect]) then
+		display_tiler_action(wm, function()
+			hide_effects[heffect](wm, wnd, dx, dy, dw, dh, hide);
+		end);
+	else
+		if (hide) then
+			wnd:hide();
+		else
+			wnd:show();
+		end
+	end
+end
+
 local function flair_wnd_create(wm, wnd, space, space_active, popup)
 	local create = gconfig_get("flair_create");
 	if (create and create_effects[create]) then
@@ -68,6 +99,8 @@ end
 -- only menu/config key registration from this point
 gconfig_register("flair_drag", "disabled");
 gconfig_register("flair_destroy", "disabled");
+gconfig_register("flair_create", "disabled");
+gconfig_register("flair_hide", "disabled");
 gconfig_register("flair_speed", 50);
 gconfig_register("flair_drag_opacity", 1.0);
 
@@ -84,6 +117,11 @@ end
 local destroy_set = {"disabled"};
 for k,v in pairs(destroy_effects) do
 	table.insert(destroy_set, k);
+end
+
+local hide_set = {"disabled"};
+for k,v in pairs(hide_effects) do
+	table.insert(hide_set, k);
 end
 
 local flair_config_menu = {
@@ -129,6 +167,18 @@ local flair_config_menu = {
 		end
 	},
 	{
+		name = "hide",
+		label = "Hide",
+		kind = "value",
+		set = hide_set,
+		initial = function()
+			return gconfig_get("flair_hide");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("flair_hide", val);
+		end
+	},
+	{
 		name = "speed",
 		label = "Speed",
 		kind = "value",
@@ -169,12 +219,14 @@ local function flair_toggle()
 			table.remove_match(wm.on_wnd_drag, flair_drag_hook);
 			table.remove_match(wm.on_wnd_create, flair_wnd_create);
 			table.remove_match(wm.on_wnd_destroy, flair_wnd_destroy);
+			table.remove_match(wm.on_wnd_hide, flair_wnd_hide);
 		end
 	else
 		for wm in all_tilers_iter() do
 			table.insert(wm.on_wnd_drag, flair_drag_hook);
 			table.insert(wm.on_wnd_create, flair_wnd_create);
 			table.insert(wm.on_wnd_destroy, flair_wnd_destroy);
+			table.insert(wm.on_wnd_hide, flair_wnd_hide);
 		end
 		in_flair = true;
 	end

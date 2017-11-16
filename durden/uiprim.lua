@@ -231,8 +231,8 @@ end
 -- (minh) button can't be shorter than this
 -- (mouseh) keyed table of functions to event handler
 local ind = 0;
-function uiprim_button(anchor, bgshname, lblshname, lbl,
-	pad, fontfn, minw, minh, mouseh)
+function uiprim_button(anchor, bgshname,
+	lblshname, lbl, pad, fontfn, minw, minh, mouseh)
 	ind = ind + 1;
 	assert(pad);
 	local res = {
@@ -398,8 +398,8 @@ end
 -- add some additional parameters to the normal button construction,
 -- align defines size behavior in terms of under/oversize. left/right takes
 -- priority, center is fill and distribute evenly (or limit with minw/minh)
-local function bar_button(bar, align, bgshname, lblshname,
-	lbl, pad, fontfn, minw, minh, mouseh)
+local function bar_button(bar, align,
+	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh)
 	assert(bar.buttons[align] ~= nil);
 	assert(type(fontfn) == "function");
 
@@ -410,8 +410,8 @@ local function bar_button(bar, align, bgshname, lblshname,
 		fill = true;
 	end
 
-	local btn = uiprim_button(bar.anchor, bgshname, lblshname,
-		lbl, pad, fontfn, minw, minh, mouseh);
+	local btn = uiprim_button(bar.anchor,
+		bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh);
 
 	if (not btn) then
 		warning("couldn't create button");
