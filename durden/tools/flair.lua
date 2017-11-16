@@ -24,10 +24,10 @@ end
 
 -- the cloth effect has a rather verbose setup and use, so split
 -- it up into two stages, the simulation and the config/setup
-local destroy_effects = system_load("tools/flair/destroy.lua")();
-local create_effects = system_load("tools/flair/create.lua")();
-local drag_effects = system_load("tools/flair/drag.lua")();
-local hide_effects = system_load("tools/flair/hide.lua")();
+local destroy_effects = system_load("tools/flair/destroy.lua", false)();
+local create_effects = system_load("tools/flair/create.lua", false)();
+local drag_effects = system_load("tools/flair/drag.lua", false)();
+local hide_effects = system_load("tools/flair/hide.lua", false)();
 
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
@@ -47,11 +47,13 @@ local function flair_drag_hook(wm, wnd, dx, dy, last)
 		local cv = gconfig_get("flair_drag");
 		in_drag = true;
 		blend_image(wnd.anchor, gconfig_get("flair_drag_opacity"));
-		for i,v in ipairs(drag_effects) do
-			if (v.label == cv) then
-				drag_effect = v;
-				drag_effect.start(wnd);
-				return;
+		if (drag_effects) then
+			for i,v in ipairs(drag_effects) do
+				if (v.label == cv) then
+					drag_effect = v;
+					drag_effect.start(wnd);
+					return;
+				end
 			end
 		end
 	end
@@ -64,7 +66,7 @@ end
 local function flair_wnd_destroy(wm, wnd, space, space_active, popup)
 	local destroy = gconfig_get("flair_destroy");
 
-	if (destroy and destroy_effects[destroy]) then
+	if (destroy_effects and destroy_effects[destroy]) then
 		display_tiler_action(wm, function()
 			destroy_effects[destroy](wm, wnd, space, space_active, popup);
 		end);
@@ -74,7 +76,7 @@ end
 local function flair_wnd_hide(wm, wnd, dx, dy, dw, dh, hide)
 	local heffect = gconfig_get("flair_hide");
 
-	if (hide_effects[heffect]) then
+	if (hide_effects and hide_effects[heffect]) then
 		display_tiler_action(wm, function()
 			hide_effects[heffect](wm, wnd, dx, dy, dw, dh, hide);
 		end);
@@ -89,7 +91,7 @@ end
 
 local function flair_wnd_create(wm, wnd, space, space_active, popup)
 	local create = gconfig_get("flair_create");
-	if (create and create_effects[create]) then
+	if (create_effects and create_effects[create]) then
 		display_tiler_action(wm, function()
 			create_effects[create](wm, wnd, space, space_active, popup);
 		end);
@@ -105,23 +107,31 @@ gconfig_register("flair_speed", 50);
 gconfig_register("flair_drag_opacity", 1.0);
 
 local drag_set = {"disabled"};
-for k,v in ipairs(drag_effects) do
-	table.insert(drag_set, v.label);
+if (drag_effects) then
+	for k,v in ipairs(drag_effects) do
+		table.insert(drag_set, v.label);
+	end
 end
 
 local create_set = {"disabled"};
-for k,v in pairs(create_effects) do
-	table.insert(create_set, k);
+if (create_effects) then
+	for k,v in pairs(create_effects) do
+		table.insert(create_set, k);
+	end
 end
 
 local destroy_set = {"disabled"};
-for k,v in pairs(destroy_effects) do
-	table.insert(destroy_set, k);
+if (destroy_effects) then
+	for k,v in pairs(destroy_effects) do
+		table.insert(destroy_set, k);
+	end
 end
 
 local hide_set = {"disabled"};
-for k,v in pairs(hide_effects) do
-	table.insert(hide_set, k);
+if (hide_effects) then
+	for k,v in pairs(hide_effects) do
+		table.insert(hide_set, k);
+	end
 end
 
 local flair_config_menu = {
