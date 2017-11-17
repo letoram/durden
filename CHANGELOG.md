@@ -11,6 +11,7 @@
 
   * tools/advfloat - extended float layout mode capabilities:
     spawn control (draw2spawn)
+    hide-to-statusbar
 
   * tools/overview - added a HUD- like workspace switcher
 
