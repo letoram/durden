@@ -8,23 +8,28 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 	local txt, lineh, w, h, asc;
 	local fontstr, offsetf = btn.fontfn();
 
+-- fill area as notification may want a timeout
 	if (timeout and timeout > 0) then
 		btn.timeout = timeout;
 		btn.timeout_lbl = timeoutstr and timeoutstr or "";
 	end
 
--- keep this around so we can update if the fontfn changes
+-- if it just means to repeat the last label, then we just
+-- prepend the new font-str
 	local append = true;
 	if (lbl == nil) then
 		lbl = btn.last_lbl;
 		append = false;
 	end
 
+-- keep this around so we can update if the fontfn changes
 	if (type(lbl) == "string" or type(lbl) == "table") then
 		if (type(lbl) == "string") then
 			lbl = {fontstr, lbl};
 		elseif (append) then
 			lbl[1] = fontstr .. lbl[1];
+		else
+			lbl[1] = fontstr;
 		end
 		btn.last_lbl = lbl;
 

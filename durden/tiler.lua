@@ -448,8 +448,9 @@ local function tiler_statusbar_build(wm)
 		);
 		wm.sbar_ws[i]:hide();
 	end
--- fill slot with system messages, will later fill the role of a notification
--- stack, with possible timeout and popup- list
+
+-- fill slot with system messages for the time being, need something
+-- more clever here later (ie. dock titlebar, notification area, ...)
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
 		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz,
 		{
@@ -3125,7 +3126,7 @@ local function wnd_recovertag(wnd, restore)
 end
 
 local function wnd_inputtable(wnd, iotbl, multicast)
-	if valid_vid(wnd.external) then
+	if (valid_vid(wnd.external)) then
 		target_input(wnd.external, iotbl);
 	end
 
@@ -3743,9 +3744,13 @@ local function tiler_scalef(wm, newf, disptbl)
 
 	wm:resize(wm.width, wm.height);
 
+-- [removed, kept as a note]
 -- easier doing things like this than fixing the other dimensioning edgecases
-	wm.statusbar:destroy();
-	tiler_statusbar_build(wm);
+--	wm.statusbar:destroy();
+-- this broke custom buttons and buttons from other origins
+	wm.statusbar:invalidate();
+
+--	tiler_statusbar_build(wm);
 	wm:tile_update();
 end
 
