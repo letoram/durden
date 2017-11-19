@@ -1985,17 +1985,17 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		return;
 	else
 		if (wnd.in_drag_rz) then
-			local dx = wnd.effective_w % wnd.sz_delta[1];
-			local dy = wnd.effective_h % wnd.sz_delta[2];
+			local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
+			local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
 			local ew = wnd.effective_w;
 			local eh = wnd.effective_h;
 			if (dx > wnd.sz_delta[1] * 0.5) then
 				ew = ew + wnd.sz_delta[1];
-				wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[3];
+				wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
 			end
 			if (dy < wnd.sz_delta[2] * 0.5) then
 				eh = eh + wnd.sz_delta[2];
-				wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[4];
+				wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
 			end
 
 			move_image(wnd.anchor, wnd.x, wnd.y);
@@ -2880,7 +2880,32 @@ local canvas_mh = {
 		end
 	end,
 
-	press = wnd_mousepress,
+	drag = function(ctx, vid, dx, dy)
+		if (ctx.tag.in_drag_rz) then
+			wnd_step_drag(ctx.tag, ctx, vid, dx, dy);
+		elseif (ctx.tag.in_drag_move) then
+			wnd.x = wnd.x + dx;
+			wnd.y = wnd.y + dy;
+			move_image(wnd.anchor, wnd.x, wnd.y);
+		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
+			wnd_mousemotion(ctx, vid, dx, dy);
+		end
+	end,
+
+	drop = function(ctx, vid)
+		if (ctx.tag.in_drag_rz) then
+			ctx.tag.in_drag_rz = false;
+		end
+		if (ctx.tag.in_drag_move) then
+			ctx.tag.in_drag_move = false;
+		end
+	end,
+
+	press = function(ctx, ...)
+		if (not ctx.tag.in_drag_rz and not ctx.tag.in_drag_move) then
+			wnd_mousepress(ctx, ...);
+		end
+	end,
 
 	over = function(ctx)
 		local tag = ctx.tag;
