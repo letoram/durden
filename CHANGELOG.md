@@ -26,8 +26,6 @@
 	  subsegments. This match the new support in afsrv_terminal that
 		allows the window to be cloned into a copy-window.
 
-  * improved handling for wayland features like popups and subsurfaces
-
   * retain some window properties across script errors / resets
 
 Minor:
@@ -38,6 +36,12 @@ Minor:
    is closed
 
  * Double-tap input-lock without a selected windows is now a no-op
+
+ * Float mode border drag sizing, cursorhint and positioning fixes
+
+ * Float mode canvas-drag/resize option for self-decorated clients
+
+ * improved handling for wayland features like popups and subsurfaces
 
 # 0.3.0
   * Now requires arcan >= 0.5.3.

@@ -332,6 +332,7 @@ return {
 			local wnd = active_display().selected;
 			wnd.hide_titlebar = not wnd.hide_titlebar;
 			wnd:set_title();
+			wnd:resize_effective(wnd.effective_w, wnd.effective_h, true);
 		end
 	},
 	{

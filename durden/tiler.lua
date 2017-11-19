@@ -2837,7 +2837,7 @@ local titlebar_mh = {
 };
 
 local border_mh = {
-	over = function(ctx)
+	motion = function(ctx)
 		if (ctx.tag.space.mode == "float") then
 			local p = wnd_borderpos(ctx.tag);
 			local ent = dir_lut[p];
