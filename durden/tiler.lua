@@ -1970,6 +1970,48 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 end
 
+local function wnd_step_drag(wnd, mctx, vid, dx, dy)
+	wnd.x = wnd.x + dx * mctx.mask[3];
+	wnd.y = wnd.y + dy * mctx.mask[4];
+	move_image(wnd.anchor, wnd.x, wnd.y);
+	wnd:resize(wnd.width+dx*mctx.mask[1], wnd.height+dy*mctx.mask[2], true, false);
+end
+
+local function wnd_drag_resize(wnd, mctx, enter)
+	if (enter) then
+		if (not wnd.in_drag_rz) then
+		end
+		wnd.in_drag_rz = true;
+		return;
+	else
+		if (wnd.in_drag_rz) then
+			local dx = wnd.effective_w % wnd.sz_delta[1];
+			local dy = wnd.effective_h % wnd.sz_delta[2];
+			local ew = wnd.effective_w;
+			local eh = wnd.effective_h;
+			if (dx > wnd.sz_delta[1] * 0.5) then
+				ew = ew + wnd.sz_delta[1];
+				wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[3];
+			end
+			if (dy < wnd.sz_delta[2] * 0.5) then
+				eh = eh + wnd.sz_delta[2];
+				wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[4];
+			end
+
+			move_image(wnd.anchor, wnd.x, wnd.y);
+			wnd:resize_effective(ew, eh, true);
+		else
+			wnd:resize(wnd.width, wnd.height, true);
+		end
+		wnd.in_drag_rz = false;
+		return;
+	end
+end
+
+local function wnd_drag_move(wnd, enter)
+-- need to do it for the canvas as well due to wayland
+end
+
 local function wnd_move(wnd, dx, dy, align, abs, now)
 	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
@@ -2808,24 +2850,26 @@ local border_mh = {
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local wnd = ctx.tag;
+
+-- protect against ugly "window destroyed just as we got drag"-
+		if (not wnd.drag_resize) then
+			return;
+		end
+
+		if (wnd.in_drag_rz) then
+			wnd_step_drag(wnd, ctx, vid, dx, dy);
+			return;
+		end
+
 		if (wnd.space.mode == "float" and ctx.mask) then
-			wnd.in_drag_rz = true;
-			wnd.x = wnd.x + dx * ctx.mask[3];
-			wnd.y = wnd.y + dy * ctx.mask[4];
-			move_image(wnd.anchor, wnd.x, wnd.y);
-			wnd:resize(wnd.width+dx*ctx.mask[1], wnd.height+dy*ctx.mask[2], true, false);
+			wnd:drag_resize(ctx, true);
+			wnd_step_drag(wnd, ctx, vid, dx, dy);
 		end
 	end,
 	drop = function(ctx)
-		local wnd = ctx.tag;
-		if (wnd.sz_delta) then
-			wnd:resize_effective(
-				wnd.effective_w + (wnd.effective_w % wnd.sz_delta[1]),
-				wnd.effective_h + (wnd.effective_h % wnd.sz_delta[2]), true);
-		else
-			wnd:resize(wnd.width, wnd.height, true);
+		if (ctx.tag.drag_resize) then
+			ctx.tag:drag_resize(ctx, false);
 		end
-		ctx.tag.in_drag_rz = false;
 	end
 };
 
@@ -3254,6 +3298,8 @@ local wnd_setup = function(wm, source, opts)
 		prev = wnd_prev,
 		move = wnd_move,
 		swap = wnd_swap,
+		drag_resize = wnd_drag_resize,
+		drag_move = wnd_drag_move,
 
 -- lifecycle
 		set_suspend = wnd_setsuspend,
