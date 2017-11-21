@@ -1651,8 +1651,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		and wnd.canvas_props or image_storage_properties(wnd.canvas);
 
 -- to save space for border width, statusbar and other properties
-	local decw = wnd.pad_left + wnd.pad_right;
-	local dech = wnd.pad_top + wnd.pad_bottom;
+	local decw = math.ceil(wnd.pad_left + wnd.pad_right);
+	local dech = math.ceil(wnd.pad_top + wnd.pad_bottom);
 
 -- reposition according to padding / decoration
 	if (not wnd.fullscreen) then
@@ -2385,7 +2385,7 @@ local function wnd_toggle_maximize(wnd)
 		wnd.y = 0;
 		move_image(wnd.anchor, wnd.x, wnd.y,
 			wnd_animation_time(wnd, wnd.anchor, false, true));
-		wnd:resize(wnd.wm.width, wnd.wm.height, true);
+		wnd:resize(wnd.wm.width, wnd.wm.height - sbar_geth(wnd.wm), true);
 	end
 end
 
@@ -3234,6 +3234,7 @@ local wnd_setup = function(wm, source, opts)
 		external = extvid,
 		gain = 1.0 * gconfig_get("global_gain"),
 		popups = {},
+		sz_delta = {1, 1},
 
 -- hierarchies used for tile layout
 		children = {},
@@ -3774,6 +3775,9 @@ local function tiler_deactivate(wm)
 	end
 end
 
+-- this is the wrong way to do it now that rendertargets actually support
+-- setting an output density and rerastering accordingly, refactor when
+-- time permits.
 local function recalc_fsz(wm)
 	local fsz = gconfig_get("font_sz") * wm.scalef - gconfig_get("font_sz");
 	local int, fract = math.modf(fsz);
