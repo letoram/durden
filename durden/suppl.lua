@@ -1182,6 +1182,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 		end
 	end
 
+	table.insert(res, "..");
 	return {set = res, valid = false};
 end
 
