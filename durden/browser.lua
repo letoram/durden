@@ -14,13 +14,58 @@ local function sort_az(a, b)
 		string.lower((type(b) == "table" and b[3] or b));
 end
 
+-- like a normal sort, but the case of
+-- a1.jpg a11.jpg a2.jpg becomes
+-- a1.jpg a2.jpg a11.jpg
+local function sort_az_nat(a, b)
+-- extract the strings
+	a = type(a) == "table" and a[3] or a;
+	b = type(b) == "table" and b[3] or b;
+
+-- find first digit point
+	local s_a, e_a = string.find(a, "%d+");
+	local s_b, e_b = string.find(b, "%d+");
+
+-- if they exist and are at the same position
+	if (s_a ~= nil and s_b ~= nil and s_a == s_b) then
+
+-- extract and compare the prefixes
+		local p_a = string.sub(a, 1, s_a-1);
+		local p_b = string.sub(b, 1, s_b-1);
+
+-- and if those match, compare the values
+		if (p_a == p_b) then
+			return
+				tonumber(string.sub(a, s_a, e_a)) <
+				tonumber(string.sub(b, s_b, e_b));
+		end
+	end
+
+-- otherwise normal a-Z
+	return string.lower(a) < string.lower(b);
+end
+
 local function sort_za(a, b)
 	return
 		string.lower((type(a) == "table" and a[3] or a)) >
 		string.lower((type(b) == "table" and a[3] or b));
 end
 
-local sort_mode = sort_az; -- "random";
+local sort_mode = sort_az_nat;
+local sort_lut = {
+["random"] = function()
+	sort_mode = "random";
+end,
+["numeric(a->Z)"] = function()
+	sort_mode = sort_az;
+end,
+["natural(a->Z)"] = function()
+	sort_mode = sort_az_nat;
+end,
+["reverise(Z->a)"] = function()
+	sort_mode = sort_za;
+end
+};
 
 local function match_ext(v, tbl)
 	if (tbl == nil) then
@@ -133,6 +178,16 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 
 	if (done) then
 		drop_timer();
+		if (ctx.subst) then
+-- drop substitution state, rerun current path
+			ctx.subst = false;
+			if (sort_lut[instr]) then
+				sort_lut[instr]();
+			end
+			browse_file(ctx.path, ctx.fltext,
+				ctx.namespace, ctx.trigger, 0, {restore = ctx});
+			return;
+		end
 
 -- first, special cases
 		if (instr == "..") then
@@ -212,7 +267,7 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 -- use a special % namespace for switching filter modes, search results etc.
 	local filter = flt_prefix;
 	local lstr = string.len(instr);
-	local subst = false;
+	ctx.subst = false;
 
 -- * is more intuitive wildcard, so substitute that with %.* pattern
 	if (lstr > 0) then
@@ -227,13 +282,14 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 
 -- and only one? substitute with commands
 		elseif (string.sub(instr, 1, 1) == "%") then
-			subst = true;
+			ctx.subst = true;
+			for k,v in pairs(sort_lut) do table.insert(res, k); end
 		end
 	end
 
 -- optional: set helper based on input string (hover timer)
 	local dirc = 1;
-	if (not subst) then
+	if (not ctx.subst) then
 	for i,v in ipairs(ctx.paths[path]) do
 			if (ctx.paths[path][v] == "directory" and filter(v, instr)) then
 				table.insert(res, dirc, {mlbl, msellbl, v});
@@ -253,9 +309,9 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 	end
 
 -- sort now
-	if (type(sort_mode) == "function") then
+	if (not ctx.subst and type(sort_mode) == "function") then
 		table.sort(res, sort_mode);
-	elseif (type(sort_mode) == "string") then
+	elseif (not ctx.subst and type(sort_mode) == "string") then
 		if (sort_mode == "random") then
 			local size = #res;
 			for i=size,1,-1 do
@@ -266,11 +322,11 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 	end
 
 -- add .. to the alternatives
-	if (instr ~= "..") then
+	if (not ctx.subst and instr ~= "..") then
 		table.insert(res, ".");
 	end
 
-	if (path ~= ctx.initial) then
+	if (not ctx.subst and dpath ~= ctx.initial) then
 		table.insert(res, "..");
 	end
 
