@@ -8,6 +8,20 @@ local last_path = {};
 local last_min = 0;
 local last_rest = {};
 
+local function sort_az(a, b)
+	return
+		string.lower((type(a) == "table" and a[3] or a)) <
+		string.lower((type(b) == "table" and b[3] or b));
+end
+
+local function sort_za(a, b)
+	return
+		string.lower((type(a) == "table" and a[3] or a)) >
+		string.lower((type(b) == "table" and a[3] or b));
+end
+
+local sort_mode = sort_az; -- "random";
+
 local function match_ext(v, tbl)
 	if (tbl == nil) then
 		return true;
@@ -101,22 +115,45 @@ local function browser_timer(ctx)
 	end
 end
 
+local function flt_prefix(val, instr)
+	return (string.sub(val,1,string.len(instr)) == instr);
+end
+
+local function flt_ptn(val, instr)
+	local stat, res = pcall(string.match, val, instr);
+	if (not stat) then
+	else
+		return res;
+	end
+end
+
 local function browse_cb(ctx, instr, done, lastv, inpctx)
 	ctx.counter = 0;
+	instr = instr and instr or "";
 
 	if (done) then
 		drop_timer();
+
+-- first, special cases
 		if (instr == "..") then
 			step_up(ctx);
 			return;
-		elseif (string.sub(instr, 1, 1) == ctx.reserved) then
 
+-- drop cached and retry
+		elseif (instr == ".") then
+			ctx.paths[ctx.path] = nil;
+			browse_file(ctx.path, ctx.fltext,
+				ctx.namespace, ctx.trigger, 0, {restore = ctx});
+			return;
+
+-- reset the path tracking entirely
 		elseif (instr == "/") then
 			browser_path:reset();
 			browse_file(ctx.initial, ctx.fltext, ctx.namespace, ctx.trigger, 0);
 			return;
 		end
 
+-- block traversal
 		string.gsub(instr, "..", "");
 		local pn = string.format("%s/%s", table.concat(ctx.path, "/"), instr);
 		local r, v = resource(pn, ctx.namespace);
@@ -154,6 +191,7 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 	last_path = ctx.path;
 	last_min = ctx.minlen;
 	last_rest = inpctx;
+
 	local path = table.concat(ctx.path, "/");
 	if (ctx.paths[path] == nil) then
 		ctx.paths[path] = glob_resource(path .. "/*", ctx.namespace);
@@ -170,25 +208,72 @@ local function browse_cb(ctx, instr, done, lastv, inpctx)
 	local msellbl = gconfig_get("lbar_menulblselstr");
 	local res = {};
 
+-- first, just populate the list of candidates based on filter and/or type,
+-- use a special % namespace for switching filter modes, search results etc.
+	local filter = flt_prefix;
+	local lstr = string.len(instr);
+	local subst = false;
+
+-- * is more intuitive wildcard, so substitute that with %.* pattern
+	if (lstr > 0) then
+		if (string.find(instr, "%*")) then
+			filter = flt_ptn;
+			instr = string.gsub(instr, "%*", "%%.%*");
+
+-- but if we start with double %%, switch to pattern mode
+		elseif (string.sub(instr, 1, 2) == "%%") then
+			filter = flt_ptn;
+			instr = string.sub(instr, 3);
+
+-- and only one? substitute with commands
+		elseif (string.sub(instr, 1, 1) == "%") then
+			subst = true;
+		end
+	end
+
+-- optional: set helper based on input string (hover timer)
+	local dirc = 1;
+	if (not subst) then
 	for i,v in ipairs(ctx.paths[path]) do
-		if (string.sub(v,1,string.len(instr)) == instr) then
-			if (ctx.paths[path][v] == "directory") then
-				table.insert(res, {mlbl, msellbl, v});
+			if (ctx.paths[path][v] == "directory" and filter(v, instr)) then
+				table.insert(res, dirc, {mlbl, msellbl, v});
+				dirc = dirc + 1;
 			else
 				local ext = match_ext(v, ctx.fltext);
-				if (ext) then
+				if (ext and filter(v, instr)) then
 -- if extension comes with color hint, use that
 					if (type(ext) == "table") then
 						table.insert(res, {ext.col, ext.selcol, v, ext.preview});
 					else
 						table.insert(res, v);
 					end
-				end
+			end
+		end
+	end
+	end
+
+-- sort now
+	if (type(sort_mode) == "function") then
+		table.sort(res, sort_mode);
+	elseif (type(sort_mode) == "string") then
+		if (sort_mode == "random") then
+			local size = #res;
+			for i=size,1,-1 do
+				local rand = math.random(size);
+				res[i], res[rand] = res[rand], res[i];
 			end
 		end
 	end
 
-	table.insert(res, "..");
+-- add .. to the alternatives
+	if (instr ~= "..") then
+		table.insert(res, ".");
+	end
+
+	if (path ~= ctx.initial) then
+		table.insert(res, "..");
+	end
+
 	return {set = res, valid = false};
 end
 

@@ -13,6 +13,8 @@
 gconfig_register("advfloat_spawn", "auto");
 gconfig_register("advfloat_hide", "statusbar");
 
+local cactions = system_load("tools/advfloat/cactions.lua")();
+
 local mode = gconfig_get("advfloat_spawn");
 local pending, pending_vid;
 
@@ -217,6 +219,15 @@ global_menu_register("settings/wspaces/float",
 
 global_menu_register("settings/wspaces/float",
 {
+	name = "action_region",
+	kind = "action",
+	submenu = true,
+	label = "Action Region",
+	handler = action_submenu
+});
+
+global_menu_register("settings/wspaces/float",
+{
 	kind = "value",
 	name = "hide_target";
 	initial = gconfig_get("advfloat_hide"),
@@ -232,6 +243,7 @@ global_menu_register("settings/wspaces/float",
 	kind = "value",
 	name = "icons",
 	label = "Icons",
+	eval = function() return false; end,
 	set = {"disabled", "global", "workspace"},
 	initial = gconfig_get("advfloat_icon"),
 	handler = function(ctx, val)

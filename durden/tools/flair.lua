@@ -40,7 +40,7 @@ local function flair_drag_hook(wm, wnd, dx, dy, last)
 			end
 			in_drag = false;
 			show_image(wnd.anchor);
-		else
+		elseif (drag_effect) then
 			drag_effect.update(wnd, dx, dy);
 		end
 	else

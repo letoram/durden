@@ -26,6 +26,9 @@
 	  subsegments. This match the new support in afsrv_terminal that
 		allows the window to be cloned into a copy-window.
 
+  * File browser now expose wild-card matching (asterisk), Lua
+    patterns (%%) and sort-order modification (% lists options).
+
   * retain some window properties across script errors / resets
 
 Minor:

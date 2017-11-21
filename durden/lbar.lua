@@ -218,9 +218,11 @@ local function update_completion_set(wm, ctx, set)
 			crop = true;
 		end
 
--- outside display? show ..., if that's our index, slide page
+-- outside display? show ->, if that's our index, slide page. could/should
+-- use a better symbol for this, but there's no way of querying whether a
+-- a glyph is available or not.
 		if (i ~= ctx.inp.cofs and ofs + w > ctxw - 10) then
-			str = "..."; -- string.char(0xe2, 0x86, 0x92);
+			str = "->"; -- string.char(0xe2, 0x86, 0x92);
 			exit = true;
 
 			if (i == ctx.inp.csel) then
