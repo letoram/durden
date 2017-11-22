@@ -13,7 +13,7 @@
 gconfig_register("advfloat_spawn", "auto");
 gconfig_register("advfloat_hide", "statusbar");
 
-local cactions = system_load("tools/advfloat/cactions.lua")();
+-- local cactions = system_load("tools/advfloat/cactions.lua")();
 
 local mode = gconfig_get("advfloat_spawn");
 local pending, pending_vid;
