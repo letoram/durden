@@ -152,16 +152,11 @@ transition - like toggling displays on/off.
 ## Coming Features
 The following changes are planned for the menu:
 
- - Ability to switch between prefix- matching and pattern- matching
  - Mouse and touchpad gesture navigation
  - Mouse Cursor warping to reduce movement
  - Tooltips for each entry
- - Create macros that conditionally binds mulitple menu path activations
-   into one.
  - Better Widget- area layouting
  - External Widget ICON subsegment added to statusbar, Widget+POPUP tied to
    ICON
- - Searchable menu paths
  - Client- provided menus merged into target- group
  - "Popup"- style for floating layout mode
- - FUSE- based mountable interface for filesystem- access

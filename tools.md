@@ -11,8 +11,8 @@ Menu HUD.
 
 The included tools are:
 [Model Viewer](#model), [Dropdown Terminal](#dropdown)
-[Autolayouter](autolay), [Advanced Float](#advfloat), [Overview](#overview)
-and the [Overlay](#overlay).
+[Autolayouter](autolay), [Advanced Float](#advfloat), [Overview](#overview),
+[Flair](#flair) and the [Overlay](#overlay).
 
 # Dropdown Terminal <a name="dropdown"/>
 
@@ -105,6 +105,17 @@ If the method is set to <i>draw</i> the cursor will switch into region select mo
 and both the cursor and the marked region will be use to position and size-suggest
 the new window.
 
+## Cursor Actions
+This feature uses a custom configuration file that is scanned on startup. It
+resides in <i>durden/tools/advfloat/cactions.lua</i>. It provides the option to
+define regions that gets activated related to mouse state (enter, leave, drag -
+and so on). It can be used to define features e.g. drag/drop a window over a
+
+## Hide Targets
+This feature adds a <i>target/hide</i> path and a corresponding
+<i>settings/wspaces/float/hide_target</i> option, which allows a window to be
+hidden into some re-activatable shape, like a button on the statusbar.
+
 # Overview <a name="overview"/>
 This tool is activated via a subpath of <i>global/tools/ws_overview</i> and, if
 there are more than one populated workspace on the current display, switches
@@ -119,14 +130,26 @@ from lowest index to highest, centered vertically on the screen. Keybindings
 match the directional keys and accept- for switching between workspaces along
 with the number keys for immediately activating a specific workspace.
 
-## Window
-The window overview distributes all windows for a 'click to activate' the
-workspaces in which the selected window resides.
+# Flair <a name="flair"/>
+
+The flair tool adds additional visual animations and effects, similar to that
+of the 'compiz' window manager. Flair effects are divided into four distinct
+categories: hide, destroy, create, drag, all with slight different
+characteristics.
+
+To enable, you should configure which effects you want for each slot by going
+to the normal <i>global/settings/tools/flair</i>. Some advanced effects also
+allow you to tune further, e.g. cloth physics or drag opacity.
+
+The feature is then toggled on/off by going to <i>global/tools/flair_toggle</i>.
+Note that some effects are depedent on which layouting mode the current
+workspace is set to use, with <i>float</i> being the best supported one.
+
+The tools  is easily extendable by modifying the scripts in the tools/flair
+subfolder.
 
 # Future Changes
 - On-screen Keyboard
-- Touchpad Configuration
-- More overview modes
-- More advanced float features
+- Touchpad Configuratio- VR support for model viewern
+- VR support for model viewer
 - Notification Agents
-- Flair
