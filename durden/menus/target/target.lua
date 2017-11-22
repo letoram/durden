@@ -6,7 +6,6 @@ local sdisp = {
 -- should handle description switching, the different input types,
 -- mapping default bindings+modifiers
 
-		for k,v in pairs(tbl) do print(k, v); end
 		if (#wnd.input_labels < 100) then
 			table.insert(wnd.input_labels, {tbl.labelhint, tbl.idatatype, tbl.description});
 		end

@@ -188,7 +188,6 @@ local moverz_menu = {
 	validator = gen_valid_num(32, VRESW),
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
-		print("set", tonumber(val), wnd.width, wnd.height);
 		wnd:resize(tonumber(val), wnd.height);
 	end
 },

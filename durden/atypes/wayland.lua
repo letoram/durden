@@ -7,15 +7,16 @@ local wlwnds = {}; -- vid->window allocation tracking
 local wlsurf = {}; -- segment cookie->vid tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
-local function wayland_trace(msg)
+local function wayland_trace(msg, ...)
 	if (DEBUGLEVEL > 0) then
-		print("WAYLAND", msg);
+		print("WAYLAND", msg, ...);
 	end
 end
 
 local function subsurf_handler(cl, source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
+		wayland_trace("subsurface:resize:",status.width, status.height);
 
 	elseif (status.kind == "viewport") then
 -- all subsurfaces need to specify a parent
@@ -54,6 +55,7 @@ local function subsurf_handler(cl, source, status)
 		order_image(source, status.rel_order);
 
 	elseif (status.kind == "terminated") then
+		wayland_trace("subsurface:died");
 		delete_image(source);
 		wlsubsurf[source] = nil;
 	end
@@ -100,7 +102,6 @@ local function popup_handler(cl, source, status)
 -- the "right" way to do this
 		local ox = wlwnds[pid].geom and wlwnds[pid].geom[1] or 0;
 		local oy = wlwnds[pid].geom and wlwnds[pid].geom[2] or 0;
-		print("offset popup", ox, oy);
 		status.rel_x = status.rel_x + ox;
 		status.rel_y = status.rel_y + oy;
 		wnd:reposition(
@@ -157,6 +158,36 @@ local function cursor_handler(cl, source, status)
 	end
 end
 
+local toplevel_lut = {};
+
+-- criterion: if the window has input focus (though according to spec
+-- it can loose focus during drag for unspecified reasons) and the mouse
+-- is clicked, we toggle canvas- drag.
+toplevel_lut["move"] = function(wnd, ...)
+	if (active_display().selected == wnd) then
+		wnd.in_drag_move = true;
+	end
+
+	wayland_trace("enter client- initiated drag move");
+end
+
+-- similar criterion to move
+toplevel_lut["resize"] = function(wnd, dx, dy)
+	wayland_trace("enter client- initiated drag resize");
+	if (active_display().selected == wnd) then
+		dx = tonumber(dx);
+		dy = tonumber(dy);
+		if (not dx or not dy) then
+			return;
+		end
+
+		wnd.in_drag_rz = true;
+		dx = math.clamp(dx, -1, 1);
+		dy = math.clamp(dy, -1, 1);
+		wnd.in_drag_rz_mask = {dx, dy, 0, 0};
+	end
+end
+
 local function toplevel_handler(wnd, source, status)
 	if (status.kind == "terminated") then
 		wlwnds[source] = nil;
@@ -164,24 +195,40 @@ local function toplevel_handler(wnd, source, status)
 		return;
 	elseif (status.kind == "message") then
 		local opts = string.split(status.message, ":");
-
-		if (opts) then
-			if (opts[1] == "geom" and #opts == 5) then
-				local x, y, w, h;
-				x = tonumber(opts[2]);
-				y = tonumber(opts[3]);
-				w = tonumber(opts[4]);
-				h = tonumber(opts[5]);
-				if (w and y and w and h) then
-					wnd.geom = {x, y, w, h};
-				end
-			end
+		if (not opts or not opts[1]) then
+			wayland_trace("unknown opts field in message");
+			return;
 		end
+
+		if (opts[1] == "shell" and opts[2] == "xdg_top" and opts[3] ~= nil) then
+			toplevel_lut[opts[3]](wnd, opts[4], opts[5]);
+		elseif (opts[1] == "geom") then
+			local x, y, w, h;
+			x = tonumber(opts[2]);
+			y = tonumber(opts[3]);
+			w = tonumber(opts[4]);
+			h = tonumber(opts[5]);
+			if (w and y and w and h) then
+				wnd.geom = {x, y, w, h};
+			end
+			if (#opts ~= 5) then
+				wayland_trace("unknown number of arguments in geom message");
+				return;
+			end
+		else
+			active_display():message("unhandled waybridge message");
+		end
+
 	elseif (status.kind == "segment_request") then
-		wayland_trace("segment request on toplevel");
+		wayland_trace("segment request on toplevel, rejected");
+
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
+			wnd:rebuild_border();
+			wnd.titlebar:hide();
+-- wayland hack: we need some backup for windows that don't like drag-move,
+			wnd.meta_dragmove = true;
 		end
 		wnd:resize_effective(status.width, status.height);
 	end
@@ -242,6 +289,7 @@ local function setup_toplevel_wnd(cl, wnd, id)
 	wlwnds[id] = wnd;
 	wnd.external = id;
 	wnd.wl_client = cl;
+	wnd.atype = "wayland-toplevel";
 	target_updatehandler(id, function(source, status)
 		toplevel_handler(wnd, source, status);
 	end);
@@ -297,10 +345,12 @@ return {
 		font_block = true,
 
 -- for wl_shell or wl_xdg, the translation is bridge->non-visible connection,
+-- multimedia -> subsurface
 -- application -> toplevel
 -- toplevel -> popup
 --
 		allowed_segments = {},
+		no_recover_attach = true
 	},
 	dispatch = {
 		preroll = function(wnd, source, tbl)
@@ -311,7 +361,6 @@ return {
 			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
 				target_flags(source, TARGET_ALLOWGPU);
 			end
-			wnd.wl_children = {};
 -- client implements repeat on wayland, se we need to set it here
 			message_target(source,
 				string.format("seat:rate:%d,%d",
@@ -332,6 +381,10 @@ return {
 
 				if (cookie > 0) then
 					wlsurf[cookie] = id;
+				end
+
+				if (not wnd.wl_children) then
+					wnd.wl_children = {};
 				end
 
 				local newwnd = active_display():add_hidden_window(id);
