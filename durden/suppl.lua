@@ -769,6 +769,7 @@ function merge_menu(m1, m2)
 end
 
 local menu_hook = nil;
+local menu_path_pop;
 
 local function lbar_props()
 	local pos = gconfig_get("lbar_position");
@@ -782,7 +783,7 @@ local function lbar_props()
 	return yp, barh, dir;
 end
 
-local function hlp_add_btn(helper, lbl)
+local function hlp_add_btn(ctx, helper, lbl)
 	local yp, tileh, dir = lbar_props();
 	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
 	local current_path = {};
@@ -790,28 +791,46 @@ local function hlp_add_btn(helper, lbl)
 		current_path[i] = v;
 	end
 
-	local btn = uiprim_button(active_display().order_anchor,
+	local res = {};
+	local dsti = #helper+1;
+	res.btn = uiprim_button(active_display().order_anchor,
 		"lbar_tile", "lbar_tiletext", lbl, pad,
-		active_display().font_resfn, 0, tileh
+		active_display().font_resfn, 0, tileh,
+		{
+			click = function()
+				local path = "", ictx;
+				for i=#helper,dsti+1,-1 do
+					path, ictx = menu_path_pop(ctx);
+				end
+-- dirty little hack
+				local orst = ctx.reset;
+				ctx.reset = function() end;
+				tiler_lbar_isactive(true):destroy();
+				launch_menu_path(
+					active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
+				ctx.reset = orst;
+			end
+		}
 	);
 
 -- if ofs + width, compact left and add a "grow" offset on pop
-	local ofs = #helper > 0 and helper[#helper].ofs or 0;
-	local yofs = (tileh + 1) * dir;
-	move_image(btn.bg, ofs, yofs);
-	move_image(btn.bg, ofs, yp); -- switch, lbar height
-	nudge_image(btn.bg, 0, yofs, gconfig_get("animation") * 0.5, INTERP_SINE);
+	res.ofs = #helper > 0 and helper[#helper].ofs or 0;
+	res.yofs = (tileh + 1) * dir;
+	move_image(res.btn.bg, res.ofs, res.yofs);
+	move_image(res.btn.bg, res.ofs, yp); -- switch, lbar height
+	nudge_image(res.btn.bg, 0, res.yofs, gconfig_get("animation") * 0.5, INTERP_SINE);
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("inactive");
 	end
-	table.insert(helper, {btn = btn, yofs = yofs, ofs = ofs + btn.w});
+	res.ofs = res.ofs + res.btn.w;
+	table.insert(helper, res);
 end
 
 local function menu_path_append(ctx, new, lbl, meta)
 	table.insert(ctx.path, new);
 	local res = table.concat(ctx.path, "/");
 	table.insert(ctx.meta, meta and meta or {});
-	hlp_add_btn(ctx.helper, lbl);
+	hlp_add_btn(ctx, ctx.helper, lbl);
 
 	if (DEBUGLEVEL > 1) then
 		print("menu path switch:", res);
@@ -820,7 +839,7 @@ local function menu_path_append(ctx, new, lbl, meta)
 	return res;
 end
 
-local function menu_path_pop(ctx)
+menu_path_pop = function(ctx)
 	local path = ctx.path;
 	local helper = ctx.helper;
 	table.remove(path, #path);
@@ -853,7 +872,6 @@ local function menu_path_reset(ctx, prefix)
 		v.btn:destroy();
 	end
 	ctx.helper = {};
-	ctx.helper.add = hlp_add_btn;
 	ctx.path = {};
 	ctx.meta = {};
 	iostatem_restore();
@@ -1251,7 +1269,7 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 	if (opts.domain) then
 		cpath.domain = opts.domain;
 		if (#cpath.domain > #cpath.helper and opts.tag) then
-			hlp_add_btn(cpath.helper, opts.tag);
+			hlp_add_btn(cpath, cpath.helper, opts.tag);
 		end
 	end
 
@@ -1413,7 +1431,9 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
 			local menu = type(found.handler) == "function" and
 				found.handler() or found.handler;
 			launch_menu(wm, {list=menu}, found.force, found.hint, nil, selstate);
-			if (launch_menu == old_launch and not norst) then cpath:force(pll); end
+			if (launch_menu == old_launch and not norst) then
+				cpath:force(pll);
+			end
 		else
 -- or revert and activate the handler, with arg if value- action
 			launch_menu = old_launch;
