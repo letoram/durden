@@ -12,6 +12,7 @@ local toplevel = {
 		label = "Open",
 		kind = "action",
 		submenu = true,
+		description = "Start built-in tools or preset trusted applications",
 		handler = system_load("menus/global/open.lua")()
 	},
 	{
@@ -19,6 +20,7 @@ local toplevel = {
 		label = "Global Menu",
 		kind = "action",
 		invisible = true,
+		description = "Binding to launch the global menu",
 		handler = function()
 			grab_global_function("global_actions")();
 		end,
@@ -28,6 +30,7 @@ local toplevel = {
 		label = "Window Menu",
 		kind = "action",
 		invisible = true,
+		description = "Binding to launch the current window context menu",
 		handler = function()
 			grab_shared_function("target_actions")();
 		end
@@ -37,6 +40,7 @@ local toplevel = {
 		name = "do_nothing",
 		label = "Nothing",
 		kind = "action",
+		description = "Special binding for idle-timers",
 		invisible = true,
 		handler = function()
 		end
@@ -45,6 +49,7 @@ local toplevel = {
 		name = "workspace",
 		label = "Workspace",
 		kind = "action",
+		description = "Current- or all- workspace related actions",
 		submenu = true,
 		handler = system_load("menus/global/workspace.lua")()
 	},
@@ -53,6 +58,7 @@ local toplevel = {
 		label = "Display",
 		kind = "action",
 		submenu = true,
+		description = "Display output controls",
 		handler = system_load("menus/global/display.lua")()
 	},
 	{
@@ -60,6 +66,7 @@ local toplevel = {
 		label = "Config",
 		kind = "action",
 		submenu = true,
+		description = "Persistent configuration tuning",
 		handler = system_load("menus/global/config.lua")()
 	},
 	{
@@ -67,6 +74,7 @@ local toplevel = {
 		label = "Audio",
 		kind = "action",
 		submenu = true,
+		description = "Global audio controls",
 		handler = system_load("menus/global/audio.lua")()
 	},
 	{
@@ -74,6 +82,7 @@ local toplevel = {
 		label = "Input",
 		kind = "action",
 		submenu = true,
+		description = "Global input settings",
 		handler = system_load("menus/global/input.lua")()
 	},
 -- unsure if it is a good idea to expose these for access outside binding etc.
@@ -92,6 +101,7 @@ local toplevel = {
 		label = "System",
 		kind = "action",
 		submenu = true,
+		description = "System- specific actions",
 		handler = system_load("menus/global/system.lua")()
 	},
 	{
@@ -99,6 +109,7 @@ local toplevel = {
 		label = "Tools",
 		kind = "action",
 		submenu = true,
+		descriptions = "Plugin/Tool activation and control",
 		handler = tools
 	}
 };

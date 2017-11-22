@@ -603,6 +603,7 @@ local laycfg = {
 	name = "sideopa",
 	label = "Side-Opacity(Scaled)",
 	kind = "value",
+	description = "Set the opacity that will be applied to side columns windows",
 	initial = function() return gconfig_get("autolay_sideopa"); end,
 	validator = gen_valid_float(0.0, 1.0),
 	handler = function(ctx, val)
@@ -613,6 +614,7 @@ local laycfg = {
 	name = "selswap",
 	label = "Mouse-SelectSwap",
 	kind = "value",
+	description = "Change swap-on-click behavior",
 	set = {LBL_YES, LBL_NO},
 	initial = function()
 		return gconfig_get("autolay_selswap") and LBL_YES or LBL_NO;
@@ -625,6 +627,7 @@ local laycfg = {
 	name = "centersz",
 	label = "Center Weight",
 	kind = "value",
+	description = "Control the display- relative center area allocation weight",
 	initial = function()
 		return gconfig_get("autolay_centerw");
 	end,
@@ -638,6 +641,7 @@ local laycfg = {
 	name = "sidetbar",
 	label = "Side Titlebar",
 	kind = "value",
+	description = "Control if the side columns windows should retain their titlebar or not",
 	set = {LBL_YES, LBL_NO},
 	initial = function()
 		return gconfig_get("autolay_sidetbar") and LBL_YES or LBL_NO;
@@ -650,6 +654,7 @@ local laycfg = {
 	name = "sideshader",
 	label = "Side Shader",
 	kind = "value",
+	description = "Control if the side columns will get special processing or not",
 	set = {LBL_YES, LBL_NO},
 	initial = function()
 		return gconfig_get("autolay_shader") and LBL_YES or LBL_NO;
@@ -661,6 +666,7 @@ local laycfg = {
 {
 	name = "sideshader_value",
 	label = "Side Shader-Select",
+	description = "Change the shader that will be used on entries in the side columns",
 	initial = function()
 		return gconfig_get("autolay_sideshdr");
 	end,
@@ -683,6 +689,7 @@ global_menu_register("settings/tools",
 	name = "autolayouts",
 	label = "Auto Layouting",
 	submenu = true,
+	description = "Change the look and feel of the tiling autolayouter",
 	kind = "action",
 	handler = laycfg
 });
@@ -692,6 +699,7 @@ global_menu_register("tools",
 	name = "autolayouts",
 	label = "Auto Layouting",
 	submenu = true,
+	description = "Heuristics for automatic management of tile workspaces",
 	kind = "action",
 	handler = layouters
 });
@@ -701,6 +709,7 @@ shared_menu_register("window/swap",
 	name = "swap",
 	label = "Swap(Focus)",
 	kind = "action",
+	description = "Swap the window with the focus area",
 	eval = function()
 		return active_display().selected and
 			active_display().selected.space.layouter;
@@ -713,6 +722,7 @@ shared_menu_register("window/swap",
 	name = "swap_sel",
 	label = "Swap-Select(Focus)",
 	kind = "action",
+	description = "Swap the window with the focus area, and select it",
 	eval = function()
 		return active_display().selected and
 			active_display().selected.space.layouter;

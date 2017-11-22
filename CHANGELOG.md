@@ -31,6 +31,9 @@
 
   * retain some window properties across script errors / resets
 
+  * menu navigation now shows a helper description of the currently
+    selected item
+
 Minor:
  * Destroying a window in fullscreen mode now returns the workspace
    to the last known mode instead of forcing to tile.

@@ -42,6 +42,7 @@ return {
 		name = "set",
 		label = "Set",
 		kind = "action",
+		description = "Enumerate and set a client provided configuration key",
 		submenu = true,
 		handler = function()
 			return list_coreopts(active_display().selected, set_temporary);

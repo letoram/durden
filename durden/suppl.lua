@@ -1149,6 +1149,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 -- item for shortcuts. handler_hook needs to be set and either meta+submenu or
 -- just non-submenu for the hook to be called instead of the default handler
 		if (tgt.kind == "action") then
+			inp_st.lastm = ctx.lastm;
 			cpath:append(tgt.name, tgt.label, inp_st);
 			local m1, m2 = dispatch_meta();
 			if (menu_hook and
@@ -1180,23 +1181,28 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 		end
 	end
 
+-- generate the subset of fields from the expected range
 	local subs = table.i_subsel(ctx.list, instr, "label");
 	local res = {};
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
+	ctx.lastm = {};
 
+-- and filter these through the possible eval() function
 	for i=1,#subs do
-			if ((subs[i].eval == nil or subs[i].eval(ctx.handler, instr)) and
+		if ((subs[i].eval == nil or subs[i].eval(ctx.handler, instr)) and
 			(ctx.show_invisible or not subs[i].invisible)) then
 			if (subs[i].submenu) then
-					table.insert(res, {mlbl, msellbl, subs[i].label});
+				table.insert(res, {mlbl, msellbl, subs[i].label});
+			else
+				if (subs[i].fmt and subs[i].select_fmt) then
+					table.insert(res, {subs[i].fmt, subs[i].select_fmt, subs[i].label});
 				else
-					if (subs[i].fmt and subs[i].select_fmt) then
-						table.insert(res, {subs[i].fmt, subs[i].select_fmt, subs[i].label});
-					else
-						table.insert(res, subs[i].label);
-					end
+					table.insert(res, subs[i].label);
 				end
+			end
+-- save a copy to the eval:ed table itself so we can show a help description
+			table.insert(ctx.lastm, subs[i]);
 		end
 	end
 
@@ -1273,9 +1279,21 @@ function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
 		end
 	end
 
+-- update hint-text if one is provided
+	if (gconfig_get("menu_helper")) then
+		opts.on_step = function(lbar, i, ...)
+-- use ctx.anchor
+			if (i and ctx.lastm and ctx.lastm[i] and ctx.lastm[i].description) then
+				lbar:set_helper(ctx.lastm[i].description);
+			else
+				lbar:set_helper("");
+			end
+		end
+	end
+
 	ctx.wm = wm;
--- this was initially written to be independent, that turned out to be a
--- terrible design decision.
+-- this was initially written to be independent,
+-- that turned out to be a terrible design decision.
 	local bar = wm:lbar(lbar_fun, ctx, opts);
 	if (not bar) then
 		return;

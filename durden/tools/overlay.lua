@@ -109,6 +109,7 @@ local overlay_cfg = {
 	name = "corner",
 	label = "Corner",
 	kind = "value",
+	description = "Specify the display-relative overlay preview stack origin",
 	initial = function()
 		return gconfig_get("overlay_corner");
 	end,
@@ -121,6 +122,7 @@ local overlay_cfg = {
 	name = "opacity",
 	label = "Opacity",
 	kind = "value",
+	description = "Change the opacity for the entire overlay preview stack",
 	initial = function()
 		return gconfig_get("overlay_opacity");
 	end,
@@ -133,6 +135,7 @@ local overlay_cfg = {
 	name = "shader",
 	label = "Shader",
 	kind = "value",
+	description = "Change the overlay preview slot postprocess effect",
 	initial = function()
 		return gconfig_get("overlay_shader");
 	end,
@@ -149,6 +152,7 @@ local overlay_cfg = {
 	name = "size",
 	label = "Size(%)",
 	kind = "value",
+	description = "Set the overlay stack display relative size",
 	initial = function()
 		return gconfig_get("overlay_size");
 	end,
@@ -167,6 +171,7 @@ local function gen_delete_menu()
 		{
 			name = tostring(i),
 			label = tostring(i),
+			description = "Remove " .. tostring(i) .. " from the stack",
 			kind = "action",
 			handler = function(ctx)
 				if (active[i]) then
@@ -186,6 +191,7 @@ local function gen_migrate_menu()
 		table.insert(res, {
 			name = "migrate_" .. hexenc(d.name),
 			label = d.name,
+			description = "Move the stack to " .. d.name,
 			kind = "action",
 			handler = function()
 				ddisplay = d.tiler;
@@ -203,6 +209,7 @@ local overlays =
 		name = "toggle",
 		kind = "action",
 		label = "Toggle",
+		description = "Toggle overlay stack visibility",
 		handler = function()
 			hidden = not hidden;
 			relayout();
@@ -212,6 +219,7 @@ local overlays =
 		name = "delete",
 		kind = "action",
 		label = "Delete",
+		description = "Delete a single overlay stack entry",
 		submenu = true,
 		eval = function() return #active > 0; end,
 		handler = function() return gen_delete_menu(); end
@@ -220,6 +228,7 @@ local overlays =
 		name = "migrate",
 		kind = "action",
 		label = "Migrate",
+		description = "Move the overlay stack to another display",
 		submenu = true,
 		eval = function()
 			return gconfig_get("display_simple") == false;
@@ -236,6 +245,7 @@ global_menu_register("settings/tools",
 	name = "overlays",
 	label = "Overlays",
 	submenu = true,
+	description = "Change the look, feel and positioning of the overlay previews",
 	kind = "action",
 	handler = overlay_cfg
 });
@@ -245,6 +255,7 @@ global_menu_register("tools",
 	name = "overlays",
 	label = "Overlays",
 	submenu = true,
+	description = "Screen-edge stacked small live window previews",
 	eval = function() return #active > 0; end,
 	kind = "action",
 	handler = overlays
@@ -254,6 +265,7 @@ shared_menu_register("window",
 {
 	name = "to_overlay",
 	label = "Overlay",
+	description = "Add the window contents to the overlay stack",
 	kind = "action",
 	handler = function(ctx) add_overlay(active_display().selected); end
 }

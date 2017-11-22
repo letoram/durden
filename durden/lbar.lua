@@ -10,7 +10,7 @@
 -- retain state after accepting/cancelling, and that it was basically designed
 -- to chain through itself (create -> [ok press] -> destroy [ok handler] ->
 -- call create again) etc. It worked OK when we didn't consider
--- launch-for-binding, path helpers, tooltip hints and meta up/down navigation
+-- launch-for-binding, tooltip hints and meta up/down navigation
 -- but is now just ugly.
 --
 
@@ -360,7 +360,7 @@ end
 
 -- used on spawn to get rid of crossfade effect
 PENDING_FADE = nil;
-local function lbar_input(wm, sym, iotbl, lutsym, meta)
+function lbar_input(wm, sym, iotbl, lutsym, meta)
 	local ictx = wm.input_ctx;
 	local m1, m2 = dispatch_meta();
 
@@ -440,6 +440,43 @@ local function lbar_input(wm, sym, iotbl, lutsym, meta)
 	end
 end
 
+local function lbar_helper(lbar, lbl)
+	local wm = active_display();
+	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	local dst = type(lbl) == "table" and lbl or
+		{wm.font_delta .. gconfig_get("lbar_helperstr"), lbl};
+
+	if (not lbl or string.len(lbl) == 0) then
+		if (valid_vid(lbar.helper_bg)) then
+			hide_image(lbar.helper_bg);
+		end
+		return;
+	end
+
+-- build text and bar
+	if (not lbar.helper_bg) then
+		lbar.helper_bg = fill_surface(64, barh, 255, 0, 0);
+		shader_setup(lbar.helper_bg, "ui", "lbar");
+		image_inherit_order(lbar.helper_bg, true);
+		link_image(lbar.helper_bg, lbar.text_anchor);
+		show_image(lbar.helper_bg);
+		local w;
+		lbar.helper_lbl, _, w = render_text(dst);
+		image_inherit_order(lbar.helper_lbl, true);
+		link_image(lbar.helper_lbl, lbar.helper_bg);
+		show_image(lbar.helper_lbl);
+		nudge_image(lbar.helper_bg, 0, -barh);
+		resize_image(lbar.helper_bg, w, barh);
+
+-- just re-render text and show bar
+	else
+		local w;
+		show_image(lbar.helper_bg);
+		_, _, w = render_text(lbar.helper_lbl, dst);
+		resize_image(lbar.helper_bg, w, barh);
+	end
+end
+
 local function lbar_label(lbar, lbl)
 	if (valid_vid(lbar.labelid)) then
 		delete_image(lbar.labelid);
@@ -502,19 +539,6 @@ function tiler_lbarforce(tbl, cb)
 		end
 
 		return {set = res, valid = true};
-	end
-end
-
-local function lbar_helper(lbar, domain, arg)
-	if (domain == lbar.HELPER_TOOLTIP) then
-		warning("fixme: helper_tooltip");
--- tooltip, initial fade up, then grow / shrink, arg is vid or text
-	elseif (domain == lbar.HELPER_REG1) then
--- return anchor point, expect callback in arg
-		warning("fixme: helper_reg1");
-	elseif (domain == lbar.HELPER_REG2) then
--- if botttom or top, return broken
-		warning("fixme: helper_reg2");
 	end
 end
 
@@ -584,19 +608,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	link_image(car, bar);
 	local carety = gconfig_get("lbar_tpad") * wm.scalef;
 
--- we support up to 4 helper regions (depending on bar position):
--- h1 [ show current path, clickable to navigate back ]
--- h2 [ show selection overlay ]
--- h3 [ big region, above ]
--- h4 [ big region, below ]
 	move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 
 	wm:set_input_lock(lbar_input);
 	local res = {
--- just expose the constants here instead of polluting something global
-		HELPER_TOOLTIP = 1,
-		HELPER_REG1 = 2,
-		HELPER_REG2 = 3,
 		anchor = bg,
 		text_anchor = bar,
 		mask_text = opts.password_mask,
@@ -609,13 +624,12 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret_right = SYSTEM_KEYS["caret_right"],
 		textstr = gconfig_get("lbar_textstr"),
 		set_label = lbar_label,
+		set_helper = lbar_helper,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		helpers = {{}, {}, {}},
 		destroy = function()
 			accept_cancel(wm, false);
 		end,
-		helper_tags = lbar_helper,
 		cofs = 1,
 		csel = 1,
 		barh = barh,
@@ -624,6 +638,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		caret_y = carety,
 		cleanup = opts.cleanup,
 		on_step = opts.on_step,
+		in_preview = opts.in_preview,
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};

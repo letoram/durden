@@ -21,6 +21,7 @@ local function get_ledent(rgb, devid, i)
 			name = tostring(i),
 			label = tostring(i),
 			kind = "value",
+			description = "Set LED " .. tostring(i) .. " to a specific value",
 			hint = hint,
 			validator = validator,
 			handler = handler

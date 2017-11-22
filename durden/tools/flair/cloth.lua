@@ -136,6 +136,7 @@ local cloth_config = {
 	{
 		name = "level", label = "Subdivisions", kind = "value",
 		initial = function() return gconfig_get("cloth_level"); end,
+		description = "Set the number of subdivisions that should be used (quality - CPU tradeoff)",
 		validator = gen_valid_num(10, 100),
 		hint = "(1 .. 100)",
 		handler = function(ctx, val) gconfig_set("cloth_level", tonumber(val)); end
@@ -144,6 +145,7 @@ local cloth_config = {
 		name = "passes", label = "Passes", kind = "value",
 		initial = function() return gconfig_get("cloth_passes"); end,
 		hint = "(1 .. 10)",
+		description = "Set the number of integration passes (precision - CPU tradeoff)",
 		validator = gen_valid_num(1, 10),
 		handler = function(ctx, val) gconfig_set("cloth_passes", tonumber(val)); end
 	},
@@ -151,6 +153,7 @@ local cloth_config = {
 		name = "mass", label = "Mass", kind = "value",
 		initial = function() return gconfig_get("cloth_mass"); end,
 		hint = "(0.1 .. 10)",
+		description = "Change the simulated cloth surface mass",
 		validator = gen_valid_float(0.1, 10.0),
 		handler = function(ctx, val) gconfig_set("cloth_mass", tonumber(val)); end
 	},
@@ -158,6 +161,7 @@ local cloth_config = {
 		name = "spacing", label = "Spacing", kind = "value",
 		initial = function() return gconfig_get("cloth_spacing"); end,
 		validator = gen_valid_float(0.001, 1.0),
+		description = "Change the distance between grid particles",
 		hint = "(0.001, 1.0)",
 		handler = function(ctx, val) gconfig_set("cloth_spacing", tonumber(val)); end
 	},
@@ -165,12 +169,14 @@ local cloth_config = {
 		name = "gravity", label = "Gravity", kind = "value",
 		initial = function() return gconfig_get("cloth_gravity"); end,
 		validator = gen_valid_float(0.001, 0.1),
+		description = "Change the strength of gravity",
 		hint = "(0.001, 0.1)",
 		handler = function(ctx, val) gconfig_set("cloth_gravity", tonumber(val)); end
 	},
 	{
 		name = "damp_s", label = "Damp(s)", kind = "value",
 		initial = function() return gconfig_get("cloth_damp_s"); end,
+		description = "Change force- dampening in plane-local s (X axis)",
 		validator = gen_valid_float(0.1, 2.0),
 		hint = "(0.1, 2.0)",
 		handler = function(ctx, val) gconfig_set("cloth_damp_s", tonumber(val)); end
@@ -179,6 +185,7 @@ local cloth_config = {
 		name = "damp_t", label = "Damp(t)", kind = "value",
 		initial = function() return gconfig_get("cloth_damp_t"); end,
 		validator = gen_valid_float(0.1, 2.0),
+		description = "Change force- dampening in plane-local t (Y axis)",
 		hint = "(0.1, 2.0)",
 		handler = function(ctx, val) gconfig_set("cloth_damp_t", tonumber(val)); end
 	}

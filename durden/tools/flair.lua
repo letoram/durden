@@ -139,6 +139,7 @@ local flair_config_menu = {
 		name = "float_drag",
 		label = "Float Drag",
 		kind = "value",
+		description = "Set the effect that is used 'on window - drag'",
 		set = drag_set,
 		initial = function()
 			return gconfig_get("flair_drag");
@@ -156,6 +157,7 @@ local flair_config_menu = {
 		name = "destroy",
 		label = "Destroy",
 		kind = "value",
+		description = "Set the effect that is used 'on window - destroy'",
 		set = destroy_set,
 		initial = function()
 			return gconfig_get("flair_destroy");
@@ -168,6 +170,7 @@ local flair_config_menu = {
 		name = "create",
 		label = "Create",
 		kind = "value",
+		description = "Set the effect that is used 'on window - create'",
 		set = create_set,
 		initial = function()
 			return gconfig_get("flair_create");
@@ -179,6 +182,7 @@ local flair_config_menu = {
 	{
 		name = "hide",
 		label = "Hide",
+		description = "Set the effect that is used 'on window - hide'",
 		kind = "value",
 		set = hide_set,
 		initial = function()
@@ -192,6 +196,7 @@ local flair_config_menu = {
 		name = "speed",
 		label = "Speed",
 		kind = "value",
+		description = "Change the relative speed of all flair- related effects",
 		initial = function()
 			return gconfig_get("flair_speed");
 		end,
@@ -203,6 +208,7 @@ local flair_config_menu = {
 	{
 		name = "drag_opacity",
 		label = "Drag Opacity",
+		description = "Control window opacity when being dragged",
 		kind = "value",
 		initial = function()
 			return gconfig_get("flair_drag_opacity");
@@ -247,6 +253,7 @@ global_menu_register("tools",
 	name = "flair",
 	label = "Flair (toggle)",
 	kind = "action",
+	description = "Toggle advanced window effects on or off",
 	handler = flair_toggle
 });
 
@@ -254,6 +261,7 @@ global_menu_register("settings/tools",
 {
 	name = "flair",
 	label = "Flair",
+	description = "Change which effects that will be used by the flair tool",
 	kind = "action",
 	submenu = true,
 	handler = flair_config_menu

@@ -28,6 +28,7 @@ local rebuild_query = {
 {
 	name = "yes",
 	label = "Yes",
+	description = "Warning: This can put the UI in an unstable state, Proceed?",
 	kind = "action",
 	dangerous = true,
 		handler = function()
@@ -42,6 +43,7 @@ return function()
 		{
 		name = "ui",
 		label = "UI",
+		description = "Change variables for shaders that belong to the 'UI' category",
 		kind = "action",
 		submenu = true,
 		eval = function() return #build_list("ui") > 0; end,
@@ -52,6 +54,7 @@ return function()
 		{
 		name = "effect",
 		label = "Effect",
+		description = "Change variables for shaders that belong to the 'Effect' category",
 		kind = "action",
 		submenu = true,
 		eval = function() return #build_list("effect") > 0; end,
@@ -61,6 +64,7 @@ return function()
 		},
 		{
 		name = "rebuild",
+		description = "Recompile / Rescan the list of shaders",
 		label = "Reset",
 		kind = "action",
 		submenu = true,
