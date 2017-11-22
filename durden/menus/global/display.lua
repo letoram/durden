@@ -5,6 +5,7 @@ local function orientation_menu(name)
 			eval = function() return not display_simple(); end,
 			label = "Toggle H/V",
 			kind = "action",
+			description = "Switch display orientation between horizontal and vertical",
 			handler = function()
 				display_reorient(name);
 			end
@@ -22,6 +23,7 @@ local function query_synch()
 				name = "synch_" .. tostring(k),
 				label = v,
 				kind = "action",
+				description = "Set dynamic synchronization strategy to '" .. v .. "'",
 				handler = function(ctx)
 					video_synchronization(v);
 				end
@@ -42,11 +44,13 @@ local function query_dispmenu(ind, name)
 -- incomplete, query for custom desired res?
 				got_dynamic = true;
 			else
+				local modestr = string.format(
+						"%d*%d, %d bits @%d Hz", v.width, v.height, v.depth, v.refresh);
 				table.insert(mtbl, {
 					name = "mode_" .. tostring(k),
-					label = string.format("%d*%d, %d bits @%d Hz",
-						v.width, v.height, v.depth, v.refresh),
 					kind = "action",
+					description = "Try to set display resolution to (" .. modestr .. ")",
+					label = modestr,
 					handler = function() display_ressw(name, v); end
 				});
 			end
@@ -62,6 +66,7 @@ local function gen_disp_menu(disp)
 		eval = function() return disp.id ~= nil; end,
 		label = "Toggle On/Off",
 		kind = "action",
+		description = "Toggle the display DPMS state on/off",
 		handler = function()
 			local mode = video_display_state(disp.id);
 			video_display_state(disp.id,
@@ -73,6 +78,7 @@ local function gen_disp_menu(disp)
 		label = "Density",
 		kind = "value",
 		hint = "(px/cm)",
+		description = "Override detected display density",
 		validator = gen_valid_float(10, 600.0),
 		initial = function() return tostring(disp.ppcm); end,
 		handler = function(ctx, val)
@@ -83,6 +89,7 @@ local function gen_disp_menu(disp)
 		name = "shader",
 		label = "Shader",
 		kind = "value",
+		description = "Change display postprocessing ruleset",
 		eval = function() return not display_simple(); end,
 		set = function() return shader_list({"display"}); end,
 		hint = function() return "(" .. display_shader(disp.name) .. ")"; end,
@@ -98,6 +105,7 @@ local function gen_disp_menu(disp)
 		label = "Shader Settings",
 		kind = "action",
 		submenu = true,
+		description = "Tune the current display postprocessing ruleset",
 		eval = function() return not display_simple() and #shader_uform_menu(
 			display_shader(disp.name),"display", disp.name) > 0; end,
 		handler = function()
@@ -113,6 +121,7 @@ local function gen_disp_menu(disp)
 		name = "resolution",
 		label = "Resolution",
 		kind = "action",
+		definition = "Try to reconfigure the display output mode",
 		submenu = true,
 		eval = function() return disp.id ~= nil and
 			#query_dispmenu(disp.id, disp.name) > 0;  end,
@@ -124,6 +133,7 @@ local function gen_disp_menu(disp)
 		kind = "value",
 		hint = "(0..1)",
 		initial = disp.backlight,
+		definition = "Control display backlight strength",
 		eval = function() return disp.ledctrl ~= nil; end,
 		validator = function(val)
 			local num = tonumber(val);
@@ -138,6 +148,7 @@ local function gen_disp_menu(disp)
 		name = "orient",
 		label = "Orientation",
 		kind = "action",
+		description = "Set the display output orientation",
 		eval = function() return not display_simple() and disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
@@ -146,6 +157,7 @@ local function gen_disp_menu(disp)
 		name = "background",
 		label = "Set Background",
 		kind = "action",
+		description = "Set a default background for all new workspaces on the display",
 		handler = function()
 			local loadfn = function(fn)
 				disp.tiler:set_background(fn, true);
@@ -159,6 +171,7 @@ local function gen_disp_menu(disp)
 		name = "resetbg",
 		label = "Reset Backgrounds",
 		kind = "action",
+		description = "Remove the default background setting",
 		handler = function()
 			disp.background = "";
 			disp.tiler:set_background(nil, true);
@@ -168,6 +181,7 @@ local function gen_disp_menu(disp)
 		name = "primary_hint",
 		label = "Force-Sync",
 		kind = "value",
+		description = "Set this display as a synch-master",
 		set = {LBL_YES, LBL_NO},
 		eval = function() return not display_simple(); end,
 		initial = function()
@@ -186,6 +200,7 @@ local function gen_disp_menu(disp)
 		eval = function() return disp.share_slot == nil
 			 and suppl_recarg_eval();
 		end,
+		description = "Start display streaming or recording",
 		hintsel = suppl_recarg_sel,
 		validator = suppl_recarg_valid,
 		handler = function(ctx, val)
@@ -197,6 +212,7 @@ local function gen_disp_menu(disp)
 		name = "stop_record",
 		label = "Stop Recording",
 		kind = "action",
+		description = "Stop display streaming or recording",
 		eval = function() return disp.share_slot ~= nil; end,
 		handler = function()
 			display_share(disp);
@@ -207,6 +223,7 @@ local function gen_disp_menu(disp)
 		label = "Screenshot(raw)",
 		kind = "value",
 		hint = "(stored in output/)",
+		description = "Save a raw dump of display rendertarget output",
 		eval = function() return valid_vid(disp.rt); end,
 		validator = function(val)
 			return string.len(val) > 0 and not resource("output/" .. val) and
@@ -221,6 +238,7 @@ local function gen_disp_menu(disp)
 		label = "Scheme",
 		kind = "action",
 		submenu = true,
+		description = "Set the UI scheme profile for this display",
 		eval = function()	return #(ui_scheme_menu("display", disp)) > 0; end,
 		handler = function() return ui_scheme_menu("display", disp); end
 		}
@@ -235,6 +253,7 @@ local function query_displays()
 		label = "Current",
 		kind = "action",
 		submenu = true,
+		description = "Access settings related to the display with input focus",
 		handler = function() return gen_disp_menu(v); end
 	});
 	table.insert(res, {
@@ -242,6 +261,7 @@ local function query_displays()
 		label = "All Off",
 		kind = "action",
 		invisible = true,
+		description = "Set the DPMS state for all displays to OFF",
 		handler = function()
 			display_all_mode(DISPLAY_OFF);
 		end
@@ -251,6 +271,7 @@ local function query_displays()
 		label = "All Suspend",
 		kind = "action",
 		invisible = true,
+		description = "Set the DPMS state for all displays to SUSPEND",
 		handler = function()
 			display_all_mode(DISPLAY_SUSPEND);
 		end
@@ -259,6 +280,7 @@ local function query_displays()
 		name = "all_standby",
 		label = "All Standby",
 		kind = "action",
+		description = "Set the DPMS state for all displays to STANDBY",
 		invisible = true,
 		handler = function()
 			display_all_mode(DISPLAY_STANDBY);
@@ -269,6 +291,7 @@ local function query_displays()
 		label = "All On",
 		kind = "action",
 		invisible = true,
+		description = "Set the DPMS state for all displays to ON",
 		handler = function()
 			display_all_mode(DISPLAY_ON);
 		end
@@ -297,6 +320,7 @@ local region_menu = {
 		label = "Snapshot",
 		kind = "action",
 		external_block = true,
+		description = "Take a snapshot of a screen region",
 		handler = function()
 			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
@@ -311,6 +335,7 @@ local region_menu = {
 		name = "monitor",
 		label = "Monitor",
 		kind = "action",
+		description = "Create a window that monitors the contents of a screen region",
 		external_block = true,
 		handler = function()
 			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
@@ -333,6 +358,7 @@ local region_menu = {
 		label = "OCR",
 		kind = "action",
 		external_block = true,
+		description = "OCR the contents of a screen region unto the global clipboard",
 		handler = function()
 			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
 
@@ -380,10 +406,11 @@ local region_menu = {
 		name = "share",
 		label = "Share",
 		kind = "action",
+		description = "Access Sharing and Remoting settings",
 		eval = function() return string.match(
 			FRAMESERVER_MODES, "encode") ~= nil;
 		end,
-		e3xternal_block = true,
+		external_block = true,
 		handler = system_load("menus/global/remoting.lua")();
 	},
 -- forward means 'create an output segment inside target'
@@ -391,6 +418,7 @@ local region_menu = {
 		name = "forward",
 		label = "Forward",
 		kind = "action",
+		description = "Forward screen contents to a specific window",
 		eval = function()
 			for wnd in all_windows(atype) do
 				if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
@@ -421,6 +449,7 @@ local region_menu = {
 		name = "record",
 		label = "Record",
 		kind = "value",
+		description = "Start a recording session of marked screen region contents",
 		hint = suppl_recarg_hint,
 		hintsel = suppl_recarg_set,
 		validator = suppl_recarg_valid,
@@ -437,6 +466,7 @@ return {
 		name = "rescan",
 		label = "Rescan",
 		kind = "action",
+		description = "Rescan all GPU display output ports for new displays",
 		handler = function() video_displaymodes(); end
 	},
 	{
@@ -444,6 +474,7 @@ return {
 		label = "Displays",
 		kind = "action",
 		submenu = true,
+		description = "List all currently known displays",
 		handler = function() return query_displays(); end
 	},
 	{
@@ -451,12 +482,14 @@ return {
 		label = "Synchronization",
 		kind = "action",
 		submenu = true,
+		description = "Change the global display output synchronization strategy",
 		handler = function() return query_synch(); end
 	},
 	{
 		name = "cycle",
 		label = "Cycle Active",
 		kind = "action",
+		description = "Switch input focus to the next display in line",
 		eval = function() return not display_simple(); end,
 		handler = grab_global_function("display_cycle")
 	},
@@ -466,12 +499,14 @@ return {
 		eval = function() return not mouse_blocked(); end,
 		kind = "action",
 		submenu = true,
+		description = "Recording / Sharing actions for custom screen regions",
 		handler = region_menu
 	},
 	{
 		name = "fullscreen",
 		label = "Dedicated Fullscreen",
 		kind = "value",
+		description = "Set the default mode for window dedicated fullscreen",
 		initial = function() return gconfig_get("disp_fs_mode"); end,
 		set = {"Stretch", "Stretch-Switch", "Center", "Center-Switch"},
 		handler = function(ctx, val)

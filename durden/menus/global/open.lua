@@ -331,6 +331,7 @@ return {
 	name = "browse",
 	label = "Browse",
 	kind = "action",
+	description = "Open the built-in resource browser",
 	namespace = "@/browse/",
 	handler = browse_internal
 },
@@ -339,6 +340,7 @@ return {
 	label = "Remote Desktop",
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
+	description = "Connect to a remote desktop session",
 	hint = "(user:pass@host+port)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
@@ -361,6 +363,7 @@ end
 {
 	name = "decode",
 	label = "Media URL",
+	description = "Open a URL via the decode frameserver",
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
 	hint = "(protocol://user:pass@host:port)",
@@ -374,6 +377,7 @@ end
 {
 	name = "terminal",
 	label = "Terminal",
+	description = "Open a new console shell",
 	kind = "value",
 	hint = "(append arguments)",
 	default = "",
@@ -387,6 +391,7 @@ end
 {
 	name = "avfeed",
 	label = "AV Feed",
+	description = "Open a custom/build- defined audio-video feed",
 	kind = "value",
 	default = "(append arguments)",
 	hint = "(m1_accept for args)",
@@ -402,6 +407,7 @@ end
 {
 	name = "target",
 	label = "Target",
+	description = "List trusted predefined external applications",
 	submenu = true,
 	kind = "action",
 	force_completion = true,
@@ -416,6 +422,7 @@ end
 	label = "Terminal(Group)",
 	kind = "value",
 	hint = "(append arguments)",
+	description = "Open a new shell-group where new clients share a window",
 	default = "",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "terminal") ~= nil;

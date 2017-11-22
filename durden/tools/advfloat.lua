@@ -187,6 +187,7 @@ shared_menu_register("window",
 	kind = "action",
 	name = "hide",
 	label = "Hide",
+	description = "Hide or Minimize the window to a preset location",
 	kind = "action",
 	eval = function()
 		return
@@ -209,6 +210,7 @@ global_menu_register("settings/wspaces/float",
 	name = "spawn_action",
 	initial = gconfig_get("advfloat_spawn"),
 	label = "Spawn Method",
+	description = "Change how new windows are being sized and positioned",
 -- missing (split/share selected) or join selected
 	set = {"click", "cursor", "draw", "auto"},
 	handler = function(ctx, val)
@@ -222,6 +224,8 @@ global_menu_register("settings/wspaces/float",
 	name = "action_region",
 	kind = "action",
 	submenu = true,
+	eval = function() return false; end,
+	description = "Manage the mouse-action regions",
 	label = "Action Region",
 	handler = action_submenu
 });
@@ -229,7 +233,8 @@ global_menu_register("settings/wspaces/float",
 global_menu_register("settings/wspaces/float",
 {
 	kind = "value",
-	name = "hide_target";
+	name = "hide_target",
+	description = "Chose where the window hide option will compress the window",
 	initial = gconfig_get("advfloat_hide"),
 	label = "Hide Target",
 	set = {"disabled", "statusbar-left", "statusbar-right"},
@@ -243,6 +248,7 @@ global_menu_register("settings/wspaces/float",
 	kind = "value",
 	name = "icons",
 	label = "Icons",
+	description = "Control how the tool should manage icons",
 	eval = function() return false; end,
 	set = {"disabled", "global", "workspace"},
 	initial = gconfig_get("advfloat_icon"),

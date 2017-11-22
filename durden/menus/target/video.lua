@@ -105,6 +105,7 @@ local advanced = {
 	{
 		name = "source_fs",
 		label = "Source-Fullscreen",
+		description = "Mark the window for dedicated display fullscreen",
 		kind = "value",
 		eval = function() return not display_simple() and valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER); end,
@@ -124,6 +125,7 @@ local advanced = {
 		label = "Override Density",
 		kind = "value",
 		hint = "(10..100)",
+		description = "Send a display hint with a user-set density value",
 		eval = function(ctx, val)
 			local wnd = active_display().selected;
 			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
@@ -140,6 +142,7 @@ local advanced = {
 		name = "source_hpass",
 		label = "Toggle Handle Passing",
 		kind = "action",
+		description = "Toggle accelerated zero-copy handle passing on/off",
 		eval = function(ctx, val)
 			local wnd = active_display().selected;
 			return (valid_vid(wnd and wnd.external, TYPE_FRAMESERVER));
@@ -152,6 +155,7 @@ local advanced = {
 	name = "source_color",
 	label = "Color/Gamma Sync",
 	kind = "value",
+	description = "Toggle privileged color management support on/off",
 	set = {"None", "Global"},
 	eval = function(ctx, val)
 		local wnd = active_display().selected;
@@ -167,6 +171,7 @@ local advanced = {
 	name = "block_rz",
 	label = "Block Resize Hints",
 	kind = "value",
+	description = "Control if clients should be alerted about its surface dimensions or not",
 	set = {LBL_YES, LBL_NO},
 	initial = function()
 		return active_display().selected.block_rz_hint and LBL_YES or LBL_NO;
@@ -179,6 +184,7 @@ local advanced = {
 	name = "migrate",
 	label = "Migrate",
 	kind = "value",
+	description = "Request that the client connects to a different display server",
 	eval = function(ctx, val)
 		return string.len(val) > 0 and string.len(val) < 31 and
 			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
@@ -196,7 +202,8 @@ local font_override = {
 	{
 		name = "size",
 		label = "Size",
-		kind = "value";
+		kind = "value",
+		description = "Send a request for a different font-size than the global default",
 		validator = gen_valid_num(1, 100),
 		eval = function() return active_display().selected.last_font ~= nil; end,
 		initial = function()
@@ -215,6 +222,7 @@ local font_override = {
 		name = "hinting",
 		label = "Hinting",
 		kind = "value",
+		description = "Send a request for a different anti-aliasing hinting algorithm",
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		eval = function() return active_display().selected.last_font ~= nil; end,
 		initial = function()
@@ -237,6 +245,7 @@ local font_override = {
 			set = set ~= nil and set or {};
 			return set;
 		end,
+		description = "Override the default / active font",
 		eval = function() return active_display().selected.last_font ~= nil; end,
 		initial = function()
 			return active_display().selected.last_font[3][1];
@@ -254,6 +263,7 @@ local font_override = {
 		name = "fbfont",
 		label = "Fallback",
 		kind = "value",
+		description = "Override the default fallback font",
 		set = function()
 			local set = glob_resource("*", SYS_FONT_RESOURCE);
 			set = set ~= nil and set or {};
@@ -274,81 +284,19 @@ local font_override = {
 	}
 };
 
-local font_override = {
-	{
-		name = "size",
-		label = "Size",
-		kind = "value";
-		validator = gen_valid_num(1, 100),
-		initial = function()
-			local wnd = active_display().selected;
-			if (wnd.last_font and wnd.last_font[1] > 0) then
-				return tostring(wnd.last_font[1]);
-			end
-			return tostring(gconfig_get("font_sz"));
-		end,
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			local ob = wnd.font_block;
-			wnd.font_block = false;
-			wnd:update_font(tonumber(val), -1);
-			wnd.font_block = ob;
-		end
-	},
-	{
-		name = "hinting",
-		label = "Hinting",
-		kind = "value",
-		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return TERM_HINT_RLUT[gconfig_get("font_hint")]; end,
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			local ob = wnd.font_block;
-			wnd:update_font(-1, newv);
-			wnd.font_block = ob;
-		end
-	},
-	{
-		name = "name",
-		label = "Font",
-		kind = "value",
-		set = function()
-			local set = glob_resource("*", SYS_FONT_RESOURCE);
-			set = set ~= nil and set or {};
-			return set;
-		end,
-		initial = function() return gconfig_get("font_def"); end,
-		handler = function(ctx, val)
-			gconfig_set("font_def", val);
-		end
-	},
-	{
-		name = "fbfont",
-		label = "Fallback",
-		kind = "value",
-		set = function()
-			local set = glob_resource("*", SYS_FONT_RESOURCE);
-			set = set ~= nil and set or {};
-			return set;
-		end,
-		initial = function() return gconfig_get("font_fb"); end,
-		handler = function(ctx, val)
-			gconfig_set("font_fb", val);
-		end
-	}
-};
-
 return {
 	{
 		name = "scaling",
 		label = "Scaling",
 		kind = "action",
+		description = "Change how client-desired size and window management desired size conflicts are resolved",
 		submenu = true,
 		handler = scalemodes
 	},
 	{
 		name = "filtering",
 		label = "Filtering",
+		description = "Control scaling post-processing filters",
 		kind = "action",
 		submenu = true,
 		handler = filtermodes
@@ -358,6 +306,7 @@ return {
 		label = "Screenshot",
 		kind = "value",
 		hint = "(stored in output/)",
+		description = "Save the current buffer state as a PNG",
 		validator = function(val)
 			return string.len(val) > 0 and not resource("output/" .. val) and
 				not string.match(val, "%.%.");
@@ -374,6 +323,7 @@ return {
 		name = "record",
 		label = "Record",
 		kind = "value",
+		description = "Begin recording a video of the client contents",
 		hint = suppl_recarg_hint,
 		hintsel = suppl_recarg_eval,
 		validator = suppl_recarg_valid,
@@ -390,6 +340,7 @@ return {
 		name = "record_noaudio",
 		label = "Record (no sound)",
 		kind = "value",
+		description = "Begin recording a silent video of the client contents",
 		hint = suppl_recarg_hint,
 		hintsel = suppl_recarg_eval,
 		validator = suppl_recarg_valid,
@@ -406,6 +357,7 @@ return {
 		name = "stop_record",
 		label = "Stop Record",
 		kind = "action",
+		description = "Stop an ongoing recording task",
 		eval = function(val)
 			return valid_vid(active_display().selected.in_record);
 		end,
@@ -419,6 +371,7 @@ return {
 		name = "shader",
 		label = "Shader",
 		kind = "value",
+		description = "Apply or change window canvas postprocessing effects",
 		set = function() return shader_list({"effect", "simple"}); end,
 		handler = function(ctx, val)
 			local key, dom = shader_getkey(val, {"effect", "simple"});
@@ -471,6 +424,7 @@ return {
 		name = "opacity",
 		label = "Opacity",
 		hint = "(0..1)",
+		descripton = "Alter the window canvas opacity",
 		initial = function()
 			return
 				image_surface_resolve(active_display().selected.canvas).opacity;
@@ -486,6 +440,7 @@ return {
 		name = "font",
 		label = "Font",
 		kind = "action",
+		description = "Font controls",
 		eval = function() return active_display().selected.last_font ~= nil; end,
 		submenu = true,
 		handler = font_override,
@@ -493,6 +448,7 @@ return {
 	{
 		label = "Advanced",
 		name = "advanced",
+		description = "Advanced rendering controls",
 		submenu = true,
 		kind = "action",
 		handler = advanced

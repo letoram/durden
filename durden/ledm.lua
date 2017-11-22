@@ -207,11 +207,13 @@ function ledm_devices(role)
 
 	for k, d in pairs(devices) do
 	for i, v in ipairs(d) do
-		table.insert(res, {
+		local ent = {
 			label = v.label and v.label or tostring(v.devid),
 			name = v.name and v.name or tostring(v.devid),
 			devid = v.devid
-		});
+		};
+		ent.description = "Access LED device " .. ent.label;
+		table.insert(res, ent);
 	end
 	end
 

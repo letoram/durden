@@ -4,6 +4,7 @@ local function gen_mbutton_menu()
 		table.insert(res, {
 			name = tostring(i),
 			kind = "action",
+			description = "Simulate clicking button " .. tostring(i),
 			label = MOUSE_LABELLUT[i] and MOUSE_LABELLUT[i] or tostring(i),
 			handler = function()
 				mouse_button_input(i, true);
@@ -20,6 +21,7 @@ local function gen_mbounce_menu()
 		table.insert(res, {
 			name = tostring(i),
 			kind = "value",
+			description = "Change debounce- timing for button " .. tostring(i),
 			label = MOUSE_LABELLUT[i] and MOUSE_LABELLUT[i] or tostring(i),
 			hint = string.format("(%d Hz ticks, 0: disable)", CLOCKRATE),
 			initial = tostring(mouse_state().btns_bounce[i]),
@@ -37,6 +39,7 @@ local remap_menu = {
 	{
 		name = "remap_123",
 		kind = "action",
+		description = "Default mouse button order",
 		label = "Left(1),Middle(2),Right(3)",
 		handler = function()
 			local mstate = mouse_state();
@@ -48,6 +51,7 @@ local remap_menu = {
 	{
 		name = "remap_321",
 		kind = "action",
+		description = "Left-handed mouse button order",
 		label = "Right(1),Middle(2),Left(3)",
 		handler = function()
 			local mstate = mouse_state();
@@ -59,6 +63,7 @@ local remap_menu = {
 	{
 		name = "remap_132",
 		kind = "action",
+		description = "Middle-right swap button order",
 		label = "Left(1),Right(2),Middle(3)",
 		handler = function()
 			local mstate = mouse_state();
@@ -74,6 +79,7 @@ local mouse_menu = {
 		name = "scale",
 		kind = "value",
 		label = "Sensitivity",
+		description = "Change uniform mouse input sample scale factor",
 		hint = function() return "(0.01..10)"; end,
 		eval = function() return not mouse_blocked(); end,
 		validator = gen_valid_num(0, 10),
@@ -91,6 +97,7 @@ local mouse_menu = {
 		name = "dblclick",
 		kind = "value",
 		label = "Double-Click",
+		description = "Change the double-click mouse timing sensitivity",
 		eval = function() return not mouse_blocked(); end,
 		hint = function() return "(deadline for double click)"; end,
 		validator = gen_valid_num(5, 100),
@@ -105,6 +112,7 @@ local mouse_menu = {
 		name = "hover",
 		kind = "value",
 		label = "Hover Delay",
+		description = "Change the mouse hover timing sensitivity",
 		eval = function() return not mouse_blocked(); end,
 		hint = function() return "10..80"; end,
 		validator = gen_valid_num(0, 80),
@@ -121,6 +129,7 @@ local mouse_menu = {
 	{
 		name = "button",
 		label = "Button",
+		description = "Simulate a single mouse button click",
 		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
@@ -129,6 +138,7 @@ local mouse_menu = {
 	{
 		name = "debounce",
 		label = "Debounce",
+		description = "Configure mouse button 'debouncing' (accidental clicks)",
 		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
@@ -137,6 +147,7 @@ local mouse_menu = {
 	{
 		name = "reorder",
 		label = "Reorder",
+		description = "Configure mouse button order",
 		eval = function() return not mouse_blocked(); end,
 		submenu = true,
 		kind = "action",
@@ -146,6 +157,7 @@ local mouse_menu = {
 		name = "save_pos",
 		kind = "value",
 		label = "Remember Position",
+		description = "Track/Warp mouse position when keyboard-switching window focus",
 		set = {LBL_YES, LBL_NO},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
@@ -160,6 +172,7 @@ local mouse_menu = {
 		name = "hide",
 		kind = "value",
 		label = "Autohide",
+		description = "Set mouse audio-hiding on inactivity behavior",
 		set = {LBL_YES, LBL_NO},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
@@ -174,6 +187,7 @@ local mouse_menu = {
 		name = "reveal",
 		kind = "value",
 		label = "Reveal/Hide",
+		description = "Control the visual effect used when mouse goes from hidden to visible",
 		set = {LBL_YES, LBL_NO},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
@@ -189,6 +203,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Hard Lock",
 		set = {LBL_YES, LBL_NO},
+		description = "Hard- lock/grab the mouse pointer (on supported platforms)",
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_hardlock") and LBL_YES or LBL_NO;
@@ -202,6 +217,7 @@ local mouse_menu = {
 		name = "hide_delay",
 		kind = "value",
 		label = "Autohide Delay",
+		description = "Change the minimum delay before the inactive-hide state is triggered",
 		eval = function() return not mouse_blocked(); end,
 		hint = function() return "40..400"; end,
 		validator = gen_valid_num(0, 400),
@@ -219,6 +235,7 @@ local mouse_menu = {
 		name = "focus",
 		kind = "value",
 		label = "Focus Event",
+		description = "Change the mouse action needed to select/focus a window",
 		eval = function() return not mouse_blocked(); end,
 		set = {"click", "motion", "hover", "none"},
 		initial = function()
@@ -233,6 +250,7 @@ local mouse_menu = {
 		kind = "value",
 		label = "Block",
 		set = {LBL_YES, LBL_NO},
+		description = "Block all mouse processing",
 		initial = function()
 			return gconfig_get("mouse_block") and LBL_YES or LBL_NO;
 		end,
@@ -254,6 +272,7 @@ local function list_keymaps()
 			name = "map_" .. tostring(k),
 			kind = "action",
 			label = v,
+			description = "Activate keyboard map: " .. v,
 			handler = function() SYMTABLE:load_keymap(v .. ".lua"); end
 		});
 	end
@@ -349,6 +368,7 @@ local function gen_smenu(v, pref)
 			name = pref .. "slotv",
 			kind = "value",
 			hint = "index (1..10, 0 disable)",
+			description = "Set the game input device slot this device should use",
 			validator = gen_valid_num(1, 8),
 			initial = tostring(v.slot),
 			handler = function(ctx, val)
@@ -363,6 +383,7 @@ local function dev_menu(v)
 		{
 			name = pref .. "bind",
 			label = "Bind",
+			description = "Bind device-specific button or axis",
 			handler = function() return gen_bmenu(v, pref .. "_bind"); end,
 			kind = "action",
 			submenu = true
@@ -371,6 +392,7 @@ local function dev_menu(v)
 			name = pref .. "always_on",
 			label = "Always On",
 			kind = "value",
+			description = "Always process input device analog samples",
 			set = {LBL_YES, LBL_NO},
 			initial = function()
 				return v.force_analog and LBL_YES or LBL_NO;
@@ -389,6 +411,7 @@ local function dev_menu(v)
 			label = "Analog",
 			submenu = true,
 			kind = "action",
+			description = "Change analog axis calibration and mapping",
 			eval = function() return #gen_analogmenu(v, pref) > 0; end,
 			handler = function()
 				return gen_analogmenu(v, pref .. "alog_");
@@ -406,6 +429,7 @@ local function gen_devmenu(slotted)
 			name = string.format("dev_%d_main", v.devid),
 			label = v.label,
 			kind = "action",
+			description = "Custom binding, mapping and calibration of " .. v.label,
 			hint = string.format("(id %d, slot %d)", v.devid, v.slot),
 			submenu = true,
 			handler = function() return dev_menu(v); end
@@ -419,12 +443,14 @@ local keymaps_menu = {
 		name = "bind_utf8",
 		label = "Bind UTF-8",
 		kind = "action",
+		description = "Associate a keyboard key with a UTF-8 defined unicode codepoint",
 		handler = bind_utf8,
 	},
 	{
 		name = "bind_sym",
 		label = "Bind Keysym",
 		kind = "value",
+		description = "Associate a keyboard key with a symbolic name",
 		set = function()
 			local res = {};
 			for k,v in pairs(SYMTABLE) do
@@ -449,6 +475,7 @@ local keymaps_menu = {
 	{
 		name = "switch",
 		label = "Load",
+		description = "Switch the currently active keyboard map",
 		kind = "action",
 		eval = function() return #(SYMTABLE:list_keymaps()) > 0; end,
 		handler = list_keymaps,
@@ -458,6 +485,7 @@ local keymaps_menu = {
 		name = "save",
 		label = "Save",
 		kind = "value",
+		description = "Save the currently active keyboard map under a new name",
 		validator = function(val) return val and string.len(val) > 0 and
 			not resource("devmaps/keyboard/" .. val .. ".lua", SYMTABLE_DOMAIN); end,
 		handler = function(ctx, val)
@@ -468,6 +496,7 @@ local keymaps_menu = {
 		name = "replace",
 		label = "Replace",
 		kind = "value",
+		description = "Update the on-disk store of the active keyboard map",
 		set = function() return SYMTABLE:list_keymaps(true); end,
 		handler = function(ctx, val)
 			SYMTABLE:save_keymap(val);
@@ -482,7 +511,7 @@ local keyb_menu = {
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_period")); end,
 		hint = "ticks/cycle (0:disabled - 50)",
-		note = "sets as new default, applies to new windows",
+		description = "Change how quickly a keypress is repeated (for new windows)",
 		validator = gen_valid_num(0, 100),
 		handler = function(ctx, val)
 			val = tonumber(val);
@@ -498,7 +527,7 @@ local keyb_menu = {
 			return tostring(gconfig_get("kbd_delay"));
 		end,
 		hint = "ms (0:disable - 1000)",
-		note = "sets as new default, applies to new windows",
+		description = "Change how long time need to elapse before repeating starts (for new windows)",
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_delay", val);
@@ -510,6 +539,7 @@ local keyb_menu = {
 		label = "Lock Toggle",
 		set = {"Meta-1 doubletap", "Meta-2 doubletap", "None"},
 		kind = "value",
+		description = "Change the gesture used to toggle the locked/raw-input mode",
 		initial = function() return gconfig_get("meta_lock"); end,
 		handler = function(ctx, val)
 			if (val == "Meta-1 doubletap") then
@@ -527,6 +557,7 @@ local keyb_menu = {
 		label = "Lock Timing",
 		hint = "ticks between releases for doubletap",
 		kind = "value",
+		description = "Change the keyboard double-tap gesture timeout",
 		initial = function() return tostring(gconfig_get("meta_dbltime")); end,
 		validator = gen_valid_num(4, 100),
 		handler = function(ctx, val)
@@ -539,6 +570,7 @@ local keyb_menu = {
 		kind = "value",
 		hint = "release-delay (0: disable)",
 		validator = gen_valid_num(0, 100),
+		description = "(Accessibility) Hold meta- keypresses for a certain time",
 		initial = function() return tostring(gconfig_get("meta_stick_time")); end,
 		handler = function(ctx, val)
 			gconfig_set("meta_stick_time", tonumber(val));
@@ -549,12 +581,14 @@ local keyb_menu = {
 		label = "Maps",
 		kind = "action",
 		submenu = true,
+		description = "Keyboard map controls",
 		handler = keymaps_menu
 	},
 	{
 		name = "reset",
 		label = "Reset",
 		kind = "action",
+		description = "Reset the current keyboard translation tables",
 		handler = function() SYMTABLE:reset(); end
 	}
 };
@@ -564,30 +598,35 @@ local bind_menu = {
 		name = "custom",
 		kind = "action",
 		label = "Custom",
+		description = "Bind a menu path to a meta+keypress",
 		handler = grab_global_function("bind_custom")
 	},
 	{
 		name = "custom_falling",
 		kind = "action",
 		label = "Custom(Release)",
+		description = "Bind a menu path to a meta+keyrelease",
 		handler = grab_global_function("bind_custom_falling")
 	},
 	{
 		name = "unbind",
 		kind = "action",
 		label = "Unbind",
+		description = "Unset a previous custom binding",
 		handler = grab_global_function("unbind_combo")
 	},
 	{
 		name = "meta",
 		kind = "action",
 		label = "Meta",
+		description = "Query for new meta keys",
 		handler = grab_global_function("rebind_meta")
 	},
 	{
 		name = "basic",
 		kind = "action",
 		label = "Basic",
+		description = "Rebind the basic navigation keys",
 		handler = grab_global_function("rebind_basic")
 	}
 };
@@ -598,6 +637,7 @@ return {
 		kind = "action",
 		label = "Bind",
 		submenu = true,
+		description = "Manage bindings",
 		handler = bind_menu
 	},
 	{
@@ -605,6 +645,7 @@ return {
 		kind = "action",
 		label = "Keyboard",
 		submenu = true,
+		description = "Keyboard specific settings",
 		handler = keyb_menu
 	},
 	{
@@ -612,6 +653,7 @@ return {
 		kind = "action",
 		label = "Mouse",
 		submenu = true,
+		description = "Mouse specific settings",
 		handler = mouse_menu
 	},
 	{
@@ -619,6 +661,7 @@ return {
 		kind = "action",
 		label = "Slotted Devices",
 		submenu = true,
+		description = "Device to Game input mapping",
 		eval = function()
 			return #gen_devmenu(true) > 0;
 		end,
@@ -631,6 +674,7 @@ return {
 		kind = "action",
 		label = "All Devices",
 		submenu = true,
+		description = "Configuration for all known input devices",
 		eval = function()
 			return #gen_devmenu() > 0;
 		end,
@@ -642,6 +686,7 @@ return {
 		name = "rescan",
 		kind = "action",
 		label = "Rescan",
+		description = "Issue an asynchronous device rescan (platform specific)",
 		handler = function()
 -- sideeffect, actually rescans on some platforms
 			inputanalog_query(nil, nil, true);
@@ -652,6 +697,7 @@ return {
 		name = "input_toggle",
 		kind = "action",
 		label = "Toggle Lock",
+		description = "Bind to toggle all input processing on/off",
 		handler = grab_global_function("input_lock_toggle"),
 		invisible = true
 	}

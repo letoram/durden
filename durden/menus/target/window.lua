@@ -3,23 +3,27 @@ local swap_menu = {
 		name = "up",
 		label = "Up",
 		kind = "action",
+		description = "(Tiling) Swap position with window parent",
 		handler = grab_global_function("swap_up")
 	},
 	{
 		name = "merge_collapse",
 		label = "Merge/Collapse",
+		description = "(Tiling) split or absorb same-level nodes and children slots",
 		kind = "action",
 		handler = grab_shared_function("mergecollapse")
 	},
 	{
 		name = "down",
 		label = "Down",
+		description = "(Tiling) Swap position with first window child",
 		kind = "action",
 		handler = grab_global_function("swap_down")
 	},
 	{
 		name = "left",
 		label = "Left",
+		description = "(Tiling) Swap position with parent sibling (to the left)",
 		kind = "action",
 		handler = grab_global_function("swap_left")
 	},
@@ -27,6 +31,7 @@ local swap_menu = {
 		name = "right",
 		label = "Right",
 		kind = "action",
+		description = "(Tiling) Swap position with parent sibling (to the right)",
 		handler = grab_global_function("swap_right")
 	},
 };
@@ -36,11 +41,13 @@ local select_menu = {
 		name = "up",
 		label = "Up",
 		kind = "action",
+		description = "Select the tiling-parent or (float) closest in negative Y",
 		handler = grab_shared_function("step_up")
 	},
 	{
 		name = "down",
 		label = "Down",
+		description = "Select the first tiling-child or (float) closest in positive Y",
 		kind = "action",
 		handler = grab_shared_function("step_down")
 	},
@@ -48,12 +55,14 @@ local select_menu = {
 		name = "left",
 		label = "Left",
 		kind = "action",
+		description = "Select the previous sibling or (float) closest in negative X",
 		handler = grab_shared_function("step_left")
 	},
 	{
 		name = "right",
 		label = "Right",
 		kind = "action",
+		description = "Select the next sibling or (float) closest in positive X",
 		handler = grab_shared_function("step_right")
 	},
 };
@@ -63,6 +72,7 @@ local moverz_menu = {
 	name = "grow_shrink_h",
 	label = "Resize(H)",
 	kind = "value",
+	description = "Change the relative width with a factor of (-0.5..x..0.5)",
 	validator = gen_valid_num(-0.5, 0.5),
 	hint = "(step: -0.5 .. 0.5)",
 	handler = function(ctx, val)
@@ -76,6 +86,7 @@ local moverz_menu = {
 	label = "Resize(V)",
 	kind = "value",
 	validator = gen_valid_num(-0.5, 0.5),
+	description = "Change the relative height with a factor of (-0.5..x..0.5)",
 	hint = "(-0.5 .. 0.5)",
 	handler = function(ctx, val)
 		local num = tonumber(val);
@@ -87,12 +98,14 @@ local moverz_menu = {
 	name = "fullscreen",
 	label = "Toggle Fullscreen",
 	kind = "action",
+	description = "Set workspace as fullscreen, with this window as its main contents",
 	handler = grab_shared_function("fullscreen")
 },
 {
 	name = "maxtog",
 	label = "Toggle Maximize",
 	kind = "action",
+	description = "(Float) size the window based on workspace client area size",
 	eval = function()
 		return active_display().selected.space.mode == "float";
 	end,
@@ -103,6 +116,7 @@ local moverz_menu = {
 {
 	name = "move_h",
 	label = "Move(H)",
+	description = "(Float) move the window left or right",
 	eval = function()
 		return active_display().selected.space.mode == "float";
 	end,
@@ -115,6 +129,7 @@ local moverz_menu = {
 {
 	name = "move_v",
 	label = "Move(V)",
+	description = "(Float) move the window up or down",
 	eval = function()
 		return active_display().selected.space.mode == "float";
 	end,
@@ -130,6 +145,7 @@ local moverz_menu = {
 	eval = function()
 		return active_display().selected.space.mode == "float";
 	end,
+	description = "(Float) move the window to a specific x coordinate",
 	kind = "value",
 	initial = function(val)
 		return tostring(image_surface_properties(
@@ -145,6 +161,7 @@ local moverz_menu = {
 {
 	name = "y",
 	label = "Set(Y)",
+	description = "(Float) move the window to a specific y coordinate",
 	eval = function()
 		return active_display().selected.space.mode == "float";
 	end,
@@ -164,6 +181,7 @@ local moverz_menu = {
 	name = "set_width",
 	label = "Set(W)",
 	kind = "value",
+	description = "(Float) set the window to x pixels wide",
 	eval = function(ctx, val)
 		return active_display().selected.space.mode == "float";
 	end,
@@ -178,6 +196,7 @@ local moverz_menu = {
 	name = "set_height",
 	label = "Set(H)",
 	kind = "value",
+	description = "(Float) set the window to y pixels high",
 	eval = function(ctx, val)
 		return active_display().selected.space.mode == "float";
 	end,
@@ -185,25 +204,6 @@ local moverz_menu = {
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
 		wnd:resize(wnd.width, tonumber(val));
-	end
-},
-{
-	name = "tiling_float",
-	label = "Float(Tile)",
-	kind = "value",
-	set = {LBL_YES, LBL_NO},
-	eval = function()
--- missing: window draw order when a window is float disabled
--- missing: enable controls that are blocked for non-workspace-float
-		return false;
-	end,
-	initial = function(ctx, val)
-		return active_display().selected.tile_ignore and LBL_YES or LBL_NO;
-	end,
-	handler = function(ctx, val)
-		local wnd = active_display().selected;
-		wnd.tile_ignore = val == LBL_YES;
-		wnd:resize(wnd.width, wnd.height);
 	end
 }
 };
@@ -215,6 +215,7 @@ local function gen_altsw(wnd)
 			name = "last",
 			label = "Last",
 			kind = "action",
+			description = "Select the last active alternate-slot client",
 			handler = function()
 				wnd:swap_alternate(wnd.alternate_ind);
 			end
@@ -223,6 +224,7 @@ local function gen_altsw(wnd)
 			name = "step_p",
 			label = "Step+",
 			kind = "action",
+			description = "Select the next (index) alternate-slot client",
 			handler = function()
 				wnd:swap_alternate((wnd.alternate_ind + 1) >
 					#wnd.alternate and 1 or (wnd.alternate_ind + 1));
@@ -232,6 +234,7 @@ local function gen_altsw(wnd)
 			name = "step_n",
 			label = "Step-",
 			kind = "action",
+			description = "Select the previous (index) alternate-slot client",
 			handler = function()
 				wnd:swap_alternate(wnd.alternate_ind > 1 and
 					(wnd.alternate_ind - 1) or #wnd.alternate);
@@ -244,6 +247,7 @@ local function gen_altsw(wnd)
 			name = tostring(i),
 			label = tostring(i),
 			kind = "action",
+			description = "Swap in a specific alternate-slot client",
 			handler = function()
 				wnd:swap_alternate(i);
 			end
@@ -259,7 +263,8 @@ local function gen_wsmove(wnd)
 	for i=1,10 do
 		table.insert(res, {
 			name = "move_space_" .. tostring(k),
-			label = (adsp[i] and adsp[i].label) and adsp[i].label or tostring(i);
+			label = (adsp[i] and adsp[i].label) and adsp[i].label or tostring(i),
+			description = "Reassign the window to workspace " .. tostring(i),
 			kind = "action",
 			handler = function()
 				wnd:assign_ws(i);
@@ -273,6 +278,7 @@ return {
 	{
 		name = "tag",
 		label = "Tag",
+		description = "Assign a custom text-tag",
 		kind = "value",
 		validator = function() return true; end,
 		handler = function(ctx, val)
@@ -287,6 +293,7 @@ return {
 		label = "Swap",
 		kind = "action",
 		submenu = true,
+		description = "Swap controls for swapping places with another window",
 		handler = swap_menu
 	},
 	{
@@ -294,6 +301,7 @@ return {
 		label = "Select",
 		kind = "action",
 		submenu = true,
+		description = "Window-relative selection change controls",
 		handler = select_menu
 	},
 	{
@@ -301,6 +309,7 @@ return {
 		label = "Reassign",
 		kind = "action",
 		submenu = true,
+		description = "Reassign to another workspace",
 		eval = function() return #gen_wsmove(active_display().selected) > 0; end,
 		handler = function()
 			return gen_wsmove(active_display().selected);
@@ -311,6 +320,7 @@ return {
 		label = "Alternate-Switch",
 		kind = "action",
 		submenu = true,
+		description = "Alternate-client slot controls",
 		eval = function()
 			return #active_display().selected.alternate > 0;
 		end,
@@ -322,12 +332,14 @@ return {
 		name = "canvas_to_bg",
 		label = "Workspace-Background",
 		kind = "action",
+		description = "Set windows contents as workspace background",
 		handler = grab_shared_function("wnd_tobg");
 	},
 	{
 		name = "titlebar_toggle",
 		label = "Titlebar Toggle",
 		kind = "action",
+		description = "Toggle the server-side decorated titlebar on/off",
 		handler = function()
 			local wnd = active_display().selected;
 			wnd.hide_titlebar = not wnd.hide_titlebar;
@@ -339,6 +351,7 @@ return {
 		name = "border_toggle",
 		label = "Border Toggle",
 		kind = "action",
+		description = "Toggle the server-side decorated window border on/off",
 		handler = function()
 			local wnd = active_display().selected;
 			wnd.hide_border = not wnd.hide_border;
@@ -350,6 +363,7 @@ return {
 		label = "Opacity",
 		kind = "value",
 		hint = "(0..1)",
+		description = "Change both the canvas and decoration opacity",
 		validator = gen_valid_num(0, 1),
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
@@ -364,6 +378,7 @@ return {
 		name = "delete_protect",
 		label = "Delete Protect",
 		kind = "value",
+		description = "Prevent the window from being accidentally deleted",
 		set = {LBL_YES, LBL_NO},
 		initial = function() return active_display().selected.delete_protect and
 			LBL_YES or LBL_NO; end,
@@ -376,6 +391,7 @@ return {
 		label = "Migrate",
 		kind = "action",
 		submenu = true,
+		description = "Reassign the window to a different display",
 		handler = grab_shared_function("migrate_wnd_bydspname"),
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
@@ -385,6 +401,7 @@ return {
 		name = "destroy",
 		label = "Destroy",
 		kind = "action",
+		description = "Delete the selected window",
 		handler = function()
 			grab_shared_function("destroy")();
 		end
@@ -393,6 +410,7 @@ return {
 		name = "moverz",
 		label = "Move/Resize",
 		kind = "action",
+		description = "Controls for moving or resizing the window",
 		handler = moverz_menu,
 		submenu = true
 	},
@@ -401,6 +419,7 @@ return {
 		label = "Schemes",
 		kind = "action",
 		submenu = true,
+		description = "Apply a window- local UI scheme",
 		eval = function()	return
 			#(ui_scheme_menu("window", active_display().selected)) > 0;
 		end,
@@ -412,6 +431,7 @@ return {
 		name = "slice_clone",
 		label = "Slice/Clone",
 		kind = "value",
+		description = "Slice out a window canvas region into a new window",
 		set = {"Active", "Passive"},
 		eval = function() return not mouse_blocked(); end,
 		external_block = true,

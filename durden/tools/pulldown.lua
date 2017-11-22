@@ -106,6 +106,7 @@ local dterm_cfg = {
 	name = "width",
 	kind = "value",
 	hint = "(100 * val)%",
+	description = "Change the display relative window width",
 	validator = gen_valid_float(0.1, 1.0),
 	initial = function() return gconfig_get("dt_width"); end,
 	handler = function(ctx, val)
@@ -118,6 +119,7 @@ local dterm_cfg = {
 	name = "height",
 	kind = "value",
 	hint = "(100 * val)%",
+	description = "Change the display relative window height",
 	validator = gen_valid_float(0.1, 1.0),
 	initial = function() return gconfig_get("dt_width"); end,
 	handler = function(ctx, val)
@@ -130,6 +132,7 @@ local dterm_cfg = {
 	name = "alpha",
 	kind = "value",
 	hint = "(0..1, 1=opaque)",
+	description = "Change the terminal background opacity",
 	validator = gen_valid_float(0.0, 1.0),
 	initial = function() return gconfig_get("dt_opa"); end,
 	handler = function(ctx, val)
@@ -144,6 +147,7 @@ local dterm_cfg = {
 	label = "Shadow Size (px)",
 	kind = "value",
 	hint = "(0..100, 0 = disabled)",
+	description = "Set the size of the window hard-shadow box",
 	validator = gen_valid_float(0.0, 100.0),
 	initial = function() return gconfig_get("dt_shadow"); end,
 	handler = function(ctx, val)
@@ -156,6 +160,7 @@ local dterm_cfg = {
 	name = "shadow_opa",
 	label = "Shadow Opacity",
 	kind = "value",
+	description = "Set the opacity of the window hard-shadow",
 	hint = "(0..1, 1=opaque)",
 	validator = gen_valid_float(0.0, 1.0),
 	initial = function() return gconfig_get("dt_shadow_opa"); end,
@@ -168,6 +173,7 @@ local dterm_cfg = {
 	label = "Shadow Ofset (X)",
 	kind = "value",
 	hint = "-50..50",
+	description = "Set the window pixel- X offset for the shadow",
 	validator = gen_valid_float(-50, 50),
 	initial = function() return gconfig_get("dt_shadow_ofs_x"); end,
 	handler = function(ctx, val)
@@ -179,6 +185,7 @@ local dterm_cfg = {
 	label = "Shadow Ofset (Y)",
 	kind = "value",
 	hint = "-50..50",
+	description = "Set the window pixel- Y offset for the shadow",
 	validator = gen_valid_float(-50, 50),
 	initial = function() return gconfig_get("dt_shadow_ofs_y"); end,
 	handler = function(ctx, val)
@@ -364,6 +371,7 @@ global_menu_register("tools",
 	name = "dterm",
 	label = "Drop-down Terminal",
 	kind = "action",
+	description = "A locked-input 'quake-style' terminal window",
 	handler = dterm
 });
 
@@ -373,5 +381,6 @@ global_menu_register("settings/tools",
 	label = "Dropdown Terminal",
 	kind = "action",
 	submenu = true,
+	description = "Change how the dropdown terminal behaves",
 	handler = dterm_cfg
 });

@@ -401,6 +401,7 @@ local function modelwnd(name)
 		label = "Source",
 		submenu = true,
 		kind = "action",
+		description = "Set the contents of another window as the 3D model display",
 		eval = function() return res.display_slot ~= nil and
 			#get_valid_windows(wnd, res); end,
 		handler = function() return get_valid_windows(wnd, res); end
@@ -409,6 +410,7 @@ local function modelwnd(name)
 		name = "view",
 		label = "View",
 		kind = "action",
+		description = "Switch preset model viewing angle",
 		eval = function() return res.screenview ~= nil; end,
 		handler = function(wnd)
 			if (wnd.in_view) then
@@ -429,6 +431,7 @@ global_menu_register("tools",
 {
 	name = "model",
 	label = "Model Viewer",
+	description = "3D model viewer",
 	kind = "value",
 	set = function()
 		return model_list()

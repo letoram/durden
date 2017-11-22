@@ -30,6 +30,7 @@ return {
 		name = "suspend",
 		label = "Suspend",
 		kind = "action",
+		description = "Block frame-transfers and request that the client enter a wait state",
 		handler = function()
 			active_display().selected:set_suspend(true);
 		end
@@ -38,6 +39,7 @@ return {
 		name = "resume",
 		label = "Resume",
 		kind = "action",
+		description = "Unblock frame-transfers and request that the client resumes processing",
 		handler = function()
 			active_display().selected:set_suspend(false);
 		end
@@ -47,6 +49,7 @@ return {
 		label = "Toggle",
 		invisible = true,
 		kind = "action",
+		description = "Toggle between suspend and resume state",
 		handler = function()
 			active_display().selected:set_suspend();
 		end
@@ -56,6 +59,7 @@ return {
 		label = "Reset",
 		kind = "action",
 		dangerous = true,
+		description = "Request that the client soft-resets to an initial state",
 		handler = shared_reset
 	},
 	{
@@ -63,6 +67,7 @@ return {
 		label = "Load",
 		kind = "action",
 		submenu = true,
+		description = "Send a previous save state to the client",
 		eval = function()
 			return (#glob_resource("*", APPL_STATE_RESOURCE)) > 0;
 		end,
@@ -76,6 +81,7 @@ return {
 		kind = "value",
 		submenu = true,
 		initial = "",
+		description = "Allocate a state store and send to the client for writing",
 		validator = function(str) return str and string.len(str) > 0; end,
 		prefill = "testy_test",
 		handler = function(ctx, val)

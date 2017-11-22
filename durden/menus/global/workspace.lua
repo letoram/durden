@@ -5,6 +5,7 @@ local function switch_ws_menu()
 			name = "switch_" .. tostring(i),
 			kind = "action",
 			label = tostring(i),
+			description = "Switch the active workspace to index " .. tostring(i),
 			handler = grab_global_function("switch_ws" .. tostring(i)),
 		};
 	end
@@ -14,6 +15,7 @@ local function switch_ws_menu()
 		name = "next",
 		kind = "action",
 		label = "Next",
+		description = "Switch workspace to the next in line",
 		handler = function()
 			active_display():step_ws(1);
 		end
@@ -24,6 +26,7 @@ local function switch_ws_menu()
 		name = "last",
 		kind = "action",
 		label = "Last Active",
+		description = "Switch workspace to the previously active one",
 		eval = function() return active_display().space_last_ind ~= nil; end,
 		handler = function()
 			active_display():switch_ws(active_display().space_last_ind);
@@ -34,6 +37,7 @@ local function switch_ws_menu()
 	{
 		name = "prev",
 		kind = "action",
+		description = "Switch workspace to one with a lower index than the current",
 		label = "Previous",
 		handler = function()
 			active_display():step_ws(-1);
@@ -48,6 +52,7 @@ local workspace_layout_menu = {
 		name = "float",
 		kind = "action",
 		label = "Float",
+		description = "Change workspace management mode to 'floating'",
 		handler = function()
 			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:float() or nil;
@@ -57,6 +62,7 @@ local workspace_layout_menu = {
 		name = "tile_h",
 		kind = "action",
 		label = "Tile-Horiz",
+		description = "Switch to tiling mode, and set insertion slot to horizontal",
 		handler = function()
 			local space  = active_display().spaces[active_display().space_ind];
 			space.insert = "h";
@@ -67,6 +73,7 @@ local workspace_layout_menu = {
 	{
 		name = "tile_v",
 		kind = "action",
+		description = "Switch to tiling mode, and set insertion slot to vertical",
 		label = "Tile-Vert",
 		handler = function()
 			local space  = active_display().spaces[active_display().space_ind];
@@ -79,6 +86,7 @@ local workspace_layout_menu = {
 		name = "tab",
 		kind = "action",
 		label = "Tabbed",
+		description = "Switch the workspace management to horizontal-tabbed mode",
 		handler = function()
 			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:tab() or nil;
@@ -87,6 +95,7 @@ local workspace_layout_menu = {
 	{
 		name = "vtab",
 		kind = "action",
+		description = "Switch the workspace management to vertically-tabbed mode",
 		label = "Tabbed Vertical",
 		handler = function()
 			local space = active_display().spaces[active_display().space_ind];
@@ -108,6 +117,7 @@ local save_ws = {
 		name = "shallow",
 		label = "Shallow",
 		kind = "action",
+		description = "Perform a shallow save of the workspace configuration",
 		handler = grab_global_function("save_space_shallow")
 	},
 --	{
@@ -141,6 +151,7 @@ local function swap_ws_menu()
 			table.insert(res, {
 				name = "swap_" .. tostring(i),
 				label = tostring(i),
+				description = "Swap the current workspace with the one in slot " .. tostring(i),
 				kind = "action",
 				handler = function()
 					grab_global_function("swap_ws" .. tostring(i))();
@@ -156,12 +167,14 @@ return {
 		name = "bg",
 		label = "Background",
 		kind = "action",
+		description = "Select a background image for the current workspace",
 		handler = set_ws_background,
 	},
 	{
 		name = "drop_bg",
 		label = "Drop Background",
 		kind = "action",
+		description = "Remove the currently set background image",
 		eval = function()
 			return valid_vid(
 				active_display().spaces[active_display().space_ind].background);
@@ -174,12 +187,14 @@ return {
 		name = "rename",
 		label = "Rename",
 		kind = "action",
+		description = "Assign a custom text tag to the current workspace",
 		handler = grab_global_function("rename_space")
 	},
 	{
 		name = "swap",
 		label = "Swap",
 		kind = "action",
+		description = "Swap workspace indices",
 		eval = function() return active_display():active_spaces() > 1; end,
 		submenu = true,
 		handler = swap_ws_menu
@@ -188,6 +203,7 @@ return {
 		name = "migrate",
 		label = "Migrate Display",
 		kind = "action",
+		description = "Move the workspace and all its windows to another display",
 		submenu = true,
 		handler = grab_global_function("migrate_ws_bydspname"),
 		eval = function()
@@ -197,6 +213,7 @@ return {
 	{
 		name = "name",
 		label = "Find Workspace",
+		description = "Select a workspace based on a previously set custom tag",
 		kind = "action",
 		handler = function() grab_global_function("switch_ws_byname")(); end
 	},
@@ -205,6 +222,7 @@ return {
 		label = "Switch",
 		kind = "action",
 		submenu = true,
+		description = "Change the currently active workspace index",
 		handler = switch_ws_menu
 	},
 	{
@@ -212,6 +230,7 @@ return {
 		label = "Layout",
 		kind = "action",
 		submenu = true,
+		description = "Change the winow management mode for the current workspace",
 		handler = workspace_layout_menu
 	},
 	{
@@ -219,6 +238,7 @@ return {
 		label = "Scheme",
 		kind = "action",
 		submenu = true,
+		description = "Activate a UI / interaction scheme on this workspace",
 		eval = function() return #(ui_scheme_menu("workspace",
 			active_display().spaces[active_display().space_ind])) > 0; end,
 		handler = function() return ui_scheme_menu("workspace",
@@ -228,6 +248,7 @@ return {
 		name = "save",
 		label = "Save",
 		kind = "action",
+		description = "Save the state of the current workspace",
 		submenu = true,
 		handler = save_ws
 	},
@@ -235,6 +256,7 @@ return {
 		name = "wnd",
 		label = "Tagged Window",
 		kind = "action",
+		description = "Locate a window based on a custom set tag",
 		handler = function() grab_global_function("switch_wnd_bytag")(); end
 	},
 };

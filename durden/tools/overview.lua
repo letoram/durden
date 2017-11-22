@@ -321,6 +321,7 @@ local overview_sub = {
 	name = "ws_tile",
 	label = "Workspace(Tile)",
 	kind = "action",
+	description = "Evenly space out tiles that represent each workspace",
 	eval = function()
 		return true;
 	end,
@@ -333,6 +334,7 @@ local overview_cfg = {
 	name = "ws_tile_shader",
 	label = "Shader(Tile)",
 	kind = "value",
+	description = "Shader used on the overview HUD background",
 	initial = function() return gconfig_get("overview_tilebg_shader"); end,
 	set = function() return shader_list({"effect", "simple"}); end,
 	handler = function(ctx, val)
@@ -346,6 +348,7 @@ local overview_cfg = {
 	name = "ws_tile_opa",
 	label = "Bg-Opacity(Tile)",
 	kind = "value",
+	description = "Background opacity of the individual tiles",
 	initial = function() return gconfig_get("overview_tilebg_opa"); end,
 	validator = gen_valid_float(0.0, 1.0),
 	handler = function(ctx, val)
@@ -359,6 +362,7 @@ global_menu_register("settings/tools",
 	name = "overview",
 	label = "Overview",
 	kind = "action",
+	description = "Change the look and feel of the overview workspace selector",
 	submenu = true,
 	handler = overview_cfg
 });
@@ -368,6 +372,7 @@ global_menu_register("tools",
 	name = "overview",
 	label = "Overview",
 	kind = "action",
+	description = "Show a workspace selection HUD",
 	submenu = true,
 	handler = overview_sub
 });

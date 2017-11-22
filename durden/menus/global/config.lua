@@ -17,7 +17,8 @@ local durden_font = {
 	{
 		name = "size",
 		label = "Size",
-		kind = "value";
+		kind = "value",
+		description = "Change the default UI font pt size",
 		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("font_sz")); end,
 		handler = function(ctx, val)
@@ -28,6 +29,7 @@ local durden_font = {
 		name = "hinting",
 		label = "Hinting",
 		kind = "value",
+		description = "Change anti-aliasing hinting algorithm",
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[gconfig_get("font_hint")]; end,
 		handler = function(ctx, val)
@@ -38,6 +40,7 @@ local durden_font = {
 		name = "name",
 		label = "Font",
 		kind = "value",
+		description = "Set the default font used for UI elements",
 		set = function()
 			local set = glob_resource("*", SYS_FONT_RESOURCE);
 			set = set ~= nil and set or {};
@@ -52,6 +55,7 @@ local durden_font = {
 		name = "fbfont",
 		label = "Fallback",
 		kind = "value",
+		description = "Set the fallback font used for missing glyphs (emoji, symbols)",
 		set = function()
 			local set = glob_resource("*", SYS_FONT_RESOURCE);
 			set = set ~= nil and set or {};
@@ -69,6 +73,7 @@ local durden_bars = {
 		name = "sb_top",
 		label = "Pad Top",
 		kind = "value",
+		description = "Insert extra vertical spacing above the bar text",
 		initial = function() return gconfig_get("sbar_tpad"); end,
 		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
 		handler = function(ctx, val)
@@ -81,6 +86,7 @@ local durden_bars = {
 		name = "sb_bottom",
 		label = "Pad Bottom",
 		kind = "value",
+		description = "Insert extra vertical spacing below the bar- text",
 		initial = function() return gconfig_get("sbar_bpad"); end,
 		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
 		handler = function(ctx, val)
@@ -93,6 +99,7 @@ local durden_bars = {
 		name = "tb_pattern",
 		label = "Titlebar(Pattern)",
 		kind = "value",
+		description = "Change the format string used to populate the titlebar text",
 		initial = function() return gconfig_get("titlebar_ptn"); end,
 		hint = "%p (tag) %t (title.) %i (ident.)",
 		validator = function(str)
@@ -111,6 +118,7 @@ local durden_bars = {
 		name = "tb_hide",
 		label = "Hide Titlebar",
 		kind = "value",
+		description = "Change the default titlebar visibility settings",
 		set = {LBL_YES, LBL_NO},
 		initial = function() return
 			gconfig_get("hide_titlebar") and LBL_YES or LBL_NO end,
@@ -122,6 +130,7 @@ local durden_bars = {
 		name = "sbar_pos",
 		label = "Statusbar Position",
 		kind = "value",
+		description = "Change the statusbar vertical position",
 		set = {"top", "bottom"},
 		initial = function()
 			return gconfig_get("sbar_pos");
@@ -135,6 +144,7 @@ local durden_bars = {
 		name = "sbar_hud",
 		label = "Statusbar HUD mode",
 		kind = "value",
+		description = "Show the statusbar exclusively on the HUD",
 		set = {LBL_YES, LBL_NO},
 		initial = function()
 			return gconfig_get("sbar_hud") and LBL_YES or LBL_NO;
@@ -316,6 +326,7 @@ local durden_visual = {
 		label = "Font",
 		kind = "action",
 		submenu = true,
+		description = "Generic UI font settings",
 		handler = durden_font
 	},
 	{
@@ -323,12 +334,14 @@ local durden_visual = {
 		label = "Bars",
 		kind = "action",
 		submenu = true,
+		description = "Controls/Settings for titlebars and the statusbar",
 		handler = durden_bars
 	},
 	{
 		name = "border_vsz",
 		label = "Border Thickness",
 		kind = "value",
+		description = "Grow/Shrink the visible border size",
 		hint = function() return
 			string.format("(0..%d)", gconfig_get("borderw")) end,
 		validator = function(val)
@@ -351,6 +364,7 @@ local durden_visual = {
 		hint = "(0..20)",
 		inital = function() return tostring(gconfig_get("borderw")); end,
 		validator = gen_valid_num(0, 20),
+		description = "Grow/Shrink the area reserved for the window border",
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
 			active_display():rebuild_border();
@@ -364,6 +378,7 @@ local durden_visual = {
 		label = "Shaders",
 		kind = "action",
 		submenu = true,
+		description = "Control/Tune GPU- accelerated UI and display effects",
 		handler = system_load("menus/global/shaders.lua")();
 	},
 	{
@@ -371,6 +386,7 @@ local durden_visual = {
 		label = "Mouse Scale",
 		kind = "value",
 		hint = "(0.1 .. 10.0)",
+		description = "Change the base scale factor used for the mouse cursor",
 		initial = function() return tostring(gconfig_get("mouse_scalef")); end,
 		handler = function(ctx, val)
 			gconfig_set("mouse_scalef", tonumber(val));
@@ -382,6 +398,7 @@ local durden_visual = {
 		label = "Animation Speed",
 		kind = "value",
 		hint = "(1..100)",
+		description = "Change the animation speed used for UI elements",
 		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("animation")); end,
 		handler = function(ctx, val)
@@ -393,6 +410,7 @@ local durden_visual = {
 		label = "Transition Speed",
 		kind = "value",
 		hint = "(1..100)",
+		description = "Change the animation speed used in state transitions",
 		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("transition")); end,
 		handler = function(ctx, val)
@@ -404,6 +422,7 @@ local durden_visual = {
 		label = "Window Animation Speed",
 		kind = "value",
 		hint = "(0..50)",
+		description = "Change the animation speed used with window position/size",
 		validator = gen_valid_num(0, 50),
 		initial = function() return tostring(gconfig_get("wnd_animation")); end,
 		handler = function(ctx, val)
@@ -414,6 +433,7 @@ local durden_visual = {
 		name = "anim_in",
 		label = "Transition-In",
 		kind = "value",
+		description = "Change the effect used when moving a workspace on-screen",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
 		handler = function(ctx, val)
@@ -424,6 +444,7 @@ local durden_visual = {
 		name = "anim_out",
 		label = "Transition-Out",
 		kind = "value",
+		description = "Change the effect used when moving a workspace off-screen",
 		set = {"none", "fade", "move-h", "move-v"},
 		initial = function() return tostring(gconfig_get("ws_transition_out")); end,
 		handler = function(ctx, val)
@@ -438,6 +459,7 @@ local float_menu = {
 		label = "Force-Titlebar",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
+		description = "Enable titlebars even if they are disabled in other modes",
 		initial = function() return
 			gconfig_get("float_tbar_override") and LBL_YES or LBL_NO end,
 		handler = function(ctx, val)
@@ -452,6 +474,7 @@ local durden_workspace = {
 		label = "Autodelete",
 		kind = "value",
 		set = {LBL_YES, LBL_NO},
+		description = "Automatically destroy workspaces that do not have any windows",
 		initial = function() return
 			gconfig_get("ws_autodestroy") and LBL_YES or LBL_NO end,
 		handler = function(ctx, val)
@@ -473,12 +496,14 @@ local durden_workspace = {
 		label = "Float",
 		submenu = true,
 		kind = "action",
+		description = "Settings exclusive to the floating workspace mode",
 		handler = float_menu
 	},
 	{
 		name = "adopt",
 		label = "Autoadopt",
 		kind = "value",
+		description = "Let displays adopt orphaned workspaces automatically",
 		set = {LBL_YES, LBL_NO},
 		eval = function() return gconfig_get("display_simple")
 			and LBL_YES or LBL_NO; end,
@@ -496,6 +521,7 @@ local rate_menu = {
 		initial = function() return gconfig_get("extcon_rlimit"); end,
 		kind = "value",
 		hint = "(0: disabled .. 1000)",
+		description = "Limit the number of external connections allowed per second",
 		validator = gen_valid_num(0, 1000),
 		handler = function(ctx, val)
 			gconfig_set("extcon_rlimit", tonumber(val));
@@ -508,6 +534,7 @@ local rate_menu = {
 		hint = "(0: disabled .. 1000)",
 		initial = function() return gconfig_get("extcon_startdelay"); end,
 		validator = gen_valid_num(0, 1000),
+		description = "Defer external connections until an initial grace period has elapsed",
 		handler = function(ctx, val)
 			gconfig_set("extcon_startdelay", tonumber(val));
 		end
@@ -519,6 +546,7 @@ local rate_menu = {
 		initial = function() return gconfig_get("extcon_wndlimit"); end,
 		validator = gen_valid_num(0, 1000),
 		hint = "(0: disabled .. 1000)",
+		description = "Limit the number of windows with an external connection source",
 		handler = function(ctx, val)
 			gconfig_set("extcon_wndlimit", tonumber(val));
 		end
@@ -528,6 +556,7 @@ local rate_menu = {
 		label = "Window Subsegment Limit",
 		kind = "value",
     hint = "(0: disabled, .. 100)",
+		description = "Limit the number of subsegments a client may have active",
 		initial = function() return gconfig_get("subwnd_limit"); end,
 		validator = gen_valid_num(0, 100),
 		handler = function(ctx, val)
@@ -546,6 +575,7 @@ local durden_system = {
 		initial = function() local path = gconfig_get("extcon_path");
 			return path == ":disabled" and "[disabled]" or path;
 		end,
+		description = "Change the name of the socket used to connect external clients",
 		handler = function(ctx, val)
 			gconfig_set("extcon_path", val, true);
 			if (valid_vid(INCOMING_ENDPOINT)) then
@@ -564,6 +594,7 @@ local durden_system = {
 		label = "Rate Limiting",
 		kind = "action",
 		submenu = true,
+		description = "Settings for rate limiting external resource allocations",
 		handler = rate_menu
 	},
 	{
@@ -572,6 +603,7 @@ local durden_system = {
 		kind = "value",
 		hint = "(a..Z_)",
 		validator = strict_fname_valid,
+		description = "Set the fifo-name (ipc/XXX) for external UI control",
 		initial = function() local path = gconfig_get("control_path");
 			return path == ":disabled" and "[disabled]" or pth;
 		end,
@@ -597,6 +629,7 @@ local durden_system = {
 		initial = function() return
 			gconfig_get("whitelist") and LBL_YES or LBL_NO;
 		end,
+		description = "Toggle control-fifo command whitelisting",
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
 			gconfig_set("whitelist", val == LBL_YES);
@@ -606,6 +639,7 @@ local durden_system = {
 		name = "source_color",
 		label = "Color/Gamma Sync",
 		kind = "value",
+		description = "Control permissions for external color managers",
 		initial = function() return gconfig_get("gamma_access"); end,
 		set = {"none", "trusted", "all"},
 		handler = function(ctx, val)
@@ -616,6 +650,7 @@ local durden_system = {
 		name = "gpuauth",
 		label = "GPU delegation",
 		kind = "value",
+		description = "Control permission for external privileged GPU access",
 		initial = function() return gconfig_get("gpu_auth"); end,
 		eval = function() return TARGET_ALLOWGPU ~= nil; end,
 		set = {"none", "full"},
@@ -627,6 +662,7 @@ local durden_system = {
 		name = "bridgeclip",
 		label = "Clipboard Bridge",
 		kind = "value",
+		description = "Control permissions for external clipboard managers",
 		initial = function() return gconfig_get("clipboard_access"); end,
 		set = {"none", "full", "passive", "active"},
 		handler = function(ctx, val)
@@ -638,6 +674,7 @@ local durden_system = {
 		label = "Status Pipe",
 		kind = "value",
 		hint = "(a..Z_)",
+		description = "Set the fifo-name (ipc/XXX) used for statusbar control",
 		validator = strict_fname_valid,
 		initial = function() local path = gconfig_get("status_path");
 			return path == ":disabled" and "[disabled]" or path;
@@ -667,6 +704,7 @@ local durden_system = {
 		initial = function() local path = gconfig_get("output_path");
 				return path == ":disabled" and "[disabled]" or path;
 		end,
+		description = "Set the fifo-name (ipc/XXX) used for IPC output feedback",
 		handler = function(ctx, val)
 			if (OUTPUT_CHANNEL) then
 				OUTPUT_CHANNEL:close();
@@ -677,7 +715,7 @@ local durden_system = {
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			else
-				OUTPUT_CJANNEL = open_nonblock("<ipc/" .. val, true);
+				OUTPUT_CHANNEL = open_nonblock("<ipc/" .. val, true);
 			end
 
 			gconfig_set("output_path", val);
@@ -688,6 +726,7 @@ local durden_system = {
 		label = "Display Mode",
 		kind = "value",
 		set = {"Simple", "Normal"},
+		description = "(advanced/reset) Change display management mode",
 		initial = function() return gconfig_get("display_simple") and
 			"Simple" or "Normal"; end,
 		handler = function(ctx, val)
@@ -703,6 +742,7 @@ local recmenu = {
 	label = "Framerate",
 	kind = "value",
 	hint = "(10..60)",
+	description = "Change the nominal video encoding samplerate",
 	validator = gen_valid_num(10, 60),
 	initial = function() return tostring(gconfig_get("enc_fps")); end,
 	handler = function(ctx, val)
@@ -714,6 +754,7 @@ local recmenu = {
 	label = "Video Quality Preset",
 	kind = "value",
 	hint = "(0:disable..10:max, overrides bitrate)",
+	description = "Change the targeted video quality approximation level",
 	validator = gen_valid_num(0, 10),
 	initial = function() return tostring(gconfig_get("enc_vpreset")); end,
 	handler = function(ctx, val)
@@ -726,6 +767,7 @@ local recmenu = {
 	label = "Video Bitrate",
 	kind = "value",
 	hint = "(kbit/s, overrides preset)",
+	description = "Change the ideal video bitrate",
 	validator = gen_valid_num(100, 10000),
 	initial = function() return tostring(gconfig_get("enc_vbr")); end,
 	handler = function(ctx, val)
@@ -738,6 +780,7 @@ local recmenu = {
 	label = "Audio Presilence",
 	kind = "value",
 	hint = "(samples)",
+	description = "Prefill audio buffers with n samples of silence",
 	validator = gen_valid_num(0, 16384),
 	initial = function() return tostring(gconfig_get("enc_presilence")); end,
 	handler = function(ctx, val) gconfig_set("enc_presilence", tonumber(val)); end
@@ -749,6 +792,7 @@ local config_terminal_font = {
 		name = "font_sz",
 		label = "Size",
 		kind = "value",
+		description = "Change the default UI font pt size",
 		validator = gen_valid_num(1, 100),
 		initial = function() return tostring(gconfig_get("term_font_sz")); end,
 		handler = function(ctx, val)
@@ -759,6 +803,7 @@ local config_terminal_font = {
 		name = "font_hint",
 		label = "Hinting",
 		kind = "value",
+		description = "Change anti-aliasing hinting algorithm",
 		set = {"none", "mono", "light", "normal", "subpixel"},
 		initial = function() return TERM_HINT_RLUT[
 		gconfig_get("term_font_hint")]; end,
@@ -770,6 +815,7 @@ local config_terminal_font = {
 		name = "force_bitmap",
 		label = "Force Bitmap",
 		kind = "value",
+		description = "Force the use of a built-in bitmap only font",
 		hint = "(new terminals only)",
 		initial = function() return gconfig_get("term_bitmap") and LBL_YES or LBL_NO; end,
 		set = {LBL_YES, LBL_NO},
@@ -789,6 +835,7 @@ local config_terminal_font = {
 			table.insert(set, "BUILTIN");
 			return set;
 		end,
+		description = "Change the default terminal font",
 		initial = function() return gconfig_get("term_font"); end,
 		handler = function(ctx, val)
 			gconfig_set("term_font", val == "BUILTIN" and "" or val);
@@ -803,6 +850,7 @@ local config_terminal = {
 		kind = "value",
 		hint = "(0..1)",
 		validator = gen_valid_float(0, 1),
+		description = "Change the background opacity for all terminals",
 		initial = function() return tostring(gconfig_get("term_opa")); end,
 		handler = function(ctx, val)
 			gconfig_set("term_opa", tonumber(val));
@@ -813,6 +861,7 @@ local config_terminal = {
 		label = "Palette",
 		kind = "value",
 		set = {"default", "solarized", "solarized-black", "solarized-white"},
+		description = "Change palette used by terminal at startup",
 		initial = function() return gconfig_get("term_palette"); end,
 		handler = function(ctx, val)
 			gconfig_set("term_palette", val);
@@ -823,6 +872,7 @@ local config_terminal = {
 		label = "Font",
 		kind = "action",
 		submenu = true,
+		description = "Switch font-set used by all terminals",
 		handler = config_terminal_font
 	}
 };
@@ -832,24 +882,28 @@ local allmenu = {
 		name = "all_susp",
 		label = "Suspend All",
 		kind = "action",
+		description = "Suspend all windows",
 		handler = grab_global_function("all_suspend")
 	},
 	{
 		name = "all_media_susp",
 		label = "Suspend Media",
 		kind = "action",
+		description = "Suspend all media windows",
 		handler = grab_global_function("all_media_suspend")
 	},
 	{
 		name = "all_susp",
 		label = "Resume All",
 		kind = "action",
+		description = "Resume all suspended windows",
 		handler = grab_global_function("all_resume")
 	},
 	{
 		name = "all_media_resume",
 		label = "Resume Media",
 		kind = "action",
+		description = "Resume all suspended media windows",
 		handler = grab_global_function("all_media_resume")
 	},
 };
@@ -860,6 +914,7 @@ return {
 		label = "Visual",
 		kind = "action",
 		submenu = true,
+		description = "UI elements, colors and effects",
 		handler = durden_visual
 	},
 	{
@@ -867,6 +922,7 @@ return {
 		label = "Workspaces",
 		kind = "action",
 		submenu = true,
+		description = "Workspace layout mode settings",
 		handler = durden_workspace
 	},
 	{
@@ -874,6 +930,7 @@ return {
 		label = "Timers",
 		kind = "action",
 		submenu = true,
+		description = "View / Manage active timers",
 		handler = system_load("menus/global/timer.lua")()
 	},
 	{
@@ -881,6 +938,7 @@ return {
 		label = "LEDs",
 		kind = "action",
 		submenu = true,
+		description = "LED device controls",
 		eval = function()
 			return #ledm_devices("passive") > 0;
 		end,
@@ -891,12 +949,14 @@ return {
 		label = "System",
 		kind = "action",
 		submenu = true,
+		description = "System and Security specific controls",
 		handler = durden_system
 	},
 	{
 		name = "recording",
 		label = "Recording",
 		kind = "action",
+		description = "Media recording parameters (framerate, bitrate, ...)",
 		submenu = true,
 		handler = recmenu
 	},
@@ -904,6 +964,7 @@ return {
 		name = "allwnd",
 		label = "All-Windows",
 		kind = "action",
+		description = "State controls that affect all windows",
 		submenu = true,
 		handler = allmenu,
 	},
@@ -912,6 +973,7 @@ return {
 		label = "Terminal",
 		kind = "action",
 		submenu = true,
+		description = "Command-Line Interface (CLI) options",
 		eval = function()
 			return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 		end,
@@ -922,6 +984,7 @@ return {
 		label = "Scheme",
 		kind = "action",
 		submenu = true,
+		description = "Select a color/UI scheme",
 		eval = function()	return #(ui_scheme_menu()) > 0; end,
 		handler = function() return ui_scheme_menu("global"); end
 	},
@@ -929,6 +992,7 @@ return {
 		name = "tools",
 		label = "Tools",
 		kind = "action",
+		description = "Custom tool specific settings",
 		submenu = true,
 		handler = tools_conf
 	}

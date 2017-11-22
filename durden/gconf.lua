@@ -41,7 +41,12 @@ local defaults = {
 
 -- right now, the options are 'none' and 'auto'
 	preview_mode = "auto",
+
+-- for the first run, enable more helpers
 	first_run = true,
+
+-- show the description field of the menu item that is selected
+	menu_helper = true,
 
 -- should entries that request a password show the input as *** chars
 	passmask = false,
@@ -229,7 +234,7 @@ local defaults = {
 	lbar_labelstr = "\\#00ff00 ",
 	lbar_menulblstr = "\\#ffff00 ",
 	lbar_menulblselstr = "\\#ffff00 ",
-	lbar_helperstr = "\\#ffffff ",
+	lbar_helperstr = "\\#aaaaaa ",
 	lbar_errstr = "\\#ff4444 ",
 	lbar_caret_w = 2,
 	lbar_caret_h = 16,

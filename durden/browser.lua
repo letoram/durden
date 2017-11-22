@@ -369,6 +369,7 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		fltext = extensions,
 		namespace = mask,
 		trigger = donecb,
+		in_preview = {},
 		opts = opts
 	};
 
@@ -387,10 +388,6 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		if (m1) then
 			step_up(lbctx);
 		end
-	end
-
-	if (gconfig_get("preview_mode") == "auto") then
-		lbctx.in_preview = {};
 	end
 
 -- a little hack to be able to add meta + direction handling,

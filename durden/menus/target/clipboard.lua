@@ -107,6 +107,7 @@ return {
 		name = "paste",
 		label = "Paste",
 		kind = "action",
+		description = "Paste the current entry from the global clipboard",
 		eval = function() return valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER);
 		end,
@@ -116,6 +117,7 @@ return {
 		name = "lpaste",
 		label = "Paste-Local",
 		kind = "action",
+		description = "Paste the current entry from the local clipboard",
 		eval = function()
 		return valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER);
@@ -126,6 +128,7 @@ return {
 		name = "lhist",
 		label = "History-Local",
 		kind = "action",
+		description = "Enumerate the local clipboard history",
 		eval = function()
 			local wnd = active_display().selected;
 			return wnd.clipboard ~= nil and #CLIPBOARD:list_local(wnd.clipboard) > 0;
@@ -140,6 +143,7 @@ return {
 		name = "lhistprom",
 		label = "Promote",
 		kind = "action",
+		description = "Promote an entry from the local clipboard to the global shared one",
 		eval = function()
 			local wnd = active_display().selected;
 			return wnd.clipboard ~= nil and #CLIPBOARD:list_local(wnd.clipboard) > 0;
@@ -153,6 +157,7 @@ return {
 	{
 		name = "hist",
 		label = "History",
+		description = "Select an entry from the global history",
 		kind = "action",
 		submenu = true,
 		eval = function()
@@ -165,6 +170,7 @@ return {
 		name = "url",
 		label = "URLs",
 		kind = "action",
+		description = "Select an entry from the URL catcher",
 		submenu = true,
 		eval = function()
 			return valid_vid(
@@ -177,6 +183,7 @@ return {
 		name = "mode",
 		label = "Mode",
 		kind = "value",
+		description = "Change the preprocess filter that will be applied before pasting",
 		initial = function()
 			local wnd = active_display().selected;
 			return wnd.pastemode and wnd.pastemode or "";

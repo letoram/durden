@@ -1,8 +1,14 @@
 local sdisp = {
 	input_label = function(wnd, source, tbl)
 		if (not wnd.input_labels) then wnd.input_labels = {}; end
+
+-- MISSING:
+-- should handle description switching, the different input types,
+-- mapping default bindings+modifiers
+
+		for k,v in pairs(tbl) do print(k, v); end
 		if (#wnd.input_labels < 100) then
-			table.insert(wnd.input_labels, {tbl.labelhint, tbl.idatatype});
+			table.insert(wnd.input_labels, {tbl.labelhint, tbl.idatatype, tbl.description});
 		end
 	end
 };
@@ -20,6 +26,7 @@ local shared_actions = {
 		label = "Input",
 		submenu = true,
 		kind = "action",
+		description = "Mouse/Keyboard/Custom client inputs",
 		eval = function()
 			return not active_display().selected.menu_input_disable;
 		end,
@@ -30,6 +37,7 @@ local shared_actions = {
 		label = "State",
 		submenu = true,
 		kind = "action",
+		description = "Client state management",
 		eval = function()
 			local wnd = active_display().selected;
 			return valid_vid(wnd.external, TYPE_FRAMESERVER)
@@ -42,6 +50,7 @@ local shared_actions = {
 		label = "Clipboard",
 		submenu = true,
 		kind = "action",
+		description = "Clipboard control and actions",
 		eval = function()
 			return active_display().selected and
 				active_display().selected.clipboard_block == nil;
@@ -53,6 +62,7 @@ local shared_actions = {
 		label = "Options",
 		submenu = true,
 		kind = "action",
+		description = "Client-supplied configuration keys",
 		eval = function()
 			local wnd = active_display().selected;
 			return valid_vid(wnd.external, TYPE_FRAMESERVER) and
@@ -65,6 +75,7 @@ local shared_actions = {
 		label = "Audio",
 		submenu = true,
 		kind = "action",
+		description = "Audio controls",
 		eval = function(ctx)
 			return active_display().selected.source_audio;
 		end,
@@ -75,6 +86,7 @@ local shared_actions = {
 		label = "Video",
 		kind = "action",
 		submenu = true,
+		description = "Video controls",
 		handler = system_load("menus/target/video.lua")()
 	},
 	{
@@ -82,6 +94,7 @@ local shared_actions = {
 		label = "Window",
 		kind = "action",
 		submenu = true,
+		description = "Window position and size controls",
 		handler = system_load("menus/target/window.lua")()
 	},
 };

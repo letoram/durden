@@ -8,6 +8,7 @@ local exit_query = {
 {
 	name = "yes",
 	label = "Yes",
+	description = "This will close external connections, any unsaved data will be lost",
 	kind = "action",
 	dangerous = true,
 	handler = function() shutdown(); end
@@ -105,6 +106,7 @@ local function gen_appl_menu()
 		table.insert(res, {
 			name = "switch_" .. tostring(i);
 			label = v,
+			description = "Change the active set of scripts, data or external clients may be lost",
 			dangerous = true,
 			kind = "action",
 			handler = function()
@@ -126,6 +128,7 @@ local reset_query = {
 	{
 		name = "yes",
 		label = "Yes",
+		description = "Reset / Reload Durden? Unsaved data may be lost",
 		kind = "action",
 		dangerous = true,
 		handler = function()
@@ -137,6 +140,7 @@ local reset_query = {
 		name = "switch",
 		label = "Switch Appl",
 		kind = "action",
+		description = "Change the currently active window management scripts",
 		submenu = true,
 		eval = function() return #glob_resource("*", SYS_APPL_RESOURCE) > 0; end,
 		handler = gen_appl_menu
@@ -289,6 +293,7 @@ local system_menu = {
 		label = "Shutdown",
 		kind = "action",
 		submenu = true,
+		description = "Perform a clean shutdown",
 		handler = exit_query
 	},
 	{
@@ -296,6 +301,7 @@ local system_menu = {
 		label = "Reset",
 		kind = "action",
 		submenu = true,
+		description = "Rebuild the WM state machine",
 		handler = reset_query
 	},
 	{
@@ -303,6 +309,7 @@ local system_menu = {
 		label = "Status-Message",
 		kind = "value",
 		invisible = true,
+		description = "Add a custom string to the statusbar message area",
 		validator = function(val) return true; end,
 		handler = function(ctx, val)
 			active_display():message(val and val or "");
@@ -312,6 +319,7 @@ local system_menu = {
 		name = "output_msg",
 		label = "IPC-Output",
 		kind = "value",
+		description = "Write a custom string to the output IPC fifo",
 		invisible = true,
 		validator = function(val) return string.len(val) > 0; end,
 		handler = function(ctx, val)
@@ -332,6 +340,7 @@ local system_menu = {
 		name = "lock",
 		label = "Lock",
 		kind = "value",
+		description = "Query for a temporary unlock key and then lock the display",
 		dangerous = true,
 		password_mask = gconfig_get("passmask"),
 		hint = "(unlock key)",

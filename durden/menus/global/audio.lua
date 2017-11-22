@@ -3,6 +3,7 @@ return {
 		name = "toggle",
 		label = "Toggle On/Off",
 		kind = "action",
+		description = "Toggle all audio playback",
 		handler = grab_global_function("toggle_audio")
 	},
 	{
@@ -11,6 +12,7 @@ return {
 		kind = "action",
 		hint = "(0..1)",
 		kind = "value",
+		description = "Change the global audio volume",
 		validator = shared_valid01_float,
 		initial = function()
 			return tostring(gconfig_get("global_gain"));
@@ -23,6 +25,7 @@ return {
 		name = "vol_p10",
 		label = "+10%",
 		kind = "action",
+		description = "Increment the global audio volume by 10%",
 		handler = function()
 			grab_global_function("gain_stepv")(0.1);
 		end
@@ -31,6 +34,7 @@ return {
 		name = "vol_n10",
 		label = "-10%",
 		kind = "action",
+		description = "Decrement the global audio volume by 10%",
 		handler = function()
 			grab_global_function("gain_stepv")(-0.1);
 		end
