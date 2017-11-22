@@ -1974,7 +1974,12 @@ local function wnd_step_drag(wnd, mctx, vid, dx, dy)
 	wnd.x = wnd.x + dx * mctx.mask[3];
 	wnd.y = wnd.y + dy * mctx.mask[4];
 	move_image(wnd.anchor, wnd.x, wnd.y);
-	wnd:resize(wnd.width+dx*mctx.mask[1], wnd.height+dy*mctx.mask[2], true, false);
+
+	wnd:resize(
+		wnd.width + dx * mctx.mask[1],
+		wnd.height + dy * mctx.mask[2],
+		true, false
+	);
 end
 
 local function wnd_drag_resize(wnd, mctx, enter)
@@ -1983,33 +1988,32 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		end
 		wnd.in_drag_rz = true;
 		return;
-	else
-		if (wnd.in_drag_rz) then
-			local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
-			local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
-			local ew = wnd.effective_w;
-			local eh = wnd.effective_h;
-			if (dx > wnd.sz_delta[1] * 0.5) then
-				ew = ew + wnd.sz_delta[1];
-				wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
-			end
-			if (dy < wnd.sz_delta[2] * 0.5) then
-				eh = eh + wnd.sz_delta[2];
-				wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
-			end
+	end
 
-			move_image(wnd.anchor, wnd.x, wnd.y);
-			wnd:resize_effective(ew, eh, true);
-		else
-			wnd:resize(wnd.width, wnd.height, true);
-		end
-		wnd.in_drag_rz = false;
+	if (not wnd.in_drag_rz) then
+		wnd:resize(wnd.width, wnd.height, true);
 		return;
 	end
-end
 
-local function wnd_drag_move(wnd, enter)
--- need to do it for the canvas as well due to wayland
+	local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
+	local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
+	local ew = wnd.effective_w;
+	local eh = wnd.effective_h;
+
+	if (dx > wnd.sz_delta[1] * 0.5) then
+		ew = ew + wnd.sz_delta[1];
+		wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
+	end
+
+	if (dy < wnd.sz_delta[2] * 0.5) then
+		eh = eh + wnd.sz_delta[2];
+		wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
+	end
+
+	move_image(wnd.anchor, wnd.x, wnd.y);
+	wnd:resize_effective(ew, eh, true);
+
+	wnd.in_drag_rz = false;
 end
 
 local function wnd_move(wnd, dx, dy, align, abs, now)
@@ -2881,9 +2885,11 @@ local canvas_mh = {
 	end,
 
 	drag = function(ctx, vid, dx, dy)
-		if (ctx.tag.in_drag_rz) then
-			wnd_step_drag(ctx.tag, ctx, vid, dx, dy);
-		elseif (ctx.tag.in_drag_move) then
+		local wnd = ctx.tag;
+		if (wnd.in_drag_rz) then
+			ctx.mask = wnd.in_drag_rz_mask;
+			wnd_step_drag(wnd, ctx, vid, dx, dy);
+		elseif (wnd.in_drag_move) then
 			wnd.x = wnd.x + dx;
 			wnd.y = wnd.y + dy;
 			move_image(wnd.anchor, wnd.x, wnd.y);
@@ -2975,7 +2981,7 @@ local function wnd_swap(w1, w2, deep, force)
 		w2.children = wc;
 	end
 
-	wnd:recovertag();
+--	wnd:recovertag();
 end
 
 local function synch_alternate(new, par)
@@ -3325,7 +3331,6 @@ local wnd_setup = function(wm, source, opts)
 		move = wnd_move,
 		swap = wnd_swap,
 		drag_resize = wnd_drag_resize,
-		drag_move = wnd_drag_move,
 
 -- lifecycle
 		set_suspend = wnd_setsuspend,

@@ -452,6 +452,7 @@ function durden_adopt(vid, kind, title, parent, last)
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
 	end
 
+	print("adopt", vid, kind, title);
 	if (not valid_vid(parent)) then
 		local wnd = durden_launch(vid, title);
 		if (not wnd) then
@@ -465,7 +466,9 @@ function durden_adopt(vid, kind, title, parent, last)
 -- a real resized event with the source audio will come immediately
 			source_audio = BADID
 		});
-		if (wnd.ws_attach) then
+
+		print(wnd.no_recover_attach, "recover attach");
+		if (wnd.ws_attach and not wnd.no_recover_attach) then
 			wnd:ws_attach();
 		end
 		return true;
