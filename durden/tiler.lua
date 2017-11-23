@@ -2024,7 +2024,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 	local time = now and 0 or wnd_animation_time(wnd, wnd.anchor, false, true);
 
 	if (abs) then
-		move_image(wnd.anchor, dx, dy, time);
+		local props = image_surface_resolve(wnd.wm.anchor);
+		move_image(wnd.anchor, dx - props.x, dy - props.y, time);
 		wnd.x = dx;
 		wnd.y = dy;
 		return;
@@ -2981,7 +2982,8 @@ local function wnd_swap(w1, w2, deep, force)
 		w2.children = wc;
 	end
 
---	wnd:recovertag();
+	w1:recovertag();
+	w2:recovertag();
 end
 
 local function synch_alternate(new, par)
@@ -3062,7 +3064,7 @@ local function attach_alternate(res, parent)
 	end
 end
 
--- attach a window to the active workspace, this is a one-time
+-- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
 
@@ -3164,9 +3166,10 @@ local function wnd_ws_attach(res, from_hook)
 	return res;
 end
 
--- use the image_tracetag option to pack a string that can be used
+-- Use the image_tracetag option to pack a string that can be used
 -- to reassign the window to the correct position, weight, workspace,
--- layout mode and so on
+-- layout mode and so on. The same tag can then be saved / stored with
+-- an application guid to get settings persistance across reboots as well
 local function wnd_recovertag(wnd, restore)
 	if (not valid_vid(wnd.external)) then
 		return;
@@ -3195,6 +3198,19 @@ local function wnd_recovertag(wnd, restore)
 	if (wnd.atype) then
 		recoverstr = recoverstr .. ":_atype=" .. wnd.atype;
 	end
+
+-- The more difficult part, rebuilding tiling mode hierarchy.
+
+-- window properties (just apply)
+-- hide_titlebar, hide_border, weight, vweight
+-- float_dim (opt) x, y (float only),
+-- tag (last)
+-- shader, scalemode, centered, gain,
+
+-- workspace properties: index, display, mode, label, background_name(hard,
+-- might not be an accessible resource)
+--
+	local wsprop = string.format(":ws_mode=%s", wnd.space.mode);
 
 -- split on :, Pkey=value where P dictates decode / application use
 	image_tracetag(wnd.external, recoverstr);
@@ -3296,7 +3312,6 @@ local wnd_setup = function(wm, source, opts)
 		vweight = 1.0,
 
 		cursor = "default",
-		cfg_prefix = "",
 		hide_titlebar = gconfig_get("hide_titlebar"),
 		hide_border = false,
 		centered = true,

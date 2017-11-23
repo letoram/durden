@@ -226,25 +226,42 @@ for i,v in ipairs(drag_effects) do
 	end
 end
 
+
 local in_flair = false;
+
+local function set_tiler(wm)
+	if (in_flair) then
+		table.insert(wm.on_wnd_drag, flair_drag_hook);
+		table.insert(wm.on_wnd_create, flair_wnd_create);
+		table.insert(wm.on_wnd_destroy, flair_wnd_destroy);
+		table.insert(wm.on_wnd_hide, flair_wnd_hide);
+	else
+		table.remove_match(wm.on_wnd_drag, flair_drag_hook);
+		table.remove_match(wm.on_wnd_create, flair_wnd_create);
+		table.remove_match(wm.on_wnd_destroy, flair_wnd_destroy);
+		table.remove_match(wm.on_wnd_hide, flair_wnd_hide);
+	end
+end
+
+local function display_added(event, name, tiler, id)
+	if (tiler.on_wnd_drag) then
+		set_tiler(tiler);
+	end
+end
+
+display_add_listener(display_added);
+
 local function flair_toggle()
 	if (in_flair) then
--- deregister hooks
 		in_flair = false;
 		for wm in all_tilers_iter() do
-			table.remove_match(wm.on_wnd_drag, flair_drag_hook);
-			table.remove_match(wm.on_wnd_create, flair_wnd_create);
-			table.remove_match(wm.on_wnd_destroy, flair_wnd_destroy);
-			table.remove_match(wm.on_wnd_hide, flair_wnd_hide);
+			set_tiler(wm);
 		end
 	else
-		for wm in all_tilers_iter() do
-			table.insert(wm.on_wnd_drag, flair_drag_hook);
-			table.insert(wm.on_wnd_create, flair_wnd_create);
-			table.insert(wm.on_wnd_destroy, flair_wnd_destroy);
-			table.insert(wm.on_wnd_hide, flair_wnd_hide);
-		end
 		in_flair = true;
+		for wm in all_tilers_iter() do
+			set_tiler(wm);
+		end
 	end
 end
 
