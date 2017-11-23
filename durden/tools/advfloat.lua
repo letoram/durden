@@ -12,8 +12,9 @@
 -- can hide
 gconfig_register("advfloat_spawn", "auto");
 gconfig_register("advfloat_hide", "statusbar");
+gconfig_register("advfloat_actionreg", false);
 
--- local cactions = system_load("tools/advfloat/cactions.lua")();
+local cactions = system_load("tools/advfloat/cactions.lua")();
 
 local mode = gconfig_get("advfloat_spawn");
 local pending, pending_vid;
@@ -34,15 +35,7 @@ local function setup_cursor_pick(wm, wnd)
 	shader_setup(pending_vid, "ui", "regmark", "active");
 end
 
-local function activate_pending(mx, my)
-	if (not mx) then
-		mx, my = mouse_xy();
-	end
-
-	if (pending.move) then
-		pending:move(mx, my, false, true, true);
-		pending:show();
-	end
+local function activate_pending()
 	delete_image(pending_vid);
 	pending = nil;
 end
@@ -86,12 +79,14 @@ local function wnd_attach(wm, wnd)
 			DURDEN_REGIONFAIL_TRIGGER = nil;
 		end
 		suppl_region_select(200, 198, 36, function(x1, y1, x2, y2)
-			activate_pending(x1, y1);
+			activate_pending();
 			local w = x2 - x1;
 			local h = y2 - y1;
 			if (w > 64 and h > 64) then
 				wnd:resize(w, h);
 			end
+			wnd:move(x1, y1, false, true, true);
+			wnd:show();
 		end);
 	end
 end
@@ -105,6 +100,83 @@ function(event, name, tiler, id)
 	end
 end
 );
+
+local drag_targets = {};
+local in_drag = false;
+local function creg_drag(wm, wnd, dx, dy, last)
+	if (last) then
+-- hide all region
+		for i,v in ipairs(cactions) do
+			if (valid_vid(v.temporary)) then
+				local dt = gconfig_get("transition");
+				blend_image(v.temporary, 0.0, dt);
+				expire_image(v.temporary, dt);
+			end
+			v.temporary = nil;
+		end
+-- and run any event handler
+		for i,v in ipairs(drag_targets) do
+			if (v.on_drop) then
+				v:on_drop(wnd);
+			end
+		end
+		in_drag = false;
+		return;
+	end
+
+-- draw possible targets and translate into display coordinates
+	if (not in_drag) then
+		in_drag = true;
+		for i,v in ipairs(cactions) do
+			v.screen_region = {
+				v.region[1] * wm.width,
+				v.region[2] * wm.height,
+				v.region[3] * wm.width,
+				v.region[4] * wm.height
+			};
+			local order = image_surface_resolve(wnd.anchor).order;
+			if (v.visible) then
+				v.temporary = color_surface(
+					v.screen_region[3] - v.screen_region[1],
+					v.screen_region[4] - v.screen_region[2],
+				255, 255, 255);
+
+				blend_image(v.temporary, 0.5, gconfig_get("transition"));
+				order_image(v.temporary, order - 1);
+				move_image(v.temporary, v.region[1], v.region[2]);
+			end
+		end
+	end
+
+-- check if anything enters the drag_targets
+	local mx, my = mouse_xy();
+	for i,v in ipairs(cactions) do
+		if (valid_vid(v.temporary) and image_hit(v.temporary, mx, my)) then
+			if (not table.find_i(drag_targets, v)) then
+				table.insert(drag_targets, v);
+				if (v.on_drag_over) then
+					v:on_drag_over(wnd, v.temporary);
+				end
+			end
+		else
+			if (table.remove_match(drag_targets, v)) then
+				if (v.on_drag_out) then
+					v:on_drag_out(wnd, v.temporary);
+				end
+			end
+		end
+	end
+end
+
+local in_creg = false;
+local function toggle_creg(act)
+	for wm in all_tilers_iter() do
+		table.remove_match(wm.on_wnd_drag, creg_drag);
+		if (act) then
+			table.insert(wm.on_wnd_drag, creg_drag);
+		end
+	end
+end
 
 local function do_hide(wnd, tgt)
 	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
@@ -180,6 +252,25 @@ local function do_hide(wnd, tgt)
 	end
 end
 
+toggle_creg(gconfig_get("advfloat_actionreg"));
+
+local action_submenu = {
+{
+	kind = "value",
+	name = "active",
+	label = "Active",
+	description = "Chose if mouse-action regions are active or not",
+	initial = function()
+		return gconfig_get("advfloat_actionreg") and LBL_YES or LBL_NO;
+	end,
+	set = {LBL_YES, LBL_NO},
+	handler = function(ctx, val)
+		toggle_creg(val == LBL_YES);
+		gconfig_set("advfloat_actionreg", val == LBL_YES);
+	end
+}
+};
+
 -- all_spaces_iter
 
 shared_menu_register("window",
@@ -221,10 +312,9 @@ global_menu_register("settings/wspaces/float",
 
 global_menu_register("settings/wspaces/float",
 {
-	name = "action_region",
+	name = "action_regions",
 	kind = "action",
 	submenu = true,
-	eval = function() return false; end,
 	description = "Manage the mouse-action regions",
 	label = "Action Region",
 	handler = action_submenu
