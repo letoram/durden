@@ -91,12 +91,61 @@ local function wnd_attach(wm, wnd)
 	end
 end
 
+-- install omniscient mouse-action handlers, currently for on-over triggers
+local function install_maction(wm)
+	for k,v in ipairs(cactions) do
+		if (v.on_over) then
+			if (not v.mactions) then
+				v.mactions = {};
+			end
+			if (not v.mactions[wm] and v.region and #v.region == 4) then
+				local x1 = v.region[1] * wm.width;
+				local y1 = v.region[2] * wm.height;
+				local x2 = v.region[3] * wm.width;
+				local y2 = v.region[4] * wm.height;
+				local surf = null_surface(x2 - x1, y2 - y1);
+				if (valid_vid(surf)) then
+					v.mactions[wm] = {
+						vid = surf,
+						name = "advfloat_caction",
+						own = function(ctx, vid) return vid == surf; end,
+						over = function(ctx, ...) v:on_over(); end
+					};
+					show_image(surf);
+					order_image(surf, 65534);
+					move_image(surf, x1, y1);
+					mouse_addlistener(v.mactions[wm], {"over"});
+				end
+			end
+		end
+	end
+end
+
+-- the custom mouse actions live in every wm, so we actually need to
+-- react on both display- creation events and tiler resize events
+local function wm_resize(wm)
+	for k,v in ipairs(cactions) do
+		if (v.mactions and v.mactions[wm]) then
+			if (valid_vid(v.mactions[wm].vid)) then
+				local x1 = v.region[1] * wm.width;
+				local y1 = v.region[2] * wm.height;
+				local x2 = v.region[3] * wm.width;
+				local y2 = v.region[4] * wm.height;
+				move_image(v.mactions[wm].vid, x1, y1);
+				resize_image(v.mactions[wm.vid], x2 - x1, y2 - y1);
+			end
+		end
+	end
+end
+
 -- hook displays so we can decide spawn mode between things like
 -- spawn hidden, cursor-click to position, draw to spawn
 display_add_listener(
 function(event, name, tiler, id)
 	if (event == "added" and tiler) then
 		tiler.attach_hook = wnd_attach;
+		table.insert(tiler.on_tiler_resize, wm_resize);
+		install_maction(tiler);
 	end
 end
 );
@@ -171,9 +220,22 @@ end
 local in_creg = false;
 local function toggle_creg(act)
 	for wm in all_tilers_iter() do
+
+-- always drop omniscient generic mouse event catchers
+		for k,v in ipairs(cactions) do
+			if (v.maction and v.maction[wm]) then
+				mouse_droplistener(v.maction[wm]);
+				if (valid_vid(v.actions[wm].vid)) then
+					delete_image(v.maction[wm].vid);
+				end
+				v.maction[wm] = nil;
+			end
+		end
+
 		table.remove_match(wm.on_wnd_drag, creg_drag);
 		if (act) then
 			table.insert(wm.on_wnd_drag, creg_drag);
+			install_maction(wm);
 		end
 	end
 end

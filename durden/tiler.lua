@@ -2044,6 +2044,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 		wnd.y = wnd.y < 0 and 0 or wnd.y;
 		move_image(wnd.anchor, wnd.x, wnd.y, time);
 	else
+		wnd.x = wnd.x + dx;
+		wnd.y = wnd.y + dy;
 		nudge_image(wnd.anchor, dx, dy, time);
 	end
 
@@ -3771,6 +3773,10 @@ local function tiler_resize(wm, neww, newh, norz)
 			v:resize(neww, newh);
 		end
 	end
+
+	for k,v in ipairs(wm.on_tiler_resize) do
+		v(v, neww, newh);
+	end
 end
 
 local function tiler_activate(wm)
@@ -3951,6 +3957,7 @@ function tiler_create(width, height, opts)
 		on_wnd_destroy = {},
 		on_wnd_drag = {},
 		on_wnd_hide = {},
+		on_tiler_resize = {},
 
 -- unique event handlers
 		on_preview_step = function() end

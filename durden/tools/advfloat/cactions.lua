@@ -9,13 +9,13 @@
 local cactions = {};
 
 -- this example, if uncommented, would exec the overview tool if the
--- cursor in its non-drag state is moved to the top left corner
+-- cursor in its non-drag state is moved to the top left corner. These
+-- are always invisible.
 --
 -- table.insert(cactions, {
 --	region = {0.0, 0.0, 0.001, 0.001},
---	visible = false,
 --	on_over = function()
---		dispatch_symbol("#tools/overview/workspace_tile")
+--		dispatch_symbol("!tools/overview/ws_tile")
 --	end
 --});
 
