@@ -2425,6 +2425,7 @@ end
 
 local function wnd_mousemotion(ctx, x, y, rx, ry)
 	local wnd = ctx.tag;
+
 	if (wnd.mouse_lock_center) then
 		local rt = {
 			kind = "analog",
@@ -2885,7 +2886,7 @@ local canvas_mh = {
 		end
 	end,
 
-	drag = function(ctx, vid, dx, dy)
+	drag = function(ctx, vid, dx, dy, ...)
 		local wnd = ctx.tag;
 		if (wnd.in_drag_rz) then
 			ctx.mask = wnd.in_drag_rz_mask;
@@ -2895,7 +2896,8 @@ local canvas_mh = {
 			wnd.y = wnd.y + dy;
 			move_image(wnd.anchor, wnd.x, wnd.y);
 		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
-			wnd_mousemotion(ctx, vid, dx, dy);
+			local x, y = mouse_xy();
+			wnd_mousemotion(ctx, x, y);
 		end
 	end,
 
@@ -2908,7 +2910,7 @@ local canvas_mh = {
 		end
 	end,
 
-	press = function(ctx, ...)
+	press = function(ctx, vid, ...)
 		if (not ctx.tag.in_drag_rz and not ctx.tag.in_drag_move) then
 			wnd_mousepress(ctx, ...);
 		end
