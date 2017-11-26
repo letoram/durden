@@ -437,9 +437,12 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 	return wnd;
 end
 
--- recovery from crash is handled just like newly launched windows, one
--- big caveat though, these are attached to WORLDID but in the multidisplay
--- setup we have another attachment.
+--
+-- adopted windows has a few edge cases,
+-- 1. saved metadata from earlier
+-- 2. attached to a display that doesn't necessarily exist
+-- 3. complex allocation hierarchy (wayland)
+--
 function durden_adopt(vid, kind, title, parent, last)
 -- always ignore unknown ones as they are likely pending or external listening
 	if (kind == "unknown") then
@@ -452,30 +455,35 @@ function durden_adopt(vid, kind, title, parent, last)
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
 	end
 
-	print("adopt", vid, kind, title);
-	if (not valid_vid(parent)) then
-		local wnd = durden_launch(vid, title);
-		if (not wnd) then
-			return;
-		end
+-- if there's tracetag metadata stored, extract to get the right atype and
+-- apply that immediately
+	local tt = image_tracetag(vid);
 
-		extevh_default(vid, {
+-- otherwise, ignore subsegments - let the client re-request them as needed
+	if (valid_vid(parent)) then
+		return;
+	end
+
+-- build a new window with the old title etc.
+	local wnd = durden_launch(vid, title);
+	if (not wnd) then
+		return;
+	end
+
+-- and fake a registered event to make the archetype apply
+	extevh_default(vid, {
 			kind = "registered",
 			segkind = kind,
 			title = string.len(title) > 0 and title or tostring(kind),
--- a real resized event with the source audio will come immediately
 			source_audio = BADID
 		});
 
-		print(wnd.no_recover_attach, "recover attach");
-		if (wnd.ws_attach and not wnd.no_recover_attach) then
-			wnd:ws_attach();
-		end
-		return true;
+-- some atypes may still have 'attach_block' where this becomes a noop
+	if (wnd.ws_attach) then
+		wnd:ws_attach();
 	end
 
--- we don't save any subsegments, the frameserver should re-request on reset
--- local wnd = extevh_get_window(parent);
+	return true;
 end
 
 if (not target_devicehint) then

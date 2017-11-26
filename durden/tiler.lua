@@ -1529,9 +1529,11 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	return outw, outh;
 end
 
-local function wnd_effective_resize(wnd, neww, newh, force)
-	wnd:resize(neww + wnd.pad_left + wnd.pad_right,
-		newh + wnd.pad_top + wnd.pad_bottom, force);
+local function wnd_effective_resize(wnd, neww, newh, ...)
+	wnd:resize(
+		neww + wnd.pad_left + wnd.pad_right,
+		newh + wnd.pad_top + wnd.pad_bottom, ...
+	);
 end
 
 local lfh = target_fonthint;
@@ -2000,6 +2002,7 @@ local function wnd_drag_resize(wnd, mctx, enter)
 	local ew = wnd.effective_w;
 	local eh = wnd.effective_h;
 
+-- resistance for dragging windows with an expressed stepping size
 	if (dx > wnd.sz_delta[1] * 0.5) then
 		ew = ew + wnd.sz_delta[1];
 		wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
@@ -2026,8 +2029,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 	if (abs) then
 		local props = image_surface_resolve(wnd.wm.anchor);
 		move_image(wnd.anchor, dx - props.x, dy - props.y, time);
-		wnd.x = dx;
-		wnd.y = dy;
+		wnd.x = dx - props.x;
+		wnd.y = dy - props.y;
 		return;
 	end
 
@@ -2823,9 +2826,7 @@ local titlebar_mh = {
 			if (tag.space.drag_solver) then
 				tag.space.drag_solver(tag);
 			else
-				tag.x = tag.x + dx;
-				tag.y = tag.y + dy;
-				move_image(tag.anchor, tag.x, tag.y);
+				tag:move(dx, dy, false, false, true);
 			end
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, dx, dy);
@@ -2844,13 +2845,17 @@ local titlebar_mh = {
 	end
 };
 
+local function set_borderstate(ctx)
+	local p = wnd_borderpos(ctx.tag);
+	local ent = dir_lut[p];
+	ctx.mask = ent[2];
+	mouse_switch_cursor(ent[1]);
+end
+
 local border_mh = {
 	motion = function(ctx)
 		if (ctx.tag.space.mode == "float") then
-			local p = wnd_borderpos(ctx.tag);
-			local ent = dir_lut[p];
-			ctx.mask = ent[2];
-			mouse_switch_cursor(ent[1]);
+			set_borderstate(ctx);
 		end
 	end,
 	out = function(ctx)
@@ -2858,14 +2863,22 @@ local border_mh = {
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local wnd = ctx.tag;
+		if (not ctx.mask) then
+			set_borderstate(ctx);
+		end
 
 -- protect against ugly "window destroyed just as we got drag"-
 		if (not wnd.drag_resize) then
 			return;
 		end
 
+-- some (wayland) clients need entirely different behaviors here
 		if (wnd.in_drag_rz) then
-			wnd_step_drag(wnd, ctx, vid, dx, dy);
+			if (type(wnd.in_drag_rz) == "function") then
+				wnd:in_drag_rz(ctx, vid, dx, dy, false);
+			else
+				wnd_step_drag(wnd, ctx, vid, dx, dy);
+			end
 			return;
 		end
 
@@ -2875,8 +2888,12 @@ local border_mh = {
 		end
 	end,
 	drop = function(ctx)
+		if (type(ctx.tag.in_drag_rz) == "function") then
+			ctx.tag:in_drag_rz(ctx.tag, ctx, vid, 0, 0, true);
+		end
+
 		if (ctx.tag.drag_resize) then
-			ctx.tag:drag_resize(ctx, false);
+			ctx.tag:drag_resize(ctx, 0, 0, false);
 		end
 	end
 };
@@ -2892,11 +2909,13 @@ local canvas_mh = {
 		local wnd = ctx.tag;
 		if (wnd.in_drag_rz) then
 			ctx.mask = wnd.in_drag_rz_mask;
-			wnd_step_drag(wnd, ctx, vid, dx, dy);
+			if (type(wnd.in_drag_rz) == "function") then
+				wnd:in_drag_rz(ctx, vid, dx, dy);
+			else
+				wnd_step_drag(wnd, ctx, vid, dx, dy);
+			end
 		elseif (wnd.in_drag_move) then
-			wnd.x = wnd.x + dx;
-			wnd.y = wnd.y + dy;
-			move_image(wnd.anchor, wnd.x, wnd.y);
+			wnd:move(dx, dy, false, false, true);
 		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			local x, y = mouse_xy();
 			wnd_mousemotion(ctx, x, y);
@@ -3071,6 +3090,37 @@ end
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
+	local dstindex = wm.space_ind;
+
+-- very special windows can refuse attaching at all
+	if (res.attach_block) then
+		return false;
+	end
+
+-- can be set either in the atype/, derived from tracetag during recover or
+-- grabbed from the config- db per application
+	if (res.default_workspace) then
+		local dst = res.default_workspace;
+
+-- absolute index
+		if (type(dst) == "number") then
+
+-- tag or relative (+1)
+		elseif (type(dst) == "string") then
+			if (string.sub(dst, 1, 1) == "+" or string.sub(dst, 1, 1) == "-") then
+				local ind = tonumber(string.sub(dst, 2));
+				if (ind) then
+					dstindex = math.clamp(dstindex + ind, 1, 10);
+				end
+			else
+				for i,v in ipairs(res.wm.spaces) do
+					if (v.label and v.label == dst) then
+						dstindex = i;
+					end
+				end
+			end
+		end
+	end
 
 -- if this is an alternate for a pre-existing window, special rules apply
 -- i.e. link/attach but don't add to normal tree structure etc.
@@ -3091,16 +3141,17 @@ local function wnd_ws_attach(res, from_hook)
 		return wm:attach_hook(res);
 	end
 
+	res:show();
 	res.ws_attach = nil;
 	res.attach_time = CLOCK;
 
-	if (wm.spaces[wm.space_ind] == nil) then
-		wm.spaces[wm.space_ind] = create_workspace(wm);
+	if (wm.spaces[dstindex] == nil) then
+		wm.spaces[dstindex] = create_workspace(wm);
 	end
 
 -- actual dimensions depend on the state of the workspace we'll attach to
-	local space = wm.spaces[wm.space_ind];
-	res.space_ind = wm.space_ind;
+	local space = wm.spaces[dstindex];
+	res.space_ind = dstindex;
 	res.space = space;
 	link_image(res.anchor, space.anchor);
 
@@ -3247,8 +3298,8 @@ local wnd_setup = function(wm, source, opts)
 	if (valid_vid(source, TYPE_FRAMESERVER)) then
 		local nsrf = null_surface(32, 32);
 		image_sharestorage(source, nsrf);
-		source = nsrf;
 		extvid = source;
+		source = nsrf;
 	end
 
 	local res = {
