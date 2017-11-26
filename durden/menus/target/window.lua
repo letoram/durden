@@ -154,8 +154,7 @@ local moverz_menu = {
 	validator = function(val) return tonumber(val) ~= nil; end,
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
-		wnd:move(tonumber(val),
-			image_surface_properties(wnd.anchor).y, false, true);
+		wnd:move(tonumber(val), wnd.y, false, true);
 	end
 },
 {
@@ -173,8 +172,7 @@ local moverz_menu = {
 	validator = function(val) return tonumber(val) ~= nil; end,
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
-		wnd:move(image_surface_properties(wnd.anchor).x,
-			tonumber(val), false, true);
+		wnd:move(wnd.x, tonumber(val), false, true);
 	end
 },
 {

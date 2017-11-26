@@ -53,7 +53,7 @@ local function wnd_attach(wm, wnd)
 		end
 	end
 
-	if (mode == "cursor") then
+	if (mode == "click") then
 		setup_cursor_pick(wm, wnd);
 		iostatem_save();
 		local col = null_surface(1, 1);
@@ -66,10 +66,12 @@ local function wnd_attach(wm, wnd)
 -- right now is not really an option
 		DURDEN_REGIONFAIL_TRIGGER = function()
 			activate_pending();
+			wnd:show();
 			DURDEN_REGIONFAIL_TRIGGER = nil;
 		end
 		DURDEN_REGIONSEL_TRIGGER = function()
 			activate_pending();
+			wnd:show();
 			DURDEN_REGIONFAIL_TRIGGER = nil;
 		end
 	elseif (mode == "draw") then
@@ -88,6 +90,12 @@ local function wnd_attach(wm, wnd)
 			wnd:move(x1, y1, false, true, true);
 			wnd:show();
 		end);
+-- auto should really be to try and calculate the best fitting free space
+	elseif (mode == "cursor" or mode == "auto") then
+		local x, y = mouse_xy();
+		wnd:move(x, y, false, true, true);
+		wnd:ws_attach(true);
+	else
 	end
 end
 
