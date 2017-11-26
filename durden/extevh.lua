@@ -173,8 +173,10 @@ end
 defhtbl["resized"] =
 function(wnd, source, stat)
 	if (wnd.ws_attach) then
-		wnd:ws_attach();
-		assert(wnd.space);
+		if (not wnd:ws_attach()) then
+			print("attach failed");
+			return;
+		end
 	end
 	wnd.source_audio = stat.source_audio;
 	audio_gain(stat.source_audio,
@@ -215,9 +217,9 @@ function(wnd, source, stat)
 	wnd:destroy();
 end
 
-defhtbl["registered"] =
-function(wnd, source, stat)
-	local atbl = archetypes[stat.segkind];
+function extevh_apply_atype(wnd, atype, source, stat)
+
+	local atbl = archetypes[atype];
 	if (atbl == nil or wnd.atype ~= nil) then
 		return;
 	end
@@ -235,6 +237,7 @@ function(wnd, source, stat)
 -- segment kind that can't / wont change
 	wnd:set_title(stat.title);
 	if (wnd.registered) then
+		print("ignore registered window", atype);
 		return;
 	end
 
@@ -247,17 +250,17 @@ function(wnd, source, stat)
 	end
 
 -- can either be table [tgt, cfg] or [guid]
-	if (not wnd.config_tgt) then
+	if (not wnd.config_tgt and stat and stat.guid) then
 		wnd.config_tgt = stat.guid;
 	end
 
 	wnd.bindings = atbl.bindings;
 	wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
 	wnd.labels = atbl.labels and atbl.labels or {};
-	wnd.source_audio = stat.source_audio;
-	wnd.atype = atbl.atype;
+	wnd.source_audio = (stat and stat.source_audio) or BADID;
+	wnd.atype = atype;
 
--- should always be true but ..
+-- only apply for the selected window, weird edge-case
 	if (active_display().selected == wnd) then
 		if (atbl.props.kbd_period) then
 			iostatem_repeat(atbl.props.kbd_period);
@@ -281,6 +284,11 @@ function(wnd, source, stat)
 	for k,v in ipairs(wnd.handlers.register) do
 		v(wnd, stat.segkind, stat);
 	end
+end
+
+defhtbl["registered"] =
+function(wnd, source, stat)
+	extevh_apply_atype(wnd, stat.segkind, source, stat);
 end
 
 --  stateinf is used in the builtin/shared

@@ -240,6 +240,10 @@ input is mostly covered, though a tool that act as IMEs are needed.
 Text rendering is not advanced enough to account for shaping. This needs
 to be fixed in the engine, not in these scripts.
 
+Other than that, the real part is a tool that loads translation tables and
+intercepts menu/ lookups for the label and description fields and replaces
+with whatever is in the table.
+
 Configuration
 ------
 
@@ -511,6 +515,7 @@ Properties (probed, monitored and modified practically everywhere):
  (m) dispatch - symbol to action binding for this window
  (m) coreopt - client- unique key-val settings
  (m) atype - known/registered type
+ (m) no\_recover\_attach - saved across script resets, won't get an attached wnd
  mouse\_lock (fun) - mouse event interceptor
  attach\_time - timestamp for when the window turned 'alive'
  in\_drag\_rz - window currently being interactively resized
@@ -519,7 +524,7 @@ Properties (probed, monitored and modified practically everywhere):
  temp\_suspend -
  clipboard\_block - never permit clipboard operations for this window
  mouse\_remap\_range - relative (0..1) region slice for mouse coordinates
- used with
+ used when dealing with cropped, sliced or otherwise modified window setups.
 
 Visual Properties (covers decorations and so on):
  (m) scalemode - what heuristic should be used to determine the size to send
