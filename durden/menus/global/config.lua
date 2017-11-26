@@ -451,6 +451,18 @@ local durden_visual = {
 			gconfig_set("ws_transition_out", val);
 		end
 	},
+	{
+		name = "menu_helper",
+		label = "Menu Descriptions",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return gconfig_get("menu_helper") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			gconfig_set("menu_helper", val == LBL_YES);
+		end
+	}
 };
 
 local float_menu = {
