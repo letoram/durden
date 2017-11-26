@@ -456,7 +456,7 @@ function display_event_handler(action, id)
 		end
 
 		for k,v in ipairs(display_listeners) do
-			v(v, "added", name, ddisp.tiler, id);
+			v("added", name, ddisp.tiler, id);
 		end
 
 -- remove on a previous display is more like tagging it as orphan
