@@ -174,7 +174,6 @@ defhtbl["resized"] =
 function(wnd, source, stat)
 	if (wnd.ws_attach) then
 		if (not wnd:ws_attach()) then
-			print("attach failed");
 			return;
 		end
 	end
