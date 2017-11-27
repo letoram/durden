@@ -32,20 +32,28 @@ return function(val, lbl)
 			return;
 		end
 		show_image(dvid);
-		local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
-		local infn = function(source, status)
-			inputh(wnd, source, status);
-		end
 
-		if (valid_vid(val)) then
-			define_recordtarget(dvid, val, "", vgrp, agrp,
-				RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, infn);
-				wnd:set_title("forwarding("..lbl..")");
-		else
-			local argstr, srate, fn = suppl_build_recargs(vgrp, agrp, false, val);
-			define_recordtarget(dvid, fn, argstr, vgrp, agrp,
-				RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate, infn);
-			wnd:set_title("recording");
-		end
+-- bind to a timer so the window gets set up outside of the callback,
+-- this is important due to the feedback loop with the attach hook in advfloat
+-- reusing the suppl_region..
+
+		timer_add_periodic("recwnd" .. tostring(CLOCK), 2, true, function()
+			print("activate timer");
+			local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
+			local infn = function(source, status)
+				inputh(wnd, source, status);
+			end
+
+			if (type(val) == "number" and valid_vid(val)) then
+				define_recordtarget(dvid, val, "", vgrp, agrp,
+					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, infn);
+					wnd:set_title("forwarding("..lbl..")");
+			else
+				local argstr, srate, fn = suppl_build_recargs(vgrp, agrp, false, val);
+				define_recordtarget(dvid, fn, argstr, vgrp, agrp,
+					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate, infn);
+				wnd:set_title("recording");
+			end
+		end, true);
 	end);
 end
