@@ -455,10 +455,6 @@ function durden_adopt(vid, kind, title, parent, last)
 		rendertarget_attach(ap, vid, RENDERTARGET_DETACH);
 	end
 
--- if there's tracetag metadata stored, extract to get the right atype and
--- apply that immediately
-	local tt = image_tracetag(vid);
-
 -- otherwise, ignore subsegments - let the client re-request them as needed
 	if (valid_vid(parent)) then
 		return;
@@ -472,15 +468,23 @@ function durden_adopt(vid, kind, title, parent, last)
 
 -- and fake a registered event to make the archetype apply
 	extevh_default(vid, {
-			kind = "registered",
-			segkind = kind,
-			title = string.len(title) > 0 and title or tostring(kind),
-			source_audio = BADID
-		});
+		kind = "registered",
+		segkind = kind,
+		title = string.len(title) > 0 and title or tostring(kind),
+		source_audio = BADID
+	});
 
 -- some atypes may still have 'attach_block' where this becomes a noop
 	if (wnd.ws_attach) then
 		wnd:ws_attach();
+	end
+
+-- the statusbar and other dependents are not necessarily synched on ws_attach
+-- operations, so need to do this manually
+	if (last) then
+		for disp in all_tilers_iter() do
+			disp:tile_update();
+		end
 	end
 
 	return true;

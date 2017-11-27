@@ -1278,8 +1278,14 @@ local function workspace_label(space, lbl)
 		end
 		ind = ind + 1;
 	until (ind > 10);
-
 	space.label = lbl;
+
+-- update identifiers
+	local lst = space:linearize();
+	for i,v in ipairs(lst) do
+		res:recovertag();
+	end
+
 	tiler_statusbar_update(space.wm);
 end
 
@@ -3101,9 +3107,9 @@ local function wnd_ws_attach(res, from_hook)
 -- grabbed from the config- db per application
 	if (res.default_workspace) then
 		local dst = res.default_workspace;
-
 -- absolute index
 		if (type(dst) == "number") then
+			dstindex = math.clamp(dst, 1, 10);
 
 -- tag or relative (+1)
 		elseif (type(dst) == "string") then
@@ -3136,8 +3142,10 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
--- can be intercepted by a hook handler that regulates placement
-	if (wm.attach_hook and not from_hook) then
+-- can be intercepted by a hook handler that regulates placement but we
+-- avoid it if we are attaching after recovery
+	if ((dstindex == wm.space_ind and not res.attach_temp)
+		and wm.attach_hook and not from_hook) then
 		return wm:attach_hook(res);
 	end
 
@@ -3194,7 +3202,8 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
-	if (not(wm.selected and wm.selected.fullscreen)) then
+	if (wm.space_ind == dstindex and
+		not(wm.selected and wm.selected.fullscreen)) then
 		show_image(res.anchor);
 		if (not insert) then
 			res:select();
@@ -3206,8 +3215,20 @@ local function wnd_ws_attach(res, from_hook)
 
 -- trigger the resize cascade now that we know the layout..
 	if (res.space.mode == "float") then
-		move_image(res.anchor, mouse_xy());
-		res:resize(res.width, res.height);
+		local x, y = mouse_xy();
+		local w = res.width;
+		local h = res.height;
+
+		if (res.attach_temp) then
+			x = res.attach_temp[1] * res.wm.width;
+			y = res.attach_temp[2] * res.wm.height;
+			w = res.attach_temp[3] * res.wm.width;
+			h = res.attach_temp[4] * res.wm.height;
+			res.attach_temp = nil;
+		end
+
+		res:move(x, y);
+		res:resize(w, h);
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
@@ -3232,42 +3253,77 @@ local function wnd_recovertag(wnd, restore)
 
 	if (restore) then
 		local str = image_tracetag(wnd.external);
-		local cmd = string.sub(str, 8);
-		local pre = string.sub(str, 1, 6);
 		if (string.sub(str, 1, 6) ~= "durden") then
 			return;
 		end
 
-		active_display():message(str);
-		local entries = string.split(cmd, ":");
+		local entries = string.split(str, "\n\r");
+		local res = {};
 		for k,v in ipairs(entries) do
--- actually apply the string, prefered tiling hierarchy swapping and
--- weighting is performed in the rebalance stage
--- we also need a config dst if that is possible based on uuid or
--- launch_target settings.
+			local i = string.find(v, "=");
+			if (i and i > 1) then
+				res[string.sub(v, 1, i-1)] = string.sub(v, i+1);
+			end
 		end
+
+		if (res["ws_ind"] and tonumber(res["ws_ind"])) then
+			local dw = math.clamp(tonumber(res["ws_ind"]), 1, 10);
+			wnd.default_workspace = dw;
+			if (not wnd.wm.spaces[dw]) then
+				wnd.wm.spaces[dw] = create_workspace(wnd.wm, false);
+			end
+			if (res["ws_mode"]) then
+				wnd.wm.spaces[dw].mode = res["ws_mode"];
+			end
+			if (res["ws_label"]) then
+				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
+			end
+			if (res["wnd_geom"]) then
+				local vl = string.split(res["wnd_geom"], ":");
+				if (#vl == 4) then
+					wnd.attach_temp = vl;
+				end
+			end
+		end
+
 		return;
 	end
 
-	local recoverstr = "durden";
+	local recoverstr = string.format(
+		"durden\n\rws_ind=%d\n\rws_mode=%s\n\r",
+		wnd.space_ind, wnd.space.mode
+	);
+
 	if (wnd.atype) then
-		recoverstr = recoverstr .. ":_atype=" .. wnd.atype;
+		recoverstr = recoverstr .. "\n\ratype=" .. wnd.atype;
 	end
 
--- The more difficult part, rebuilding tiling mode hierarchy.
+	if (wnd.space.label) then
+		recoverstr = recoverstr .. "\n\rws_label=" .. wnd.space.label;
+	end
 
--- window properties (just apply)
--- hide_titlebar, hide_border, weight, vweight
--- float_dim (opt) x, y (float only),
--- tag (last)
--- shader, scalemode, centered, gain,
+	if (wnd.space.home) then
+		recoverstr = recoverstr .. "\n\rws_home=" .. wnd.space.home;
+	end
 
--- workspace properties: index, display, mode, label, background_name(hard,
--- might not be an accessible resource)
+	if (wnd.space.mode == "float") then
+		local x = wnd.x / wnd.wm.width;
+		local y = wnd.y / wnd.wm.height;
+		local w = wnd.width / wnd.wm.width;
+		local h = wnd.height / wnd.wm.height;
+		recoverstr = recoverstr ..
+			string.format("\n\rwnd_geom=%f:%f:%f:%f", x, y, w, h);
+	end
+
+-- missing restore:
+-- wndtag, custom bindings / translations
+-- hide(titlebar, border)
+-- weight, vweight
+-- tile-hierarchy (walk parent ch ind and replicate when possible)
+-- visual junk (shader, scale, centered, gain)
 --
-	local wsprop = string.format(":ws_mode=%s", wnd.space.mode);
-
--- split on :, Pkey=value where P dictates decode / application use
+-- workspace properties: background
+--
 	image_tracetag(wnd.external, recoverstr);
 end
 
@@ -3496,6 +3552,10 @@ local wnd_setup = function(wm, source, opts)
 	mouse_addlistener(res.handlers.mouse.canvas, tl);
 	res.block_mouse = opts.block_mouse;
 	res.ws_attach = wnd_ws_attach;
+
+-- load / override settings with whatever is in tag-memory
+	res:recovertag(true);
+
 	return res;
 end
 
@@ -3974,8 +4034,6 @@ function tiler_create(width, height, opts)
 		spaces = {},
 		windows = {},
 		space_ind = 1,
-
--- debug
 
 -- kept per/tiler in order to allow custom modes as well
 		scalemodes = {"normal", "stretch", "aspect", "client"},
