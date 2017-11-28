@@ -4,19 +4,21 @@
 
   * target/video/advance/migrate - send a migrate request to a
     client, which may prompt a client to jump to a different
-    connection point.
+    connection point or display server instance.
 
   * shader subsystem - added a multi-pass effect format along with
-    some initial effects.
+    some initial effects (gaussian blur, CRT-lottes).
 
   * tools/advfloat - extended float layout mode capabilities:
     spawn control (draw2spawn)
     hide-to-statusbar
+    cursor-action-region (see tools/advfloat/cregion.lua for definition)
 
   * tools/overview - added a HUD- like workspace switcher
 
 	* tools/flair - added a visual effects layers and some initial
-	  effects
+	  effects, e.g. clothy windows, the natural successor to wobbly
+    windows.
 
   * terminal-group spawn-mode added, allows a connection primitive
     to be generated per terminal and clients which connect via this
@@ -27,12 +29,13 @@
 		allows the window to be cloned into a copy-window.
 
   * File browser now expose wild-card matching (asterisk), Lua
-    patterns (%%) and sort-order modification (% lists options).
+    patterns (%%) and sort-order modification (typing % lists options).
 
-  * retain some window properties across script errors / resets
+  * retain some window and workspace properties across script errors
+    and resets
 
-  * menu navigation now shows a helper description of the currently
-    selected item
+  * menu navigation can now shows a helper description of the
+    currently selected item
 
 Minor:
  * Destroying a window in fullscreen mode now returns the workspace
@@ -45,9 +48,13 @@ Minor:
 
  * Float mode border drag sizing, cursorhint and positioning fixes
 
+ * Float mode drag now respects statusbar- imposed boundaries
+
  * Float mode canvas-drag/resize option for self-decorated clients
 
- * improved handling for wayland features like popups and subsurfaces
+ * improved handling for wayland popups and subsurfaces
+
+ * Step-resize keybinding now aligns to window- cell size (terminals)
 
 # 0.3.0
   * Now requires arcan >= 0.5.3.

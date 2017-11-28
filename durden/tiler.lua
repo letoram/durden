@@ -358,9 +358,13 @@ local function tiler_statusbar_update(wm)
 
 -- reposition
 	if (gconfig_get("sbar_pos") == "top") then
+		wm.yoffset = statush;
+		wm.ylimit = wm.height;
 		wm.statusbar:move(0, -statush);
 		move_image(wm.anchor, 0, statush);
 	else
+		wm.yoffset = 0;
+		wm.ylimit = wm.height - statush;
 		move_image(wm.anchor, 0, 0);
 		wm.statusbar:move(0, wm.height - statush);
 	end
@@ -1995,6 +1999,8 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		if (not wnd.in_drag_rz) then
 		end
 		wnd.in_drag_rz = true;
+		wnd.drag_dx = 0;
+		wnd.drag_dy = 0;
 		return;
 	end
 
@@ -2034,13 +2040,9 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 
 	if (abs) then
 		local props = image_surface_resolve(wnd.wm.anchor);
-		move_image(wnd.anchor, dx - props.x, dy - props.y, time);
 		wnd.x = dx - props.x;
 		wnd.y = dy - props.y;
-		return;
-	end
-
-	if (align) then
+	elseif (align) then
 		wnd.x = wnd.x + dx;
 		wnd.y = wnd.y + dy;
 		if (dx ~= 0) then
@@ -2051,12 +2053,14 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 		end
 		wnd.x = wnd.x < 0 and 0 or wnd.x;
 		wnd.y = wnd.y < 0 and 0 or wnd.y;
-		move_image(wnd.anchor, wnd.x, wnd.y, time);
 	else
 		wnd.x = wnd.x + dx;
 		wnd.y = wnd.y + dy;
-		nudge_image(wnd.anchor, dx, dy, time);
 	end
+
+	local tbarh = tbar_geth(wnd);
+	wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
+	move_image(wnd.anchor, wnd.x, wnd.y, time);
 
 	wnd:recovertag();
 end
@@ -2236,8 +2240,14 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (not wnd.space or wnd.space.mode == "float") then
-		wnd:resize(wnd.width + (wnd.wm.width*w),
-			wnd.height + (wnd.wm.height*h), true);
+		local neww = wnd.effective_w + wnd.wm.width * w;
+		local newh = wnd.effective_h + wnd.wm.height * h;
+
+		if (wnd.sz_delta and wnd.sz_delta[1] > 0 and wnd.sz_delta[2] > 0) then
+
+		end
+
+		wnd:resize_effective(neww, newh, true);
 		return;
 	end
 
@@ -2294,6 +2304,7 @@ local function wnd_title(wnd, title)
 	else
 		wnd.pad_top = wnd.border_w + tbar_geth(wnd);
 		wnd.titlebar:show();
+		wnd:resize(wnd.width, wnd.height);
 	end
 
 -- not all windows have a workspace, but if we do, we might need relayouting
@@ -2784,11 +2795,7 @@ local function wnd_rebuild(v, bw)
 	v.border_w = bw;
 
 	if (v.space.mode == "tile" or v.space.mode == "float") then
-		v.titlebar:move(v.border_w, v.border_w);
-		v.titlebar:resize(v.width - v.border_w * 2, tbarh);
-		link_image(v.canvas, v.anchor);
-		move_image(v.canvas, v.pad_left, v.pad_top);
-		resize_image(v.canvas, v.effective_w, v.effective_h);
+		v:resize(v.width, v.height, true, true);
 	end
 end
 
@@ -2823,6 +2830,7 @@ local titlebar_mh = {
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, dx, dy, true);
 			end
+			tag:recovertag();
 		end
 	end,
 	drag = function(ctx, vid, dx, dy)
@@ -2914,7 +2922,9 @@ local canvas_mh = {
 	drag = function(ctx, vid, dx, dy, ...)
 		local wnd = ctx.tag;
 		if (wnd.in_drag_rz) then
-			ctx.mask = wnd.in_drag_rz_mask;
+			if (wnd.in_drag_rz_mask) then
+				ctx.mask = wnd.in_drag_rz_mask;
+			end
 			if (type(wnd.in_drag_rz) == "function") then
 				wnd:in_drag_rz(ctx, vid, dx, dy);
 			else
@@ -2929,12 +2939,8 @@ local canvas_mh = {
 	end,
 
 	drop = function(ctx, vid)
-		if (ctx.tag.in_drag_rz) then
-			ctx.tag.in_drag_rz = false;
-		end
-		if (ctx.tag.in_drag_move) then
-			ctx.tag.in_drag_move = false;
-		end
+		ctx.tag.in_drag_rz = false;
+		ctx.tag.in_drag_move = false;
 	end,
 
 	press = function(ctx, vid, ...)
@@ -3220,14 +3226,14 @@ local function wnd_ws_attach(res, from_hook)
 		local h = res.height;
 
 		if (res.attach_temp) then
-			x = res.attach_temp[1] * res.wm.width;
-			y = res.attach_temp[2] * res.wm.height;
-			w = res.attach_temp[3] * res.wm.width;
-			h = res.attach_temp[4] * res.wm.height;
+			x = res.attach_temp[1] * wm.width;
+			y = res.attach_temp[2] * wm.height;
+			w = res.attach_temp[3] * wm.width;
+			h = res.attach_temp[4] * wm.height;
 			res.attach_temp = nil;
 		end
 
-		res:move(x, y);
+		res:move(x, y, true, true, true);
 		res:resize(w, h);
 	end
 
@@ -3281,7 +3287,10 @@ local function wnd_recovertag(wnd, restore)
 			if (res["wnd_geom"]) then
 				local vl = string.split(res["wnd_geom"], ":");
 				if (#vl == 4) then
-					wnd.attach_temp = vl;
+					wnd.attach_temp = {
+						tonumber(vl[1]), tonumber(vl[2]),
+						tonumber(vl[3]), tonumber(vl[4])
+					};
 				end
 			end
 		end
@@ -3409,7 +3418,7 @@ local wnd_setup = function(wm, source, opts)
 -- properties that change visual behavior
 		border_w = gconfig_get("borderw"),
 		dispmask = 0,
-		name = "wnd_" .. tostring(ent_count),
+		name = "wnd_" .. tostring(ent_count) .. "_" .. tostring(CLOCK),
 
 -- though the active values are defined by the anchor and canvas, these
 -- values are used for tracking / budgets in the current layout mode
@@ -3552,7 +3561,6 @@ local wnd_setup = function(wm, source, opts)
 	mouse_addlistener(res.handlers.mouse.canvas, tl);
 	res.block_mouse = opts.block_mouse;
 	res.ws_attach = wnd_ws_attach;
-
 -- load / override settings with whatever is in tag-memory
 	res:recovertag(true);
 
@@ -3868,6 +3876,7 @@ local function tiler_resize(wm, neww, newh, norz)
 
 	wm.width = neww;
 	wm.height = newh;
+	tiler_statusbar_update(wm);
 
 	if (valid_vid(wm.rtgt_id)) then
 		image_resize_storage(wm.rtgt_id, neww, newh);
@@ -4075,6 +4084,11 @@ function tiler_create(width, height, opts)
 	res.font_resfn = function() return tiler_fontres(res); end
 	res.height = height;
 	res.width = width;
+
+-- statusbar affects the coordinate space origo of at top
+	res.yoffset = 0;
+	res.ylimit = height;
+
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load
 	recalc_fsz(res);

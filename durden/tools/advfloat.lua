@@ -94,7 +94,6 @@ local function wnd_attach(wm, wnd)
 	elseif (mode == "cursor" or mode == "auto") then
 		local x, y = mouse_xy();
 		wnd:move(x, y, false, true, true);
-		wnd:ws_attach(true);
 	else
 	end
 end
