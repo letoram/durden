@@ -236,7 +236,6 @@ function extevh_apply_atype(wnd, atype, source, stat)
 -- segment kind that can't / wont change
 	wnd:set_title(stat.title);
 	if (wnd.registered) then
-		print("ignore registered window", atype);
 		return;
 	end
 

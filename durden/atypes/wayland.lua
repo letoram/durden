@@ -73,6 +73,7 @@ end
 local function popup_handler(cl, source, status)
 -- account for popup being able to resize itself
 	if (status.kind == "resized") then
+		wayland_trace("popup resize to", status.width, status.height);
 		if (wlwnds[source]) then
 			resize_image(source, status.width, status.height);
 			wlwnds[source]:show();
@@ -83,11 +84,14 @@ local function popup_handler(cl, source, status)
 	elseif (status.kind == "viewport") then
 		local pid = wlsurf[status.parent];
 		if (not pid or not wlwnds[pid]) then
-			wayland_trace("broken viewport request on popup");
+			wayland_trace("broken viewport request on popup, missing parent", status.parent);
 			wlwnds[source] = nil;
 			delete_image(source);
 			return;
 		end
+		wayland_trace("popup viewported to (invis, rx, ry, w, h, edge)",
+			status.invisible,
+			status.rel_x, status.rel_y, status.anchor_w, status.anchor_h, status.edge);
 
 -- a popup shares a window container with others
 		if (not wlwnds[source]) then
@@ -131,6 +135,7 @@ local function popup_handler(cl, source, status)
 -- note: additional popups are not created on a popup itself, but rather
 -- derived from the main client connection
 	elseif (status.kind == "terminated") then
+		wayland_trace("destroy popup");
 		if (wlwnds[source]) then
 			wlwnds[source]:destroy();
 		else
@@ -179,6 +184,7 @@ seglut["application"] = function(wnd, source, stat)
 -- We need to track these so that reparenting is possible, viewport events
 -- carry the cookie of the window they're targeting.
 	if (cookie > 0) then
+		wayland_trace("register cookie", id);
 		wlsurf[cookie] = id;
 	end
 
@@ -197,6 +203,7 @@ seglut["application"] = function(wnd, source, stat)
 
 		extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
 		newwnd.source_audio = aid;
+		wlwnds[id] = newwnd;
 		table.insert(wnd.wl_children, newwnd);
 	end
 
