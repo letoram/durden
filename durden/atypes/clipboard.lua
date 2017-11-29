@@ -54,12 +54,10 @@ return {
 -- copy- operations (stepframe, resized, ...) is also not used.
 		target_updatehandler(source,
 			function(src, stat)
-				print("in clipboard handler", stat.kind);
 				if (stat.kind == "terminated") then
 					delete_image(source);
 				elseif (stat.kind == "message") then
 					local mode = gconfig_get("clipboard_access");
-					print(mode, stat.kind, stat.message);
 					if (mode == "active" or mode == "full") then
 						CLIPBOARD:add(source, stat.message, stat.multipart);
 					end

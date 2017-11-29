@@ -2884,7 +2884,7 @@ local border_mh = {
 		end
 
 -- protect against ugly "window destroyed just as we got drag"-
-		if (not wnd.drag_resize) then
+		if (not wnd.drag_resize or not wnd.space.mode == "float") then
 			return;
 		end
 
@@ -2898,10 +2898,8 @@ local border_mh = {
 			return;
 		end
 
-		if (wnd.space.mode == "float" and ctx.mask) then
-			wnd:drag_resize(ctx, true);
-			wnd_step_drag(wnd, ctx, vid, dx, dy);
-		end
+		wnd:drag_resize(ctx, true);
+		wnd_step_drag(wnd, ctx, vid, dx, dy);
 	end,
 	drop = function(ctx)
 		if (type(ctx.tag.in_drag_rz) == "function") then
@@ -2923,6 +2921,10 @@ local canvas_mh = {
 
 	drag = function(ctx, vid, dx, dy, ...)
 		local wnd = ctx.tag;
+		if (not wnd.space.mode == "float") then
+			return;
+		end
+
 		if (wnd.in_drag_rz) then
 			if (wnd.in_drag_rz_mask) then
 				ctx.mask = wnd.in_drag_rz_mask;

@@ -63,10 +63,6 @@ end
 function wayland_toplevel_handler(wnd, source, status)
 	if (status.kind == "terminated") then
 		wayland_lostwnd(source);
-		for k,v in ipairs(wnd) do
-			print(k,v);
-		end
-		print(debug.traceback());
 		wnd:destroy();
 		return;
 	elseif (status.kind == "message") then
@@ -96,7 +92,7 @@ function wayland_toplevel_handler(wnd, source, status)
 				return;
 			end
 		else
-			active_display():message("unhandled waybridge message");
+			wayland_trace("unhandled wayland message", status.message);
 		end
 
 	elseif (status.kind == "segment_request") then
@@ -112,10 +108,6 @@ function wayland_toplevel_handler(wnd, source, status)
 		end
 		wnd:resize_effective(status.width, status.height, true, true);
 	end
-end
-
-local function wl_destroy(wnd)
-	print("got wnd destroy");
 end
 
 --
@@ -140,7 +132,6 @@ end
 --
 wl_resize = function(wnd, neww, newh)
 	local efw, efh;
-	print("wl-resize", wnd.external, wnd.atype);
 
 	if (neww > 0 and newh > 0) then
 		efw = neww - (wnd.hide_border and 0 or (wnd.pad_left - wnd.pad_right));
@@ -168,7 +159,6 @@ return {
 	action = {},
 	init = function(atype, wnd, source)
 		wnd:add_handler("resize", wl_resize);
-		wnd:add_handler("destroy", wl_destroy);
 	end,
 	props = {
 		kbd_period = 0,
