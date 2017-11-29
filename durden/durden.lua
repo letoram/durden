@@ -443,6 +443,7 @@ end
 -- 2. attached to a display that doesn't necessarily exist
 -- 3. complex allocation hierarchy (wayland)
 --
+local adopt_new = {};
 function durden_adopt(vid, kind, title, parent, last)
 -- always ignore unknown ones as they are likely pending or external listening
 	if (kind == "unknown") then
@@ -477,16 +478,46 @@ function durden_adopt(vid, kind, title, parent, last)
 -- some atypes may still have 'attach_block' where this becomes a noop
 	if (wnd.ws_attach) then
 		wnd:ws_attach();
+		table.insert(adopt_new, wnd);
 	end
 
--- the statusbar and other dependents are not necessarily synched on ws_attach
--- operations, so need to do this manually
-	if (last) then
-		for disp in all_tilers_iter() do
-			disp:tile_update();
+	if (not last) then
+		return true;
+	end
+
+-- sweep the list of newly added windows and reparent if needed
+	local ds = {};
+	for i,v in ipairs(adopt_new) do
+		if (v.desired_parent) then
+
+			local lst = v.space:linearize();
+			for i,j in ipairs(lst) do
+				if (j.name == v.desired_parent) then
+					v:reparent(j);
+					ds[v.space] = true;
+					break;
+				end
+			end
 		end
 	end
 
+-- and relayout the dirty spaces
+	for space in all_spaces_iter() do
+		if (ds[space]) then
+			space:resize();
+		end
+	end
+
+-- the statusbar and other dependents are not necessarily synched on
+-- ws_attach operations, so need to do this manually
+	for disp in all_tilers_iter() do
+		disp:tile_update();
+-- an ugly hack to reset selection state
+		disp:switch_ws(2);
+		disp:switch_ws(1);
+	end
+
+	adopt_new = {};
 	return true;
 end
 
