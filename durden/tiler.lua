@@ -1480,10 +1480,12 @@ local function wnd_collapse(wnd)
 		return;
 	end
 
-	local i = table.find_i(wnd.parent.children, wnd) + 1;
+	local i = table.find_i(wnd.parent.children, wnd);
+	local c = 1;
 	for k,v in ipairs(wnd.children) do
-		table.insert(wnd.parent.children, i, v);
+		table.insert(wnd.parent.children, i+c, v);
 		v.parent = wnd.parent;
+		c = c + 1;
 	end
 	wnd.children = {};
 	wnd.space:resize();
@@ -2978,6 +2980,21 @@ local canvas_mh = {
 	end
 };
 
+-- move w1 from whatever parent and set as child to w2
+local function wnd_tochild(w1,w2)
+	if (w1.space ~= w2.space) then
+		return;
+	end
+
+	local wp1 = w1.parent;
+	local wp1i = table.find_i(wp1.children, w1);
+	table.remove(wp1.children, wp1i);
+	table.insert(w2.children, w1);
+	w1.parent = w2;
+
+	w1:recovertag();
+end
+
 local function wnd_swap(w1, w2, deep, force)
 	if (w1 == w2 or (not force
 		and w1.space.layouter and w1.space.layouter.block_swap)) then
@@ -3284,6 +3301,9 @@ local function wnd_recovertag(wnd, restore)
 			if (res["ws_label"]) then
 				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
 			end
+			if (res["wnd_name"]) then
+				wnd.name = res["wnd_name"];
+			end
 			if (res["wnd_geom"]) then
 				local vl = string.split(res["wnd_geom"], ":");
 				if (#vl == 4) then
@@ -3293,14 +3313,15 @@ local function wnd_recovertag(wnd, restore)
 					};
 				end
 			end
+			wnd.desired_parent = res["parent"];
 		end
 
 		return;
 	end
 
 	local recoverstr = string.format(
-		"durden\n\rws_ind=%d\n\rws_mode=%s\n\r",
-		wnd.space_ind, wnd.space.mode
+		"durden\n\rws_ind=%d\n\rws_mode=%s\n\rwnd_name=%s",
+		wnd.space_ind, wnd.space.mode, wnd.name
 	);
 
 	if (wnd.atype) then
@@ -3315,6 +3336,13 @@ local function wnd_recovertag(wnd, restore)
 		recoverstr = recoverstr .. "\n\rws_home=" .. wnd.space.home;
 	end
 
+	if (string.sub(wnd.parent.name, 1, 3) == "wnd") then
+		recoverstr = string.format(
+			"%s\n\rparent=%s\n\r=weight=%f\n\rvweight=%f",
+			recoverstr, wnd.parent.name, wnd.weight, wnd.vweight
+		);
+	end
+
 	if (wnd.space.mode == "float") then
 		local x = wnd.x / wnd.wm.width;
 		local y = wnd.y / wnd.wm.height;
@@ -3327,7 +3355,6 @@ local function wnd_recovertag(wnd, restore)
 -- missing restore:
 -- wndtag, custom bindings / translations
 -- hide(titlebar, border)
--- weight, vweight
 -- tile-hierarchy (walk parent ch ind and replicate when possible)
 -- visual junk (shader, scale, centered, gain)
 --
@@ -3465,6 +3492,7 @@ local wnd_setup = function(wm, source, opts)
 		prev = wnd_prev,
 		move = wnd_move,
 		swap = wnd_swap,
+		reparent = wnd_tochild,
 		drag_resize = wnd_drag_resize,
 
 -- lifecycle
@@ -3814,6 +3842,7 @@ end
 local function tiler_rebuild_border(tiler)
 	local bw = gconfig_get("borderw");
 	local tw = bw - gconfig_get("bordert");
+-- weight, vweight
 	local s = {"active", "inactive", "alert", "default"};
 	shader_update_uniform("border", "ui", "border", bw, s, "tiler-rebuild");
 	shader_update_uniform("border", "ui", "thickness", tw, s, "tiler-rebuild");
