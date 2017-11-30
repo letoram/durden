@@ -2209,13 +2209,16 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 end
 
 local function wnd_droppopup(wnd, all)
+	local at = gconfig_get("animation");
+
 	if (all) then
 		for i=#wnd.popups,1,-1 do
 			v = wnd.popups[i];
 			if (v.on_destroy) then
 				v:on_destroy();
 			end
-			delete_image(v.anchor);
+			expire_image(v.anchor, at);
+			blend_image(v.anchor, 0.0, at);
 			mouse_droplistener(v);
 		end
 		wnd.popups = {};
@@ -2226,9 +2229,10 @@ local function wnd_droppopup(wnd, all)
 		if (pop.on_destroy) then
 			pop:on_destroy();
 		end
-		expire_image(pop.anchor, gconfig_get("animation"));
-		blend_image(pop.anchor, 0.0, gconfig_get("animation"));
+		expire_image(pop.anchor, at);
+		blend_image(pop.anchor, 0.0, at);
 		mouse_droplistener(pop);
+
 		table.remove(wnd.popups, #wnd.popups);
 		if (wnd.input_focus == pop) then
 			wnd.input_focus = wnd.popups[#wnd.popups];
