@@ -17,6 +17,69 @@ flair_supp_clone = function(wnd)
 	return vid;
 end
 
+-- slice the window in segments of w/s*h/t subsurfaces and present each
+-- to the provided iterator. These have a preset expiration time that the
+-- caller may override in the callback
+flair_supp_segment = function(wnd, px_s, px_t, callback)
+	local tile_sz_w = px_s;
+	local tile_sz_h = px_t;
+	local props = image_surface_resolve(wnd.canvas);
+
+	local ct = 0;
+	local cp_x = props.x + 0.5 * wnd.effective_w;
+	local cp_y = props.y + 0.5 * wnd.effective_h;
+	local ul_r = math.ceil(wnd.height / tile_sz_h) - 1;
+	local ul_c = math.ceil(wnd.width / tile_sz_w) - 1;
+	local sf_s = px_s / 1.0;
+	local sf_t = px_t / 1.0;
+	local rm_speed = gconfig_get("flair_speed")+1;
+
+	for row=1,ul_r do
+		local cs = 0;
+		for col=1,ul_c do
+-- skip if we run out of VIDs
+			local cell = null_surface(tile_sz_w, tile_sz_h);
+			if (not valid_vid(cell)) then
+				return;
+			end
+			image_mask_set(cell, MASK_UNPICKABLE);
+			local cx = props.x + (col-1) * tile_sz_w;
+			local cy = props.y + (row-1) * tile_sz_h;
+
+-- reference the storage and tune the texture coordinates
+			image_sharestorage(wnd.canvas, cell);
+			move_image(cell, cx, cy);
+			show_image(cell);
+			order_image(cell, props.order);
+
+-- slice the texture coordinates
+			image_set_txcos(cell, {
+				cs, ct,
+				cs + sf_s, ct,
+				cs + sf_s, ct + sf_t,
+				cs, ct + sf_t
+			});
+			cs = cs + sf_s;
+
+-- clamp to surface
+			local origin_x, origin_y = mouse_hotxy();
+			origin_x = origin_x < props.x and props.x or origin_x;
+			origin_x = origin_x >
+				(props.x + props.width) and (props.x + props.width) or origin_x;
+			origin_y = origin_y < props.y and props.y or origin_y;
+			origin_y = origin_y >
+				(props.y + props.height) and (props.y + props.height) or origin_y;
+
+-- automatic cleanup
+			expire_image(cell, rm_speed);
+			callback(cell, rm_speed, cx, cy, tile_sz_w, tile_sz_h,
+				origin_x, origin_y, props.x, props.y, props.width, props.height);
+		end
+
+		ct = ct + sf_t;
+	end
+end
+
 -- we keep the shaders and support script separate from the other
 -- subsystems so that the effects are easier to develop, test and
 -- share outside a full durden setup
