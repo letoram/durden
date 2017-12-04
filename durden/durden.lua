@@ -128,6 +128,17 @@ function durden(argv)
 		gconfig_set("first_run", false);
 		meta_guard_reset(true);
 	end
+
+-- for dealing wtih crash recovery windows or saved layout/role-
+	timer_add_periodic("recover_layout_save", 100, false,
+	function()
+		for wnd in all_windows() do
+			if (wnd.config_dirty) then
+				wnd.config_dirty = nil;
+				store_key("durden_temp_" .. wnd.config_tgt, image_tracetag(wnd.external));
+			end
+		end
+	end, true);
 end
 
 argv_cmds["dump_menus"] = function()
