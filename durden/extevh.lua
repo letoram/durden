@@ -248,8 +248,10 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	end
 
 -- can either be table [tgt, cfg] or [guid]
+	local recover;
 	if (not wnd.config_tgt and stat and stat.guid) then
-		wnd.config_tgt = stat.guid;
+		wnd.config_tgt = string.gsub(stat.guid, "=", "_");
+		recover = get_key("durden_temp_" .. stat.guid);
 	end
 
 	wnd.bindings = atbl.bindings;
@@ -281,6 +283,11 @@ function extevh_apply_atype(wnd, atype, source, stat)
 -- very rarely needed
 	for k,v in ipairs(wnd.handlers.register) do
 		v(wnd, stat.segkind, stat);
+	end
+
+	if (recover) then
+		image_tracetag(wnd.external, val);
+		wnd:recovertag(true);
 	end
 end
 

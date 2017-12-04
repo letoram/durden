@@ -3366,6 +3366,9 @@ local function wnd_recovertag(wnd, restore)
 --
 -- workspace properties: background
 --
+	if (wnd.config_tgt) then
+		wnd.config_dirty = true;
+	end
 	image_tracetag(wnd.external, recoverstr);
 end
 

@@ -377,6 +377,10 @@ function gconfig_shutdown()
 		end
 	end
 
+	for i,v in ipairs(match_keys("durden_temp_%")) do
+		local k = string.split(v, "=")[1];
+		ktbl[k] = "";
+	end
 	store_key(ktbl);
 end
 
