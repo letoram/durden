@@ -955,7 +955,7 @@ function all_spaces_iter()
 	end
 end
 
-function all_windows(atype)
+function all_windows(atype, noswitch)
 	local tbl = {};
 	for i,v in ipairs(displays) do
 		for j,k in ipairs(v.tiler.windows) do
@@ -971,13 +971,17 @@ function all_windows(atype)
 		i = i + 1;
 		while (i <= c) do
 			if (not atype or (atype and tbl[i][2].atype == atype)) then
-				switch_active_display(tbl[i][1]);
+				if (not noswitch) then
+					switch_active_display(tbl[i][1]);
+				end
 				return tbl[i][2];
 			else
 				i = i + 1;
 			end
 		end
-		switch_active_display(save);
+		if (not noswitch) then
+			switch_active_display(save);
+		end
 		return nil;
 	end
 end

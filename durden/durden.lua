@@ -132,7 +132,7 @@ function durden(argv)
 -- for dealing wtih crash recovery windows or saved layout/role-
 	timer_add_periodic("recover_layout_save", 100, false,
 	function()
-		for wnd in all_windows() do
+		for wnd in all_windows(nil, true) do
 			if (wnd.config_dirty) then
 				wnd.config_dirty = nil;
 				store_key("durden_temp_" .. wnd.config_tgt, image_tracetag(wnd.external));
