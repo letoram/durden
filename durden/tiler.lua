@@ -1543,8 +1543,8 @@ end
 
 local function wnd_effective_resize(wnd, neww, newh, ...)
 	wnd:resize(
-		neww + wnd.pad_left + wnd.pad_right,
-		newh + wnd.pad_top + wnd.pad_bottom, ...
+		math.floor(neww + wnd.pad_left + wnd.pad_right),
+		math.floor(newh + wnd.pad_top + wnd.pad_bottom), ...
 	);
 end
 
@@ -1665,8 +1665,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		and wnd.canvas_props or image_storage_properties(wnd.canvas);
 
 -- to save space for border width, statusbar and other properties
-	local decw = math.ceil(wnd.pad_left + wnd.pad_right);
-	local dech = math.ceil(wnd.pad_top + wnd.pad_bottom);
+	local decw = math.floor(wnd.pad_left + wnd.pad_right);
+	local dech = math.floor(wnd.pad_top + wnd.pad_bottom);
 
 -- reposition according to padding / decoration
 	if (not wnd.fullscreen) then
@@ -2246,8 +2246,8 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (not wnd.space or wnd.space.mode == "float") then
-		local neww = wnd.effective_w + wnd.wm.width * w;
-		local newh = wnd.effective_h + wnd.wm.height * h;
+		local neww = wnd.effective_w + math.floor(wnd.wm.width * w);
+		local newh = wnd.effective_h + math.floor(wnd.wm.height * h);
 
 		if (wnd.sz_delta and wnd.sz_delta[1] > 0 and wnd.sz_delta[2] > 0) then
 
