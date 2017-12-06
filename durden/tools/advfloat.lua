@@ -224,6 +224,39 @@ local function creg_drag(wm, wnd, dx, dy, last)
 	end
 end
 
+-- simple "take constraints + list of nodes" (x, y, w, h),
+-- update x, y positions and mark if it was used (fitted) or not
+-- https://codeincomplete.com/posts/bin-packing/
+local function simple_solver(nodes, w, h)
+	table.sort(nodes, function(a, b) return a.h > b.h; end);
+
+	local get_node;
+	get_node = function(n, w, h)
+		if (n.used) then
+			local r = get_node(n.r, w, h);
+			if (r) then
+				return r;
+			else
+				return get_node(n.d, w, h);
+			end
+		elseif (w <= n.w and h <= n.h) then
+			n.used = true;
+			n.d = {x = n.x,     y = n.y + h, w = n.w,     h = n.h - h};
+			n.r = {x = n.x + w, y = n.y,     w = n.w - w, h = h      };
+			return n;
+		end
+	end
+
+	local root = {x = 0, y = 0, w = w, h = h};
+	for _, v in ipairs(nodes) do
+		local n = get_node(root, v.w, v.h);
+		if (n) then
+			v.x = n.x; v.y = n.y;
+		end
+	end
+	return nodes;
+end
+
 local in_creg = false;
 local function toggle_creg(act)
 	for wm in all_tilers_iter() do
@@ -340,6 +373,49 @@ local action_submenu = {
 }
 };
 
+local function run_layouter(method)
+	local wm = active_display();
+	local space = wm.spaces[wm.space_ind];
+	local lst = {};
+
+-- special cases, windows with an assigned 'toplevel' (wayland..)
+	for _,wnd in ipairs(space:linearize()) do
+		table.insert(lst, {src = wnd,
+			x = wnd.x, y = wnd.y, w = wnd.width, h = wnd.height});
+	end
+	if (#lst == 0) then
+		return;
+	end
+	lst = method(lst, wm.effective_width, wm.effective_height);
+	local props = image_surface_resolve(wm.anchor);
+	for _, v in ipairs(lst) do
+		v.src:move(v.x + props.x, v.y + props.y, false, true);
+	end
+end
+
+local layouters_menu = {
+{
+	kind = "action",
+	name = "simple",
+	label = "Simple",
+	description = "Sort by height and recursive binary fill",
+	handler = function()
+		run_layouter(simple_solver);
+	end
+}
+};
+
+local workspace_menu = {
+{
+	kind = "action",
+	submenu = true,
+	name = "autolayout",
+	label = "Layouter",
+	description = "Apply an automatic layouting technique",
+	handler = layouters_menu
+}
+};
+
 -- all_spaces_iter
 
 shared_menu_register("window",
@@ -362,6 +438,19 @@ shared_menu_register("window",
 		local tgt = gconfig_get("advfloat_hide");
 		do_hide(wnd, tgt);
 	end
+});
+
+global_menu_register("workspace",
+{
+	kind = "action",
+	name = "float",
+	label = "Float",
+	submenu = true,
+	description = "(advfloat-tool) active workspace specific actions",
+	eval = function()
+		return active_display().spaces[active_display().space_ind].mode == "float";
+	end,
+	handler = workspace_menu
 });
 
 global_menu_register("settings/wspaces/float",

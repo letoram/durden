@@ -157,7 +157,7 @@ local defaults = {
 	mouse_autohide = true,
 	mouse_reveal = true,
 	mouse_dblclick = 12,
-	mouse_hidetime = 120,
+	mouse_hidetime = 220,
 	mouse_hovertime = 40,
 	mouse_dragdelta = 4,
 	mouse_cursorset = "default",
@@ -249,13 +249,19 @@ local defaults = {
 	bind_repeat = 5,
 
 -- sbar
-	sbar_tpad = 2,
+	sbar_tpad = 2, -- add some space to the text
 	sbar_bpad = 2,
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
+	sbar_lspace = 0.01,
+	sbar_rspace = 0.01,
+	sbar_tspace = 0.01,
+	sbar_bspace = 0.01,
 	sbar_pos = "top",
 	sbar_hud = false, -- show only on HUD (global/target menu)
+	sbar_modebutton = true,
+	sbar_numberprefix = true,
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
