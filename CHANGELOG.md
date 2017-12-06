@@ -13,6 +13,7 @@
     spawn control (draw2spawn)
     hide-to-statusbar
     cursor-action-region (see tools/advfloat/cregion.lua for definition)
+    automatic relayouter
 
   * tools/overview - added a HUD- like workspace switcher
 
@@ -32,7 +33,7 @@
     patterns (%%) and sort-order modification (typing % lists options).
 
   * retain some window and workspace properties across script errors
-    and resets
+    crashes and resets
 
   * menu navigation can now shows a helper description of the
     currently selected item
@@ -52,9 +53,18 @@ Minor:
 
  * Float mode canvas-drag/resize option for self-decorated clients
 
- * improved handling for wayland popups and subsurfaces
+ * improved (less broken) handling for wayland popups and subsurfaces
 
  * Step-resize keybinding now aligns to window- cell size (terminals)
+
+ * statusbar can now be sized/padded to percentage of display output
+   (config/statusbar/borderpad)
+
+ * statusbar specific configuration moved to (config/statusbar) from
+   (config/visual/bars/...)
+
+ * statusbar number prefix on known workspaces and statusbar mode
+   button can now be toggled on/off
 
 # 0.3.0
   * Now requires arcan >= 0.5.3.

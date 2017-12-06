@@ -352,21 +352,35 @@ end
 local function tiler_statusbar_update(wm)
 -- synch constraints
 	local statush = sbar_geth(wm);
+	local xpos = 0;
+	local ytop = 0;
+	local ybottom = 0;
+
 	if (statush > 0) then
-		wm.statusbar:resize(wm.width, statush);
+		local pl = math.floor(gconfig_get("sbar_lspace") * wm.width);
+		local pr = math.floor(gconfig_get("sbar_rspace") * wm.width);
+		ytop = math.floor(gconfig_get("sbar_tspace") * wm.height);
+		ybottom = math.floor(gconfig_get("sbar_bspace") * wm.height);
+		xpos = pl;
+		wm.statusbar:resize(wm.width - pl - pr, statush);
 	end
 
--- reposition
+-- modify this for vertical sidebars
+	wm.effective_width = wm.width;
+	wm.effective_height = wm.height - ytop - ybottom - statush;
+
 	if (gconfig_get("sbar_pos") == "top") then
-		wm.yoffset = statush;
+		wm.yoffset = statush + ytop + ybottom;
 		wm.ylimit = wm.height;
-		wm.statusbar:move(0, -statush);
-		move_image(wm.anchor, 0, statush);
+		wm.statusbar:move(xpos, ytop);
+		move_image(wm.anchor, 0, statush + ytop + ybottom);
+		move_image(wm.order_anchor, 0, -statush - ytop - ybottom);
 	else
 		wm.yoffset = 0;
-		wm.ylimit = wm.height - statush;
+		wm.ylimit = wm.effective_height;
 		move_image(wm.anchor, 0, 0);
-		wm.statusbar:move(0, wm.height - statush);
+		move_image(wm.order_anchor, 0, 0);
+		wm.statusbar:move(xpos, wm.effective_height + ytop);
 	end
 
 	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
@@ -383,6 +397,13 @@ local function tiler_statusbar_update(wm)
 
 	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
+-- we just hide the layout button, it's always present even if not wanted
+	if (gconfig_get("sbar_modebutton")) then
+		wm.sbar_ws["left"]:show();
+	else
+		wm.sbar_ws["left"]:hide();
+	end
+
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil) then
 			wm.sbar_ws[i]:show();
@@ -394,10 +415,18 @@ local function tiler_statusbar_update(wm)
 				lbltbl[5] = gconfig_get("label_color");
 				lbltbl[6] = lbl;
 			end
+
+-- special treatment, don't number-prefix tagged workspaces
+			if (not gconfig_get("sbar_numberprefix")) then
+				if (lbltbl[6]) then
+					lbltbl = {lbltbl[5], lbltbl[6]};
+				end
+			end
+
 			wm.sbar_ws[i]:update(lbltbl);
 			if (wm.spaces[i].background) then
-				move_image(wm.spaces[i].background, 0,
-					gconfig_get("sbar_pos") == "top" and -statush or 0);
+				wm.spaces[i].background_y = -(image_surface_resolve(wm.anchor).y);
+				move_image(wm.spaces[i].background, 0, wm.spaces[i].background_y);
 			end
 		else
 			wm.sbar_ws[i]:hide();
@@ -976,10 +1005,10 @@ local function drop_float(space)
 	for i,v in ipairs(lst) do
 		local pos = image_surface_properties(v.anchor);
 		v.last_float = {
-			width = v.width / space.wm.width,
-			height = v.height / space.wm.height,
-			x = pos.x / space.wm.width,
-			y = pos.y / space.wm.height
+			width = v.width / space.wm.effective_width,
+			height = v.height / space.wm.effective_height,
+			x = pos.x / space.wm.effective_width,
+			y = pos.y / space.wm.effective_height
 		};
 	end
 end
@@ -1011,15 +1040,15 @@ local function set_tab(space, repos)
 	space.reassign_hook = reassign_tab;
 
 	local wm = space.wm;
-	local fairw = math.ceil(wm.width / #lst);
+	local fairw = math.ceil(wm.effective_width / #lst);
 	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
 	local sb_sz = sbar_geth(wm);
 	local bw = gconfig_get("borderw");
 	local ofs = 0;
 
 	for k,v in ipairs(lst) do
-		v.max_w = wm.width;
-		v.max_h = wm.height - sb_sz - tbar_sz;
+		v.max_w = wm.effective_width;
+		v.max_h = wm.effective_height - tbar_sz;
 		if (not repos) then
 			v:resize(v.max_w, v.max_h);
 		end
@@ -1067,7 +1096,7 @@ local function set_vtab(space, repos)
 
 	local ofs = 0;
 	for k,v in ipairs(lst) do
-		v.max_w = wm.width;
+		v.max_w = wm.effective_width;
 		v.max_h = cl_area;
 		if (not repos) then
 			v:resize(v.max_w, v.max_h);
@@ -1077,7 +1106,7 @@ local function set_vtab(space, repos)
 		hide_image(v.anchor);
 		hide_image(v.border);
 		v.titlebar:reanchor(space.anchor, 2, 0, (k-1) * tbar_sz);
-		v.titlebar:resize(wm.width, tbar_sz);
+		v.titlebar:resize(wm.effective_width, tbar_sz);
 		ofs = ofs + tbar_sz;
 	end
 
@@ -1149,10 +1178,10 @@ local function set_float(space)
 		local newh;
 -- work with relative position / size to handle migrate or resize
 		if (v.last_float) then
-			neww = space.wm.width * v.last_float.width;
-			newh = space.wm.height * v.last_float.height;
-			v.x = space.wm.width * v.last_float.x;
-			v.y = space.wm.height * v.last_float.y;
+			neww = space.wm.effective_width * v.last_float.width;
+			newh = space.wm.effective_height * v.last_float.height;
+			v.x = space.wm.effective_width * v.last_float.x;
+			v.y = space.wm.effective_height * v.last_float.y;
 
 			move_image(v.anchor, v.x, v.y,
 				wnd_animation_time(v, v.anchor, false, true));
@@ -1160,8 +1189,10 @@ local function set_float(space)
 		else
 			neww = props.width + v.pad_left + v.pad_right;
 			newh = props.height + v.pad_top + v.pad_bottom;
-			neww = (space.wm.width < neww and space.wm.width) or neww;
-			newh = (space.wm.height < newh and space.wm.height) or newh;
+			neww = (space.wm.effective_width < neww
+				and space.wm.effective_width) or neww;
+			newh = (space.wm.effective_height < newh
+			and space.wm.effective_height) or newh;
 		end
 
 -- doesn't really matter here as we run with "force" flag
@@ -1184,7 +1215,7 @@ local function set_tile(space, repos)
 			return;
 		end
 	end
-	level_resize(space, 0, 0, wm.width, wm.height - sbar_geth(wm), repos);
+	level_resize(space, 0, 0, wm.effective_width, wm.effective_height, repos);
 end
 
 local space_handlers = {
@@ -1287,7 +1318,7 @@ local function workspace_label(space, lbl)
 -- update identifiers
 	local lst = space:linearize();
 	for i,v in ipairs(lst) do
-		res:recovertag();
+		v:recovertag();
 	end
 
 	tiler_statusbar_update(space.wm);
@@ -1354,8 +1385,8 @@ local function workspace_background(ws, bgsrc, generalize)
 		resize_image(ws.background, ws.wm.width, ws.wm.height);
 		link_image(ws.background, ws.anchor);
 		local sb_sz = sbar_geth(ws.wm);
-		move_image(ws.background, 0,
-			gconfig_get("sbar_pos") == "top" and -sb_sz or 0);
+		ws.background_y = -(image_surface_resolve(ws.wm.anchor).y);
+		move_image(ws.background, 0, ws.background_y);
 		if (crossfade) then
 			blend_image(ws.background, 0.0, ttime);
 		end
@@ -1426,7 +1457,8 @@ create_workspace = function(wm, anim)
 		insert = "h",
 		children = {},
 		weight = 1.0,
-		vweight = 1.0
+		vweight = 1.0,
+		background_y = 0,
 	};
 	image_tracetag(res.anchor, "workspace_anchor");
 	show_image(res.anchor);
@@ -1985,6 +2017,11 @@ local function wnd_reassign(wnd, ind, ninv)
 end
 
 local function wnd_step_drag(wnd, mctx, vid, dx, dy)
+-- absurd warp->drag without over first
+	if (not mctx.mask) then
+		return;
+	end
+
 	wnd.x = wnd.x + dx * mctx.mask[3];
 	wnd.y = wnd.y + dy * mctx.mask[4];
 	move_image(wnd.anchor, wnd.x, wnd.y);
@@ -2246,8 +2283,8 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (not wnd.space or wnd.space.mode == "float") then
-		local neww = wnd.effective_w + math.floor(wnd.wm.width * w);
-		local newh = wnd.effective_h + math.floor(wnd.wm.height * h);
+		local neww = wnd.effective_w + math.floor(wnd.wm.effective_width * w);
+		local newh = wnd.effective_h + math.floor(wnd.wm.effective_height * h);
 
 		if (wnd.sz_delta and wnd.sz_delta[1] > 0 and wnd.sz_delta[2] > 0) then
 
@@ -2399,26 +2436,26 @@ end
 
 local function wnd_toggle_maximize(wnd)
 	if (wnd.float_dim) then
-		wnd.x = wnd.float_dim.x * wnd.wm.width;
-		wnd.y = wnd.float_dim.y * wnd.wm.height;
+		wnd.x = wnd.float_dim.x * wnd.wm.effective_width;
+		wnd.y = wnd.float_dim.y * wnd.wm.effective_height;
 		move_image(wnd.anchor, wnd.x, wnd.y,
 			wnd_animation_time(wnd, wnd.anchor, false, true));
-		wnd:resize(wnd.float_dim.w * wnd.wm.width,
-			wnd.float_dim.h * wnd.wm.height, true);
+		wnd:resize(wnd.float_dim.w * wnd.wm.effective_width,
+			wnd.float_dim.h * wnd.wm.effective_height, true);
 		wnd.float_dim = nil;
 	else
 		local cur = {};
 		local props = image_surface_resolve_properties(wnd.anchor);
-		cur.x = props.x / wnd.wm.width;
-		cur.y = props.y / wnd.wm.height;
-		cur.w = wnd.width / wnd.wm.width;
-		cur.h = wnd.height / wnd.wm.height;
+		cur.x = props.x / wnd.wm.effective_width;
+		cur.y = props.y / wnd.wm.effective_height;
+		cur.w = wnd.width / wnd.wm.effective_width;
+		cur.h = wnd.height / wnd.wm.effective_height;
 		wnd.float_dim = cur;
 		wnd.x = 0;
 		wnd.y = 0;
 		move_image(wnd.anchor, wnd.x, wnd.y,
 			wnd_animation_time(wnd, wnd.anchor, false, true));
-		wnd:resize(wnd.wm.width, wnd.wm.height - sbar_geth(wnd.wm), true);
+		wnd:resize(wnd.wm.effective_width, wnd.wm.effective_height, true);
 	end
 end
 
@@ -3249,10 +3286,10 @@ local function wnd_ws_attach(res, from_hook)
 		local h = res.height;
 
 		if (res.attach_temp) then
-			x = res.attach_temp[1] * wm.width;
-			y = res.attach_temp[2] * wm.height;
-			w = res.attach_temp[3] * wm.width;
-			h = res.attach_temp[4] * wm.height;
+			x = res.attach_temp[1] * wm.effective_width;
+			y = res.attach_temp[2] * wm.effective_height;
+			w = res.attach_temp[3] * wm.effective_width;
+			h = res.attach_temp[4] * wm.effective_height;
 			res.attach_temp = nil;
 		end
 
@@ -3350,10 +3387,10 @@ local function wnd_recovertag(wnd, restore)
 	end
 
 	if (wnd.space.mode == "float") then
-		local x = wnd.x / wnd.wm.width;
-		local y = wnd.y / wnd.wm.height;
-		local w = wnd.width / wnd.wm.width;
-		local h = wnd.height / wnd.wm.height;
+		local x = wnd.x / wnd.wm.effective_width;
+		local y = wnd.y / wnd.wm.effective_height;
+		local w = wnd.width / wnd.wm.effective_width;
+		local h = wnd.height / wnd.wm.effective_height;
 		recoverstr = recoverstr ..
 			string.format("\n\rwnd_geom=%f:%f:%f:%f", x, y, w, h);
 	end
@@ -3460,8 +3497,8 @@ local wnd_setup = function(wm, source, opts)
 -- values are used for tracking / budgets in the current layout mode
 		effective_w = 0,
 		effective_h = 0,
-		max_w = wm.width,
-		max_h = wm.height,
+		max_w = wm.effective_width,
+		max_h = wm.effective_height,
 		x = 0,
 		y = 0,
 		weight = 1.0,
@@ -4122,6 +4159,8 @@ function tiler_create(width, height, opts)
 	res.font_resfn = function() return tiler_fontres(res); end
 	res.height = height;
 	res.width = width;
+	res.effective_width = width;
+	res.effective_height = height;
 
 -- statusbar affects the coordinate space origo of at top
 	res.yoffset = 0;

@@ -126,37 +126,6 @@ local durden_bars = {
 			gconfig_set("hide_titlebar", val == LBL_YES);
 		end
 	},
-	{
-		name = "sbar_pos",
-		label = "Statusbar Position",
-		kind = "value",
-		description = "Change the statusbar vertical position",
-		set = {"top", "bottom"},
-		initial = function()
-			return gconfig_get("sbar_pos");
-		end,
-		handler = function(ctx, val)
-			gconfig_set("sbar_pos", val);
-			active_display():tile_update();
-		end
-	},
-	{
-		name = "sbar_hud",
-		label = "Statusbar HUD mode",
-		kind = "value",
-		description = "Show the statusbar exclusively on the HUD",
-		set = {LBL_YES, LBL_NO},
-		initial = function()
-			return gconfig_get("sbar_hud") and LBL_YES or LBL_NO;
-		end,
-		handler = function(ctx, val)
-			gconfig_set("sbar_hud", val == LBL_YES);
-			active_display():tile_update();
-			for k,v in pairs(active_display().spaces) do
-				v:resize();
-			end
-		end
-	}
 };
 
 local function tryload_scheme(v)
@@ -1007,5 +976,13 @@ return {
 		description = "Custom tool specific settings",
 		submenu = true,
 		handler = tools_conf
+	},
+	{
+		name = "statusbar",
+		label = "Statusbar",
+		kind = "action",
+		submenu = true,
+		description = "Change Task/Statusbar look and feel",
+		handler = system_load("menus/global/statusbar.lua")(),
 	}
 };

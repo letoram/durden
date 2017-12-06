@@ -28,10 +28,10 @@ flair_supp_segment = function(wnd, px_s, px_t, callback)
 	local ct = 0;
 	local cp_x = props.x + 0.5 * wnd.effective_w;
 	local cp_y = props.y + 0.5 * wnd.effective_h;
-	local ul_r = math.ceil(wnd.height / tile_sz_h) - 1;
-	local ul_c = math.ceil(wnd.width / tile_sz_w) - 1;
-	local sf_s = px_s / 1.0;
-	local sf_t = px_t / 1.0;
+	local ul_r = math.ceil(wnd.effective_h / tile_sz_h) - 1;
+	local ul_c = math.ceil(wnd.effective_w / tile_sz_w) - 1;
+	local sf_s = px_s / wnd.effective_w;
+	local sf_t = px_t / wnd.effective_h;
 	local rm_speed = gconfig_get("flair_speed")+1;
 
 	for row=1,ul_r do
@@ -62,13 +62,8 @@ flair_supp_segment = function(wnd, px_s, px_t, callback)
 			cs = cs + sf_s;
 
 -- clamp to surface
-			local origin_x, origin_y = mouse_hotxy();
-			origin_x = origin_x < props.x and props.x or origin_x;
-			origin_x = origin_x >
-				(props.x + props.width) and (props.x + props.width) or origin_x;
-			origin_y = origin_y < props.y and props.y or origin_y;
-			origin_y = origin_y >
-				(props.y + props.height) and (props.y + props.height) or origin_y;
+			local origin_x = cp_x;
+			local origin_y = cp_y;
 
 -- automatic cleanup
 			expire_image(cell, rm_speed);
@@ -79,6 +74,21 @@ flair_supp_segment = function(wnd, px_s, px_t, callback)
 		ct = ct + sf_t;
 	end
 end
+
+-- sketch for dynamic shadows,
+--
+-- for both versions we build a rendertarget with the shadow casters,
+-- 1. linearize active space
+-- 2. for each window, use the wnd.width/wnd.height if shadowcaster
+-- 3. draw into dst as opaque
+-- 4. hook to update on each animated frame with window animations
+--
+-- one options is:
+-- raytrace / render into 1D texture based on a point light (cursor)
+--
+-- other option is:
+--  gaussian blur step, draw as overlay and discard opaque
+--
 
 -- we keep the shaders and support script separate from the other
 -- subsystems so that the effects are easier to develop, test and
@@ -288,7 +298,6 @@ for i,v in ipairs(drag_effects) do
 		table.insert(flair_config_menu, v.menu);
 	end
 end
-
 
 local in_flair = false;
 
