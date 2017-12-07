@@ -547,7 +547,7 @@ local function canvas_mouse_activate(wnd)
 end
 
 local function wnd_select(wnd, source, mouse)
-	if (wnd.wm.deactivated or not wnd.space) then
+	if (wnd.wm.deactivated or not wnd.space or wnd.select_block) then
 		return;
 	end
 
@@ -3509,6 +3509,7 @@ local wnd_setup = function(wm, source, opts)
 		hide_border = false,
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
+		indirect_parent = nil,
 
 -- visual attribute- functions
 		alert = wnd_alert,
