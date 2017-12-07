@@ -12,6 +12,10 @@ function wayland_trace(msg, ...)
 	end
 end
 
+function wayland_wndcookie(id)
+	return wlsurf[id] and wlwnds[wlsurf[id]];
+end
+
 function wayland_lostwnd(source)
 	wayland_trace("dropped", source);
 	wlwnds[source] = nil;
@@ -89,9 +93,11 @@ local function popup_handler(cl, source, status)
 			delete_image(source);
 			return;
 		end
-		wayland_trace("popup viewported to (invis, rx, ry, w, h, edge)",
+		wayland_trace("popup viewported to (invis, rx, ry, w, h, edge, focus)",
 			status.invisible,
-			status.rel_x, status.rel_y, status.anchor_w, status.anchor_h, status.edge);
+			status.rel_x, status.rel_y, status.anchor_w, status.anchor_h,
+			status.edge, status.focus
+		);
 
 -- a popup shares a window container with others
 		if (not wlwnds[source]) then

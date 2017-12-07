@@ -16,6 +16,18 @@ toplevel_lut["move"] = function(wnd, ...)
 	wayland_trace("enter client- initiated drag move");
 end
 
+toplevel_lut["maximize"] = function(wnd)
+	if (wnd.space.mode == "float") then
+		wnd:toggle_maximize();
+	end
+end
+
+toplevel_lut["menu"] = function(wnd)
+	if (active_display().selected == wnd) then
+		wayland_trace("spawn target- menu");
+	end
+end
+
 -- similar criterion to move
 toplevel_lut["resize"] = function(wnd, dx, dy)
 	wayland_trace("enter client- initiated drag resize");
@@ -60,11 +72,55 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 	end
 end
 
+local function set_parent(wnd, id)
+-- unset any parent association, unsure what happens if multiple toplevels
+-- actually reparent to the same, do we need to track all of them?
+	if (id == 0) then
+		if (wnd.indirect_parent and wnd.indirect_parent.anchor) then
+			wnd.indirect_parent.delete_protect = wnd.indirect_parent.old_protect;
+			wnd.indirect_parent.old_protect = nil;
+		end
+		wnd.indirect_parent = nil;
+-- or create a new one
+	else
+-- first take preexisting
+		if (wnd.indirect_parent) then
+			set_parent(wnd, 0);
+		end
+
+		local parent = wayland_wndcookie(id);
+		if (not parent) then
+			wayland_trace("toplevel tried to reparent to unknown window");
+			return;
+		end
+
+-- switch selection (brings to front)
+		if (active_display().selected == parent) then
+			wnd:select();
+		end
+
+-- delete protect, input block, select block (delete will unset)
+		parent.old_protect = parent.delete_protect;
+
+-- if in tile mode, reassign the window so that it is marked as a
+-- child of the parent window in vertical order (and when floating in
+-- tile is allowed, float it on top of the parent), ideally, we'd also
+-- tie the coordinate spaces together so any relayouting  is masked/
+-- inherited correctly.
+	end
+end
+
 function wayland_toplevel_handler(wnd, source, status)
 	if (status.kind == "terminated") then
 		wayland_lostwnd(source);
 		wnd:destroy();
 		return;
+
+-- reparenting to another surface, this may or may not also grab input
+	elseif (status.kind == "viewport") then
+		wayland_trace("reparent toplevel:" .. tostring(status.parent));
+		set_parent(wnd, status.parent);
+
 	elseif (status.kind == "message") then
 		local opts = string.split(status.message, ":");
 		if (not opts or not opts[1]) then
@@ -154,11 +210,18 @@ wl_resize = function(wnd, neww, newh)
 	end
 end
 
+wl_destroy = function(wnd)
+	if (wnd.indirect_parent and wnd.indirect_parent.anchor) then
+		set_parent(wnd, 0);
+	end
+end
+
 return {
 	atype = "wayland-toplevel",
 	action = {},
 	init = function(atype, wnd, source)
 		wnd:add_handler("resize", wl_resize);
+		wnd:add_handler("destroy", wl_destroy);
 	end,
 	props = {
 		kbd_period = 0,
