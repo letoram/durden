@@ -323,13 +323,10 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 	end
 end
 
-function durden_tbar_buttons(dir, cmd, lbl)
-	if (not dir) then
-		tbar_btns = {};
-	else
-		table.insert(tbar_btns, {
-			dir = dir, cmd = cmd, lbl = lbl
-		});
+local tbar_btns = {};
+function durden_tbar_buttons(dir, cmd, lbl, group)
+	if (dir) then
+		table.insert(tbar_btns, { dir = dir, cmd = cmd, lbl = lbl, group = group });
 	end
 end
 
@@ -356,7 +353,8 @@ wnd_create_handler = function(wm, wnd)
 				out = function(btn)
 					btn:switch_state(wm.selected == wnd and "active" or "inactive");
 				end
-			}
+			},
+			{ group = v.group }
 		);
 	end
 end

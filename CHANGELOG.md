@@ -1,4 +1,4 @@
-# 0.3.1
+# 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.
 
@@ -37,6 +37,9 @@
 
   * menu navigation can now shows a helper description of the
     currently selected item
+
+  * mode-sensitive titlebar icons - window titlebar icons can now be
+    set to be activated only in certain modes
 
 Minor:
  * Destroying a window in fullscreen mode now returns the workspace

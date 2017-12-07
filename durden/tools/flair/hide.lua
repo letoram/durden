@@ -27,8 +27,8 @@ local function scale_effect(wm, wnd, x, y, w, h, hide)
 		else
 			blend_image(vid, dopa, tv);
 		end
-		move_image(vid, dx, dy, tv, hide and INTERP_EXPOUT);
-		resize_image(vid, dw, dh, tv, hide and INTERP_EXPOUT);
+		move_image(vid, dx, dy, tv, hide and INTERP_EXPOUT or nil);
+		resize_image(vid, dw, dh, tv, hide and INTERP_EXPOUT or nil);
 	else
 		wnd:show();
 	end

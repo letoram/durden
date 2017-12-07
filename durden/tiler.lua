@@ -1013,7 +1013,10 @@ local function drop_float(space)
 	end
 end
 
-local function reassign_float(space, wnd)
+local function reassign_vtab(space, wnd)
+	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w, wnd.border_w);
+	show_image(wnd.anchor);
+	show_image(wnd.border);
 end
 
 local function reassign_tab(space, wnd)
@@ -1056,6 +1059,7 @@ local function set_tab(space, repos)
 		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
 		hide_image(v.border);
+		v.titlebar:switch_group("tab", true);
 		v.titlebar:reanchor(space.anchor, 2, ofs, 0);
 		v.titlebar:resize(fairw, tbar_sz);
 		ofs = ofs + fairw;
@@ -1082,7 +1086,7 @@ local function set_vtab(space, repos)
 
 	space.mode_hook = drop_tab;
 	space.switch_hook = switch_tab;
-	space.reassign_hook = reassign_tab;
+	space.reassign_hook = reassign_vtab;
 
 	local wm = space.wm;
 	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
@@ -1105,6 +1109,7 @@ local function set_vtab(space, repos)
 		move_image(v.canvas, 0, 0);
 		hide_image(v.anchor);
 		hide_image(v.border);
+		v.titlebar:switch_group("vtab", true);
 		v.titlebar:reanchor(space.anchor, 2, 0, (k-1) * tbar_sz);
 		v.titlebar:resize(wm.effective_width, tbar_sz);
 		ofs = ofs + tbar_sz;
@@ -1199,6 +1204,7 @@ local function set_float(space)
 		v.max_w = neww;
 		v.min_h = newh;
 
+		v.titlebar:switch_group("float", true);
 		v:resize(neww, newh, true);
 	end
 end
@@ -1209,12 +1215,19 @@ local function set_tile(space, repos)
 		wm.statusbar:show();
 		wm.statusbar.hidden_sb = false;
 	end
+
+	local tbl = linearize(space);
+	for _,v in ipairs(tbl) do
+		v.titlebar:switch_group("tile", true);
+	end
+
 	if (space.layouter) then
 		local tbl = linearize(space);
 		if (space.layouter.resize(space, tbl)) then
 			return;
 		end
 	end
+
 	level_resize(space, 0, 0, wm.effective_width, wm.effective_height, repos);
 end
 
@@ -1284,6 +1297,7 @@ local function workspace_set(space, mode)
 -- enforce titlebar changes (some modes need them to work..)
 	local lst = linearize(space);
 	for k,v in ipairs(lst) do
+		v.titlebar:switch_group(mode, true);
 		v:set_title();
 	end
 
@@ -2014,6 +2028,8 @@ local function wnd_reassign(wnd, ind, ninv)
 			oldspace.children[#oldspace.children]:select();
 		end
 	end
+
+	wnd.titlebar:switch_group(newspace.mode, true);
 end
 
 local function wnd_step_drag(wnd, mctx, vid, dx, dy)
@@ -3278,6 +3294,8 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
+	res.titlebar:switch_group(space.mode, true);
+
 	if (wm.space_ind == dstindex and
 		not(wm.selected and wm.selected.fullscreen)) then
 		show_image(res.anchor);
@@ -3308,7 +3326,7 @@ local function wnd_ws_attach(res, from_hook)
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
-		v(wm, wnd, space, space == wm.active_space);
+		v(wm, res, space, space == wm.active_space);
 	end
 
 	for k,v in pairs(space.listeners) do
