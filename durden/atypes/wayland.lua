@@ -80,7 +80,12 @@ local function popup_handler(cl, source, status)
 		wayland_trace("popup resize to", status.width, status.height);
 		if (wlwnds[source]) then
 			resize_image(source, status.width, status.height);
-			wlwnds[source]:show();
+			local wnd = wlwnds[source];
+			wnd:show();
+			if (wnd.popup_state) then
+				wnd:reposition(wnd.popup_state[1], wnd.popup_state[2],
+					wnd.popup_state[3], wnd.popup_state[4], wnd.popup_state[5]);
+			end
 		end
 
 -- wayland popups aren't very useful unless there's a relation so
@@ -116,16 +121,19 @@ local function popup_handler(cl, source, status)
 -- hide/show?
 		wnd[status.invisible and "hide" or "show"](wlwnds[source]);
 
--- the positioning rules here vary with xdg- and seems related to both
--- anchoring and the currently specified geography, hard to know what's
--- the "right" way to do this
 		local ox = wlwnds[pid].geom and wlwnds[pid].geom[1] or 0;
 		local oy = wlwnds[pid].geom and wlwnds[pid].geom[2] or 0;
 		status.rel_x = status.rel_x + ox;
 		status.rel_y = status.rel_y + oy;
-		wnd:reposition(
+		wnd.popup_state = {
 			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
-			status.rel_y + status.anchor_h, status.edge);
+			status.rel_y + status.anchor_h, status.edge
+		};
+
+-- the overflow rules are more complex in xdg, but for now, just have the
+-- corner overflows "stack"
+		wnd:reposition(wnd.popup_state[1], wnd.popup_state[2],
+			wnd.popup_state[3], wnd.popup_state[4], wnd.popup_state[5]);
 
 -- don't allow it to be relatively- ordered outside it's allocated limit
 		local order = status.rel_order > 5 and 5 or
@@ -211,6 +219,7 @@ seglut["application"] = function(wnd, source, stat)
 		newwnd.source_audio = aid;
 		wlwnds[id] = newwnd;
 		table.insert(wnd.wl_children, newwnd);
+		newwnd.bridge = wnd;
 	end
 
 	return true;
@@ -302,6 +311,9 @@ return {
 		scalemode = "none",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
+
+-- might need to / want to revisit this and use one shared clipboard for
+-- all wayland clients, breaks consistency somewhat but it's wayland ..
 		clipboard_block = true,
 		font_block = true,
 		allowed_segments = {},

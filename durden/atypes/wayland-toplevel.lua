@@ -40,7 +40,7 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 
 		dx = math.clamp(dx, -1, 1);
 		dy = math.clamp(dy, -1, 1);
-		wnd.in_drag_rz_mask = {dx, dy, 0, 0};
+		wnd.in_drag_rz_mask = {dx, dy, dx < 0 and 1 or 0, dy < 0 and 1 or 0};
 
 		local ox, oy, ow, oh;
 
@@ -53,10 +53,9 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 			end
 
 -- save this so when / if the resize comes, we can move accordingly
---			dx = dx * mctx.mask[3];
---      dy = dy * mctx.mask[4];
-			dx = dx * ctx.mask[1];
-			dy = dy * ctx.mask[2];
+			wnd:move(dx * ctx.mask[3], dy * ctx.mask[4]);
+			active_display():message(string.format("%f, %f, %f, %f",
+				dx, dy, ctx.mask[3], ctx.mask[4]));
 
 			local cx, cy = mouse_xy();
 			wl_resize(wnd,
@@ -213,6 +212,9 @@ end
 wl_destroy = function(wnd)
 	if (wnd.indirect_parent and wnd.indirect_parent.anchor) then
 		set_parent(wnd, 0);
+	end
+	if (wnd.bridge and wnd.bridge.wl_children) then
+		wnd.bridge.wl_children[wnd.external] = nil;
 	end
 end
 

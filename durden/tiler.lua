@@ -301,7 +301,7 @@ local function wnd_deselect(wnd, nopick)
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
-		local props = image_surface_resolve_properties(wnd.canvas);
+		local props = image_surface_resolve(wnd.canvas);
 		if (x >= props.x and y >= props.y and
 			x <= props.x + props.width and y <= props.y + props.height) then
 			wnd.mouse = {
@@ -591,7 +591,7 @@ local function wnd_select(wnd, source, mouse)
 	ms = mouse_state();
 	ms.hover_ign = true;
 
-	local props = image_surface_resolve_properties(wnd.canvas);
+	local props = image_surface_resolve(wnd.canvas);
 	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local px = 0.0;
 		local py = 0.0;
@@ -1780,7 +1780,7 @@ local function find_nearest(wnd, wx, wy, rec)
 	local ddir = {};
 
 	local cp_xy = function(vid)
-		local props = image_surface_resolve_properties(vid);
+		local props = image_surface_resolve(vid);
 		return (props.x + 0.5 * props.width), (props.y + 0.5 * props.height);
 	end
 
@@ -2198,12 +2198,22 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		blend_image(vid, 0.0, gconfig_get("animation"));
 	end
 
--- FIXME: take window constraints into account, can test with mouse cursor
 	res.reposition = function(pop, x1, y1, x2, y2, bias, chain)
 		local ap = bias == 0 and (#wnd.popups > 0 and 3 or 1) or bias;
 			ap = bias_lut[ap] and bias_lut[ap] or ANCHOR_UL;
 		link_image(vid, res.anchor, ap);
 		move_image(res.anchor, x1, y1);
+		local props = image_surface_resolve(res.anchor);
+		local vprops = image_surface_resolve(vid);
+
+		local ox = wnd.wm.width - (props.x + vprops.width);
+		if (ox < 0) then
+			nudge_image(res.anchor, ox, 0);
+		end
+		local oy = wnd.wm.height - (props.y + vprops.height);
+		if (oy < 0) then
+			nudge_image(res.anchor, 0, oy);
+		end
 	end
 
 	link_image(res.anchor, dst.canvas);
@@ -2362,7 +2372,7 @@ local function convert_mouse_xy(wnd, x, y, rx, ry)
 -- rather wasteful.
 
 -- first, remap coordinate range (x, y are absolute)
-	local aprop = image_surface_resolve_properties(wnd.canvas);
+	local aprop = image_surface_resolve(wnd.canvas);
 	local locx = x - aprop.x;
 	local locy = y - aprop.y;
 
@@ -2445,7 +2455,7 @@ local function wnd_toggle_maximize(wnd)
 		wnd.float_dim = nil;
 	else
 		local cur = {};
-		local props = image_surface_resolve_properties(wnd.anchor);
+		local props = image_surface_resolve(wnd.anchor);
 		cur.x = props.x / wnd.wm.effective_width;
 		cur.y = props.y / wnd.wm.effective_height;
 		cur.w = wnd.width / wnd.wm.effective_width;
@@ -2552,7 +2562,7 @@ end
 -- returns: [ul, u, ur, r, lr, l, ll, l]
 local function wnd_borderpos(wnd)
 	local x, y = mouse_xy();
-	local props = image_surface_resolve_properties(wnd.anchor);
+	local props = image_surface_resolve(wnd.anchor);
 
 -- hi-clamp radius, select corner by distance (priority)
 	local cd_ul = dist(x-props.x, y-props.y);
