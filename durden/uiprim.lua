@@ -400,20 +400,8 @@ local function chain_upd(bar, fun, tag)
 	end
 end
 
--- add some additional parameters to the normal button construction,
--- align defines size behavior in terms of under/oversize. left/right takes
--- priority, center is fill and distribute evenly (or limit with minw/minh)
-local function bar_button(bar, align,
-	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh)
-	assert(bar.buttons[align] ~= nil);
-	assert(type(fontfn) == "function");
-
--- autofill in the non-dominant axis
-	local fill = false;
-	if (not minh) then
-		minh = bar.height;
-		fill = true;
-	end
+local function btn_insert(bar, align,
+	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts)
 
 	local btn = uiprim_button(bar.anchor,
 		bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh);
@@ -447,6 +435,106 @@ local function bar_button(bar, align,
 		btn:constrain(pad);
 		btn.constrain = function() end
 	end
+	return btn;
+end
+
+-- mass-delete / mass-add grouped buttons
+local function bar_group(bar, group, keep_center)
+	local lst = {};
+
+-- expensive, so early out on noop
+	if (bar.group == group) then
+		return;
+	end
+
+	local center = (keep_center and bar.buttons.center)
+		and bar.buttons.center or {};
+
+-- delete all buttons
+	for d,g in pairs(bar.buttons) do
+		if (not keep_center or d ~= "center") then
+			for _,v in pairs(g) do
+				if (valid_vid(v.bg)) then
+					delete_image(v.bg);
+				end
+				if (v.own) then
+					mouse_droplistener(v);
+				end
+				for k,_ in pairs(v) do
+					v[k] = nil;
+				end
+			end
+		end
+	end
+
+	bar.buttons = {
+		left = {},
+		right = {},
+		center = center
+	};
+
+-- re-add from group and from catch-all 'default', don't use
+-- bar:add_button as that would introduce recursion
+	for i,v in ipairs(bar.groups["_default"]) do
+		btn_insert(bar, v.align, v.bgshname, v.lblshname,
+			v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+	end
+
+	if (bar.groups[group]) then
+		for i,v in ipairs(bar.groups[group]) do
+			btn_insert(bar, v.align, v.bgshname, v.lblshname,
+				v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+		end
+	end
+
+	bar.group = group;
+	bar:relayout();
+end
+
+-- add some additional parameters to the normal button construction,
+-- align defines size behavior in terms of under/oversize. left/right takes
+-- priority, center is fill and distribute evenly (or limit with minw/minh)
+local function bar_button(bar, align,
+	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts)
+	opts = opts and opts or {};
+
+	assert(bar.buttons[align] ~= nil);
+	assert(type(fontfn) == "function");
+
+-- autofill in the non-dominant axis
+	local fill = false;
+	if (not minh) then
+		minh = bar.height;
+		fill = true;
+	end
+
+-- defer creation until the group is set as active
+	local gtbl = {
+		bar = bar, align = align, bgshname = bgshname,
+		lblshname = lblshname, lbl = lbl, pad = pad,
+		fontfn = fontfn, minw = minw, minh = min, mouseh = mouseh,
+		opts = opts
+	};
+
+	if (opts.group) then
+		local group = opts.group;
+		opts.group = nil;
+		if (not bar.groups[group]) then
+			bar.groups[group] = {};
+		end
+		table.insert(bar.groups[group], gtbl);
+
+-- exit if the group is not already active
+		if (group ~= bar.group) then
+			return;
+		end
+-- add to the _default group
+	else
+		table.insert(bar.groups["_default"], gtbl);
+	end
+
+	local btn = btn_insert(bar, align,
+		bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts);
 
 	bar:relayout();
 	return btn;
@@ -603,6 +691,8 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 			right = {},
 			center = {}
 		},
+		groups = {},
+		group = "default",
 		state = "active",
 		shader = shdrtgt,
 		width = width,
@@ -616,6 +706,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		update_mh = bar_updatemh,
 		reanchor = bar_reanchor,
 		all_buttons = bar_iter,
+		switch_group = bar_group,
 		hide = bar_hide,
 		show = bar_show,
 		move = bar_move,
@@ -623,6 +714,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		destroy = bar_destroy
 	};
 
+	res.groups["_default"] = {};
 	link_image(res.anchor, anchor, anchorp);
 	show_image(res.anchor, anchor);
 	image_inherit_order(res.anchor, true);
