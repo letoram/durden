@@ -19,6 +19,7 @@ local function cloth_setup(wnd, destroy)
 -- based on window size with some clamps as it is rather CPU heavy
 	local t_s = gconfig_get("cloth_level");
 	wnd.old_border = image_surface_properties(wnd.border).opacity;
+	wnd.verlet_control = verlet_build;
 	blend_image(wnd.border, 0.0, 10);
 
 	local synch_verlet = function()
@@ -69,6 +70,7 @@ local function cloth_setup(wnd, destroy)
 				fx = fx * 1.05; -- some momentum
 			end
 		end
+		return true;
 	end
 
 	local tn = "cloth_" .. timer_counter;
@@ -80,9 +82,10 @@ local function cloth_setup(wnd, destroy)
 			else
 -- apply accumulated forces from dragging window around, doing it
 -- per event is expensive
-				wnd.verlet.update();
-				verlet_build.tick(wnd.verlet);
-				synch_verlet();
+				if (wnd.verlet.update()) then
+					verlet_build.tick(wnd.verlet);
+					synch_verlet();
+				end
 			end
 		end, true
 	);

@@ -120,9 +120,9 @@ return {
 	end,
 	pin = function(ctx, x, y, pv, len)
 		if (not len) then
-			len = 1;
+			len = 0;
 		end
-		for i=x,len do
+		for i=x,x+len do
 			local pt = ctx.points[y * ctx.w + x + 1];
 			if (not pt) then
 				return;
