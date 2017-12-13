@@ -126,7 +126,7 @@ local function falling(vid, speed, cx, cy, cw, ch, ox, oy, sx, sy, sw, sh)
 	resize_image(vid, 16, 16, speed, ifun);
 	rotate_image(vid, math.random(359), speed, ifun);
 	blend_image(vid, 0.0, speed, ifun);
-	image_shader(vid, flame);
+--	image_shader(vid, flame);
 end
 
 -- generic runner for creating a canvas copy and dispatching a
@@ -144,11 +144,55 @@ local function run_shader(key, wm, wnd, space, space_active, popup)
 	end
 end
 
+-- re-use the menu entry but apply on a 'fake' window where we unpin
+-- and expire randomly by attaching to its update timer
+local cloth = system_load("tools/flair/cloth.lua")();
+
+local function run_clothfall(wm, wnd, space, space_active, popup)
+	if (not space_active) then
+		return;
+	end
+
+	local vid = flair_supp_clone(wnd);
+	if (not valid_vid(vid)) then
+		return;
+	end
+
+	local fwin = {
+		canvas = vid,
+		border = null_surface(1,1)
+	};
+	link_image(fwin.border, fwin.canvas);
+
+	local count = gconfig_get("flair_speed");
+	local steps = 0;
+
+	cloth.start(fwin, true);
+	local oupd = fwin.verlet.update;
+	fwin.verlet.update = function(...)
+
+	for i=0,fwin.verlet.w-1,1 do
+	fwin.verlet_control.pin(fwin.verlet, i, 0, false);
+	end
+
+-- will cause the destructor to run
+		if (not valid_vid(vid)) then
+			fwin.canvas = nil;
+			return false;
+		end
+
+		return oupd(...);
+	end
+end
+
 return {
 	dissolve = function(...)
 		run_shader("dissolve", ...);
 	end,
 	splitfade = function(...)
 		run_destr_eval(falling, ...);
+	end,
+	clothfall = function(...)
+		run_clothfall(...);
 	end
 };
