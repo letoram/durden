@@ -1937,6 +1937,12 @@ local function wnd_reassign(wnd, ind, ninv)
 		newspace = wm.spaces[ind];
 	elseif (type(ind) == "table") then
 		newspace = ind;
+		for i,v in ipairs(wm.spaces) do
+			if (v == ind) then
+				ind = i;
+				break;
+			end
+		end
 	else
 		newspace = wm.spaces[ind];
 	end
