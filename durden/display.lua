@@ -771,7 +771,11 @@ function display_cycle_active(ind)
 	if (type(ind) == "boolean") then
 		switch_active_display(displays.main);
 		return;
+	elseif (type(ind) == "number") then
+		switch_active_display(ind);
+		return;
 	end
+
 
 	local nd = displays.main;
 	repeat
