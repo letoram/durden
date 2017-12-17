@@ -184,8 +184,10 @@ local function wnd_destroy(wnd)
 		end
 	end
 
--- doesn't always hit
-	if (wnd.wm.selected == wnd) then
+-- doesn't always hit, we want to forward this information to any
+-- event handler as well since it might affect next-selected heuristics
+	local was_selected = wnd.wm.selected == wnd;
+	if (was_selected) then
 		wnd.wm.selected = nil;
 -- force auto-lock off so destroy on a selected window that has raw input
 -- dosn't stick, but only if the tiler is the active display
@@ -205,7 +207,7 @@ local function wnd_destroy(wnd)
 	end
 
 -- now we can run destroy hooks
-	run_event(wnd, "destroy");
+	run_event(wnd, "destroy", was_selected);
 
 	wnd:drop_popup(true);
 
@@ -1380,6 +1382,10 @@ local function workspace_background(ws, bgsrc, generalize)
 		bgsrc = ws.wm.background_id;
 	end
 
+	if (not ws.wm) then
+		return;
+	end
+
 	local ttime = gconfig_get("transition");
 	local crossfade = false;
 	if (valid_vid(ws.background)) then
@@ -1440,6 +1446,10 @@ local function workspace_listener(ws, key, cbfun)
 end
 
 create_workspace = function(wm, anim)
+	if (not wm) then
+		return;
+	end
+
 	local res = {
 		activate = workspace_activate,
 		deactivate = workspace_deactivate,
@@ -2436,13 +2446,19 @@ local function wnd_mousebutton(ctx, ind, pressed, x, y)
 	local wnd = ctx.tag;
 	if (wnd.wm.selected ~= wnd) then
 		return;
+
+-- collapse the entire tree on canvas- click
 	elseif (#wnd.popups > 0) then
 		wnd:drop_popup(true);
 		return;
 	end
 
-	output_mouse_devent({
-		active = pressed, devid = 0, subid = ind}, wnd);
+	local m1, m2 = dispatch_meta();
+
+	if (not m1 and not m2) then
+		output_mouse_devent({
+			active = pressed, devid = 0, subid = ind}, wnd);
+	end
 end
 
 local function wnd_mouseclick(ctx, vid)
@@ -2555,7 +2571,8 @@ local function wnd_mousemotion(ctx, x, y, rx, ry)
 		samples = {mv[3], mv[4]}
 	};
 
-	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+	if (wnd.in_drag_move or wnd.in_drag_rz or
+		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
 	end
 
@@ -2998,6 +3015,14 @@ local canvas_mh = {
 			return;
 		end
 
+		if (wnd.hide_titlebar and not wnd.in_drag_move) then
+			local m1, _ = dispatch_meta();
+			if (m1) then
+				wnd.in_drag_move = true;
+				mouse_switch_cursor("drag");
+			end
+		end
+
 		if (wnd.in_drag_rz) then
 			if (wnd.in_drag_rz_mask) then
 				ctx.mask = wnd.in_drag_rz_mask;
@@ -3009,6 +3034,7 @@ local canvas_mh = {
 			end
 		elseif (wnd.in_drag_move) then
 			wnd:move(dx, dy, false, false, true);
+
 		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			local x, y = mouse_xy();
 			wnd_mousemotion(ctx, x, y);
@@ -3018,6 +3044,7 @@ local canvas_mh = {
 	drop = function(ctx, vid)
 		ctx.tag.in_drag_rz = false;
 		ctx.tag.in_drag_move = false;
+		mouse_switch_cursor();
 	end,
 
 	press = function(ctx, vid, ...)
@@ -3455,6 +3482,67 @@ local function wnd_inputtable(wnd, iotbl, multicast)
 	end
 end
 
+local function wnd_add_overlay(wnd, key, vid, opts)
+	if (not valid_vid(vid)) then
+		return;
+	end
+	opts = opts and opts or {};
+
+-- only one overlay per key
+	if (wnd.overlays[key]) then
+		delete_image(vid);
+		return;
+	end
+
+-- link, shared order level between all overlays, force clipping
+	link_image(vid, wnd.canvas);
+	image_inherit_order(vid, true);
+	order_image(vid, 1);
+	image_clip_on(vid, CLIP_SHALLOW);
+
+	if (opts.stretch) then
+		local props = image_surface_resolve(wnd.canvas);
+		resize_image(vid, props.width, props.height);
+-- canvas resize calls will also have to be in on it
+	end
+
+-- opaque or blended
+	if (opts.blend) then
+		blend_image(vid, opts.blend, gconfig_get("wnd_animation"));
+	else
+		show_image(vid);
+	end
+
+-- three mouse input responses, custom handler, block out region,
+-- let default canvas behavior apply
+	if (opts.mousehandler) then
+		mouse_addlistener(vid, opts.mousehandler);
+	elseif (not opts.block_mouse) then
+		image_mask_set(vid, MASK_UNPICKABLE);
+	end
+
+	local overent = {
+		vid = vid,
+		stretch = opts.stretch,
+		mh = opts.mousehandler
+	};
+
+	wnd.overlays[key] = overent;
+end
+
+local function wnd_drop_overlay(wnd, key)
+	if (not wnd.overlays[key]) then
+		return;
+	end
+
+	if (wnd.overlays[key].mh) then
+		mouse_droplistener(wnd.overlays[key].mh);
+	end
+	blend_image(wnd.overlays[key].vid, 0.0, gconfig_get("wnd_animation"));
+	expire_image(wnd.overlays[key].vid, gconfig_get("wnd_animation"));
+	wnd.overlays[key] = nil;
+end
+
 -- build an orphaned window that isn't connected to a real workspace yet,
 -- but with all the expected members setup-up and in place. This means that
 -- some operations will be no-ops and the window will not appear in normal
@@ -3490,6 +3578,10 @@ local wnd_setup = function(wm, source, opts)
 
 -- hidden swap-set
 		alternate = {},
+
+-- overlay surfaces drawn on top of the canvas, linked to its position,
+-- lifecycle, clipped to its size and likely blended etc.
+		overlays = {},
 
 -- specific event / keysym bindings
 		labels = {},
@@ -3575,6 +3667,8 @@ local wnd_setup = function(wm, source, opts)
 		swap = wnd_swap,
 		reparent = wnd_tochild,
 		drag_resize = wnd_drag_resize,
+		drop_overlay = wnd_drop_overlay,
+		add_overlay = wnd_add_overlay,
 
 -- lifecycle
 		set_suspend = wnd_setsuspend,
