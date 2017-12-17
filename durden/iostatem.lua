@@ -102,13 +102,19 @@ function iostatem_input(iotbl)
 
 -- currently mouse state management is handled elsewhere (durden+tiler.lua)
 -- but we simulate a fake 'joystick' device here to allow meta + mouse to be
--- bound while retaining normal mouse behavior
+-- bound while retaining normal mouse behavior, but if it is not bound,
+-- forward as normal.
 	if (iotbl.mouse) then
 		local m1, m2 = dispatch_meta();
+
+-- need to check if it has been bound, which means resolving the full table
 		if (iotbl.digital and (m1 or m2)) then
-			iotbl.mouse = nil;
+			iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
+			local _, _, _, bound = dispatch_translate(iotbl, true);
+			if (bound) then
+				iotbl.mouse = nil;
+			end
 		else
-			return;
 		end
 	end
 

@@ -1,7 +1,19 @@
+--
 -- most of these functions come mapped via the waybridge- handler as subseg
 -- requests, though the same setup and mapping need to work via reset-adopt
 -- as well, hence the separation.
-
+--
+-- the big work item here is resize related, most of durden is written as
+-- forced independent resizes, while wayland only really functions with
+-- deferred, client driven ones.
+--
+-- thus, in_drag_rz, maximimize needs reworking, we need to do some autocrop,
+-- pan for tiling and resize/constraints that account for the geometry of the
+-- surface.
+--
+-- then we really need a 'crop-shop' tool that allows slicing out the decor,
+-- and delegating the titlebar to be an impostor on the normal titlebar.
+--
 local toplevel_lut = {};
 local wl_resize;
 
@@ -71,42 +83,75 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 	end
 end
 
+-- as per usual, the spec barely says anything about how this feature is
+-- supposed to behave function, only 'stacked above' and that the parent
+-- surface 'must be mapped' as long as this one is, nothing about input/
+-- focus/what happens on switching? 1:many, ...
+--
+-- this is also triggered on_destroy for the toplevel window so the id
+-- always gets relinked before
 local function set_parent(wnd, id)
--- unset any parent association, unsure what happens if multiple toplevels
--- actually reparent to the same, do we need to track all of them?
 	if (id == 0) then
-		if (wnd.indirect_parent and wnd.indirect_parent.anchor) then
-			wnd.indirect_parent.delete_protect = wnd.indirect_parent.old_protect;
-			wnd.indirect_parent.old_protect = nil;
+		local ip = wnd.indirect_parent;
+		if (ip and ip.anchor) then
+			assert(ip.indirect_child == wnd);
+			ip:drop_overlay("wayland");
+			ip.delete_protect = ip.old_protect;
+			local pvid = image_parent(ip.anchor);
+			link_image(wnd.anchor, pvid);
+			ip.old_protect = nil;
+			ip.select = ip.old_select;
+			ip.indirect_child = nil;
 		end
 		wnd.indirect_parent = nil;
--- or create a new one
-	else
--- first take preexisting
-		if (wnd.indirect_parent) then
-			set_parent(wnd, 0);
-		end
-
-		local parent = wayland_wndcookie(id);
-		if (not parent) then
-			wayland_trace("toplevel tried to reparent to unknown window");
-			return;
-		end
-
--- switch selection (brings to front)
-		if (active_display().selected == parent) then
-			wnd:select();
-		end
-
--- delete protect, input block, select block (delete will unset)
-		parent.old_protect = parent.delete_protect;
-
--- if in tile mode, reassign the window so that it is marked as a
--- child of the parent window in vertical order (and when floating in
--- tile is allowed, float it on top of the parent), ideally, we'd also
--- tie the coordinate spaces together so any relayouting  is masked/
--- inherited correctly.
+		return;
 	end
+
+	local parent = wayland_wndcookie(id);
+	if (parent == wnd) then
+		wayland_trace("set_parent, id resolved to self!");
+		return;
+	end
+
+	if (parent.indirect_child and parent.indirect_child ~= wnd) then
+		wayland_trace("multiple toplevels fighting for the same parent");
+		return;
+	end
+
+	if (not parent) then
+		wayland_trace("toplevel tried to reparent to unknown window");
+		return;
+	end
+
+-- switch selection (brings to front), dim the parent and make it invincible
+-- delete protect, input block, select block (delete will unset)
+	if (active_display().selected == parent) then
+		wnd:select();
+	end
+	parent:add_overlay("wayland", color_surface(1, 1, 0, 0, 0), {
+		stretch = true,
+		blend = 0.5,
+		block_mouse = true
+	});
+
+	parent.old_protect = parent.delete_protect;
+	parent.old_select = parent.select;
+	parent.select = function(...)
+		wnd:select(...)
+	end
+
+-- track the reference so we know the state of the window on release
+	parent.indirect_child = wnd;
+	wnd.indirect_parent = parent;
+
+-- in float mode, we want to do all kinds of 'special' things, i.e. block
+-- input on parent, set an overlay that dims the window, anchor and center
+-- window coordinate space. These shenanigans won't really work for mode-
+-- switch while active though.
+	link_image(wnd.anchor, parent.canvas, ANCHOR_C);
+	nudge_image(wnd.anchor, -0.5 * wnd.width, -0.5 * wnd.height);
+
+-- for tile, we add the window as an 'alternate' and lock to this
 end
 
 function wayland_toplevel_handler(wnd, source, status)
@@ -157,8 +202,11 @@ function wayland_toplevel_handler(wnd, source, status)
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
 			wnd:rebuild_border();
-			wnd.titlebar:hide();
--- wayland hack: we need some backup for windows that don't like drag-move,
+
+-- the hidekey is used to force- block any attempt at restoring the
+-- titlebar, working around an edge- case in workspace layout mode
+-- transitions
+			wnd.titlebar:hide("wayland");
 			wnd.meta_dragmove = true;
 		end
 		wnd:resize_effective(status.width, status.height, true, true);
@@ -209,9 +257,13 @@ wl_resize = function(wnd, neww, newh)
 	end
 end
 
-wl_destroy = function(wnd)
+wl_destroy = function(wnd, was_selected)
 	if (wnd.indirect_parent and wnd.indirect_parent.anchor) then
+		local ip = wnd.indirect_parent;
 		set_parent(wnd, 0);
+		if (was_selected) then
+			ip:select();
+		end
 	end
 	if (wnd.bridge and wnd.bridge.wl_children) then
 		wnd.bridge.wl_children[wnd.external] = nil;

@@ -577,12 +577,16 @@ local function bar_destroy(bar)
 	end
 end
 
-local function bar_hide(bar)
+-- key is used as a hack to forcibly block other bar hide management
+local function bar_hide(bar, key)
+	bar.hidekey = key;
 	hide_image(bar.anchor);
 end
 
-local function bar_show(bar)
-	show_image(bar.anchor);
+local function bar_show(bar, key)
+	if (not bar.hidekey or (key and bar.hidekey == key)) then
+		show_image(bar.anchor);
+	end
 end
 
 local function bar_move(bar, newx, newy, time, interp)

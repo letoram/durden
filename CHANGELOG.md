@@ -69,6 +69,9 @@ Minor:
  * statusbar number prefix on known workspaces and statusbar mode
    button can now be toggled on/off
 
+ * add support for window canvas overlays, intended for wayland-
+   toplevel windows and senseye translators
+
 # 0.3.0
   * Now requires arcan >= 0.5.3.
 
