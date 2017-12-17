@@ -33,6 +33,16 @@ local function cloth_setup(wnd, destroy)
 		);
 	end
 
+-- if the titlebar is hidden, we instead pin to the cursor position on canvas
+	local cx, cy = mouse_xy();
+	local props = image_surface_resolve(wnd.canvas);
+	local lx = math.clamp(cx - props.x, 0, props.width);
+	local ly = math.clamp(cy - props.y, 0, props.height);
+	local lx = lx / props.width;
+	local ly = ly / props.height;
+	local tx = math.floor(lx * t_s);
+	local ty = math.floor(ly * t_s);
+
 	image_tesselation(wnd.canvas, t_s, t_s,
 		function(ctx, n_v, v_sz)
 				local pass = gconfig_get("cloth_precision");
@@ -45,13 +55,43 @@ local function cloth_setup(wnd, destroy)
 				gconfig_get("cloth_gravity"),
 				function(x, y)
 					local px, py = ctx:vertices(y * t_s + x);
-					return px, py, (destroy == nil and y == 0), mass, damp_s, damp_t;
+
+-- if the titlebar is hidden, we take the other tactic of pinning to the
+-- mouse cursor position on canvas (assuming that actually initiated it)
+					local pin = (destroy == nil and y == 0 and
+						not destroy and not wnd.hide_titlebar);
+
+					return px, py, pin, mass, damp_s, damp_t;
 			end
 			);
 			wnd.verlet.acc_x = 0;
 			wnd.verlet.acc_y = 0;
 		end
 	);
+
+-- four-point pin at cursor position
+	if (wnd.hide_titlebar) then
+		verlet_build.pin(wnd.verlet, tx, ty, true);
+		if (tx < t_s-1) then
+			verlet_build.pin(wnd.verlet, tx+1, ty, true);
+			if (ty < t_s-1) then
+				verlet_build.pin(wnd.verlet, tx+1, ty+1, true);
+				verlet_build.pin(wnd.verlet, tx, ty+1, true);
+			else
+				verlet_build.pin(wnd.verlet, tx+1, ty-1, true);
+				verlet_build.pin(wnd.verlet, tx, ty-1, true);
+			end
+		else
+			verlet_build.pin(wnd.verlet, tx-1, ty, true);
+			if (ty < t_s-1) then
+				verlet_build.pin(wnd.verlet, tx-1, ty+1, true);
+				verlet_build.pin(wnd.verlet, tx, ty+1, true);
+			else
+				verlet_build.pin(wnd.verlet, tx-1, ty-1, true);
+				verlet_build.pin(wnd.verlet, tx, ty-1, true);
+			end
+		end
+	end
 
 	synch_verlet();
 	wnd.verlet.update = function()

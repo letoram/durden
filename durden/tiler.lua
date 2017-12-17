@@ -3033,7 +3033,14 @@ local canvas_mh = {
 				wnd_step_drag(wnd, ctx, vid, dx, dy);
 			end
 		elseif (wnd.in_drag_move) then
-			wnd:move(dx, dy, false, false, true);
+			if (wnd.space.drag_solver) then
+				wnd.space.drag_solver(wnd);
+			else
+				wnd:move(dx, dy, false, false, true);
+			end
+			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
+				v(wnd.space.wm, wnd, dx, dy);
+			end
 
 		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			local x, y = mouse_xy();
@@ -3042,8 +3049,16 @@ local canvas_mh = {
 	end,
 
 	drop = function(ctx, vid)
-		ctx.tag.in_drag_rz = false;
-		ctx.tag.in_drag_move = false;
+		local tag = ctx.tag;
+		if (tag.in_drag_move) then
+			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
+				v(tag.space.wm, tag, dx, dy, true);
+			end
+			tag:recovertag();
+		end
+
+		tag.in_drag_rz = false;
+		tag.in_drag_move = false;
 		mouse_switch_cursor();
 	end,
 
@@ -3380,6 +3395,7 @@ local function wnd_recovertag(wnd, restore)
 
 	if (restore) then
 		local str = image_tracetag(wnd.external);
+		print("restore from", str);
 		if (string.sub(str, 1, 6) ~= "durden") then
 			return;
 		end
