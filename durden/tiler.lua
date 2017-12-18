@@ -2585,7 +2585,7 @@ local function wnd_mousemotion(ctx, x, y, rx, ry)
 			ep[1].samples[2] = ep[1].samples[2] + mv[2];
 			ep[2].samples[1] = mv[3];
 			ep[2].samples[2] = ep[2].samples[2] + mv[4];
-		else
+		elseif EVENT_SYNCH[wnd.external] then
 			EVENT_SYNCH[wnd.external].pending = {iotbl, iotbl2};
 		end
 	else
@@ -3041,6 +3041,7 @@ local canvas_mh = {
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
 				v(wnd.space.wm, wnd, dx, dy);
 			end
+			return true;
 
 		elseif (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			local x, y = mouse_xy();

@@ -377,13 +377,19 @@ local function modelwnd(name)
 	end);
 
 -- modify mouse handlers and re-register
+	local old_dragh = wnd.handlers.mouse.canvas.drag;
 	wnd.handlers.mouse.canvas.drag = function(ctx, vid, dx, dy)
+		if (old_dragh(ctx, vid, dx, dy)) then
+			return;
+		end
+
 		if (wnd.model_move) then
 			local props = image_surface_properties(res.vid);
 			move3d_model(res.vid, props.x + dx * -0.01, props.y, props.z + dy * -0.01);
 		else
 			rotate3d_model(res.vid, 0, dy, dx, 0, ROTATE_RELATIVE);
 		end
+		return true;
 	end
 	local lst = {};
 	for k,v in pairs(wnd.handlers.mouse.canvas) do
