@@ -1,9 +1,8 @@
 --
 -- define and use on-over, "on-drag-over", "on-drag-out", "on-drop"
 -- desktop subregions
--- currently relies on a static config of
+-- missing: menu paths for binding, modifying, resetting and saving
 --
-
 local cactions = system_load("tools/advfloat/cactions_cfg.lua")();
 
 -- install omniscient mouse-action handlers, currently for on-over triggers
@@ -58,7 +57,6 @@ end
 display_add_listener(
 function(event, name, tiler, id)
 	if (event == "added" and tiler) then
-		tiler.attach_hook = wnd_attach;
 		table.insert(tiler.on_tiler_resize, wm_resize);
 		install_maction(tiler);
 	end

@@ -3368,6 +3368,11 @@ local function wnd_ws_attach(res, from_hook)
 			w = res.attach_temp[3] * wm.effective_width;
 			h = res.attach_temp[4] * wm.effective_height;
 			res.attach_temp = nil;
+		else
+
+-- hint the clamp against the display
+			w = res.wm.width - res.x;
+			h = res.wm.height - res.y;
 		end
 
 		res:move(x, y, true, true, true);
@@ -3396,7 +3401,6 @@ local function wnd_recovertag(wnd, restore)
 
 	if (restore) then
 		local str = image_tracetag(wnd.external);
-		print("restore from", str);
 		if (string.sub(str, 1, 6) ~= "durden") then
 			return;
 		end
