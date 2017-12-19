@@ -72,8 +72,10 @@ function spawn_terminal(cmd, group)
 			wnd.scalemode = "stretch";
 			extevh_default(source, {
 				kind = "registered", segkind = "terminal", title = "", guid = 1});
+
 			local wnd_w = wnd.max_w - wnd.pad_left - wnd.pad_right;
 			local wnd_h = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
+
 			target_displayhint(source,
 				wnd_w, wnd_h, wnd.dispmask, wnd.wm.disptbl);
 			durden_devicehint(source);

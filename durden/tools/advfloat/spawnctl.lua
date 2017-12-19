@@ -1,6 +1,6 @@
 gconfig_register("advfloat_spawn", "auto");
 gconfig_register("advfloat_actionreg", false);
-local mode = gconfig_get("advfloat_spawn");
+
 local pending, pending_vid;
 
 local function setup_cursor_pick(wm, wnd)
@@ -37,6 +37,7 @@ local function wnd_attach(wm, wnd)
 		end
 	end
 
+	local mode = gconfig_get("advfloat_spawn");
 	if (mode == "click") then
 		setup_cursor_pick(wm, wnd);
 		iostatem_save();
@@ -88,8 +89,6 @@ display_add_listener(
 	function(event, name, tiler, id)
 		if (event == "added" and tiler) then
 			tiler.attach_hook = wnd_attach;
-			table.insert(tiler.on_tiler_resize, wm_resize);
-			install_maction(tiler);
 		end
 	end
 );
