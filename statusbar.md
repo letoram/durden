@@ -14,7 +14,16 @@ workspace-control (left), system message (middle-fill), user-control (right).
 
 The workspace control is updated automatically as you switch workspaces,
 as workspaces gets tagged or if a window on a workspace alerts for attention.
-Each display gets its own statusbar.
+Each display gets its own statusbar, though the behavior settings apply globally.
+
+# Tuning
+Statusbar specific settings can be found at <i>global/config/statusbar</i> and
+covers some visual properties (position, sizing / padding), presence of dynamic
+buttons and if it should only be active when the HUD is, or not.
+
+Other visual settings are part of the shader subsystem and can be found in
+<i>global/config/shaders/UI</i>, while some text positioning options that apply
+to both titlebar and statusbar are at <i>global/config/bars</i>.
 
 # Layout button
 The first button indicates the current layouting mode for the active workspace,
@@ -22,7 +31,7 @@ and if you click it while not in float, the workspace mode is switched to float.
 
 If you click it while in float mode, it pops up the main menu, and if you right
 click it, it will pop up the target window if there is a selected window
-around. This is a safety feature to give you a recovery path should the
+around. This is a default safety feature to give you a recovery path should the
 keyboard break.
 
 # System Message Area

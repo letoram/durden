@@ -9,9 +9,10 @@ layout: default
 # Visual Enhancements
 Most parts of the user interface can be tuned to look more or less bland,
 and almost all tuning can be accessed from [the menu](menu) from either the
-<i>global/settings/visual</i> path or the <i>target/video</i> path
-with the exception of some minor details like the palette used to colorize
-widget text (see <i>durden/gconf.lua</i>).
+<i>global/settings/visual</i> path or the <i>target/video</i> path. There
+are some exceptions to this rule when it comes to some older elements,
+look in <i>durden/gconf.lua</i> for tuning those, or (past first setup),
+<i>arcan_db show_appl durden</i> to list and modify.
 
 # Workspace Background <a name="workspace"/>
 Workspace background image is set with the

@@ -133,23 +133,27 @@ with the number keys for immediately activating a specific workspace.
 # Flair <a name="flair"/>
 
 The flair tool adds additional visual animations and effects, similar to that
-of the 'compiz' window manager. Flair effects are divided into four distinct
-categories: hide, destroy, create, drag, all with slight different
-characteristics.
+of the 'compiz' window manager. Flair effects are currently subdivided into the
+follow categories: hide, destroy, create, minimize, drag, background and display,
+all with slightly different characteristics.
 
 To enable, you should configure which effects you want for each slot by going
 to the normal <i>global/settings/tools/flair</i>. Some advanced effects also
 allow you to tune further, e.g. cloth physics or drag opacity.
 
-The feature is then toggled on/off by going to <i>global/tools/flair_toggle</i>.
-Note that some effects are depedent on which layouting mode the current
-workspace is set to use, with <i>float</i> being the best supported one.
+The hide/destroy/create/minimize and drag effect targets are window- targeted
+actions. These can be set on or off via <i>global/tools/flair/window_effects=yes/no</i>.
 
-The tools  is easily extendable by modifying the scripts in the tools/flair
+The background and display effects are activated on a 'per effect' basis via the
+<i>global/tools/flair/display</i> and <i>global/tools/flair/background</i> effect,
+though many of their behaviors require the display to be in a certain state or for
+a background image to be set.
+
+The tool is easily extendable by modifying the scripts in the tools/flair
 subfolder.
 
 # Future Changes
 - On-screen Keyboard
-- Touchpad Configuratio- VR support for model viewern
+- Touchpad Configuration
 - VR support for model viewer
 - Notification Agents

@@ -56,6 +56,41 @@ life-cycle linked to the currently selected window. <i>Split</i> means
 that the selected window will be shrunk by half in one axis so that the
 old window and new window together share space.
 
+# Relayouter
+Another advfloat enabled script is a relayouter that repositions and possibly
+resizes windows to fit some dynamic layout heuristic each time the command
+is invoked. The available heuristics can be found (and triggered) via
+<i>global/workspace/float/layouter</i>.
+
+# Action Regions
+Cursor action regions are another advfloat enabled script, that currently
+requires some manual scripting to be useful. The basic idea is that they
+define hidden squares, that when activated via some mouse action e.g.
+mouse over, mouse out, mouse drag, etc. will trigger some other menu path.
+
+Look inside <i>tools/advfloat/cregions_def.lua</i> for the script file to
+edit in order to define action regions. The regions can be enabled or disabled
+globally via the <i>global/config/workspaces/float/action_region</i> path.
+
+# Grid-Fit
+This advfloat- tool is a riff on the grid- plugin for Compiz. It works by
+splitting the screen into 9 dominant regions (nw, n, ne, w, c, e, sw, s, se).
+When activated, the selected window will be positioned and sized inside the
+corresponding region. These actions are best bound to the numpad, and the
+relevant menu paths can be found in <i>global/workspace/gridlign/...</i>.
+
+If the action is repeated in quick succession (timeout ~10 seconds) the
+window will be further repositioned within the constraints of this cell
+recursively. By activating the special 'back' path, one or several such
+recurses can be reverted.
+
+# Hide Target
+This advfloat- tool can be configured via
+<i>global/settings/workspaces/float/hide_target</i> and determines the behavior
+of the <i>target/window/hide</i> action. By default, it does nothing, but can
+be set to hide or 'minimize' the window to a statusbar button region, or as
+some other UI element.
+
 # Future Changes
 The float mode is treated with a lesser priority than the rest, but as the
 durden development settles and drifts towards maintenance and upkeep, the
@@ -63,8 +98,6 @@ following features are planned to be added:
 
 - Desktop Icons
 - Configurable Titlebar Gestures
-- Configurable Minimize Action (to icon, statusbar, ...)
-- Definable Mouse-action regions (drag to edge to maximize etc.)
 - Input forward to background source when no window is selected
 - Alternative menu access UI (popup- style rather than HUD style)
 - More efficient border-drawing
