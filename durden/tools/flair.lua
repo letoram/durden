@@ -1,7 +1,14 @@
 --
 -- collection of hooks and effects
--- currently quite barebone, but intended to grow over time
--- to surpass what we would get from something like compiz
+--
+-- Currently quite barebone, but intended to grow over time to surpass
+-- what we would get from something like compiz - complemented with some
+-- other tools, e.g. overview.lua (for 3D switcher)
+--
+-- Missing:
+-- 'focus layer'
+-- 'lockscreen effect'
+-- 'shadow effect'
 --
 
 -- reused with many effects
@@ -75,32 +82,14 @@ flair_supp_segment = function(wnd, px_s, px_t, callback)
 	end
 end
 
--- sketch for dynamic shadows,
---
--- for both versions we build a rendertarget with the shadow casters,
--- 1. linearize active space
--- 2. for each window, use the wnd.width/wnd.height if shadowcaster
--- 3. draw into dst as opaque
--- 4. hook to update on each animated frame with window animations
---
--- one options is:
--- raytrace / render into 1D texture based on a point light (cursor)
---
--- other option is:
---  gaussian blur step, draw as overlay and discard opaque
---
+flair_supp_psys = system_load("tools/flair/psys.lua")();
 
--- we keep the shaders and support script separate from the other
--- subsystems so that the effects are easier to develop, test and
--- share outside a full durden setup
---
-
--- the cloth effect has a rather verbose setup and use, so split
--- it up into two stages, the simulation and the config/setup
 local destroy_effects = system_load("tools/flair/destroy.lua", false)();
 local create_effects = system_load("tools/flair/create.lua", false)();
 local drag_effects = system_load("tools/flair/drag.lua", false)();
 local hide_effects = system_load("tools/flair/hide.lua", false)();
+local display_effects = system_load("tools/flair/display.lua", false)();
+local background_effects = system_load("tools/flair/background.lua", false)();
 
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
@@ -204,6 +193,43 @@ local hide_set = {"disabled"};
 if (hide_effects) then
 	for k,v in pairs(hide_effects) do
 		table.insert(hide_set, k);
+	end
+end
+
+-- the display effects follow the state of the active display, i.e.
+-- rebuilds when workspace or workspace mode is switched, disabled when
+-- the display is lost etc.
+local display_effect = {
+{
+	name = "reset",
+	label = "Reset",
+	kind = "action",
+	description = "Remove all display effects",
+	handler = function()
+		for wm in all_tilers_iter() do
+			if (wm.display_effects) then
+				for _,v in wm.display_effects do
+					if (v.destroy) then v:destroy();
+					end
+				end
+			end
+		end
+	end
+}
+};
+
+if (display_effects and type(display_effects) == "table") then
+	for k,v in ipairs(display_effects) do
+		table.insert(display_effect,	{
+	name = v.name,
+	label = v.label,
+	description = v.description,
+	handler = function()
+		print("create you");
+		v.create(active_display());
+	end,
+	kind = "action"
+});
 	end
 end
 
@@ -321,30 +347,51 @@ local function display_added(event, name, tiler, id)
 	end
 end
 
-display_add_listener(display_added);
-
-local function flair_toggle()
-	if (in_flair) then
-		in_flair = false;
-		for wm in all_tilers_iter() do
-			set_tiler(wm);
-		end
-	else
-		in_flair = true;
+local flair_menu = {
+{
+	name = "window",
+	label = "Window Effects",
+	kind = "value",
+	set = {LBL_YES, LBL_NO},
+	description = "Enable or Disable Window- Effects",
+	handler = function(ctx, val)
+		in_flair = val == LBL_YES;
 		for wm in all_tilers_iter() do
 			set_tiler(wm);
 		end
 	end
-end
+},
+{
+	name = "display",
+	label = "Display Effect",
+	kind = "action",
+	description = "Add an effect to the active display",
+	handler = display_effect,
+	submenu = true
+},
+{
+	name = "background",
+	laabel = "Background Effect",
+	kind = "action",
+	submenu = true,
+	description = "Set an effect that applies to the active workspace background",
+	handler = background_effects,
+	eval = function() return false; end
+}
+};
+
+display_add_listener(display_added);
 
 global_menu_register("tools",
 {
 	name = "flair",
-	label = "Flair (toggle)",
+	label = "Flair",
+	description = "Advanced window and desktop effects",
 	kind = "action",
-	description = "Toggle advanced window effects on or off",
-	handler = flair_toggle
-});
+	submenu = true,
+	handler = flair_menu
+}
+);
 
 global_menu_register("settings/tools",
 {

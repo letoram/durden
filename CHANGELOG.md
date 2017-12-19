@@ -14,6 +14,7 @@
     hide-to-statusbar
     cursor-action-region (see tools/advfloat/cregion.lua for definition)
     automatic relayouter
+    grid-cell align
 
   * tools/overview - added a HUD- like workspace switcher
 
