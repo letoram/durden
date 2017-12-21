@@ -476,14 +476,20 @@ local function bar_group(bar, group, keep_center)
 -- re-add from group and from catch-all 'default', don't use
 -- bar:add_button as that would introduce recursion
 	for i,v in ipairs(bar.groups["_default"]) do
-		btn_insert(bar, v.align, v.bgshname, v.lblshname,
-			v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+		if (keep_center and v.align == "center") then
+		else
+			btn_insert(bar, v.align, v.bgshname, v.lblshname,
+				v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+		end
 	end
 
 	if (bar.groups[group]) then
 		for i,v in ipairs(bar.groups[group]) do
-			btn_insert(bar, v.align, v.bgshname, v.lblshname,
-				v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+		if (keep_center and v.align == "center") then
+			else
+					btn_insert(bar, v.align, v.bgshname, v.lblshname,
+					v.lbl, v.pad, v.fontfn, v.minw, v.minh, v.mouseh, v.opts);
+			end
 		end
 	end
 
