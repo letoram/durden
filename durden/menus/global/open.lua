@@ -61,7 +61,8 @@ function spawn_terminal(cmd, group)
 		lstr = lstr .. ":" .. cmd;
 	end
 
-	launch_avfeed(lstr, "terminal",
+	local guid;
+	_,_,guid = launch_avfeed(lstr, "terminal",
 	function(source, status)
 		if (status.kind == "preroll") then
 			local wnd = durden_launch(source, "", "terminal");
@@ -70,9 +71,10 @@ function spawn_terminal(cmd, group)
 				return;
 			end
 			wnd.scalemode = "stretch";
-			extevh_default(source, {
-				kind = "registered", segkind = "terminal", title = "", guid = 1});
 
+-- fake registration so we use the same path as a normal external connection
+			extevh_default(source, {
+				kind = "registered", segkind = "terminal", title = "", guid = guid});
 			local wnd_w = wnd.max_w - wnd.pad_left - wnd.pad_right;
 			local wnd_h = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
 
@@ -355,7 +357,7 @@ function(ctx, val)
 		durden_devicehint(vid);
 		durden_launch(vid, "", "remoting");
 		extevh_default(vid, {
-			kind = "registered", segkind = "remoting", title = "", guid = 2});
+			kind = "registered", segkind = "remoting", title = ""});
 	else
 		active_display():message(
 			"remoting frameserver failed, broken or out-of-resources");

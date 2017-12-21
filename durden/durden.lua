@@ -135,6 +135,7 @@ function durden(argv)
 		for wnd in all_windows(nil, true) do
 			if (wnd.config_dirty) then
 				wnd.config_dirty = nil;
+				print("store", wnd.config_tgt, image_tracetag(wnd.external));
 				store_key("durden_temp_" .. wnd.config_tgt, image_tracetag(wnd.external));
 			end
 		end
