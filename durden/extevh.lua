@@ -247,11 +247,17 @@ function extevh_apply_atype(wnd, atype, source, stat)
 		end
 	end
 
--- can either be table [tgt, cfg] or [guid]
-	local recover;
-	if (not wnd.config_tgt and stat and stat.guid) then
+-- can either be table [tgt, cfg] or [guid], ignore the 0- value
+-- as that is an obvious failure
+	if (not wnd.config_tgt and stat and stat.guid
+		and stat.guid ~= "AAAAAAAAAAAAAAAAAAAAAA==") then
 		wnd.config_tgt = string.gsub(stat.guid, "=", "_");
-		recover = get_key("durden_temp_" .. stat.guid);
+		local key = "durden_temp_" .. wnd.config_tgt;
+		recover = get_key(key);
+		if (recover) then
+			store_key(key, "");
+		end
+		print("recover to", recover, key);
 	end
 
 	wnd.bindings = atbl.bindings;
@@ -286,7 +292,8 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	end
 
 	if (recover) then
-		image_tracetag(wnd.external, val);
+		print("recover from", recover);
+		image_tracetag(wnd.external, recover);
 		wnd:recovertag(true);
 	end
 end

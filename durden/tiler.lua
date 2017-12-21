@@ -1378,12 +1378,13 @@ local function workspace_save(ws, shallow)
 end
 
 local function workspace_background(ws, bgsrc, generalize)
-	if (bgsrc == ws.wm.background_name and valid_vid(ws.wm.background_id)) then
-		bgsrc = ws.wm.background_id;
+	local wm = ws.wm;
+	if (not wm) then
+		return;
 	end
 
-	if (not ws.wm) then
-		return;
+	if (bgsrc == wm.background_name and valid_vid(wm.background_id)) then
+		bgsrc = wm.background_id;
 	end
 
 	local ttime = gconfig_get("transition");
@@ -1399,13 +1400,17 @@ local function workspace_background(ws, bgsrc, generalize)
 
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
-			ws.background = null_surface(ws.wm.width, ws.wm.height);
+			ws.background = null_surface(wm.width, wm.height);
 			shader_setup(ws.background, "simple", "noalpha");
 		end
-		resize_image(ws.background, ws.wm.width, ws.wm.height);
+		if (not valid_vid(ws.anchor)) then
+			print("new on broken ws - investigate: ", debug.traceback());
+			return;
+		end
+		resize_image(ws.background, wm.width, wm.height);
 		link_image(ws.background, ws.anchor);
-		local sb_sz = sbar_geth(ws.wm);
-		ws.background_y = -(image_surface_resolve(ws.wm.anchor).y);
+		local sb_sz = sbar_geth(wm);
+		ws.background_y = -(image_surface_resolve(wm.anchor).y);
 		move_image(ws.background, 0, ws.background_y);
 		if (crossfade) then
 			blend_image(ws.background, 0.0, ttime);
@@ -1425,8 +1430,8 @@ local function workspace_background(ws, bgsrc, generalize)
 			new_vid(src);
 			delete_image(src);
 			if (generalize) then
-				ws.wm.background_name = bgsrc;
-				store_key(string.format("ws_%s_bg", ws.wm.name), bgsrc);
+				wm.background_name = bgsrc;
+				store_key(string.format("ws_%s_bg", wm.name), bgsrc);
 			end
 		else
 			delete_image(src);
@@ -3369,7 +3374,6 @@ local function wnd_ws_attach(res, from_hook)
 			h = res.attach_temp[4] * wm.effective_height;
 			res.attach_temp = nil;
 		else
-
 -- hint the clamp against the display
 			w = res.wm.width - res.x;
 			h = res.wm.height - res.y;
@@ -3390,6 +3394,25 @@ local function wnd_ws_attach(res, from_hook)
 	return res;
 end
 
+-- name assignment is a bit iffy for external windows, so track and keep
+-- on trying. optname is provided when a window wants to recover an old name,
+-- which may be relevant for path- bindings.
+--
+local wnd_names = {};
+local function get_window_name(wnd, optname)
+	if (optname and not wnd_names[optname]) then
+		wnd_names[optname] = true;
+		wnd.name = optname;
+		return;
+	end
+
+	repeat
+		wnd.name = "wnd_" .. tostring(ent_count) .. "_" .. tostring(CLOCK);
+		ent_count = ent_count + 1;
+	until wnd_names[wnd.name] == nil;
+	wnd_names[wnd.name] = true;
+end
+
 -- Use the image_tracetag option to pack a string that can be used
 -- to reassign the window to the correct position, weight, workspace,
 -- layout mode and so on. The same tag can then be saved / stored with
@@ -3405,10 +3428,12 @@ local function wnd_recovertag(wnd, restore)
 			return;
 		end
 
+		print("restore");
 		local entries = string.split(str, "\n\r");
 		local res = {};
 		for k,v in ipairs(entries) do
 			local i = string.find(v, "=");
+			print(i, v);
 			if (i and i > 1) then
 				res[string.sub(v, 1, i-1)] = string.sub(v, i+1);
 			end
@@ -3427,7 +3452,7 @@ local function wnd_recovertag(wnd, restore)
 				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
 			end
 			if (res["wnd_name"]) then
-				wnd.name = res["wnd_name"];
+				get_window_name(wnd, res["wnd_name"]);
 			end
 			if (res["wnd_geom"]) then
 				local vl = string.split(res["wnd_geom"], ":");
@@ -3437,6 +3462,7 @@ local function wnd_recovertag(wnd, restore)
 						tonumber(vl[3]), tonumber(vl[4])
 					};
 				end
+				print("attach temp set to", vl[1], vl[2], vl[3], vl[4]);
 			end
 			wnd.desired_parent = res["parent"];
 		end
@@ -3638,7 +3664,6 @@ local wnd_setup = function(wm, source, opts)
 -- properties that change visual behavior
 		border_w = gconfig_get("borderw"),
 		dispmask = 0,
-		name = "wnd_" .. tostring(ent_count) .. "_" .. tostring(CLOCK),
 
 -- though the active values are defined by the anchor and canvas, these
 -- values are used for tracking / budgets in the current layout mode
@@ -3711,6 +3736,10 @@ local wnd_setup = function(wm, source, opts)
 		drop_popup = wnd_droppopup,
 		swap_alternate = wnd_setalternate,
 	};
+
+-- this can be overridden / broken due to window restoration
+	get_window_name(res);
+
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
 
@@ -3729,7 +3758,6 @@ local wnd_setup = function(wm, source, opts)
 	link_image(res.border, res.anchor);
 
 	image_mask_set(res.anchor, MASK_UNPICKABLE);
-	ent_count = ent_count + 1;
 
 	res.titlebar = uiprim_bar(res.anchor, ANCHOR_UL,
 		res.width - 2 * bw, tbar_geth(res), "titlebar", titlebar_mh);
