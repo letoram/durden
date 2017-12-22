@@ -35,6 +35,37 @@ end
 
 load_archetypes();
 
+-- default event handlers for events that can be overridden by an atype
+local shared_dispatch = {
+	input_label = function(wnd, source, tbl)
+		if (not wnd.input_labels) then
+			wnd.input_labels = {};
+		end
+
+-- NOTE: this does not currently respect:
+-- a. "description update to language switch response"
+-- b. per- datatype translation
+		if (#wnd.input_labels > 100) then
+			return;
+		end
+
+		table.insert(wnd.input_labels,
+			{tbl.labelhint, tbl.idatatype, tbl.description});
+
+-- add the default as binding unless there's a collision
+		if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
+			local sym = SYMTABLE[tbl.initial];
+			if (tbl.modifiers > 0) then
+				sym = decode_modifiers(tbl.modifiers) .. "_" .. sym;
+			end
+
+			if (not wnd.labels[sym]) then
+				wnd.labels[sym] = tbl.labelhint;
+			end
+		end
+	end
+};
+
 -- check / manage external window creation interception
 local extevh_track = {};
 function extevh_set_intercept(path, handler)
@@ -217,7 +248,6 @@ function(wnd, source, stat)
 end
 
 function extevh_apply_atype(wnd, atype, source, stat)
-
 	local atbl = archetypes[atype];
 	if (atbl == nil or wnd.atype ~= nil) then
 		return;
@@ -251,17 +281,17 @@ function extevh_apply_atype(wnd, atype, source, stat)
 -- as that is an obvious failure
 	if (not wnd.config_tgt and stat and stat.guid
 		and stat.guid ~= "AAAAAAAAAAAAAAAAAAAAAA==") then
+		wnd.guid = stat.guid;
 		wnd.config_tgt = string.gsub(stat.guid, "=", "_");
 		local key = "durden_temp_" .. wnd.config_tgt;
 		recover = get_key(key);
 		if (recover) then
 			store_key(key, "");
 		end
-		print("recover to", recover, key);
 	end
 
 	wnd.bindings = atbl.bindings;
-	wnd.dispatch = merge_dispatch(shared_dispatch(), atbl.dispatch);
+	wnd.dispatch = merge_dispatch(shared_dispatch, atbl.dispatch);
 	wnd.labels = atbl.labels and atbl.labels or {};
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
 	wnd.atype = atype;
@@ -292,7 +322,6 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	end
 
 	if (recover) then
-		print("recover from", recover);
 		image_tracetag(wnd.external, recover);
 		wnd:recovertag(true);
 	end

@@ -102,7 +102,7 @@ res.labels["LEFT"] = "LEFT";
 res.labels["UP"] = "UP";
 res.labels["DOWN"] = "DOWN";
 res.labels["RIGHT"] = "RIGHT"
-res.labels["lshift_UP"] = "SCROLL_UP";
-res.labels["lshift_DOWN"] = "SCROLL_DOWN";
+res.labels["lshift_UP"] = "PAGE_UP";
+res.labels["lshift_DOWN"] = "PAGE_DOWN";
 
 return res;

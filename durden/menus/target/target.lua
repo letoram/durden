@@ -1,24 +1,3 @@
-local sdisp = {
-	input_label = function(wnd, source, tbl)
-		if (not wnd.input_labels) then wnd.input_labels = {}; end
-
--- MISSING:
--- should handle description switching, the different input types,
--- mapping default bindings+modifiers
-
-		if (#wnd.input_labels < 100) then
-			table.insert(wnd.input_labels, {tbl.labelhint, tbl.idatatype, tbl.description});
-		end
-	end
-};
-
--- default event handlers that will be added to a new registered
--- window, used to track things like wanted key=vales (coreopts)
--- and input labels
-function shared_dispatch()
-	return sdisp;
-end
-
 local shared_actions = {
 	{
 		name = "input",

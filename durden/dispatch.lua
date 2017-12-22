@@ -347,9 +347,10 @@ function dispatch_translate(iotbl, nodispatch)
 		sel:key_input(outsym, iotbl);
 		ok = true;
 	else
--- for label bindings, we go with the non-internal view of modifiers
-		if (sel.labels) then
-			iotbl.label = sel.labels[outsym] and sel.labels[outsym] or iotbl.label;
+
+-- for label bindings, we go with the prefixed view of modifiers
+		if (sel.labels and sel.labels[outsym]) then
+			iotbl.label = sel.labels[outsym];
 		end
 	end
 
