@@ -1,5 +1,5 @@
 -- apply the hide- target config (tgt) defined as part of 'advfloat_hide'
-gconfig_register("advfloat_hide", "statusbar");
+gconfig_register("advfloat_hide", "statusbar-left");
 
 local function hide_tgt(wnd, tgt)
 	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
