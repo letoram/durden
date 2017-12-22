@@ -50,10 +50,6 @@ function register_shared(funname, funptr)
 	end
 end
 
-function register_shared_atype(wnd, actions, settings, keymap)
-	wnd.dispatch = merge_menu(sf, actions);
-end
-
 -- used by builtin/global to map some functions here to menus
 function grab_global_function(funname)
 	return gf[funname];

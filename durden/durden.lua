@@ -433,7 +433,6 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 -- may use this function to launch / create some internal window
 -- that don't need all the external dispatch stuff, so make sure
 	if (valid_vid(vid, TYPE_FRAMESERVER)) then
-		wnd.dispatch = shared_dispatch();
 		wnd.external = vid;
 		extevh_register_window(vid, wnd);
 		EVENT_SYNCH[wnd.external] = {

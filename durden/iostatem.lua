@@ -107,6 +107,11 @@ function iostatem_input(iotbl)
 	if (iotbl.mouse) then
 		local m1, m2 = dispatch_meta();
 
+-- don't want bindings or normal input to trigger while the bar is active
+		if (tiler_lbar_isactive()) then
+			return;
+		end
+
 -- need to check if it has been bound, which means resolving the full table
 		if (iotbl.digital and (m1 or m2)) then
 			iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
