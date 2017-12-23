@@ -160,6 +160,9 @@ function wayland_toplevel_handler(wnd, source, status)
 		wnd:destroy();
 		return;
 
+	elseif (status.kind == "registered") then
+		wnd:set_guid(status.guid);
+
 -- reparenting to another surface, this may or may not also grab input
 	elseif (status.kind == "viewport") then
 		wayland_trace("reparent toplevel:" .. tostring(status.parent));
@@ -191,6 +194,8 @@ function wayland_toplevel_handler(wnd, source, status)
 				wayland_trace("unknown number of arguments in geom message");
 				return;
 			end
+		elseif (opts[1] == "scale") then
+-- don't really care right now
 		else
 			wayland_trace("unhandled wayland message", status.message);
 		end

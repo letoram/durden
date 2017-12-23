@@ -216,6 +216,7 @@ seglut["application"] = function(wnd, source, stat)
 			end
 		);
 
+-- note, this will not yield the REGISTER event
 		extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
 		newwnd.source_audio = aid;
 		wlwnds[id] = newwnd;
