@@ -277,19 +277,6 @@ function extevh_apply_atype(wnd, atype, source, stat)
 		end
 	end
 
--- can either be table [tgt, cfg] or [guid], ignore the 0- value
--- as that is an obvious failure
-	if (not wnd.config_tgt and stat and stat.guid
-		and stat.guid ~= "AAAAAAAAAAAAAAAAAAAAAA==") then
-		wnd.guid = stat.guid;
-		wnd.config_tgt = string.gsub(stat.guid, "=", "_");
-		local key = "durden_temp_" .. wnd.config_tgt;
-		recover = get_key(key);
-		if (recover) then
-			store_key(key, "");
-		end
-	end
-
 	wnd.bindings = atbl.bindings;
 	wnd.dispatch = merge_dispatch(shared_dispatch, atbl.dispatch);
 	wnd.labels = atbl.labels and atbl.labels or {};
@@ -320,16 +307,14 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	for k,v in ipairs(wnd.handlers.register) do
 		v(wnd, stat.segkind, stat);
 	end
-
-	if (recover) then
-		image_tracetag(wnd.external, recover);
-		wnd:recovertag(true);
-	end
 end
 
 defhtbl["registered"] =
 function(wnd, source, stat)
 	extevh_apply_atype(wnd, stat.segkind, source, stat);
+-- can either be table [tgt, cfg] or [guid], ignore the 0- value
+-- as that is an obvious failure
+	wnd:set_guid(stat.guid);
 end
 
 --  stateinf is used in the builtin/shared

@@ -3423,17 +3423,16 @@ local function wnd_recovertag(wnd, restore)
 	end
 
 	if (restore) then
+-- protect against leftovers from other WMs
 		local str = image_tracetag(wnd.external);
 		if (string.sub(str, 1, 6) ~= "durden") then
 			return;
 		end
 
-		print("restore");
 		local entries = string.split(str, "\n\r");
 		local res = {};
 		for k,v in ipairs(entries) do
 			local i = string.find(v, "=");
-			print(i, v);
 			if (i and i > 1) then
 				res[string.sub(v, 1, i-1)] = string.sub(v, i+1);
 			end
@@ -3451,70 +3450,103 @@ local function wnd_recovertag(wnd, restore)
 			if (res["ws_label"]) then
 				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
 			end
-			if (res["wnd_name"]) then
-				get_window_name(wnd, res["wnd_name"]);
-			end
-			if (res["wnd_geom"]) then
-				local vl = string.split(res["wnd_geom"], ":");
-				if (#vl == 4) then
-					wnd.attach_temp = {
-						tonumber(vl[1]), tonumber(vl[2]),
-						tonumber(vl[3]), tonumber(vl[4])
-					};
-				end
-				print("attach temp set to", vl[1], vl[2], vl[3], vl[4]);
-			end
-			wnd.desired_parent = res["parent"];
 		end
-
+		if (res["name"]) then
+			get_window_name(wnd, res["name"]);
+		end
+		if (res["hide_titlebar"]) then
+			wnd.hide_titlebar = true;
+		end
+		if (res["hide_border"]) then
+			wnd.hide_border = true;
+		end
+		if (res["title"]) then
+			wnd.title = res["title"];
+		end
+		if (res["prefix"]) then
+			wnd.prefix = res["title"];
+		end
+		if (res["geom"]) then
+			local vl = string.split(res["geom"], ":");
+			if (#vl == 4) then
+				wnd.attach_temp = {
+					tonumber(vl[1]), tonumber(vl[2]),
+					tonumber(vl[3]), tonumber(vl[4])
+				};
+			end
+		end
+		wnd.desired_parent = res["parent"];
+		wnd:set_title();
+		tiler_statusbar_update(wnd.wm);
 		return;
 	end
 
-	local recoverstr = string.format(
-		"durden\n\rws_ind=%d\n\rws_mode=%s\n\rwnd_name=%s",
-		wnd.space_ind, wnd.space.mode, wnd.name
-	);
+	local recoverlst = {"durden"};
 
-	if (wnd.atype) then
-		recoverstr = recoverstr .. "\n\ratype=" .. wnd.atype;
-	end
-
+-- space- proerties
+	table.insert(recoverlst, string.format("ws_ind=%d", wnd.space_ind));
+	table.insert(recoverlst, string.format("ws_mode=%s", wnd.space.mode));
 	if (wnd.space.label) then
-		recoverstr = recoverstr .. "\n\rws_label=" .. wnd.space.label;
+		table.insert(recoverlst, string.format("ws_label=%s", wnd.space.label));
 	end
-
 	if (wnd.space.home) then
-		recoverstr = recoverstr .. "\n\rws_home=" .. wnd.space.home;
+		table.insert(recoverlst, string.format("ws_home=%s", wnd.space.home));
 	end
 
+-- window- properties
+	if (wnd.atype) then
+		table.insert(recoverlst, string.format("atype=%s", wnd.atype));
+	end
+
+	table.insert(recoverlst, string.format("name=%s", wnd.name));
+
+-- hierarchy
 	if (string.sub(wnd.parent.name, 1, 3) == "wnd") then
-		recoverstr = string.format(
-			"%s\n\rparent=%s\n\r=weight=%f\n\rvweight=%f",
-			recoverstr, wnd.parent.name, wnd.weight, wnd.vweight
-		);
+		table.insert(recoverlst, string.format("parent=%s", wnd.parent.name));
+		table.insert(recoverlst, string.format("weight=%f", wnd.weight));
+		table.insert(recoverlst, string.format("vweight=%f", wnd.vweight));
 	end
 
+-- mode specific
 	if (wnd.space.mode == "float") then
 		local x = wnd.x / wnd.wm.effective_width;
 		local y = wnd.y / wnd.wm.effective_height;
 		local w = wnd.width / wnd.wm.effective_width;
 		local h = wnd.height / wnd.wm.effective_height;
-		recoverstr = recoverstr ..
-			string.format("\n\rwnd_geom=%f:%f:%f:%f", x, y, w, h);
+		table.insert(recoverlst, string.format("geom=%f:%f:%f:%f", x, y, w, h));
+	end
+
+-- custom overrides / dynamic settings
+	if (wnd.hide_titlebar) then
+		table.insert(recoverlst, "hide_titlebar=1");
+	end
+
+	if (wnd.title) then
+		table.insert(recoverlst, string.format("title=%s", wnd.title));
+	end
+
+	if (wnd.hide_border) then
+		table.insert(recoverlst, "hide_border=1");
+	end
+
+	if (wnd.prefix) then
+		table.insert(recoverlst, string.format("prefix=%s", wnd.prefix));
 	end
 
 -- missing restore:
--- wndtag, custom bindings / translations
--- hide(titlebar, border)
--- tile-hierarchy (walk parent ch ind and replicate when possible)
--- visual junk (shader, scale, centered, gain)
---
+-- preferred display, workspace preferred display
+-- custom bindings / translations
+-- aural/visual junk (shader, scale, centered, gain)
 -- workspace properties: background
 --
+
+-- flag this so the timer gets to update our k/v store
 	if (wnd.config_tgt) then
 		wnd.config_dirty = true;
 	end
-	image_tracetag(wnd.external, recoverstr);
+
+	local tag = table.concat(recoverlst, "\n\r");
+	image_tracetag(wnd.external, tag);
 end
 
 local function wnd_inputtable(wnd, iotbl, multicast)
@@ -3575,6 +3607,23 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	};
 
 	wnd.overlays[key] = overent;
+end
+
+local function wnd_guid(wnd, guid)
+	if (wnd.config_tgt or not guid or
+		guid == "AAAAAAAAAAAAAAAAAAAAAA==") then
+		return;
+	end
+
+	wnd.guid = guid;
+	wnd.config_tgt = string.gsub(guid, "=", "_");
+	local key = "durden_temp_" .. wnd.config_tgt;
+	recover = get_key(key);
+	if (recover) then
+		store_key(key, "");
+		image_tracetag(wnd.external, recover);
+		wnd:recovertag(true);
+	end
 end
 
 local function wnd_drop_overlay(wnd, key)
@@ -3688,6 +3737,7 @@ local wnd_setup = function(wm, source, opts)
 		show = wnd_show,
 		hide = wnd_hide,
 		set_message = wnd_message,
+		set_guid = wnd_guid,
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		set_ident = wnd_ident,
