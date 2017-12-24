@@ -15,7 +15,7 @@ return {
 		kbd_period = 0,
 		kbd_delay = 0,
 		centered = true,
-		scalemode = "client",
+		scalemode = "normal",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
 		clipboard_block = true,
