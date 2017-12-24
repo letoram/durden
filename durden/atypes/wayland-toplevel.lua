@@ -128,10 +128,30 @@ local function set_parent(wnd, id)
 	if (active_display().selected == parent) then
 		wnd:select();
 	end
+
+	local xofs = 0;
+	local yofs = 0;
+	local wofs = 0;
+	local hofs = 0;
+	if (parent.geom) then
+		xofs = parent.geom[1];
+		yofs = parent.geom[2];
+		wofs = parent.effective_w - parent.geom[3] - xofs;
+		hofs = parent.effective_h - parent.geom[4] - yofs;
+	end
+
 	parent:add_overlay("wayland", color_surface(1, 1, 0, 0, 0), {
 		stretch = true,
 		blend = 0.5,
-		block_mouse = true
+		mouse_handler = {
+			drag = function(ctx, vid, dx, dy)
+				print(dx, dy);
+			end
+		},
+		xofs = xofs,
+		yofs = yofs,
+		wofs = wofs,
+		hofs = hofs
 	});
 
 	parent.old_protect = parent.delete_protect;
@@ -187,6 +207,7 @@ function wayland_toplevel_handler(wnd, source, status)
 			y = tonumber(opts[3]);
 			w = tonumber(opts[4]);
 			h = tonumber(opts[5]);
+
 			if (w and y and w and h) then
 				wnd.geom = {x, y, w, h};
 			end

@@ -1795,6 +1795,7 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
 
+	wnd:synch_overlays();
 	wnd:recovertag();
 end
 
@@ -3561,6 +3562,19 @@ local function wnd_inputtable(wnd, iotbl, multicast)
 	end
 end
 
+local function wnd_synch_overlays(wnd)
+	for _,v in pairs(wnd.overlays) do
+		move_image(v.vid, v.xofs, v.yofs);
+		if (v.stretch) then
+			local w = math.clamp(
+				wnd.effective_w - v.xofs - v.wofs, 1, wnd.effective_w);
+			local h = math.clamp(
+				wnd.effective_h - v.yofs - v.hofs, 1, wnd.effective_h);
+			resize_image(v.vid, w, h);
+		end
+	end
+end
+
 local function wnd_add_overlay(wnd, key, vid, opts)
 	if (not valid_vid(vid)) then
 		return;
@@ -3579,12 +3593,6 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	order_image(vid, 1);
 	image_clip_on(vid, CLIP_SHALLOW);
 
-	if (opts.stretch) then
-		local props = image_surface_resolve(wnd.canvas);
-		resize_image(vid, props.width, props.height);
--- canvas resize calls will also have to be in on it
-	end
-
 -- opaque or blended
 	if (opts.blend) then
 		blend_image(vid, opts.blend, gconfig_get("wnd_animation"));
@@ -3595,6 +3603,8 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 -- three mouse input responses, custom handler, block out region,
 -- let default canvas behavior apply
 	if (opts.mousehandler) then
+		opts.mousehandler.name = "overlay_mh";
+		opts.mousehandler.own = function(ctx, mvid) return mvid == vid; end;
 		mouse_addlistener(vid, opts.mousehandler);
 	elseif (not opts.block_mouse) then
 		image_mask_set(vid, MASK_UNPICKABLE);
@@ -3603,10 +3613,15 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	local overent = {
 		vid = vid,
 		stretch = opts.stretch,
+		xofs = opts.xofs and opts.xofs or 0,
+		yofs = opts.yofs and opts.yofs or 0,
+		wofs = opts.wofs and opts.wofs or 0,
+		hofs = opts.hofs and opts.hofs or 0,
 		mh = opts.mousehandler
 	};
 
 	wnd.overlays[key] = overent;
+	wnd:synch_overlays();
 end
 
 local function wnd_guid(wnd, guid)
@@ -3765,6 +3780,7 @@ local wnd_setup = function(wm, source, opts)
 		drag_resize = wnd_drag_resize,
 		drop_overlay = wnd_drop_overlay,
 		add_overlay = wnd_add_overlay,
+		synch_overlays = wnd_synch_overlays,
 
 -- lifecycle
 		set_suspend = wnd_setsuspend,

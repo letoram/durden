@@ -181,6 +181,19 @@ local advanced = {
 	end
 	},
 	{
+	name = "fallback",
+	label = "Fallback",
+	kind = "value",
+	description = "Tell the client where to connect in the event of a server crash",
+	eval = function(ctx, val)
+		return string.len(val) > 0 and string.len(val) < 31 and
+			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	end,
+	handler = function(ctx, val)
+		target_devicehint(active_display().selected.external, val, false);
+	end
+	},
+	{
 	name = "migrate",
 	label = "Migrate",
 	kind = "value",
@@ -190,7 +203,7 @@ local advanced = {
 			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
 	end,
 	handler = function(ctx, val)
-		target_devicehint(active_display().selected.external, val, false);
+		target_devicehint(active_display().selected.external, val, true);
 	end
 	}
 };
