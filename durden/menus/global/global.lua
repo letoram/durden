@@ -26,15 +26,6 @@ local toplevel = {
 		end,
 	},
 	{
-		name = "crash",
-		label = "Crash WM",
-		kind = "action",
-		description = "This will provoke a WM error by calling a function that does not exist",
-		handler = function()
-			this_will_crash_the_wm();
-		end
-	},
-	{
 		name = "target",
 		label = "Window Menu",
 		kind = "action",

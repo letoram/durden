@@ -225,7 +225,6 @@ if (display_effects and type(display_effects) == "table") then
 	label = v.label,
 	description = v.description,
 	handler = function()
-		print("create you");
 		v.create(active_display());
 	end,
 	kind = "action"

@@ -11,7 +11,7 @@
 -- enabled, e.g. a HMD or presentation projector.
 --
 
-local snow_rules = system_load("tools/flair/snow.lua", false)();
+local snow_rules, snow_opts = system_load("tools/flair/snow.lua", false)();
 
 return {
 	{
@@ -19,7 +19,7 @@ return {
 		label = "Snow",
 		description = "Snow Simulator",
 		create = function(disp, ...)
-			return flair_supp_psys(snow_rules(disp));
+			return flair_supp_psys(snow_rules, snow_opts);
 		end
 	}
 };
