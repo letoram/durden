@@ -43,16 +43,15 @@ local function grid_cell_ent(dir, lbl, x1, y1, x2, y2)
 			end
 
 			local xp = 0;
-			local yp = 0;
+			local yp = wm.yoffset;
 			local w = wm.effective_width;
 			local h = wm.effective_height;
 
 			if (rel) then
-				local ms = wnd.grid_meta[#wnd.grid_meta];
-				xp = ms.x;
-				yp = ms.y;
-				w = ms.w;
-				h = ms.h;
+				xp = wnd.x;
+				yp = wnd.y;
+				w = wnd.width;
+				h = wnd.height;
 			end
 			xp = xp + x1 * w;
 			yp = yp + y1 * h;
@@ -71,8 +70,8 @@ local function grid_cell_ent(dir, lbl, x1, y1, x2, y2)
 				h = h
 			});
 
-			wnd:move(xp, yp, true, true);
 			wnd:resize(w, h);
+			wnd:move(xp, yp, false, true);
 		end
 	};
 end
@@ -84,7 +83,7 @@ return {
 	grid_cell_ent("w", "West", 0.0, 0.0, 0.5, 1.0),
 	grid_cell_ent("c", "Center", 0.0, 0.0, 1.0, 1.0),
 	grid_cell_ent("e", "East", 0.5, 0.0, 1.00, 1.00),
-	grid_cell_ent("nw", "North-West", 0,00, 0.00, 0.5, 0.5),
+	grid_cell_ent("nw", "North-West", 0.00, 0.00, 0.5, 0.5),
 	grid_cell_ent("n", "North", 0.0, 0.00, 1.0, 0.5),
 	grid_cell_ent("ne", "North-East", 0.5, 0.00, 1.00, 0.5),
 	{
