@@ -26,7 +26,10 @@ local workspace_menu = {
 	label = "Layouter",
 	description = "Apply an automatic layouting technique",
 	handler = system_load("tools/advfloat/autolay.lua")()
-},
+}
+};
+
+shared_menu_register("window",
 {
 	kind = "action",
 	submenu = true,
@@ -38,8 +41,7 @@ local workspace_menu = {
 	end,
 	description = "Size and fit the current window to a virtual grid cell",
 	handler = system_load("tools/advfloat/gridfit.lua")()
-}
-};
+});
 
 global_menu_register("workspace",
 {

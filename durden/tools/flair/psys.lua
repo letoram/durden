@@ -40,8 +40,13 @@ end
 
 local function psys_step()
 	for _,v in ipairs(psys_list) do
-		for _,p in ipairs(v.particles) do
-			v.update(p);
+		v:step();
+		for i=#v.particles,1 do
+			if (not v.update(v.particles[i], v)) then
+				v.destroy(v.particles[i], 5);
+				table.remove(v.particles, i);
+				psys_create(v);
+			end
 		end
 	if (v.counter > 0) then
 		v.counter = v.counter - 1;
@@ -81,6 +86,7 @@ return function(handlers, opts)
 		create = handlers.create,
 		update = handlers.update,
 		destroy = handlers.destroy,
+		step = handlers.step,
 		display = display,
 		counter_start = 1,
 		counter = 1,
@@ -95,7 +101,7 @@ return function(handlers, opts)
 	if (not opts.emitter) then
 		new_sys.emitter = {
 			shape = "rectangle",
-			x1 = 0, y1 = 0,
+			x1 = 0, y1 = -40,
 			x2 = math.random(1, display.width) - 1, y2 = 1,
 			min_w = 1, max_w = 4, min_h = 1, max_h = 4,
 			dx = {-1, 1},
