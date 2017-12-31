@@ -77,7 +77,7 @@ This advfloat- tool is a riff on the grid- plugin for Compiz. It works by
 splitting the screen into 9 dominant regions (nw, n, ne, w, c, e, sw, s, se).
 When activated, the selected window will be positioned and sized inside the
 corresponding region. These actions are best bound to the numpad, and the
-relevant menu paths can be found in <i>global/workspace/gridlign/...</i>.
+relevant menu paths can be found in <i>target/window/gridfit/...</i>.
 
 If the action is repeated in quick succession (timeout ~10 seconds) the
 window will be further repositioned within the constraints of this cell
