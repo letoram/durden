@@ -208,7 +208,7 @@ local display_effect = {
 	handler = function()
 		for wm in all_tilers_iter() do
 			if (wm.display_effects) then
-				for _,v in wm.display_effects do
+				for _,v in ipairs(wm.display_effects) do
 					if (v.destroy) then v:destroy();
 					end
 				end

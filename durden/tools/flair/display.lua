@@ -19,7 +19,7 @@ return {
 		label = "Snow",
 		description = "Snow Simulator",
 		create = function(disp, ...)
-			return flair_supp_psys(snow_rules, snow_opts);
+			return flair_supp_psys("snow", snow_rules, snow_opts);
 		end
 	}
 };
