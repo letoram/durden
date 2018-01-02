@@ -7,13 +7,19 @@ local shaders = {
 -- using yellow-red-blacks for the burn.
 dissolve = {nil, nil, [[
 uniform sampler2D map_tu0;
+uniform sampler2D map_tu1;
 varying vec2 texco;
 uniform float trans_blend;
 
 void main()
 {
 	vec4 col = texture2D(map_tu0, texco);
+	vec4 ptn = texture2D(map_tu1, texco);
+
 	float intens = (col.r + col.g + col.b) / 3.0;
+	intens = intens / (intens + 0.5);
+	intens = max(0.3 + ptn.r, intens);
+
 	if (intens < trans_blend)
 		discard;
 	if (intens < trans_blend + 0.02){
@@ -132,12 +138,21 @@ end
 -- generic runner for creating a canvas copy and dispatching a
 -- shader, can be re-used for all effects that don't require special
 -- details like window specific uniforms
+local noise_source;
 local function run_shader(key, wm, wnd, space, space_active, popup)
 	if (not space_active) then
 		return;
 	end
 
+	if (not noise_source) then
+		noise_source = random_surface(64, 64, "fbm", 2, 0.5, 6, 1, 1, 1);
+		image_texfilter(noise_source, FILTER_BILINEAR);
+	end
+
 	local vid = flair_supp_clone(wnd);
+	image_framesetsize(vid, 2, FRAMESET_MULTITEXTURE);
+	set_image_as_frame(vid, noise_source, 1);
+
 	if (valid_vid(vid)) then
 		blend_image(vid, 0.0, gconfig_get("flair_speed"));
 		image_shader(vid, synch_shader("dissolve"));

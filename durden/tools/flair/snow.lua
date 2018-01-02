@@ -40,14 +40,14 @@ local function snow_step(system)
 	system.force_y = math.abs(math.sin(counter * step_sz)) * 0.05;
 end
 
-local function snow_destroy(state)
+local function snow_expire(state)
 	delete_image(state.vid);
 end
 
 return {
 	create = snow_create,
 	update = snow_update,
-	destroy = snow_destroy,
+	expire = snow_expire,
 	step = snow_step,
 	collision_model = "full"
 };
