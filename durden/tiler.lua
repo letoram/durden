@@ -2108,7 +2108,7 @@ local function wnd_drag_resize(wnd, mctx, enter)
 	wnd.in_drag_rz = false;
 end
 
-local function wnd_move(wnd, dx, dy, align, abs, now)
+local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
 	end
@@ -2136,7 +2136,9 @@ local function wnd_move(wnd, dx, dy, align, abs, now)
 	end
 
 	local tbarh = tbar_geth(wnd);
-	wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
+	if (not noclamp) then
+		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
+	end
 	move_image(wnd.anchor, wnd.x, wnd.y, time);
 
 	wnd:recovertag();
