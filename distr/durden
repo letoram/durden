@@ -1,0 +1,54 @@
+#!/bin/sh
+
+arcan_base=${HOME}/.arcan
+arcan_applbase=$arcan_base/appl
+arcan_applout=$arcan_base/appl-out
+arcan_resources=$arcan_base/resources
+
+# a dev would've overridden this one
+if [ ! -d "$arcan_applbase/durden" ]; then
+	mkdir -p "$arcan_applbase"
+	ln -s /usr/share/durden/durden "$arcan_applbase/durden"
+fi
+
+if [ ! -d "$arcan_applout/durden" ]; then
+	mkdir -p "$arcan_applout/durden"
+fi
+
+# read-only resource access for browser, note that the presence
+# of fonts and logs in this folder will define the font and logpaths
+if [ ! -d "$arcan_resources" ]; then
+	mkdir -p "$arcan_resources"
+	ln -s "$HOME" "$arcan_resources/home"
+fi
+
+# setup namespace mapping
+export ARCAN_APPLBASEPATH=${1:-$arcan_applbase}
+export ARCAN_APPLSTOREPATH=${1:-$arcan_applout}
+export ARCAN_RESOURCEPATH=${1:-$arcan_resources}
+
+# local writable custom / saved scripts that should shadow the builtin ones
+overlay=$ARCAN_APPLSTOREPATH
+if [ ! -d "$overlay/output" ]; then
+	overrides="output ipc devmaps/display devmaps/keyboard devmaps/game devmaps/led devmaps/schemes devmaps/touch tools widgets"
+	for i in $overrides; do
+		mkdir -p "$overlay/$i"
+	done
+fi
+
+# there are more we could do to make this easier to work with, i.e. check exit code,
+# on failure, try and unmap the RWOUT and add a message that they were discarded due
+# to scripting errors, along with capturing and forwarding crash reasons (not full
+# snap due to the possibility of sensitive data)
+while true; do
+	starttime=$(date +%s)
+	bash
+#	if /usr/bin/arcan -b durden durden "$@"; then
+#		exit
+#	fi
+	stoptime=$(date +%s)
+	elapsed=$((stoptime - starttime))
+	if [ $elapsed -lt 10 ]; then
+		exit
+	fi
+done
