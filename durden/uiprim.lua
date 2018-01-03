@@ -586,12 +586,14 @@ end
 -- key is used as a hack to forcibly block other bar hide management
 local function bar_hide(bar, key)
 	bar.hidekey = key;
+	bar.hidden = true;
 	hide_image(bar.anchor);
 end
 
 local function bar_show(bar, key)
 	if (not bar.hidekey or (key and bar.hidekey == key)) then
 		show_image(bar.anchor);
+		bar.hidden = false;
 	end
 end
 

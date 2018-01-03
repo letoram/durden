@@ -31,6 +31,45 @@ local function simple_solver(nodes, w, h)
 	return nodes;
 end
 
+-- find the nearest screen edge and move window out of the way, this has
+-- the not-so-suble bug that if the window or the display resizes while we
+-- are "hidden" ore a window at the left/top edges resize, it will become
+-- more visible
+local function hide(nodes, w, h)
+	for _,v in ipairs(nodes) do
+-- find the nearest edge
+		local nnx = -v.x - v.w;
+		local npx = w - v.x;
+		local nny = -v.y - v.h;
+		local npy = h - v.y;
+		local dx = math.abs(nnx) < math.abs(npx) and math.abs(nnx) or math.abs(npx);
+		local dy = math.abs(nny) < math.abs(npy) and math.abs(nny) or math.abs(npy);
+
+		local pad = 10 * v.src.wm.scalef;
+
+-- reposition outside, add padding, disable clamping
+		if (dx < dy) then
+-- left
+			if (math.abs(nnx) < math.abs(npx)) then
+				v.x = 0 - v.w + pad + v.src.pad_right;
+			else
+				v.x = w - pad - v.src.pad_left;
+			end
+		else
+-- top
+			if (math.abs(nny) < math.abs(npy)) then
+				v.y = 0 - v.h + pad + v.src.pad_bottom;
+-- bottom
+			else
+				v.y = h - pad - v.src.pad_top +
+					(v.src.titlebar.hidden and 0 or v.src.titlebar.height);
+			end
+		end
+		v.noclamp = true;
+	end
+	return nodes;
+end
+
 local function run_layouter(method)
 	local wm = active_display();
 	local space = wm.spaces[wm.space_ind];
@@ -39,7 +78,14 @@ local function run_layouter(method)
 -- special cases, windows with an assigned 'toplevel' (wayland..)
 	for _,wnd in ipairs(space:linearize()) do
 		table.insert(lst, {src = wnd,
-			x = wnd.x, y = wnd.y, w = wnd.width, h = wnd.height});
+			x = wnd.x,
+			y = wnd.y,
+			w = wnd.width,
+			h = wnd.height,
+		 ew = wnd.effective_w,
+		 eh = wnd.effective_h
+		}
+	);
 	end
 	if (#lst == 0) then
 		return;
@@ -58,14 +104,15 @@ local function run_layouter(method)
 	end
 
 	lst = method(lst, wm.effective_width, wm.effective_height);
-	local props = image_surface_resolve(wm.anchor);
 	for _, v in ipairs(lst) do
-		v.src.autolay_last =
-		{
-			x = v.src.x / v.src.wm.width,
-			y = v.src.y / v.src.wm.height
-		};
-		v.src:move(v.x + props.x, v.y + props.y, false, true);
+		if (not v.src.autolay_last) then
+			v.src.autolay_last =
+			{
+				x = v.src.x / v.src.wm.width,
+				y = v.src.y / v.src.wm.height,
+			};
+		end
+		v.src:move(v.x, v.y + wm.yoffset, false, true, false, v.noclamp);
 	end
 end
 
@@ -77,6 +124,15 @@ return {
 	description = "Sort by height and recursive binary fill",
 	handler = function()
 		run_layouter(simple_solver);
+	end
+},
+{
+	kind = "action",
+	name = "hide",
+	label = "Hide",
+	description = "Hide the windows around the edges of the screen",
+	handler = function()
+		run_layouter(hide);
 	end
 },
 {
