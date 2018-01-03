@@ -1,7 +1,7 @@
 -- simple "take constraints + list of nodes" (x, y, w, h),
 -- update x, y positions and mark if it was used (fitted) or not
 -- https://codeincomplete.com/posts/bin-packing/
-local function simple_solver(nodes, w, h)
+local function simple_solver(nodes, w, h, nrest)
 	table.sort(nodes, function(a, b) return a.h > b.h; end);
 
 	local get_node;
@@ -26,8 +26,29 @@ local function simple_solver(nodes, w, h)
 		local n = get_node(root, v.w, v.h);
 		if (n) then
 			v.x = n.x; v.y = n.y;
+			v.used = true;
 		end
 	end
+
+-- repeat for those that didn't fit and treat as a new "layer"
+	local rest = {};
+	for _,v in ipairs(nodes) do
+		if (not v.used) then
+			table.insert(rest, v);
+		end
+	end
+
+-- avoid endless recursion with #rest != nrest
+	if (#rest > 0 and (nrest == nil or nrest > #rest)) then
+		w = w - 20; h = h - 20;
+		local nodes = simple_solver(rest, w, h, #rest);
+		for _,j in ipairs(nodes) do
+			j.x = j.x + 20;
+			j.y = j.y + 20;
+			j.src:to_front();
+		end
+	end
+
 	return nodes;
 end
 
