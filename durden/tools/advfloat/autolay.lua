@@ -44,9 +44,27 @@ local function run_layouter(method)
 	if (#lst == 0) then
 		return;
 	end
+	if (not method) then
+		for _, v in ipairs(lst) do
+			if (v.src.autolay_last) then
+				v.src:move(
+					v.src.autolay_last.x * v.src.wm.width,
+					v.src.autolay_last.y * v.src.wm.height, false, true
+				);
+				v.src.autolay_last = nil;
+			end
+		end
+		return;
+	end
+
 	lst = method(lst, wm.effective_width, wm.effective_height);
 	local props = image_surface_resolve(wm.anchor);
 	for _, v in ipairs(lst) do
+		v.src.autolay_last =
+		{
+			x = v.src.x / v.src.wm.width,
+			y = v.src.y / v.src.wm.height
+		};
 		v.src:move(v.x + props.x, v.y + props.y, false, true);
 	end
 end
@@ -59,6 +77,15 @@ return {
 	description = "Sort by height and recursive binary fill",
 	handler = function()
 		run_layouter(simple_solver);
+	end
+},
+{
+	kind = "action",
+	name = "revert",
+	label = "Revert",
+	description = "Restore window positions to before last layouting operation",
+	handler = function()
+		run_layouter();
 	end
 }
 };
