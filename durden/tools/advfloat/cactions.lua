@@ -57,8 +57,10 @@ end
 display_add_listener(
 function(event, name, tiler, id)
 	if (event == "added" and tiler) then
-		table.insert(tiler.on_tiler_resize, wm_resize);
-		install_maction(tiler);
+		if (not table.find_i(tiler.on_tiler_resize, wm_resize)) then
+			table.insert(tiler.on_tiler_resize, wm_resize);
+			install_maction(tiler);
+		end
 	end
 end
 );

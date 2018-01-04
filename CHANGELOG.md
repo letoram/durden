@@ -1,3 +1,8 @@
+# 0.5.0
+  * tools/advfloat:
+     window-to-background will now receive input when no window is
+     selected.
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.

@@ -721,6 +721,9 @@ function durden_normal_input(iotbl, fromim)
 -- to the external- handler
 	local sel = active_display().selected;
 	if (not sel or not valid_vid(sel.external, TYPE_FRAMESERVER)) then
+		if (active_display().fallthrough_ioh) then
+			active_display():fallthrough_ioh(iotbl);
+		end
 		return;
 	end
 
