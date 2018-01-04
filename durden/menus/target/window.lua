@@ -330,7 +330,15 @@ return {
 		label = "Workspace-Background",
 		kind = "action",
 		description = "Set windows contents as workspace background",
-		handler = grab_shared_function("wnd_tobg");
+		handler = function()
+			local wnd = active_display().selected;
+			if (valid_vid(wnd.external)) then
+				wnd.space:set_background(wnd.external);
+				wnd.dispstat_block = true;
+			else
+				wnd.space:set_background(wnd.canvas);
+			end
+		end
 	},
 	{
 		name = "titlebar_toggle",

@@ -13,6 +13,7 @@ local WND_RESERVED = 10;
 local ent_count = 1;
 
 local create_workspace = function() end
+local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
 local function wnd_animation_time(wnd, source, decor, position)
 	reset_image_transform(source);
@@ -1377,6 +1378,63 @@ local function workspace_save(ws, shallow)
 -- depth serialization and metastructure missing
 end
 
+local background_mh = {
+	name = "workspace_background",
+	motion = function(ctx, vid, x, y, rx, ry)
+		local wm = active_display();
+		if (not wm.fallthrough_ioh) then
+			return;
+		end
+
+-- re-use the window coordinate bits so that we get the storage-
+-- relative coordinate scaling etc.
+		local fakewnd = {
+			last_ms = wm.last_ms,
+			external = wm.active_space.background_src,
+			canvas = vid
+		};
+		local mv = convert_mouse_xy(fakewnd, x, y, rx, ry);
+		wm:fallthrough_ioh({
+			kind = "analog",
+			mouse = true,
+			devid = 0,
+			subid = 0,
+			samples = {mv[1], mv[2]}
+		});
+		wm:fallthrough_ioh({
+			kind = "analog",
+			mouse = true,
+			devid = 0,
+			subid = 1,
+			samples = {mv[3], mv[4]}
+		});
+	end,
+-- click, rclick, dblclick? set gesture to true and attach the corresponding label
+	button = function(ctx, vid, ind, pressed, x, y)
+		local wm = active_display();
+		if (wm.selected) then
+			wm.selected:deselect();
+		end
+		if (wm.fallthrough_ioh) then
+			wm:fallthrough_ioh(
+			{
+				kind = "digital", mouse = true, devid = 0,
+				active = pressed, subid = ind
+			});
+		end
+	end,
+	click = function(ctx, vid, ...)
+	end,
+	rclick = function(ctx, vid, ...)
+	end,
+	dblclick = function(ctx, vid, ...)
+	end,
+	own = function(ctx, vid, ...)
+		local sp = active_display().active_space;
+		return sp and sp.background == vid and sp.mode == "float";
+	end
+};
+
 local function workspace_background(ws, bgsrc, generalize)
 	local wm = ws.wm;
 	if (not wm) then
@@ -1418,6 +1476,9 @@ local function workspace_background(ws, bgsrc, generalize)
 		blend_image(ws.background, 1.0, ttime);
 		if (valid_vid(src)) then
 			image_sharestorage(src, ws.background);
+			if (valid_vid(src, TYPE_FRAMESERVER)) then
+				ws.background_src = src;
+			end
 		end
 	end
 
@@ -1989,7 +2050,7 @@ local function wnd_reassign(wnd, ind, ninv)
 		end
 	end
 -- create if it doesn't exist
-	local oldspace_ind = wm.active_space;
+	local oldspace = wm.active_space;
 	if (newspace == nil) then
 		wm.spaces[ind] = create_workspace(wm);
 		newspace = wm.spaces[ind];
@@ -2040,7 +2101,7 @@ local function wnd_reassign(wnd, ind, ninv)
 
 -- since new spaces may have come and gone
 	tiler_statusbar_update(wm);
-	wm.active_space = oldspace_ind;
+	wm.active_space = oldspace;
 	if not (oldspace.layouter and oldspace.layouter.lost(oldspace, wnd)) then
 		oldspace:resize();
 
@@ -2406,7 +2467,7 @@ local function wnd_title(wnd, title)
 	end
 end
 
-local function convert_mouse_xy(wnd, x, y, rx, ry)
+convert_mouse_xy = function(wnd, x, y, rx, ry)
 -- note, this should really take viewport into account (if provided), when
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
@@ -2731,7 +2792,7 @@ local function wnd_drophandler(wnd, ev, fun)
 end
 
 local function wnd_dispmask(wnd, val, noflush)
-	wnd.dispmask = val;
+	wnd.dispmask = wnd.dispstat_block and wnd.dispmask or val;
 
 	if (not noflush and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_displayhint(wnd.external, 0, 0, wnd.dispmask);
@@ -4183,6 +4244,17 @@ local function wm_countspaces(wm)
 	return r;
 end
 
+-- for floating mode, if we receive input with no window selection,
+-- absorb and forward to someone else.
+-- inputh prototype: wm, iotbl
+local function tiler_fallthrough_input(wm, inputh)
+	if (inputh) then
+		wm.fallthrough_ioh = inputh;
+	else
+		wm.fallthrough_ioh = nil;
+	end
+end
+
 local function tiler_input_lock(wm, dst)
 	wm.input_lock = dst;
 end
@@ -4302,7 +4374,7 @@ local function tiler_fontres(wm)
 	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("sbar_tpad");
 end
 
-local function tiler_switchbg(wm, newbg)
+local function tiler_switchbg(wm, newbg, mh)
 	wm.background_name = newbg;
 
 	if (valid_vid(wm.background_id)) then
@@ -4390,6 +4462,7 @@ function tiler_create(width, height, opts)
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
+		fallthrough_input = tiler_fallthrough_input,
 
 -- shared event handlers, primarily for effects and layouting
 		on_wnd_create = {},
@@ -4425,6 +4498,8 @@ function tiler_create(width, height, opts)
 	order_image(res.order_anchor, 2);
 	show_image({res.anchor, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
+
+	mouse_addlistener(background_mh, {"button", "motion", "click", "dblclick"});
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);

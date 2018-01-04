@@ -401,16 +401,6 @@ gf["rebind_basic"] = function(chain)
 	runsym(runsym);
 end
 
-sf["wnd_tobg"] = function(wnd)
-	local disp = active_display();
-	local wnd = disp.selected;
-	local space = disp.spaces[disp.space_ind];
-	if (valid_vid(wnd.external)) then
-		wnd.dispstat_block = true;
-	end
-	space:set_background(wnd.canvas);
-end
-
 local function str_to_u8(instr)
 -- drop spaces and make sure we have %2
 	instr = string.gsub(instr, " ", "");
