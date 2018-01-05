@@ -18,7 +18,6 @@ local display_listeners = {};
 --needed.
 -- zap_resource("display.log");
 -- local dbgoutp = open_nonblock("display.log", true);
-local dbgoutp = nil;
 local function display_debug(msg)
 	if (dbgoutp) then
 		dbgoutp:write(msg);
@@ -488,8 +487,14 @@ function display_all_mode(mode)
 end
 
 function display_manager_init()
+	local defdisp = {
+		ppcm = VPPCM,
+		width = VRESW,
+		height = VRESH
+	};
 	displays[1] = {
-		tiler = tiler_create(VRESW, VRESH, {scalef = VPPCM / SIZE_UNIT});
+		tiler = tiler_create(VRESW, VRESH,
+			{scalef = VPPCM / SIZE_UNIT, ppcm = VPPCM, disptbl = defdisp});
 		w = VRESW,
 		h = VRESH,
 		name = get_name(0),
@@ -500,7 +505,6 @@ function display_manager_init()
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
 	local ddisp = displays[1];
-	ddisp.tiler.disptbl = {ppcm = VPPCM, width = VRESW, height = VRESH};
 	ddisp.tiler.name = "default";
 
 -- simple mode does not permit us to do much of the fun stuff, like different
@@ -588,6 +592,8 @@ function display_add(name, width, height, ppcm)
 		end
 
 		if (prof) then
+			display_debug(string.format(
+				"found existing profile for %s, %s", name, v.ident));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
 				return;
@@ -605,15 +611,23 @@ function display_add(name, width, height, ppcm)
 		end
 
 		set_context_attachment(WORLDID);
+		local disptbl = {
+			ppcm = ppcm,
+			width = width,
+			height = height
+		};
 		local nd = {
-			tiler = tiler_create(width, height, {name=name, scalef=ppcm/SIZE_UNIT}),
+			tiler = tiler_create(width, height, {
+				name=name,
+				scalef=ppcm/SIZE_UNIT,
+				disptbl = disptbl
+			}),
 			w = width,
 			h = height,
 			name = name,
 			primary = false,
 			maphint = HINT_NONE
 		};
-		nd.disptbl = {ppcm = ppcm, width = width, height = height};
 		table.insert(displays, nd);
 		nd.tiler.name = name;
 		nd.ind = #displays;
@@ -775,7 +789,6 @@ function display_cycle_active(ind)
 		switch_active_display(ind);
 		return;
 	end
-
 
 	local nd = displays.main;
 	repeat

@@ -347,7 +347,7 @@ local function center_resize(space, lin, evblock, wnd, cb)
 		return true;
 	end
 	if (not active_display().selected and
-		active_display().active_space == space) then
+		active_display():active_space() == space) then
 		if (space.children[2]) then
 			space.children[2]:select();
 		elseif (space.children[1]) then
@@ -358,7 +358,7 @@ local function center_resize(space, lin, evblock, wnd, cb)
 end
 
 swap_focus = function(sel)
-	local sp = active_display().active_space;
+	local sp = active_display():active_space();
 	local sw = active_display().selected;
 	local dw = sp.children[2];
 	if (not sp or #sp.children < 2 or not sw or sw.space ~= sp) then
@@ -511,25 +511,16 @@ local layouters = {
 	name = "center",
 	label = "Center Focus",
 	kind = "action",
-	eval = function()
-		return active_display().active_space ~= nil;
-	end,
 	handler = function()
-		local space = active_display().active_space;
-		if (space) then
-			set_layouter(space, center_layouter);
-		end
+		set_layouter(active_display():active_space(), center_layouter);
 	end,
 },
 {
 	name = "center_scale",
 	label = "Center Focus (Force-Scale)",
 	kind = "action",
-	eval = function()
-		return active_display().active_space ~= nil;
-	end,
 	handler = function()
-		set_layouter(active_display().active_space, centerscale_layouter);
+		set_layouter(active_display():active_space(), centerscale_layouter);
 	end
 },
 {
@@ -538,10 +529,9 @@ local layouters = {
 	kind = "action",
 	eval = function()
 		return false;
-		--active_display().active_space ~= nil;
 	end,
 	handler = function()
-		set_layouter(active_display().active_space, book_layouter);
+		set_layouter(active_display():active_space(), book_layouter);
 	end
 },
 {
@@ -549,11 +539,11 @@ local layouters = {
 	label = "Default",
 	kind = "action",
 	eval = function()
-		local d = active_display().active_space;
-		return d and d.layouter;
+		local d = active_display():active_space();
+		return d.layouter;
 	end,
 	handler = function()
-		local space = active_display().active_space;
+		local space = active_display():active_space();
 		space.layouter.cleanup(space);
 	end
 }

@@ -1,7 +1,7 @@
 
 local inputh = function(wm, iot)
-	if (valid_vid(wm.active_space.background_src, TYPE_FRAMESERVER)) then
-		target_input(wm.active_space.background_src, iot);
+	if (valid_vid(wm:active_space().background_src, TYPE_FRAMESERVER)) then
+		target_input(wm:active_space().background_src, iot);
 	end
 end
 

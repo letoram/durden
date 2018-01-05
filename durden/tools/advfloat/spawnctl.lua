@@ -26,7 +26,7 @@ end
 
 local function wnd_attach(wm, wnd)
 	wnd:ws_attach(true);
-	if (wnd.wm.active_space.mode ~= "float") then
+	if (wnd.wm:active_space().mode ~= "float") then
 		return;
 	end
 

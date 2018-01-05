@@ -220,7 +220,7 @@ local function wnd_destroy(wnd)
 -- last step before deletion, any per-tiler hook?
 	if (space) then
 		for i,v in ipairs(wm.on_wnd_destroy) do
-			v(wm, wnd, space, space == wm.active_space);
+			v(wm, wnd, space, space == wm:active_space());
 		end
 	end
 
@@ -386,13 +386,9 @@ local function tiler_statusbar_update(wm)
 		wm.statusbar:move(xpos, wm.effective_height + ytop);
 	end
 
-	if (not wm.space_ind or not wm.spaces[wm.space_ind]) then
-		return;
-	end
-
 -- regenerate buttons and labels
 	wm_update_mode(wm);
-	local space = wm.spaces[wm.space_ind];
+	local space = wm:active_space();
 
 -- consider visibility (fullscreen, or HUD mode affects it)
 	local invisible = space.mode == "fullscreen" or
@@ -450,8 +446,9 @@ local function tiler_statusbar_build(wm)
 		"sbar_item", "mode", pad, wm.font_resfn, nil, sbsz,
 		{
 			click = function()
-				if (not wm.spaces[wm.space_ind].in_float) then
-					wm.spaces[wm.space_ind]:float();
+				local sp = wm:active_space();
+				if (not sp.in_float) then
+					sp:float();
 				else
 -- NOTE: this breaks the decoupling between tiler and rest of durden, and maybe
 -- this mouse-handler management hook should be configurable elsewhere
@@ -550,7 +547,9 @@ local function canvas_mouse_activate(wnd)
 end
 
 local function wnd_select(wnd, source, mouse)
+	print("wnd select");
 	if (wnd.wm.deactivated or not wnd.space or wnd.select_block) then
+		print("not wnd space", wnd.space);
 		return;
 	end
 
@@ -561,6 +560,7 @@ local function wnd_select(wnd, source, mouse)
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
 		end
+		print("selected out");
 		return;
 	end
 
@@ -584,7 +584,8 @@ local function wnd_select(wnd, source, mouse)
 	wnd.titlebar:switch_state(state, true);
 
 	wnd.space.previous = wnd.space.selected;
-	if (wnd.wm.active_space == wnd.space) then
+	print(wnd.wm.space_ind, wnd.space, wnd.wm:active_space());
+	if (wnd.wm:active_space() == wnd.space) then
 		wnd.wm.selected = wnd;
 	end
 	wnd.space.selected = wnd;
@@ -772,7 +773,6 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		if (space.background) then show_image(space.background); end
 	end
 
-	space.wm.active_space = space;
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
@@ -1390,7 +1390,7 @@ local background_mh = {
 -- relative coordinate scaling etc.
 		local fakewnd = {
 			last_ms = wm.last_ms,
-			external = wm.active_space.background_src,
+			external = wm:active_space().background_src,
 			canvas = vid
 		};
 		local mv = convert_mouse_xy(fakewnd, x, y, rx, ry);
@@ -1430,7 +1430,7 @@ local background_mh = {
 	dblclick = function(ctx, vid, ...)
 	end,
 	own = function(ctx, vid, ...)
-		local sp = active_display().active_space;
+		local sp = active_display():active_space();
 		return sp and sp.background == vid and sp.mode == "float";
 	end
 };
@@ -2050,7 +2050,7 @@ local function wnd_reassign(wnd, ind, ninv)
 		end
 	end
 -- create if it doesn't exist
-	local oldspace = wm.active_space;
+	local oldspace = wm:active_space();
 	if (newspace == nil) then
 		wm.spaces[ind] = create_workspace(wm);
 		newspace = wm.spaces[ind];
@@ -2101,7 +2101,6 @@ local function wnd_reassign(wnd, ind, ninv)
 
 -- since new spaces may have come and gone
 	tiler_statusbar_update(wm);
-	wm.active_space = oldspace;
 	if not (oldspace.layouter and oldspace.layouter.lost(oldspace, wnd)) then
 		oldspace:resize();
 
@@ -3448,7 +3447,7 @@ local function wnd_ws_attach(res, from_hook)
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
-		v(wm, res, space, space == wm.active_space);
+		v(wm, res, space, space == wm:active_space());
 	end
 
 	for k,v in pairs(space.listeners) do
@@ -4236,7 +4235,12 @@ local function tiler_rendertarget(wm, set)
 	return wm.rtgt_id;
 end
 
-local function wm_countspaces(wm)
+local function tiler_activespace(wm)
+	assert(wm.spaces[wm.space_ind]);
+	return wm.spaces[wm.space_ind];
+end
+
+local function tiler_countspaces(wm)
 	local r = 0;
 	for i=1,10 do
 		r = r + (wm.spaces[i] ~= nil and 1 or 0);
@@ -4297,6 +4301,7 @@ local function tiler_activate(wm)
 		local deact = wm.deactivated;
 		wm.deactivated = nil;
 		mouse_absinput_masked(deact.mx, deact.my, true);
+		print("activate", wm, deact.wnd);
 		if (deact.wnd) then
 			deact.wnd:select();
 		end
@@ -4449,7 +4454,8 @@ function tiler_create(width, height, opts)
 		swap_down = tiler_swapdown,
 		swap_left = tiler_swapleft,
 		swap_right = tiler_swapright,
-		active_spaces = wm_countspaces,
+		active_space = tiler_activespace,
+		active_spaces = tiler_countspaces,
 		activate = tiler_activate,
 		deactivate = tiler_deactivate,
 		set_rendertarget = tiler_rendertarget,
