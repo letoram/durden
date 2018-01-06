@@ -1,6 +1,16 @@
 #!/bin/sh
 
 arcan_base=${HOME}/.arcan
+
+if [ ! -z "${XDG_DATA_HOME}" ]; then
+	arcan_base=${XDG_DATA_HOME}/arcan
+	distargs="-b \"${HOME}/.config/arcan.sqlite\""
+fi
+
+if [ ! -z "${XDG_CONFIG_HOME}" ]; then
+	distargs="-b ${XDG_CONFIG_HOME}/arcan.sqlite"
+fi
+
 arcan_applbase=$arcan_base/appl
 arcan_applout=$arcan_base/appl-out
 arcan_resources=$arcan_base/resources
@@ -22,13 +32,45 @@ if [ ! -d "$arcan_resources" ]; then
 	ln -s "$HOME" "$arcan_resources/home"
 fi
 
+# if the user expected the XDG set of folders, map those into our space
+if [ ! -z "${XDG_DESKTOP_DIR}" ] && [ ! -d "${arcan_resources}/Desktop" ]; then
+	ln -s "${XDG_DESKTOP_DIR}" "${arcan_resources}/Desktop"
+fi
+
+if [ ! -z "${XDG_DOCUMENTS_DIR}" ] && [ ! -d "${arcan_resources}/Documents" ]; then
+	ln -s "${XDG_DOCUMENTS_DIR}" "${arcan_resources}/Documents"
+fi
+
+if [ ! -z "${XDG_DOWNLOADS_DIR}" ] && [ ! -d "${arcan_resources}/Downloadss" ]; then
+	ln -s "${XDG_DOWNLOADS_DIR}" "${arcan_resources}/Downloads"
+fi
+
+if [ ! -z "${XDG_MUSIC_DIR}" ] && [ ! -d "${arcan_resources}/Music" ]; then
+	ln -s "${XDG_MUSIC_DIR}" "${arcan_resources}/Music"
+fi
+
+if [ ! -z "${XDG_PICTURES_DIR}" ] && [ ! -d "${arcan_resources}/Pictures" ]; then
+	ln -s "${XDG_PICTURES_DIR}" "${arcan_resources}/Pictures"
+fi
+
+if [ ! -z "${XDG_PUBLICSHARE_DIR}" ] && [ ! -d "${arcan_resources}/Public" ]; then
+	ln -s "${XDG_PUBLICSHARE_DIR}" "${arcan_resources}/Public"
+fi
+if [ ! -z "${XDG_TEMPLATES_DIR}" ] && [ ! -d "${arcan_resources}/Templates" ]; then
+	ln -s "${XDG_TEMPLATES_DIR}" "${arcan_resources}/Templates"
+fi
+
+if [ ! -z "${XDG_VIDEOS_DIR}" ] && [ ! -d "${arcan_resources}/Videos" ]; then
+	ln -s "${XDG_VIDEOS_DIR}" "${arcan_resources}/Videos"
+fi
+
 # setup namespace mapping
 export ARCAN_APPLBASEPATH=${1:-$arcan_applbase}
 export ARCAN_APPLSTOREPATH=${1:-$arcan_applout}
 export ARCAN_RESOURCEPATH=${1:-$arcan_resources}
 
 # local writable custom / saved scripts that should shadow the builtin ones
-overlay=$ARCAN_APPLSTOREPATH
+overlay=$ARCAN_APPLSTOREPATH/durden
 if [ ! -d "$overlay/output" ]; then
 	overrides="output ipc devmaps/display devmaps/keyboard devmaps/game devmaps/led devmaps/schemes devmaps/touch tools widgets"
 	for i in $overrides; do
@@ -42,10 +84,9 @@ fi
 # snap due to the possibility of sensitive data)
 while true; do
 	starttime=$(date +%s)
-	bash
-#	if /usr/bin/arcan -b durden durden "$@"; then
-#		exit
-#	fi
+	if /usr/bin/arcan "${distargs}" -b durden durden "$@"; then
+		exit
+	fi
 	stoptime=$(date +%s)
 	elapsed=$((stoptime - starttime))
 	if [ $elapsed -lt 10 ]; then
