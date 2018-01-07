@@ -36,7 +36,8 @@ end
 
 toplevel_lut["menu"] = function(wnd)
 	if (active_display().selected == wnd) then
-		wayland_trace("spawn target- menu");
+		local fun = grab_shared_function("target_actions");
+		fun();
 	end
 end
 
