@@ -62,7 +62,7 @@ end,
 ["natural(a->Z)"] = function()
 	sort_mode = sort_az_nat;
 end,
-["reverise(Z->a)"] = function()
+["reverse(Z->a)"] = function()
 	sort_mode = sort_za;
 end
 };

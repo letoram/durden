@@ -3,6 +3,18 @@
      window-to-background will now receive input when no window is
      selected.
 
+	* tools/advfloat:
+	   autolayout now recurses when one pass didn't position all windows
+     autolayout also got a hide/reveal mode
+
+  * distr/durden:
+	   launcher- script for reasonable defaults for linux/BSDs with
+		 arcan on egl-dri platform.
+
+Minor:
+  * regression in hotplugging causing nil table member dereference
+	  on remove event with active listeners
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.

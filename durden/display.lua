@@ -461,9 +461,11 @@ function display_event_handler(action, id)
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
 	elseif (action == "removed") then
-		display_remove(name, id);
-		for k,v in ipairs(display_listeners) do
-			v("added", name, ddisp.tiler, id);
+		local ddisp = display_remove(name, id);
+		if (ddisp) then
+			for k,v in ipairs(display_listeners) do
+				v("removed", name, ddisp.tiler, id);
+			end
 		end
 	end
 
@@ -710,6 +712,7 @@ function display_remove(name, id)
 	if (foundi == displays.main) then
 		display_cycle_active(ws);
 	end
+	return found;
 end
 
 -- special little hook in LWA mode that handles resize requests from
