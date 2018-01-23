@@ -139,7 +139,8 @@ all with slightly different characteristics.
 
 To enable, you should configure which effects you want for each slot by going
 to the normal <i>global/settings/tools/flair</i>. Some advanced effects also
-allow you to tune further, e.g. cloth physics or drag opacity.
+allow you to tune further, e.g. cloth physics, drag opacity or particle system
+intensity.
 
 The hide/destroy/create/minimize and drag effect targets are window- targeted
 actions. These can be set on or off via <i>global/tools/flair/window_effects=yes/no</i>.
@@ -157,3 +158,4 @@ subfolder.
 - Touchpad Configuration
 - VR support for model viewer
 - Notification Agents
+- Composition Surface for sharing/recording

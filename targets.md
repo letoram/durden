@@ -37,4 +37,5 @@ will have the environment serialize-and-suspend.
 
 # Future Changes
 - Add [core options](coreopt) and target settings persistance
+- Better management and LED mapping for client announced default bindings
 - Expose external launch

@@ -156,7 +156,5 @@ The following changes are planned for the menu:
  - Mouse Cursor warping to reduce movement
  - Tooltips for each entry
  - Better Widget- area layouting
- - External Widget ICON subsegment added to statusbar, Widget+POPUP tied to
-   ICON
  - Client- provided menus merged into target- group
  - "Popup"- style for floating layout mode

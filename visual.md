@@ -175,9 +175,7 @@ visual/interactive profile in a non-destructive way.
 - Window canvas contents as lookup texture input
 - Icon support, multi-channel signed distance fields
 - Loader for RetroArch shader format
-- Switchable mouse cursor themes
 - Border-area shadow controls
-- Multipass target- shader effects
 - Consistent settings persistance
 - Mouse reveal/hide effect control
 - Invisible 'padding' windows for non-uniform tiling mode gaps

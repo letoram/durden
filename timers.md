@@ -27,5 +27,4 @@ media playback in fullscreen and do not want idle- timers to interfere.
 
 # Future Changes
 - Better precision
-- Add timers through IPC
 - Absolute time support

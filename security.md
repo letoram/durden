@@ -3,16 +3,14 @@ layout: default
 ---
 [Meta Guard](#metaguard) [Fallback](#fallback) [External Connections](#extcon)
 [Crash Recovery](#crashrec) [Data Sharing](#datashare)
-[Clipboard Access](#clipboard) [Display Control](#dispctrl)
+[Clipboard Access](#clipboard) [GPU Access](#gpu) [Display Control](#dispctrl)
 [Screen Recording](#screenrec) [Rate Limiting](#ratelimit)
 [Protected Terminal](#protterm) [Delete Protect](#deleteproect)
 
 # Security and Safety Features
 There are a number of mitigations in place to prevent abuse, loss of work and
 loss of access due to device or software failure. Some require cooperation from
-Arcan, some are implemented as part of Durden. Be aware that the current
-timeline for Arcan development treats security as a lesser priority than many
-other tasks.
+Arcan, some are implemented as part of Durden.
 
 # Meta Guard <a name="metaguard"/>
 The meta guard is the first feature you were exposed to, when active, it waits
@@ -62,7 +60,9 @@ be hooked up to the arcan instance.
 This is part of arcan, but is enabled explicitly in durden IF external
 connections are allowed. Should arcan crash, connected/compliant clients will
 attempt to reconnect (with a backoff in delays) to the recovery connection
-point provided by durden on external client connection.
+point provided by durden on external client connection. Clients that have been
+assigned additional privileges interactively by the user will have those
+privileges revoked before recovery.
 
 # Data Sharing <a name="datashare"/>
 If your threat model does not include hostile local clients, you may want to
@@ -91,12 +91,30 @@ It can also be globally allowed via the
 fighting eachother for control over the LUTs. This will be mitigated later by
 allowing LUT state to follow client window selection.
 
+## GPU Access <a name="gpu/">
+The GPU and its seemingly infinite amount of attack surface is one of the
+absolute scariest and biggest risks for privilege escalation there is. Due to
+the value and utility for many clients, it is also a risk that is hard to
+mitigate and it comes at a cost. Although the engine tries, as best the drivers
+permit, to reduce the risk for DoS via priority inversion/resource starving,
+there is also the possibility to dynamically enable and disable the passing of
+accelerated buffer handles, forcing the clients to draw into shared memory and
+copy its contents down from the GPU. See "toggle handle passing" in
+<i>target/video/advanced</i>.
+
+Furthermore, proper bridging of X clients pose additional risk due to an old
+and mostly unknown buffer passing mechanism that is likely as insecure as it
+gets - but it essentially provides the Xorg server with the same set of
+privileges as the main display server itself. Even though it is a high risk of
+broken clients, particularly games, this mechanism is disabled by default. To
+unlock it, go to <i>global/config/system/GPU delegation</i>.
+
 ## Screen Recording <a name="screenrec"/>
 Clients that requests an output segment, either as primary registration segid
 or as secondary subsegments will have their request rejected for the time
 being. To compenstate, the 'encode' frameserver role can still be used for
-user-initiated screen sharing and recording. See [record, stream,
-share](recstr) for more information.
+user-initiated screen sharing and recording and you can still interactively
+force-push an output segment into a client. See [record, stream, share](recstr) for more information.
 
 ## Rate Limiting <a name="ratelimit"/>
 To protect against fork-bombing style denial of service (clients stalling the
@@ -122,7 +140,7 @@ a short event-queue to prevent starvation and priority-inversion.
 # IPC Controls <a name="ipc"/>
 The <i>control, status and output</i> IPC pipes are only protected by their
 default unix permissions. There is no authentication step and preventing access
-to the appl\_path is the responsibility of the user when setting up arcan
+to the appl\_temp\_path is the responsibility of the user when setting up arcan
 namespacing. To disable these features, simply set their respective names to
 <i>:disabled</i>, or enable whitelisting (<i>global/settings/</i>) and only
 permit certain menu paths from being activated via external IPC.
@@ -136,9 +154,6 @@ separate border in a non-client controllable part of the UI with clear
 indication when it is active or not.
 
 ## Future Changes
-- Enforced sandboxing on frameservers
-- All arcan-side parsers moved to decode frameserver
 - Display-Control LUT safeguards
 - Privilege Level Border indicators (color)
-- Fine-grained GPU access control and load-balancing
 - Event-queue load-balacing factors split into internal/whitelist/external

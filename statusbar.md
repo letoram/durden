@@ -77,4 +77,8 @@ that you can hook it up to other programs.
 - Allow replacement with an external client
 - Hover on workspace button to see preview of workspace contents
 - History function to the message area
-- Allow statusbar to be moved to the menu- screen
+- Allow 'on mouse over' to show the titlebar area of a window
+- Allow titlebar or target- window menu to merge into statusbar
+- Complementary "icon dock" tool
+- Allow icons to dock into statusbar
+- Allow client ICON segment to dock into tray
