@@ -547,9 +547,7 @@ local function canvas_mouse_activate(wnd)
 end
 
 local function wnd_select(wnd, source, mouse)
-	print("wnd select");
 	if (wnd.wm.deactivated or not wnd.space or wnd.select_block) then
-		print("not wnd space", wnd.space);
 		return;
 	end
 
@@ -560,7 +558,6 @@ local function wnd_select(wnd, source, mouse)
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
 		end
-		print("selected out");
 		return;
 	end
 
@@ -584,7 +581,6 @@ local function wnd_select(wnd, source, mouse)
 	wnd.titlebar:switch_state(state, true);
 
 	wnd.space.previous = wnd.space.selected;
-	print(wnd.wm.space_ind, wnd.space, wnd.wm:active_space());
 	if (wnd.wm:active_space() == wnd.space) then
 		wnd.wm.selected = wnd;
 	end
@@ -4301,7 +4297,6 @@ local function tiler_activate(wm)
 		local deact = wm.deactivated;
 		wm.deactivated = nil;
 		mouse_absinput_masked(deact.mx, deact.my, true);
-		print("activate", wm, deact.wnd);
 		if (deact.wnd) then
 			deact.wnd:select();
 		end
@@ -4523,6 +4518,7 @@ function tiler_create(width, height, opts)
 	end
 
 	for k,v in pairs(wstbl) do
+		res.spaces[k] = {};
 		res.spaces[k] = create_workspace(res, true);
 		for ind, val in pairs(v) do
 			if (ind == "mode") then
