@@ -11,6 +11,7 @@
 local SIZE_UNIT = 38.4;
 local displays = {};
 local profiles = {};
+local ignored = {};
 local display_listeners = {};
 
 --uncomment to log display events to a separate file, there are so many
@@ -434,7 +435,7 @@ function display_event_handler(action, id)
 			map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
 			shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		else
-			ddisp, newh = display_add(get_name(id), dw, dh, ppcm);
+			ddisp, newh = display_add(get_name(id), dw, dh, ppcm, id);
 			if (not ddisp) then
 				return;
 			end
@@ -568,7 +569,7 @@ function display_shader(name, key)
 	return disp.shader;
 end
 
-function display_add(name, width, height, ppcm)
+function display_add(name, width, height, ppcm, id)
 	local found = get_disp(name);
 	local new = nil;
 
@@ -598,6 +599,11 @@ function display_add(name, width, height, ppcm)
 				"found existing profile for %s, %s", name, v.ident));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
+				table.insert(ignored, {
+					id = id, name = name,
+					width = width, height = height,
+					ppcm = ppcm, tag = prof.tag
+				});
 				return;
 			end
 
@@ -682,6 +688,15 @@ local function autoadopt_display(disp)
 	end
 end
 
+-- allow external tools to register ignored devices by tag
+function display_bytag(tag, yield)
+	for _,v in ipairs(ignored) do
+		if (v.tag == tag) then
+			yield(v);
+		end
+	end
+end
+
 function display_remove(name, id)
 	local found, foundi = get_disp(name);
 
@@ -695,7 +710,18 @@ function display_remove(name, id)
 			end
 		end
 
+-- there is still the chance that some other tool manually managed the
+-- display, this is used in the case of a VR modelviewer, for instance.
 		if (not found) then
+			for i,v in ipairs(ignored) do
+				if v.id == id then
+					if (v.handler) then
+						v:handler("remove");
+					end
+					table.remove(ignored,i);
+					return;
+				end
+			end
 			warning("attempted to remove unknown display: " .. name);
 			return;
 		end
