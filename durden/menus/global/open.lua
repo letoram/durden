@@ -319,6 +319,7 @@ local function browse_internal()
 		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
 		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
 		flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
+		webm = dechnd
 	};
 
 	local opts = {
