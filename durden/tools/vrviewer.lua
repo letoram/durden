@@ -2,17 +2,6 @@
 -- Trivial VR / panoramic viewer
 --
 
--- local vrsupp = system_load("vrsupport.lua");
--- constructor function, return table with:
---
---  set_stereo(pipeline)
---  set_mono()
---  set_display(dispid)
---  override_distortion(params)
---
--- copy stuff from display patch that dealt with tagging displays
---
-
 local hmd_arg = "";
 
 local vert = [[
@@ -128,6 +117,89 @@ end
 -- just nil the fields that aren't overridden
 -- possibly get from display map
 
+local function setup_vr_display(wnd, name)
+	local disp = display_lease(name);
+	if (not disp) then
+		return;
+	end
+
+-- or make these status messages into some kind of logging console,
+-- probably best when we can make internal TUI connections and do
+-- it that way
+	wnd:set_title("Spawning VR Bridge");
+
+-- ideally, we'd get a display with two outputs so that we could map
+-- the rendertargets directly to the outputs, getting rid of one step
+	local setup_vrpipe = function(bridge, neck)
+		local md = vr_metadata(source);
+
+		local dispw = 1920;
+		local disph = 1024;
+		local halfw = 1920 * 0.5;
+
+-- assume SBS configuration, L/R, combiner is where we apply distortion
+-- and the rendertarget we bind to a preview window as well as map to
+-- the display
+		local combiner = alloc_surface(dispw, disph);
+		local l_eye = alloc_surface(halfw, disph);
+		local r_eye = alloc_surface(halfw, disph);
+
+		define_rendertarget(combiner, {l_eye, r_eye});
+		define_linktarget(l_eye, wnd.vr_pipe);
+		define_linktarget(r_eye, wnd.vr_pipe);
+
+-- build the cameras, link them to a shared movable anchor
+		local pos = null_surface(1, 1);
+		local cam_l = null_surface(1, 1);
+		local cam_r = null_surface(1, 1);
+		scale3d_model(cam_l, 1.0, -1.0, 1.0);
+		scale3d_model(cam_r, 1.0, -1.0, 1.0);
+		link_image(cam_l, pos);
+		link_image(cam_r, pos);
+		show_image({pos, cam_l, cam_r});
+
+-- the distortion model has three options, no distortion, fragment shader
+-- distortion and (better) mesh distortion that can be configured with
+-- image_tesselation (not too many subdivisions, maybe 30, 40 something
+
+-- ipd is set by moving l_eye to -sep, r_eye to +sep
+		vr_map_limb(bridge, cam_l, neck, false, true);
+		vr_map_limb(bridge, cam_r, neck, false, true);
+	end
+
+	local sc =
+	vr_setup(hmd_arg, function(source, status)
+		if (status.kind == "terminated") then
+			wnd:set_title("VR Bridge shut down (no devices/no permission)");
+			table.remove_match(wnd.leases, disp);
+			display_release(name);
+			delete_image(source);
+		end
+		if (status.kind == "limb_removed") then
+			if (status.name == "neck") then
+				delete_image(source);
+				display_release(name);
+				table.remove_match(wnd.leases, disp);
+			end
+		elseif (status.kind == "limb_added") then
+			if (status.name == "neck") then
+				setup_vrpipe(source, status.id);
+			end
+		end
+	end);
+
+	if not sc then
+		display_release(name);
+		wnd:set_title("vr bridge startup failed");
+	end
+end
+
+local function vr_destroy(wnd)
+	for _,v in ipairs(wnd.leases) do
+		display_release(v.name);
+	end
+end
+
 local function vrwnd()
 -- flip for rendertarget
 	local cam = null_surface(1, 1);
@@ -143,8 +215,11 @@ local function vrwnd()
 
 -- and bind to a new window
 	local wnd = active_display():add_window(tgtsurf, {scalemode = "stretch"});
-	wnd.vr_rt = tgtsurf;
+	wmd.vr_pipe = tgtsurf;
 	wnd.rtgt_id = 0;
+	wnd.leases = {};
+	wnd:add_handler("destroy", vr_destroy);
+
 	rendertarget_id(tgtsurf, 0);
 	set_model(wnd, "sphere");
 	image_sharestorage(unm, wnd.model);
@@ -205,8 +280,7 @@ local function vrwnd()
 		kind = "value",
 		label = "VR Settings",
 		description = "Set the arguments that will be passed to the VR device",
-		handler = vrsettings,
-		action = function(ctx, val)
+		handler = function(ctx, val)
 			hmd_arg = val;
 		end,
 		},
@@ -224,12 +298,13 @@ local function vrwnd()
 		name = "eyeswap",
 		label = "Swap Left/Right",
 		kind = "action",
+		eval = function() return wnd.vr_rt; end,
 		description = "Switch left and right eye position when mapping the source",
 		handler = function()
 			wnd.rtgt_id = wnd.rtgt_id == 0 and 1 or 0;
-			rendertarget_id(wnd.vr_rt, wnd.rtgt_id);
-			if (wnd.rtgt_vr_r) then
-				rendertarget_id(wnd.vr_rt, wnd.rtgt_id == 0 and 1 or 0);
+			rendertarget_id(wnd.vr_rt_l, wnd.rtgt_id);
+			if (wnd.vr_rt_r) then
+				rendertarget_id(wnd.vr_rt_r, wnd.rtgt_id == 0 and 1 or 0);
 			end
 		end,
 		},
@@ -258,16 +333,19 @@ local function vrwnd()
 			end
 		end
 		},
--- FIXME: last piece of the puzzle, query display for VR tags,
--- (and add a "fake" VR window setup as well)
 		{
 		name = "setup_vr",
 		label = "Setup VR",
 		kind = "value",
 		set = function()
+			local res = {};
+			display_bytag("VR", function(disp) table.insert(res, disp.name); end);
+			return res;
 		end,
 		eval = function()
-			return false;
+			local res;
+			display_bytag("VR", function(disp) res = true; end);
+			return res;
 		end,
 		handler = function(ctx, val)
 			setup_vr_display(wnd, val);

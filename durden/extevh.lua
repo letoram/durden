@@ -100,11 +100,20 @@ local function default_reqh(wnd, source, ev)
 		if (valid_vid(wnd.titlebar_id)) then
 			delete_image(wnd.titlebar_id);
 		end
-		wnd.titlebar_id = accept_target(wnd.w, gconfig_get("tbar_sz"));
-		if (valid_vid(wnd.titlebar_id)) then
-			target_updatehandler(wnd.titlebar_id, function(src, stat) end);
-			link_image(wnd.titlebar_id, wnd.anchor); -- link for autodel
-			image_sharestorage(wnd.titlebar_id, wnd.titlebar.anchor);
+		local tbar = accept_target(wnd.w, gconfig_get("tbar_sz"));
+		if (valid_vid(tbar)) then
+			wnd.titlebar:set_impostor(wnd.tbar,
+				function(ctx, neww, newh)
+					if (valid_vid(tbar)) then
+						target_displayhint(tbar, neww, newh)
+					else
+						wnd.titlebar:set_impostor()
+					end
+				end,
+				{
+
+				}
+			);
 		end
 		return;
 	elseif (ev.segkind == "cursor") then
