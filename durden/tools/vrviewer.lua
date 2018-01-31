@@ -37,12 +37,12 @@ void main()
 	vec4 vert = vertex;
 
 	if (rtgt_id == 0){
-		tc += ofs_leye;
 		tc *= scale_leye;
+		tc += ofs_leye;
 	}
 	else {
-		tc += ofs_reye;
 		tc *= scale_reye;
+		tc += ofs_reye;
 	}
 	texco = tc;
 	gl_Position = projection * modelview * vertex;
@@ -58,21 +58,24 @@ local function set_model_uniforms(
 	shader_uniform(geomshader, "ofs_reye", "ff", reye_x, reye_y);
 	shader_uniform(geomshader, "scale_reye", "ff", reye_ss, reye_st);
 end
+
 set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
 
 local function get_valid_windows(cwin, model)
 	local lst = {};
 	for wnd in all_windows() do
 		if (wnd ~= cwin) then
-		table.insert(lst, {
-			kind = "action",
-			name = "map_" .. wnd.name,
-			label = wnd.title_text and wnd.title_text or wnd.name,
-			eval = function() return valid_vid(cwin.model); end,
-			handler = function()
-				image_sharestorage(wnd.canvas, cwin.model);
-			end
-		});
+			local ident = wnd.title_text and wnd.title_text or wnd.name;
+			table.insert(lst, {
+				kind = "action",
+				name = "map_" .. wnd.name,
+				label = "w:" .. ident,
+				eval = function() return valid_vid(cwin.model); end,
+				handler = function()
+					image_sharestorage(wnd.canvas, cwin.model);
+					cwin:set_title(string.format("VR/Panoramic: %s", ident));
+				end
+			});
 		end
 	end
 	return lst;
@@ -88,6 +91,8 @@ local function set_model(wnd, kind)
 	elseif (kind == "hemisphere") then
 		wnd.model = build_sphere(1, 360, 180, 1, true);
 --	elseif (kind == "flat") then need this for sbs-3d material
+	elseif (kind == "cube") then
+		wnd.model = build_3dbox(1, 1, 1, 1);
 	else
 		return;
 	end
@@ -172,7 +177,6 @@ local function vrwnd()
 	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
 
 	show_image(tgtsurf);
-	wnd.menu_input_disable = true;
 	wnd.menu_state_disable = true;
 	wnd.actions = {
 		{
@@ -211,7 +215,7 @@ local function vrwnd()
 		label = "Projection Model",
 		kind = "value",
 		description = "Determine the source mapping projection model",
-		set = {"Sphere", "Hemisphere", "Cylinder"},
+		set = {"Sphere", "Hemisphere", "Cylinder", "Cube"},
 		handler = function(ctx, val)
 			set_model(wnd, string.lower(val));
 		end

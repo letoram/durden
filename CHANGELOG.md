@@ -7,6 +7,10 @@
 	   autolayout now recurses when one pass didn't position all windows
      autolayout also got a hide/reveal mode
 
+	 tools/vrviewer:
+     added VR viewer for 180/360 panoramic monoscopic or stereoscopic
+     sources
+
   * distr/durden:
 	   launcher- script for reasonable defaults for linux/BSDs with
 		 arcan on egl-dri platform.
