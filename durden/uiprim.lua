@@ -568,6 +568,10 @@ local function bar_destroy(bar)
 		delete_image(bar.anchor);
 	end
 
+	if (bar.impostor_mh) then
+		mouse_droplistener(bar.impostor_mh);
+	end
+
 	if (bar.name) then
 		mouse_droplistener(bar);
 	end
@@ -687,6 +691,36 @@ local function bar_updatemh(bar, mouseh)
 	end
 end
 
+-- [rz_fun] callback(ctx, w, h) on every resize
+-- [mh_tbl] mousehandler qualifying table
+local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
+	if (valid_vid(tbar.impostor)) then
+		delete_image(tbar.impostor);
+		mouse_droplistener(tbar.impostor_mh);
+	end
+
+-- empty storage container, we will just use it for sharestorage
+	local impvid = null_surface(tbar.width, tbar.height);
+	if (not valid_vid(impvid)) then
+		return;
+	end
+
+	image_sharestorage(vid, impvid);
+	mh_tbl.own = function(ctx, vid)
+		return tbar.impostor_active and vid == tbar.anchor;
+	end
+	tbar.impostor_mh = mh_tbl;
+	tbar.impostor_vid = vid;
+	link_image(tbar.anchor, impostor_vid);
+end
+
+-- swap back and forth between impostor managed and client managed
+local function bar_impostor_swap(tbar)
+	if (tbar.impostor_active) then
+
+	end
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -696,29 +730,54 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 	height = height > 0 and height or 1;
 
 	local res = {
+-- normal visual tracking options, the scale-factor used comes
+-- from the display we are attached to, a tiler- scale invokes
+-- rebuild
 		anchor = fill_surface(width, height, 255, 0, 0),
 		shader = shdrtgt,
+		width = width,
+		height = height,
+
+-- split the bar into three groups, left and right take priority,
+-- while the center area act as 'fill'.
 		buttons = {
 			left = {},
 			right = {},
 			center = {}
 		},
+
+-- buttons can be grouped into sets that gets switched back and forth,
+-- possibly rebuilding / saving the gpu- resources while doing so
 		groups = {},
 		group = "default",
-		state = "active",
-		shader = shdrtgt,
-		width = width,
-		height = height,
+		add_button = bar_button,
+		all_buttons = bar_iter,
+		hide_buttons = bar_buttons_hide,
+		show_buttons = bar_buttons_show,
+		switch_group = bar_group,
+
+-- variations of resizing the bar, updating all state and relayouting
 		resize = bar_resize,
 		invalidate = bar_invalidate,
 		relayout = bar_relayout_horiz,
-		switch_state = bar_state,
-		add_button = bar_button,
+
+-- used for animation invalidation and input handling switches
 		update = bar_update,
 		update_mh = bar_updatemh,
+
+-- reanchor to another UI component, needed when switching titlebar mode
+-- for something like tabbed mode
 		reanchor = bar_reanchor,
-		all_buttons = bar_iter,
-		switch_group = bar_group,
+
+-- an impostor is an external vid that takes the place of the bar
+		set_impostor = bar_impostor,
+		swap_impostor = bar_impostor_swap,
+
+-- mark all buttons and the bar as having a specific state (e.g. alert)
+		switch_state = bar_state,
+		state = "active",
+
+-- bar visibility / livecycle
 		hide = bar_hide,
 		show = bar_show,
 		move = bar_move,

@@ -14,7 +14,7 @@ Authors and Contact
 Development is discussed on the IRC channel #arcan on the Freenode network
 (chat.freenode.org)
 
-2015-2017, Björn Ståhl
+2015-2018, Björn Ståhl
 
 Licensing
 =====

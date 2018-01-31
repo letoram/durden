@@ -62,7 +62,8 @@ local function tryload(v)
 
 	local rv = {
 		name = map.name,
-		ident = map.ident
+		ident = map.ident,
+		tag = map.tag
 	};
 
 -- copy and sanity check optional fields
@@ -596,7 +597,7 @@ function display_add(name, width, height, ppcm, id)
 
 		if (prof) then
 			display_debug(string.format(
-				"found existing profile for %s, %s", name, v.ident));
+				"found existing profile for %s", name));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
 				table.insert(ignored, {
@@ -691,8 +692,26 @@ end
 -- allow external tools to register ignored devices by tag
 function display_bytag(tag, yield)
 	for _,v in ipairs(ignored) do
-		if (v.tag == tag) then
+		if (v.tag == tag and not v.leased) then
 			yield(v);
+		end
+	end
+end
+
+function display_lease(name)
+	for k,v in ipairs(ignored) do
+		if (v.name == name and not v.leased) then
+			v.leased = true;
+			return v;
+		end
+	end
+end
+
+function display_release(name)
+	for k,v in ipairs(ignored) do
+		if (v.name == name and v.leased) then
+			v.leased = false;
+			return;
 		end
 	end
 end
