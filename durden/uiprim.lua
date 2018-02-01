@@ -310,6 +310,10 @@ local function bar_resize(bar, neww, newh, time)
 	else
 		bar:relayout();
 	end
+
+	if (bar.impostor_rz) then
+		bar:impostor_rz(neww, newh, time);
+	end
 	bar.anim_time = nil;
 end
 
@@ -706,18 +710,41 @@ local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
 	end
 
 	image_sharestorage(vid, impvid);
-	mh_tbl.own = function(ctx, vid)
-		return tbar.impostor_active and vid == tbar.anchor;
+	if (mh_tbl) then
+		mh_tbl.own = function(ctx, vid)
+			return tbar.impostor_active and vid == tbar.impostor_vid;
+		end
+		mh_tbl.name = "tbar_impostor";
+		local list = {};
+		for k,v in pairs(mh_tbl) do
+			table.insert(list, k);
+		end
+		tbar.impostor_mh = mh_tbl;
+		mouse_addlistener(tbar.impostor_mh, list);
 	end
-	tbar.impostor_mh = mh_tbl;
 	tbar.impostor_vid = vid;
-	link_image(tbar.anchor, impostor_vid);
+	tbar.impostor_rz = type(rz_fun) == "function" and rz_fun or nil;
+
+-- let the impostor physicaly order higher than the bar, and
+-- inherit the order so the two may 'slightly' coexist.
+	link_image(vid, tbar.anchor, ANCHOR_LL);
+	move_image(vid, 0, -(image_surface_properties(vid).height));
+	image_inherit_order(vid, true);
+	order_image(vid, 1);
 end
 
 -- swap back and forth between impostor managed and client managed
 local function bar_impostor_swap(tbar)
-	if (tbar.impostor_active) then
+	if (not valid_vid(tbar.impostor_vid)) then
+		return;
+	end
 
+	if (tbar.impostor_active) then
+		tbar.impostor_active = false;
+		blend_image(tbar.impostor_vid, 0.0, gconfig_get("animation"));
+	else
+		tbar.impostor_active = true;
+		blend_image(tbar.impostor_vid, 1.0, gconfig_get("animation"));
 	end
 end
 
