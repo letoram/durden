@@ -38,6 +38,17 @@ will lack quite a few features and has performance penalties, but is
 complete enough to get a feel for things. This platform works on OS X and
 Linux/BSD with an Xorg setup.
 
+## Voidlinux
+
+Arcan, durden and surrounding tools have been added to the voidlinux
+distribution. There, you should get to the 'working/experimenting stage' for
+low-level integration much faster by running:
+
+    xbps-install durden xarcan arcan-wayland aloadimage aclip
+    durden
+
+From a tty, where you can think of 'durden' as replacing 'startx'.
+
 # Offline Configuration
 
 There are a few command-line options and environment variables for
