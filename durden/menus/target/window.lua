@@ -353,6 +353,25 @@ return {
 		end
 	},
 	{
+		name = "titlebar_impostor",
+		label = "Impostor",
+		kind = "value",
+		validator = gen_valid_num(-1, 128),
+		eval = function() return false; end,
+		handler = function()
+		end
+	},
+	{
+		name = "titlebar_impswap",
+		label = "Titlebar Swap",
+		kind = "action",
+		description = "Switch between server side controlled titlebar and impostor",
+		handler = function()
+			local wnd = active_display().selected;
+			wnd.titlebar:swap_impostor();
+		end
+	},
+	{
 		name = "border_toggle",
 		label = "Border Toggle",
 		kind = "action",
