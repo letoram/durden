@@ -108,17 +108,6 @@ end
 -- when the VR bridge is active, we still want to be able to tune the
 -- distortion, fov, ...
 
--- distortion[ffff]
--- abberation[ffff] : vs defaults
--- warp_scale
--- l_fov_deg_tan, r_fov_deg_tan
--- ar_l, ar_r,
--- h_sz, v_sz,
--- distortion model (none, fragment)
--- + toggle preview window (just bind rt vid to another storage)
--- just nil the fields that aren't overridden
--- possibly get from display map
-
 local function setup_vr_display(wnd, name, headless)
 	local disp = display_lease(name);
 	if (not disp and not headless) then
@@ -184,8 +173,12 @@ local function setup_vr_display(wnd, name, headless)
 			vr_map_limb(bridge, cam_l, neck, false, true);
 			vr_map_limb(bridge, cam_r, neck, false, true);
 			wnd.vr_state = {
-				l = cam_l, r = cam_r, meta = md
+				l = cam_l, r = cam_r, meta = md,
+				rt_l = l_eye, rt_r = r_eye
 			};
+			wnd:set_title("HMD active");
+			link_image(combiner, wnd.anchor);
+			map_video_display(combiner, disp.id, HINT_PRIMARY);
 		else
 			local wnd =
 				active_display():add_window(combiner, {scalemode = "stretch"});
@@ -208,18 +201,24 @@ local function setup_vr_display(wnd, name, headless)
 			wnd:set_title("VR Bridge shut down (no devices/no permission)");
 			table.remove_match(wnd.leases, disp);
 			display_release(name);
+			wnd.vr_state = nil;
 			delete_image(source);
 		end
 		if (status.kind == "limb_removed") then
 			if (status.name == "neck") then
 				delete_image(source);
 				display_release(name);
+				wnd.vr_state = nil;
 				table.remove_match(wnd.leases, disp);
 			end
 		elseif (status.kind == "limb_added") then
 			if (status.name == "neck") then
-				local md = vr_metadata(source);
-				setup_vrpipe(source, md, status.id);
+				if (not wnd.vr_state) then
+					local md = vr_metadata(source);
+					setup_vrpipe(source, md, status.id);
+				else
+					warning("vr bridge reported neck limb twice");
+				end
 			end
 		end
 	end);
@@ -235,6 +234,24 @@ local function vr_destroy(wnd)
 		display_release(v.name);
 	end
 end
+
+-- tunables:
+--  step_ipd
+--  step_fov
+--  distortion_model
+--  distortion_values
+--  abberation_values
+--  vignetting
+--  distortion[ffff]
+--  abberation[ffff] : vs defaults
+--  warp_scale
+--  l_fov_deg_tan, r_fov_deg_tan
+--  ar_l, ar_r,
+--  h_sz, v_sz,
+--  distortion model (none, fragment)
+--
+local hmdconfig = {
+};
 
 local function vrwnd()
 -- flip for rendertarget
@@ -331,6 +348,14 @@ local function vrwnd()
 		end
 		},
 		{
+		name = "hmdconfig",
+		label = "HMD Configuration",
+		kind = "action",
+		submenu = true,
+		eval = function() return wnd.vr_state ~= nil; end,
+		handler = hmdconfig
+		},
+		{
 		name = "eyeswap",
 		label = "Swap Left/Right",
 		kind = "action",
@@ -338,9 +363,10 @@ local function vrwnd()
 		description = "Switch left and right eye position when mapping the source",
 		handler = function()
 			wnd.rtgt_id = wnd.rtgt_id == 0 and 1 or 0;
-			rendertarget_id(wnd.vr_rt_l, wnd.rtgt_id);
-			if (wnd.vr_rt_r) then
-				rendertarget_id(wnd.vr_rt_r, wnd.rtgt_id == 0 and 1 or 0);
+			rendertarget_id(tgtsurf, wnd.rtgt_id);
+			if (wnd.vrstate and wnd.vr_state.rt_l) then
+				rendertarget_id(wnd.vr_state.rt_l, wnd.rtgt_id);
+				rendertarget_id(wnd.vr_state.rt_r, wnd.rtgt_id == 0 and 1 or 0);
 			end
 		end,
 		},
