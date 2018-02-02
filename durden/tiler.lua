@@ -3947,6 +3947,7 @@ local function wnd_create(wm, source, opts)
 	local res = wnd_setup(wm, source, opts);
 	if (res) then
 		res:ws_attach();
+		res:set_title("");
 	end
 	return res;
 end
