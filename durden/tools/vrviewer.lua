@@ -3,6 +3,8 @@
 --
 
 local hmd_arg = "";
+local vr_near = 0.01;
+local vr_far = 100.0;
 
 local vert = [[
 uniform mat4 modelview;
@@ -90,8 +92,8 @@ local function set_model(wnd, kind)
 	swizzle_model(wnd.model);
 	show_image(wnd.model);
 	image_shader(wnd.model, geomshader);
-	if (wnd.vr_rt) then
-		rendertarget_attach(wnd.vr_rt, wnd.model, RENDERTARGET_DETACH);
+	if (wnd.vr_pipe) then
+		rendertarget_attach(wnd.vr_pipe, wnd.model, RENDERTARGET_DETACH);
 	end
 
 	if (valid_vid(rmmodel)) then
@@ -117,9 +119,9 @@ end
 -- just nil the fields that aren't overridden
 -- possibly get from display map
 
-local function setup_vr_display(wnd, name)
+local function setup_vr_display(wnd, name, headless)
 	local disp = display_lease(name);
-	if (not disp) then
+	if (not disp and not headless) then
 		return;
 	end
 
@@ -130,12 +132,12 @@ local function setup_vr_display(wnd, name)
 
 -- ideally, we'd get a display with two outputs so that we could map
 -- the rendertargets directly to the outputs, getting rid of one step
-	local setup_vrpipe = function(bridge, neck)
-		local md = vr_metadata(source);
-
-		local dispw = 1920;
-		local disph = 1024;
-		local halfw = 1920 * 0.5;
+	local setup_vrpipe = function(bridge, md, neck)
+		local dispw = math.clamp(
+			(md.width and md.width > 0) and md.width or 1920, MAX_SURFACEW);
+		local disph = math.clamp(
+			(md.height and md.height > 0) and md.height or 1024, MAX_SURFACEH);
+		local halfw = dispw * 0.5;
 
 -- assume SBS configuration, L/R, combiner is where we apply distortion
 -- and the rendertarget we bind to a preview window as well as map to
@@ -143,28 +145,61 @@ local function setup_vr_display(wnd, name)
 		local combiner = alloc_surface(dispw, disph);
 		local l_eye = alloc_surface(halfw, disph);
 		local r_eye = alloc_surface(halfw, disph);
+		show_image({l_eye, r_eye});
 
+-- since we don't show any other models, this is fine without a depth buffer
 		define_rendertarget(combiner, {l_eye, r_eye});
 		define_linktarget(l_eye, wnd.vr_pipe);
 		define_linktarget(r_eye, wnd.vr_pipe);
+		rendertarget_id(l_eye, 0);
+		rendertarget_id(r_eye, 1);
+		move_image(r_eye, halfw, 0);
 
--- build the cameras, link them to a shared movable anchor
-		local pos = null_surface(1, 1);
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
 		scale3d_model(cam_l, 1.0, -1.0, 1.0);
 		scale3d_model(cam_r, 1.0, -1.0, 1.0);
-		link_image(cam_l, pos);
-		link_image(cam_r, pos);
-		show_image({pos, cam_l, cam_r});
+
+-- adjustable delta?
+		local l_fov = (md.left_fov * 180 / 3.14159265359);
+		local r_fov = (md.right_fov * 180 / 3.14159265359);
+
+		if (md.left_ar < 0.01) then
+			md.left_ar = halfw / disph;
+		end
+
+		if (md.right_ar < 0.01) then
+			md.right_ar = halfw / disph;
+		end
+
+		camtag_model(cam_l, vr_near, vr_far, l_fov, md.right_ar, true, true, 0, l_eye);
+		camtag_model(cam_r, vr_near, vr_far, r_fov, md.right_ar, true, true, 0, r_eye);
 
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
-		vr_map_limb(bridge, cam_l, neck, false, true);
-		vr_map_limb(bridge, cam_r, neck, false, true);
+		if (not headless) then
+			vr_map_limb(bridge, cam_l, neck, false, true);
+			vr_map_limb(bridge, cam_r, neck, false, true);
+			wnd.vr_state = {
+				l = cam_l, r = cam_r, meta = md
+			};
+		else
+			local wnd =
+				active_display():add_window(combiner, {scalemode = "stretch"});
+			show_image(combiner);
+			wnd:set_title("Simulated Output");
+		end
+	end
+
+-- debugging, fake a hmd and set up a pipe for that
+	if (headless) then
+		setup_vrpipe(nil, {
+			left_fov = 1.80763751, right_fov = 1,80763751,
+			left_ar = 0.888885, right_ar = 0.88885}, nil);
+		return;
 	end
 
 	local sc =
@@ -183,7 +218,8 @@ local function setup_vr_display(wnd, name)
 			end
 		elseif (status.kind == "limb_added") then
 			if (status.name == "neck") then
-				setup_vrpipe(source, status.id);
+				local md = vr_metadata(source);
+				setup_vrpipe(source, md, status.id);
 			end
 		end
 	end);
@@ -211,19 +247,19 @@ local function vrwnd()
 	local tgtsurf = alloc_surface(VRESW, VRESH);
 	define_rendertarget(tgtsurf, {cam, unm}, RENDERTARGET_DETACH,
 		RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
-	camtag_model(cam, 0.01, 100.0, 45.0, 1.33, true, true, 0, tgtsurf);
+	camtag_model(cam, vr_near, vr_far, 45.0, 1.33, true, true, 0, tgtsurf);
 
 -- and bind to a new window
 	local wnd = active_display():add_window(tgtsurf, {scalemode = "stretch"});
-	wmd.vr_pipe = tgtsurf;
+	wnd.vr_pipe = tgtsurf;
 	wnd.rtgt_id = 0;
-	wnd.leases = {};
-	wnd:add_handler("destroy", vr_destroy);
-
 	rendertarget_id(tgtsurf, 0);
 	set_model(wnd, "sphere");
 	image_sharestorage(unm, wnd.model);
 	delete_image(unm);
+
+	wnd.leases = {};
+	wnd:add_handler("destroy", vr_destroy);
 
 	wnd.bindings = {
 	TAB = function() wnd.model_move = not wnd.model_move; end
@@ -298,7 +334,7 @@ local function vrwnd()
 		name = "eyeswap",
 		label = "Swap Left/Right",
 		kind = "action",
-		eval = function() return wnd.vr_rt; end,
+		eval = function() return wnd.rtgt_id; end,
 		description = "Switch left and right eye position when mapping the source",
 		handler = function()
 			wnd.rtgt_id = wnd.rtgt_id == 0 and 1 or 0;
@@ -352,6 +388,19 @@ local function vrwnd()
 		end
 		},
 	};
+
+	if (DEBUGLEVEL > 0) then
+		table.insert(wnd.actions, {
+			name = "headless_vr";
+			label = "Headless VR",
+			kind = "action",
+			description = "Debug- VR window without a HMD display",
+			handler = function(ctx, val)
+				setup_vr_display(wnd, val, true);
+			end
+		});
+	end
+
 	return wnd;
 end
 

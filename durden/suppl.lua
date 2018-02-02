@@ -1148,7 +1148,7 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 -- a little odd combination, used to manually build a path to a specific menu
 -- item for shortcuts. handler_hook needs to be set and either meta+submenu or
 -- just non-submenu for the hook to be called instead of the default handler
-		if (tgt.kind == "action") then
+		if (tgt.kind == "action" or not tgt.kind) then
 			inp_st.lastm = ctx.lastm;
 			cpath:append(tgt.name, tgt.label, inp_st);
 			local m1, m2 = dispatch_meta();
@@ -1178,6 +1178,9 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 		elseif (tgt.kind == "value") then
 			cpath:append(tgt.name, tgt.label);
 			return suppl_run_value(tgt, tgt.password_mask);
+		else
+			cpath:reset();
+			return;
 		end
 	end
 
