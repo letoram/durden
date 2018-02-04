@@ -5,6 +5,7 @@
 local hmd_arg = "";
 local vr_near = 0.01;
 local vr_far = 100.0;
+local distance = 1;
 
 local vert = [[
 uniform mat4 modelview;
@@ -74,16 +75,19 @@ end
 
 local function set_model(wnd, kind)
 	local rmmodel = wnd.model;
+	wnd.last_model = kind;
 
 	if (kind == "cylinder") then
-		wnd.model = build_cylinder(1, 0.5, 359, 1);
+		wnd.model = build_cylinder(distance, 0.5 * distance, 359, 1);
 	elseif (kind == "sphere") then
-		wnd.model = build_sphere(0.1, 360, 360, 1, true);
+		wnd.model = build_sphere(distance, 360, 360, 1, true);
 	elseif (kind == "hemisphere") then
-		wnd.model = build_sphere(1, 360, 180, 1, true);
+		wnd.model = build_sphere(distance, 360, 180, 1, true);
 --	elseif (kind == "flat") then need this for sbs-3d material
 	elseif (kind == "cube") then
-		wnd.model = build_3dbox(1, 1, 1, 1);
+		wnd.model = build_3dbox(distance, distance, distance, 1);
+	elseif (kind == "plane") then
+		wnd.model = build_3dplane(-1, -1, 1, 1, distance, 0.2, 0.2, 1, true);
 	else
 		return;
 	end
@@ -101,7 +105,6 @@ local function set_model(wnd, kind)
 			image_sharestorage(rmmodel, wnd.model);
 		end
 		delete_image(rmmodel);
-		wnd.model = nil;
 	end
 end
 
@@ -230,6 +233,7 @@ local function setup_vr_display(wnd, name, headless)
 end
 
 local function vr_destroy(wnd)
+	print("destroy, leases?", #wnd.leases);
 	for _,v in ipairs(wnd.leases) do
 		display_release(v.name);
 	end
@@ -341,10 +345,23 @@ local function vrwnd()
 		name = "switch_model",
 		label = "Projection Model",
 		kind = "value",
-		description = "Determine the source mapping projection model",
-		set = {"Sphere", "Hemisphere", "Cylinder", "Cube"},
+		description = "Set the source mapping projection model",
+		set = {"Sphere", "Hemisphere", "Cylinder", "Cube", "Plane"},
 		handler = function(ctx, val)
 			set_model(wnd, string.lower(val));
+		end
+		},
+		{
+		name = "model_distance",
+		label = "Model Distance",
+		kind = "value",
+		initial = distance,
+		hint = "(0.1 .. 99.0)",
+		description = "Set the infinite model distance value",
+		validator = gen_valid_num(0.1, 99.0),
+		handler = function(ctx, val)
+			distance = tonumber(val);
+			set_model(wnd, wnd.last_model);
 		end
 		},
 		{
