@@ -1640,15 +1640,44 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	outh = math.floor(outh);
 	reset_image_transform(src);
 
--- for normal where the source is larger than the alloted slot
+-- for normal where the source is larger than the alloted slot,
+-- this does not stack with manually defined crop regions, though
+-- the use cases are not really the same
 	if (wnd.autocrop) then
 		local ip = image_storage_properties(src);
 		image_set_txcos_default(src, wnd.origo_ll);
 		local ss = outw / ip.width;
 		local st = outh / ip.height;
 		image_scale_txcos(src, ss, st);
+
 	elseif (wnd.in_drag_rz) then
+-- some processing is missing here as well, we shouldn't apply
+-- the resize to a non-scaled client before we actually get the
+-- data
+	else
+
 	end
+
+-- update the mouse scaling factors (value 5 and 6) so that the final
+-- absolute value take the effective range into account
+	if (wnd.crop_values) then
+		local ip = image_storage_properties(src);
+		wnd.crop_values[6] = (ip.width - wnd.crop_values[2] - wnd.crop_values[4]) / ip.width;
+		wnd.crop_values[5] = (ip.height - wnd.crop_values[1] - wnd.crop_values[3]) / ip.height;
+
+		local s1 = wnd.crop_values[2] / ip.width;
+		local t1 = wnd.crop_values[1] / ip.height;
+		local s2 = (ip.width - wnd.crop_values[4]) / ip.width;
+		local t2 = (ip.height - wnd.crop_values[3]) / ip.height;
+		if (wnd.origo_ll) then
+			local tmp = t2;
+			t2 = t1;
+			t1 = tmp;
+		end
+
+		image_set_txcos(wnd.canvas, {s1, t1, s2, t1, s2, t2, s1, t2});
+	end
+
 	resize_image(src, outw, outh,
 		wnd_animation_time(wnd, src, false, false));
 
@@ -2383,6 +2412,38 @@ local function wnd_droppopup(wnd, all)
 	end
 end
 
+-- define a new crop region and remap mouse coordinates
+local function wnd_crop(wnd, t, l, d, r)
+	local props = image_storage_properties(wnd.canvas);
+	t = math.clamp(t, 0, props.width);
+	l = math.clamp(l, 0, props.height);
+	d = math.clamp(d, 0, props.height - t);
+	r = math.clamp(r, 0, props.width - l);
+	wnd.crop_values = {t, l, d, r, 1, 1};
+
+-- when sending window sizes, add these values in order to go from sliced
+-- window size to actual surface size, this matters for impostors
+	wnd.dh_pad_w = l + r;
+	wnd.dh_pad_h = t + d;
+
+	wnd:resize(wnd.width, wnd.height);
+end
+
+-- and grow it
+local function wnd_crop_append(wnd, t, l, d, r)
+	if (not wnd.crop_values) then
+		return wnd:crop(t, l, d, r);
+	end
+	wnd.crop_values[1] = wnd.crop_values[1] + t;
+	wnd.crop_values[2] = wnd.crop_values[2] + l;
+	wnd.crop_values[3] = wnd.crop_values[3] + d;
+	wnd.crop_values[4] = wnd.crop_values[4] + r;
+
+	wnd.dh_pad_w = wnd.crop_values[1] + wnd.crop_values[3];
+	wnd.dh_pad_h = wnd.crop_values[2] + wnd.crop_values[4];
+	wnd:resize(wnd.width, wnd.height);
+end
+
 --
 -- re-adjust each window weight, they are not allowed to go down to negative
 -- range and the last cell will always pad to fit
@@ -2472,13 +2533,6 @@ convert_mouse_xy = function(wnd, x, y, rx, ry)
 	local locx = x - aprop.x;
 	local locy = y - aprop.y;
 
-	if (wnd.mouse_remap_range) then
-		locx = (wnd.mouse_remap_range[1] * aprop.width) +
-			locx * wnd.mouse_remap_range[3];
-		locy = (wnd.mouse_remap_range[2] * aprop.height) +
-			locy * wnd.mouse_remap_range[4];
-	end
-
 -- take server-side scaling into account
 	local res = {};
 	local sprop = image_storage_properties(
@@ -2487,6 +2541,12 @@ convert_mouse_xy = function(wnd, x, y, rx, ry)
 	local sfy = sprop.height / aprop.height;
 	local lx = sfx * locx;
 	local ly = sfy * locy;
+
+-- and append our translation
+	if (wnd.crop_values) then
+		lx = lx * wnd.crop_values[6] + wnd.crop_values[2];
+		ly = ly * wnd.crop_values[5] + wnd.crop_values[1];
+	end
 
 	res[1] = lx;
 	res[2] = rx and rx or 0;
@@ -3795,14 +3855,21 @@ local wnd_setup = function(wm, source, opts)
 		max_h = wm.effective_height,
 		x = 0,
 		y = 0,
+		centered = true,
+		scalemode = opts.scalemode and opts.scalemode or "normal",
+
+-- external displayhint offsets to mask cropping actions
+		dh_pad_w = 0,
+		dh_pad_h = 0,
+
+-- weights used for balancing tile tree
 		weight = 1.0,
 		vweight = 1.0,
 
+-- decoration controls
 		cursor = "default",
 		hide_titlebar = gconfig_get("hide_titlebar"),
 		hide_border = false,
-		centered = true,
-		scalemode = opts.scalemode and opts.scalemode or "normal",
 		indirect_parent = nil,
 
 -- visual attribute- functions
@@ -3822,6 +3889,8 @@ local wnd_setup = function(wm, source, opts)
 		resize = wnd_resize,
 		display_table = get_disptbl,
 		grow = wnd_grow,
+		set_crop = wnd_crop,
+		append_crop = wnd_append_crop,
 
 -- position/hierarchy/selection
 		reposition = wnd_repos,
