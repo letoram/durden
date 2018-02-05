@@ -748,6 +748,16 @@ local function bar_impostor_swap(tbar)
 	end
 end
 
+local function bar_impostor_destroy(tbar)
+	if (not valid_vid(tbar.impostor_vid)) then
+		return;
+	end
+
+	delete_image(tbar.impostor_vid);
+	mouse_droplistener(tbar.impostor_mh);
+	tbar.impostor_active = nil;
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -799,6 +809,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 -- an impostor is an external vid that takes the place of the bar
 		set_impostor = bar_impostor,
 		swap_impostor = bar_impostor_swap,
+		destroy_impostor = bar_impostor_destroy,
 
 -- mark all buttons and the bar as having a specific state (e.g. alert)
 		switch_state = bar_state,

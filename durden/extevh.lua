@@ -97,24 +97,7 @@ local function default_reqh(wnd, source, ev)
 
 -- special handling, cursor etc. maybe we should permit subtype handler override
 	if (ev.segkind == "titlebar") then
-		if (valid_vid(wnd.titlebar_id)) then
-			delete_image(wnd.titlebar_id);
-		end
-		local tbar = accept_target(wnd.w, gconfig_get("tbar_sz"));
-		if (valid_vid(tbar)) then
-			wnd.titlebar:set_impostor(wnd.tbar,
-				function(ctx, neww, newh)
-					if (valid_vid(tbar)) then
-						target_displayhint(tbar, neww, newh)
-					else
-						wnd.titlebar:set_impostor()
-					end
-				end,
-				{
-
-				}
-			);
-		end
+-- ignore the titlebar for now, later, re-use the impostor feature to set it
 		return;
 	elseif (ev.segkind == "cursor") then
 		if (wnd.custom_cursor and valid_vid(wnd.custom_cursor.vid)) then
@@ -184,7 +167,6 @@ end
 defhtbl["viewport"] =
 function(wnd, source, stat)
 -- need different behavior for popup here (invisible, parent, ...),
--- FIXME:	wnd:custom_border(ev->viewport.border);
 end
 
 -- got updated ramps from a client, still need to decide what to

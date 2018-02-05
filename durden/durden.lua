@@ -282,44 +282,44 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 		return;
 	end
 
-	if (neww > 0 and newh > 0) then
-		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			local props = image_storage_properties(wnd.external);
+	if (neww <= 0 or newh <= 0) then
+		return;
+	end
+
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
+	local props = image_storage_properties(wnd.external);
 
 -- edge cases where we want the client to ignore actual sizing
-		if (wnd.displayhint_block_wh) then
-			efw = props.width;
-			efh = props.height;
-		end
+	if (wnd.displayhint_block_wh) then
+		efw = props.width;
+		efh = props.height;
+	end
 
 -- in this mode, just tell the client what the size of the area actually is
 -- we really want different behavior for drag here as well, but that's
 -- something to fix in the float-mode enhancement stage
-		if (wnd.scalemode == "client") then
-			efw = wnd.max_w - wnd.pad_left - wnd.pad_right;
-			efh = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
-		end
+	if (wnd.scalemode == "client") then
+		efw = wnd.max_w - wnd.pad_left - wnd.pad_right;
+		efh = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
+	end
 
-		if (wnd.block_rz_hint) then
-			return;
-		end
+	if (wnd.block_rz_hint) then
+		return;
+	end
 
 -- ignore resize- step limit (terminal) if we are not in drag resize
-		if (not mouse_state().drag or not wnd.sz_delta or
-				(math.abs(props.width - efw) > wnd.sz_delta[1] or
-			   math.abs(props.height - efh) > wnd.sz_delta[2])) then
+	if (not mouse_state().drag or not wnd.sz_delta or
+		(math.abs(props.width - efw) > wnd.sz_delta[1] or
+	   math.abs(props.height - efh) > wnd.sz_delta[2])) then
 
 -- cache these to help debugging
-				 wnd.hint_w = efw;
-				 wnd.hint_h = efh;
-				target_displayhint(wnd.external, efw, efh, wnd.dispmask);
-			end
-		end
-
-		if (valid_vid(wnd.titlebar_id)) then
-			target_displayhint(wnd.titlebar_id,
-				wnd.width - wnd.border_w * 2, gconfig_get("tbar_sz"));
-		end
+		 wnd.hint_w = efw;
+		 wnd.hint_h = efh;
+		target_displayhint(
+			wnd.external, efw - wnd.dh_pad_w, efh - wnd.dh_pad_h, wnd.dispmask);
 	end
 end
 

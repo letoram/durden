@@ -353,15 +353,6 @@ return {
 		end
 	},
 	{
-		name = "titlebar_impostor",
-		label = "Impostor",
-		kind = "value",
-		validator = gen_valid_num(-1, 128),
-		eval = function() return false; end,
-		handler = function()
-		end
-	},
-	{
 		name = "titlebar_impswap",
 		label = "Titlebar Swap",
 		kind = "action",
@@ -482,7 +473,7 @@ return {
 					y2 = y2 > py2 and py2 or y2;
 
 -- safeguard against range problems
-					if (x2-x1 <= 0 or y2 - y1 <= 0) then
+					if (x2 - x1 <= 0 or y2 - y1 <= 0) then
 						return;
 					end
 
@@ -491,35 +482,54 @@ return {
 -- back and forth.
 					local new = null_surface(x2-x1, y2-y1);
 					image_sharestorage(wnd.canvas, new);
-					local s1 = (x1-props.x) / props.width;
-					local t1 = (y1-props.y) / props.height;
-					local s2 = (x2-props.x) / props.width;
-					local t2 = (y2-props.y) / props.height;
-					if (wnd.origo_ll) then
-						local tmp_1 = t2;
-						t2 = t1;
-						t1 = tmp_1;
-					end
+
+
+-- calculate crop in source surface relative coordinates
+					local t = (y1 - props.y) / props.height;
+					local l = (x1 - props.x) / props.width;
+					local d = (py2 - y2) / props.height;
+					local r = (px2 - x2) / props.width;
 
 -- bind to a window, with optional input-routing but run this as a one-off
 -- timer to handle the odd case where the add-window event would trigger
 -- another selection region to nest. setting this too short seems to fail
 -- to trigger the hook altogether (interesting)
 					local source_name = wnd.name;
-					timer_add_periodic("wndspawn", 10, true, function()
-						image_set_txcos(new, {s1, t1, s2, t1, s2, t2, s1, t2});
+
+					timer_add_periodic("wndspawn", 2, true, function()
+						if (not wnd.add_handler) then
+							return;
+						end
+
 						show_image(new);
 						local cwin = active_display():add_window(new, {scalemode = "aspect"});
 						if (not cwin) then
 							delete_image(new);
 							return;
 						end
--- define mouse-cursor coordinate range-remap
-						cwin.mouse_remap_range = {
-							s1, t1, s2, t2
-						};
+
+						local function recrop()
+							local sprops = image_storage_properties(wnd.canvas);
+							cwin.origo_ll = wnd.origo_ll;
+							cwin:set_crop(
+								t * sprops.height, l * sprops.width,
+								d * sprops.height, r * sprops.width
+							);
+						end
+
+-- add event handlers so that we update the scaling every time the source changes
+						wnd:add_handler("resize", recrop);
+						cwin:add_handler("destroy", function()
+							if (wnd.drop_handler)
+								then wnd:drop_handler("resize", recrop);
+							end
+						end
+						);
+
+						recrop();
 						cwin:set_title("Slice");
 						cwin.source_name = wnd.name;
+
 -- add references to the external source
 					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
 						val == "Active") then
@@ -530,5 +540,60 @@ return {
 			end
 			);
 		end
-	}
+	},
+	{
+		name = "crop",
+		label = "Crop",
+		kind = "value",
+		initial = function()
+			local wnd = active_display().selected;
+			if (wnd.crop_values) then
+				return string.format("%.0f %.0f %.0f %.0f", unpack(wnd.crop_values));
+			end
+			return "0 0 0 0";
+		end,
+		hint = "(top left down right px)",
+		description = "Crop a certain number of pixels from the canvas region",
+		kind = "value",
+		validator = suppl_valid_typestr("ffff", 0, 10000, 0),
+-- setting crop rebuild impostor if used
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local cropv = suppl_unpack_typestr("ffff", val, 0, 10000, 0);
+			wnd:set_crop(cropv[1], cropv[2], cropv[3], cropv[4]);
+			wnd.titlebar:destroy_impostor();
+			local impv = wnd.titlebar.last_impostor;
+			if (impv) then
+				set_impostor(wnd, impv);
+			end
+		end
+	},
+	{
+		name = "impostor",
+		label = "Impostor",
+		hint = "(-1 (auto), 0 (disable), >0 (set px)",
+		kind = "value",
+		description = "Define an impostor region that will be mapped into the titlebar",
+		validator = function(ctx, val)
+			return (val and string.len(val) > 0 and tonumber(val) and tonumber(val) > -1);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local num = tonumber(val);
+
+-- reset impostor state before adding new
+			if (wnd.titlebar.last_impostor) then
+				wnd:append_crop(0, -wnd.titlebar.last_impostor, 0, 0);
+				wnd.titlebar:destroy_impostor();
+			end
+
+			if (num == -1) then
+-- create a small slice, run through a horizontal edge detection, read back the result,
+-- look for a match - actual implementation is in suppl.lua, update cropv
+				num = 10;
+			end
+
+			set_impostor(wnd, num);
+		end
+	},
 };
