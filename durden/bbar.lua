@@ -98,7 +98,10 @@ local function bbar_input_keyorcombo(wm, sym, iotbl, lutsym, mstate)
 
 -- this needs to propagate both the m1_m2 and the possible modifiers
 -- altgr etc. which may or may not collide (really bad design)
-	local mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+	local mods = ""
+	if (iotbl.modifiers) then
+		mods = table.concat(decode_modifiers(iotbl.modifiers), "_");
+	end
 	local lutsym2 = string.len(mods) > 0 and (mods .."_" .. sym) or nil;
 	bbar_input_key(wm, lutsym, iotbl, lutsym, nil, lutsym2);
 end
