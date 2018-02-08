@@ -271,6 +271,38 @@ local function gen_wsmove(wnd)
 	return res;
 end
 
+local function setup_surface(wnd, vid, px)
+	local txcos = image_get_txcos(wnd.canvas);
+	local st = px / image_storage_properties(wnd.canvas).height;
+	wnd.impostor_txcos[6] = wnd.impostor_txcos[2] + st;
+	wnd.impostor_txcos[8] = wnd.impostor_txcos[4] + st;
+	image_set_txcos(vid, wnd.impostor_txcos);
+end
+
+local function set_impostor(wnd, px)
+	local tbar_reg = null_surface(wnd.effective_w, px);
+	wnd.impostor_txcos = image_get_txcos(wnd.canvas);
+
+	show_image(tbar_reg);
+	image_sharestorage(wnd.canvas, tbar_reg);
+	setup_surface(wnd, tbar_reg, px);
+
+	wnd.titlebar:set_impostor(tbar_reg,
+		function(bar, w, h, dt, interp)
+			resize_image(tbar_reg, w, h, dt, interp);
+			setup_surface(wnd, tbar_reg, px);
+		end, {
+		button =
+		function()
+			print("impostor input");
+		end,
+		motion =
+		function()
+		end
+		}
+	);
+end
+
 return {
 	{
 		name = "tag",
@@ -565,6 +597,7 @@ return {
 			local impv = wnd.titlebar.last_impostor;
 			if (impv) then
 				set_impostor(wnd, impv);
+				wnd:append_crop(impv, 0, 0, 0);
 			end
 		end
 	},
@@ -574,7 +607,7 @@ return {
 		hint = "(-1 (auto), 0 (disable), >0 (set px)",
 		kind = "value",
 		description = "Define an impostor region that will be mapped into the titlebar",
-		validator = function(ctx, val)
+		validator = function(val)
 			return (val and string.len(val) > 0 and tonumber(val) and tonumber(val) > -1);
 		end,
 		handler = function(ctx, val)
@@ -594,6 +627,7 @@ return {
 			end
 
 			set_impostor(wnd, num);
+			wnd:append_crop(num, 0, 0, 0);
 		end
 	},
 };

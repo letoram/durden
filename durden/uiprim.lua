@@ -312,7 +312,7 @@ local function bar_resize(bar, neww, newh, time)
 	end
 
 	if (bar.impostor_rz) then
-		bar:impostor_rz(neww, newh, time);
+		bar:impostor_rz(neww, newh, time, bar.anim_func);
 	end
 	bar.anim_time = nil;
 end
@@ -703,13 +703,6 @@ local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
 		mouse_droplistener(tbar.impostor_mh);
 	end
 
--- empty storage container, we will just use it for sharestorage
-	local impvid = null_surface(tbar.width, tbar.height);
-	if (not valid_vid(impvid)) then
-		return;
-	end
-
-	image_sharestorage(vid, impvid);
 	if (mh_tbl) then
 		mh_tbl.own = function(ctx, vid)
 			return tbar.impostor_active and vid == tbar.impostor_vid;
@@ -730,7 +723,8 @@ local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
 	link_image(vid, tbar.anchor, ANCHOR_LL);
 	move_image(vid, 0, -(image_surface_properties(vid).height));
 	image_inherit_order(vid, true);
-	order_image(vid, 1);
+	order_image(vid, 2);
+	tbar.impostor_active = true;
 end
 
 -- swap back and forth between impostor managed and client managed

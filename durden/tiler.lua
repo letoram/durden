@@ -1662,8 +1662,10 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 -- absolute value take the effective range into account
 	if (wnd.crop_values) then
 		local ip = image_storage_properties(src);
-		wnd.crop_values[6] = (ip.width - wnd.crop_values[2] - wnd.crop_values[4]) / ip.width;
-		wnd.crop_values[5] = (ip.height - wnd.crop_values[1] - wnd.crop_values[3]) / ip.height;
+		wnd.crop_values[6] =
+			(ip.width - wnd.crop_values[2] - wnd.crop_values[4]) / ip.width;
+		wnd.crop_values[5] =
+			(ip.height - wnd.crop_values[1] - wnd.crop_values[3]) / ip.height;
 
 		local s1 = wnd.crop_values[2] / ip.width;
 		local t1 = wnd.crop_values[1] / ip.height;
@@ -1839,15 +1841,15 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 			wnd.scalemode, wnd.canvas, props, neww, newh,
 			force
 		);
-		wnd.width = neww + decw;
-		wnd.height = newh + dech;
+		wnd.width = neww + decw - wnd.dh_pad_w;
+		wnd.height = newh + dech - wnd.dh_pad_h;
 	else
 		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 			wnd.scalemode, wnd.canvas, props, wnd.max_w-decw, wnd.max_h-dech,
 			force
 		);
-		wnd.width = wnd.effective_w + decw;
-		wnd.height = wnd.effective_h + dech;
+		wnd.width = wnd.effective_w;
+		wnd.height = wnd.effective_h;
 	end
 
 -- update decoration
@@ -2422,7 +2424,8 @@ local function wnd_crop(wnd, t, l, d, r)
 	wnd.crop_values = {t, l, d, r, 1, 1};
 
 -- when sending window sizes, add these values in order to go from sliced
--- window size to actual surface size, this matters for impostors
+-- window size to actual surface size, since we are now cropped, there is
+-- more area for the client to use
 	wnd.dh_pad_w = l + r;
 	wnd.dh_pad_h = t + d;
 
@@ -2432,15 +2435,19 @@ end
 -- and grow it
 local function wnd_crop_append(wnd, t, l, d, r)
 	if (not wnd.crop_values) then
-		return wnd:crop(t, l, d, r);
+		return wnd:set_crop(t, l, d, r);
 	end
-	wnd.crop_values[1] = wnd.crop_values[1] + t;
-	wnd.crop_values[2] = wnd.crop_values[2] + l;
-	wnd.crop_values[3] = wnd.crop_values[3] + d;
-	wnd.crop_values[4] = wnd.crop_values[4] + r;
+	local props = image_storage_properties(wnd.canvas);
+	wnd.crop_values[1] = math.clamp(wnd.crop_values[1] + t, 0, props.width);
+	wnd.crop_values[2] = math.clamp(wnd.crop_values[2] + l, 0, props.height);
+	wnd.crop_values[3] = math.clamp(
+		wnd.crop_values[3] + d, 0, props.height - wnd.crop_values[1]);
+	wnd.crop_values[4] = math.clamp(
+		wnd.crop_values[4] + r, 0, props.width - wnd.crop_values[2]);
 
-	wnd.dh_pad_w = wnd.crop_values[1] + wnd.crop_values[3];
-	wnd.dh_pad_h = wnd.crop_values[2] + wnd.crop_values[4];
+	wnd.dh_pad_h = wnd.crop_values[1] + wnd.crop_values[3];
+	wnd.dh_pad_w = wnd.crop_values[2] + wnd.crop_values[4];
+
 	wnd:resize(wnd.width, wnd.height);
 end
 
@@ -3890,7 +3897,7 @@ local wnd_setup = function(wm, source, opts)
 		display_table = get_disptbl,
 		grow = wnd_grow,
 		set_crop = wnd_crop,
-		append_crop = wnd_append_crop,
+		append_crop = wnd_crop_append,
 
 -- position/hierarchy/selection
 		reposition = wnd_repos,
