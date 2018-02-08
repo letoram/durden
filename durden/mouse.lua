@@ -100,6 +100,7 @@ local mstate = {
 	btns_remap = {},
 	cur_over = {},
 	hover_track = {},
+	active_list = {},
 	autohide = false,
 	hide_base = 40,
 	hide_count = 40,
@@ -740,7 +741,34 @@ function mouse_button_input(ind, active)
 		for key, val in pairs(hists) do
 			local res = linear_find_vid(mstate.handlers.button, val, "button");
 			if (res) then
+				if (active) then
+					if (not mstate.active_list[ind]) then
+						mstate.active_list[ind] = {};
+					end
+					table.insert(mstate.active_list[ind], {res, val});
+				elseif (mstate.active_list[ind]) then
+					for i,v in ipairs(mstate.active_list[ind]) do
+						if (v[2] == val) then
+							table.remove(mstate.active_list[ind], i);
+							break;
+						end
+					end
+				end
+
+-- uncertain, but possible that we should not emit the release event on surfaces
+-- where we don't also have the 'press' event, most layers just ignore this
 				res:button(val, ind, active, mstate.x, mstate.y);
+			end
+		end
+
+-- make sure that the 'release' side of buttons gets sent to all sources that
+-- received a 'press' even if they are not in the currently 'over' list.
+		if (not active) then
+			if (mstate.active_list[ind]) then
+				for i,v in ipairs(mstate.active_list[ind]) do
+					v[1]:button(v[2], ind, false, mstate.x, mstate.y);
+				end
+				mstate.active_list[ind] = {};
 			end
 		end
 	end
