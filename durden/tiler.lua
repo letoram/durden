@@ -2151,11 +2151,21 @@ local function wnd_step_drag(wnd, mctx, vid, dx, dy)
 	wnd.y = wnd.y + dy * mctx.mask[4];
 	move_image(wnd.anchor, wnd.x, wnd.y);
 
-	wnd:resize(
-		wnd.width + dx * mctx.mask[1],
-		wnd.height + dy * mctx.mask[2],
-		true, false
-	);
+-- special handling for client resize, accumulate size changes and push
+-- a resize request, only the resized event handler will force- resize wnd.
+	if (wnd.scalemode == "client" and
+		valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		wnd.max_w = wnd.max_w + dx;
+		wnd.max_h = wnd.max_h + dy;
+		run_event(wnd, "resize",
+			wnd.max_w, wnd.max_h, wnd.effective_w, wnd.effective_h);
+	else
+		wnd:resize(
+			wnd.width + dx * mctx.mask[1],
+			wnd.height + dy * mctx.mask[2],
+			true, false
+		);
+	end
 end
 
 local function wnd_drag_resize(wnd, mctx, enter)
@@ -2173,24 +2183,30 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		return;
 	end
 
-	local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
-	local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
 	local ew = wnd.effective_w;
 	local eh = wnd.effective_h;
 
+-- do we align on drop?
+	if (wnd.sz_delta) then
+		local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
+		local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
+
 -- resistance for dragging windows with an expressed stepping size
-	if (dx > wnd.sz_delta[1] * 0.5) then
-		ew = ew + wnd.sz_delta[1];
-		wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
+		if (dx > wnd.sz_delta[1] * 0.5) then
+			ew = ew + wnd.sz_delta[1];
+			wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
+		end
+
+		if (dy < wnd.sz_delta[2] * 0.5) then
+			eh = eh + wnd.sz_delta[2];
+			wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
+		end
 	end
 
-	if (dy < wnd.sz_delta[2] * 0.5) then
-		eh = eh + wnd.sz_delta[2];
-		wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
+	if (wnd.scalemode ~= "client") then
+		move_image(wnd.anchor, wnd.x, wnd.y);
+		wnd:resize_effective(ew, eh, true);
 	end
-
-	move_image(wnd.anchor, wnd.x, wnd.y);
-	wnd:resize_effective(ew, eh, true);
 
 	wnd.in_drag_rz = false;
 end
@@ -2457,14 +2473,25 @@ end
 --
 local function wnd_grow(wnd, w, h)
 	if (not wnd.space or wnd.space.mode == "float") then
-		local neww = wnd.effective_w + math.floor(wnd.wm.effective_width * w);
-		local newh = wnd.effective_h + math.floor(wnd.wm.effective_height * h);
+		local stepw = math.floor(wnd.wm.effective_width * w);
+		local steph = math.floor(wnd.wm.effective_height * h);
 
+-- align to step size?
 		if (wnd.sz_delta and wnd.sz_delta[1] > 0 and wnd.sz_delta[2] > 0) then
+
+		else
 
 		end
 
-		wnd:resize_effective(neww, newh, true);
+-- if the client is allowed to drive its own resize, go with that.
+		if (wnd.scalemode == "client" and
+			valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			wnd.max_w = math.clamp(wnd.max_w + stepw, 32, wnd.wm.effective_width);
+			wnd.max_h = math.clamp(wnd.max_h + steph, 32, wnd.wm.effective_height);
+			run_event(wnd, "resize", wnd.max_w, wnd.max_h);
+		else
+			wnd:resize_effective(wnd.effective_w + stepw, wnd.effective_h + steph, true);
+		end
 		return;
 	end
 
@@ -3807,7 +3834,6 @@ local wnd_setup = function(wm, source, opts)
 		external = extvid,
 		gain = 1.0 * gconfig_get("global_gain"),
 		popups = {},
-		sz_delta = {1, 1},
 
 -- hierarchies used for tile layout
 		children = {},

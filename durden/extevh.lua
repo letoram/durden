@@ -210,6 +210,8 @@ function(wnd, source, stat)
 	if (wnd.shader_hook) then
 		wnd.shader_hook();
 	end
+
+	wnd:resize_effective(stat.width, stat.height, true, true);
 	wnd.space:resize(true);
 end
 
