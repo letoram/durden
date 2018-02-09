@@ -318,6 +318,7 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 -- cache these to help debugging
 		 wnd.hint_w = efw;
 		 wnd.hint_h = efh;
+
 		target_displayhint(
 			wnd.external, efw - wnd.dh_pad_w, efh - wnd.dh_pad_h, wnd.dispmask);
 	end
