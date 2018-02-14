@@ -278,7 +278,7 @@ end
 -- be separated code-wise, as we want tiler- and other modules to be reusable
 -- in less complex projects
 local function tile_changed(wnd, neww, newh, efw, efh)
-	if (not neww or not newh or wnd.block_resize) then
+	if (not neww or not newh or wnd.block_rz_hint) then
 		return;
 	end
 
@@ -315,12 +315,8 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 		(math.abs(props.width - efw) > wnd.sz_delta[1] or
 	   math.abs(props.height - efh) > wnd.sz_delta[2])) then
 
--- cache these to help debugging
-		 wnd.hint_w = efw;
-		 wnd.hint_h = efh;
-
-		target_displayhint(
-			wnd.external, efw - wnd.dh_pad_w, efh - wnd.dh_pad_h, wnd.dispmask);
+-- cache what we actually send
+		wnd:displayhint(efw+wnd.dh_pad_w, efh+wnd.dh_pad_h, wnd.dispmask);
 	end
 end
 
