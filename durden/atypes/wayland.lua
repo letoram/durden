@@ -208,13 +208,15 @@ seglut["application"] = function(wnd, source, stat)
 	end
 
 	local newwnd = active_display():add_hidden_window(id);
+	if (not newwnd) then
+		return false;
+	end
 
-	if (newwnd) then
-		target_updatehandler(id,
-			function(source, status)
-				wayland_toplevel_handler(newwnd, source, status);
-			end
-		);
+	target_updatehandler(id,
+		function(source, status)
+			wayland_toplevel_handler(newwnd, source, status);
+		end
+	);
 
 -- note, this will not yield the REGISTER event
 		extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
@@ -222,7 +224,6 @@ seglut["application"] = function(wnd, source, stat)
 		wlwnds[id] = newwnd;
 		table.insert(wnd.wl_children, newwnd);
 		newwnd.bridge = wnd;
-	end
 
 	return true;
 end
@@ -310,7 +311,7 @@ return {
 		kbd_period = 0,
 		kbd_delay = 0,
 		centered = true,
-		scalemode = "none",
+		scalemode = "client",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
 

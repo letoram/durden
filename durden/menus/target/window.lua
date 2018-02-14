@@ -272,16 +272,19 @@ local function gen_wsmove(wnd)
 end
 
 local function setup_surface(wnd, vid, px)
-	local txcos = image_get_txcos(wnd.canvas);
 	local st = px / image_storage_properties(wnd.canvas).height;
-	wnd.impostor_txcos[6] = wnd.impostor_txcos[2] + st;
-	wnd.impostor_txcos[8] = wnd.impostor_txcos[4] + st;
-	image_set_txcos(vid, wnd.impostor_txcos);
+	local txcos = image_get_txcos(wnd.canvas);
+	txcos[2] = txcos[2] - st;
+	txcos[6] = txcos[2] + st;
+	txcos[4] = txcos[4] - st;
+	txcos[8] = txcos[4] + st;
+	image_set_txcos(vid, txcos);
+	move_image(vid, 0, -px);
 end
 
 local function set_impostor(wnd, px)
 	local tbar_reg = null_surface(wnd.effective_w, px);
-	wnd.impostor_txcos = image_get_txcos(wnd.canvas);
+	wnd.titlebar.last_impostor = px;
 
 	show_image(tbar_reg);
 	image_sharestorage(wnd.canvas, tbar_reg);
@@ -289,12 +292,12 @@ local function set_impostor(wnd, px)
 
 	wnd.titlebar:set_impostor(tbar_reg,
 		function(bar, w, h, dt, interp)
-			resize_image(tbar_reg, w, h, dt, interp);
+			resize_image(tbar_reg, w, px, dt, interp);
 			setup_surface(wnd, tbar_reg, px);
 		end, {
 		button =
 		function()
-			print("impostor input");
+			active_display():message("impostor click");
 		end,
 		motion =
 		function()
@@ -596,8 +599,8 @@ return {
 			wnd.titlebar:destroy_impostor();
 			local impv = wnd.titlebar.last_impostor;
 			if (impv) then
-				set_impostor(wnd, impv);
 				wnd:append_crop(impv, 0, 0, 0);
+				set_impostor(wnd, impv);
 			end
 		end
 	},
@@ -616,8 +619,12 @@ return {
 
 -- reset impostor state before adding new
 			if (wnd.titlebar.last_impostor) then
-				wnd:append_crop(0, -wnd.titlebar.last_impostor, 0, 0);
+				wnd:append_crop(-wnd.titlebar.last_impostor, 0, 0, 0);
 				wnd.titlebar:destroy_impostor();
+				wnd.titlebar.last_impostor = nil;
+				if (num == 0) then
+					return;
+				end
 			end
 
 			if (num == -1) then
@@ -626,8 +633,8 @@ return {
 				num = 10;
 			end
 
-			set_impostor(wnd, num);
 			wnd:append_crop(num, 0, 0, 0);
+			set_impostor(wnd, num);
 		end
 	},
 };

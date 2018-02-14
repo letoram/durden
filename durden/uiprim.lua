@@ -750,6 +750,9 @@ local function bar_impostor_destroy(tbar)
 	delete_image(tbar.impostor_vid);
 	mouse_droplistener(tbar.impostor_mh);
 	tbar.impostor_active = nil;
+	tbar.impostor_vid = BADID;
+	tbar.impostor_rz = nil;
+	tbar.impostor_mh = nil;
 end
 
 -- work as a horizontal stack of uiprim_buttons,

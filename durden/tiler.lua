@@ -142,6 +142,9 @@ local function wnd_destroy(wnd)
 		ign_delink = true;
 	end
 
+-- doesn't always hit, we want to forward this information to any
+-- event handler as well since it might affect next-selected heuristics
+	local was_selected = wnd.wm.selected == wnd;
 	if (wm.selected == wnd) then
 		wnd:deselect();
 	end
@@ -185,10 +188,8 @@ local function wnd_destroy(wnd)
 		end
 	end
 
--- doesn't always hit, we want to forward this information to any
--- event handler as well since it might affect next-selected heuristics
-	local was_selected = wnd.wm.selected == wnd;
-	if (was_selected) then
+-- couldn't do that, mark nothing as selected
+	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
 -- force auto-lock off so destroy on a selected window that has raw input
 -- dosn't stick, but only if the tiler is the active display
@@ -564,7 +565,7 @@ local function wnd_select(wnd, source, mouse)
 	wnd:set_dispmask(bit.band(wnd.dispmask,
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
-	if (wnd.wm.selected) then
+	if (wnd.wm.selected and wnd.wm.selected.deselect) then
 		wnd.wm.selected:deselect();
 	end
 
@@ -666,17 +667,11 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 -- recurse downwards
 		if (#node.children > 0) then
 			node.max_h = math.floor(fairh * node.vweight);
-
--- this allows a node to be set to 'float' while still in tile- mode
-			if (node.tile_ignore) then
-				level_resize(node, x, y, node.max_w, h, repos, fairh);
-			else
-				level_resize(node,
-						x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
-			end
+			level_resize(node,
+				x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
 		end
 
-		node:resize(node.max_w, node.max_h, false, repos);
+		node:resize(node.max_w, node.max_h, true);
 
 		x = x + node.max_w;
 		w = w - node.max_w;
@@ -870,8 +865,8 @@ local function workspace_migrate(ws, newt, disptbl)
 		table.insert(newt.windows, v);
 		table.remove_match(oldt.windows, v);
 -- send new display properties
-		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
-			target_displayhint(v.external, 0, 0, v.dispmask, get_disptbl(v, disptbl));
+		if (disptbl) then
+			v:displayhint(0, 0, v.dispmask, get_disptbl(v, disptbl));
 		end
 
 -- special handling for titlebar
@@ -1678,10 +1673,15 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		end
 
 		image_set_txcos(wnd.canvas, {s1, t1, s2, t1, s2, t2, s1, t2});
+		resize_image(src,
+			outw - wnd.crop_values[2] - wnd.crop_values[4],
+			outh - wnd.crop_values[1] - wnd.crop_values[3],
+			wnd_animation_time(wnd, src, false, false)
+		);
+	else
+		resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false)
+		);
 	end
-
-	resize_image(src, outw, outh,
-		wnd_animation_time(wnd, src, false, false));
 
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
@@ -1802,6 +1802,7 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		return false;
 	end
 
+-- clamp desired new complete window width
 	neww = math.clamp(neww, wnd.wm.min_width);
 	newh = math.clamp(newh, wnd.wm.min_height);
 
@@ -1810,8 +1811,10 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		newh = math.clamp(newh, nil, wnd.max_h);
 	end
 
-	local props = wnd.canvas_props
-		and wnd.canvas_props or image_storage_properties(wnd.canvas);
+-- take the properties of the backing store, subtract the crop area
+	local props = image_storage_properties(wnd.canvas);
+	props.width = props.width - wnd.dh_pad_w;
+	props.height = props.height - wnd.dh_pad_h;
 
 -- to save space for border width, statusbar and other properties
 	local decw = math.floor(wnd.pad_left + wnd.pad_right);
@@ -1834,25 +1837,26 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 
 	force = force and force or (wnd.space.mode == "float" and true) or false;
 
--- now we know dimensions of the window in regards to its current tiling cell
--- etc. so we can resize the border accordingly (or possibly cascade weights)
+-- Now we have the desired [neww, newh], the current [props],
+-- the scalemode, the size of the decration areas. Combine to calculate
+-- the size, input scaling and so on for the effective surface (canvas)
 	if (force) then
 		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 			wnd.scalemode, wnd.canvas, props, neww, newh,
 			force
 		);
-		wnd.width = neww + decw - wnd.dh_pad_w;
-		wnd.height = newh + dech - wnd.dh_pad_h;
 	else
 		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
 			wnd.scalemode, wnd.canvas, props, wnd.max_w-decw, wnd.max_h-dech,
 			force
 		);
-		wnd.width = wnd.effective_w;
-		wnd.height = wnd.effective_h;
 	end
 
--- update decoration
+-- effective size + decoration sizes = total size
+	wnd.width = wnd.effective_w + decw - wnd.dh_pad_w;
+	wnd.height = wnd.effective_h + dech - wnd.dh_pad_h;
+
+-- redraw / update the decorations
 	local bw = wnd.border_w;
 	local tbh = tbar_geth(wnd);
 	local size_decor = function(w, h)
@@ -1865,14 +1869,18 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 			wnd_animation_time(wnd, wnd.border, true, false));
 	end
 
--- still up for experimentation, but this method favors the canvas size rather
--- than the allocated tile size
-	size_decor(wnd.effective_w + bw + bw, wnd.effective_h + tbh + bw + bw);
-	wnd.pad_top = bw + tbh;
+-- still up for experimentation, but this method favors
+-- the canvas size rather than the allocated tile size
+	size_decor(wnd.width, wnd.height);
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 	wnd:reposition();
+--	active_display():message(string.format(
+--		"border %f, lrtd: %f, %f, %f, %f",
+--		bw, wnd.pad_left, wnd.pad_right, wnd.pad_top, wnd.pad_bottom));
 
--- delegate resize event to allow some "white lies"
+-- allow a relayouter to manipulate sizes etc. and finally, call all resize
+-- listeners. the most important one is in durden.lua which tells each external
+-- client what it will be displayed as.
 	if (wnd.space.layouter and wnd.space.layouter.block_rzevent) then
 		wnd.space.layouter.resize(wnd.space, nil, true, wnd,
 			function(neww, newh, effw, effh)
@@ -1883,6 +1891,9 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
 	end
 
+-- overlay surfaces that are attached to the window canvases also need to
+-- be updated to reflect the changes, and save the new state into the tag
+-- area of the canvas.
 	wnd:synch_overlays();
 	wnd:recovertag();
 end
@@ -2149,7 +2160,6 @@ local function wnd_step_drag(wnd, mctx, vid, dx, dy)
 
 	wnd.x = wnd.x + dx * mctx.mask[3];
 	wnd.y = wnd.y + dy * mctx.mask[4];
-	move_image(wnd.anchor, wnd.x, wnd.y);
 
 -- special handling for client resize, accumulate size changes and push
 -- a resize request, only the resized event handler will force- resize wnd.
@@ -2165,6 +2175,7 @@ local function wnd_step_drag(wnd, mctx, vid, dx, dy)
 			wnd.height + dy * mctx.mask[2],
 			true, false
 		);
+		move_image(wnd.anchor, wnd.x, wnd.y);
 	end
 end
 
@@ -2203,6 +2214,7 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		end
 	end
 
+-- for client, we don't really care, it should have received/queued event
 	if (wnd.scalemode ~= "client") then
 		move_image(wnd.anchor, wnd.x, wnd.y);
 		wnd:resize_effective(ew, eh, true);
@@ -2238,6 +2250,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		wnd.y = wnd.y + dy;
 	end
 
+-- make sure the titlebar (if visible) isn't occluded by the statusbar
 	local tbarh = tbar_geth(wnd);
 	if (not noclamp) then
 		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
@@ -2431,7 +2444,7 @@ local function wnd_droppopup(wnd, all)
 end
 
 -- define a new crop region and remap mouse coordinates
-local function wnd_crop(wnd, t, l, d, r)
+local function wnd_crop(wnd, t, l, d, r, mask)
 	local props = image_storage_properties(wnd.canvas);
 	t = math.clamp(t, 0, props.width);
 	l = math.clamp(l, 0, props.height);
@@ -2445,11 +2458,11 @@ local function wnd_crop(wnd, t, l, d, r)
 	wnd.dh_pad_w = l + r;
 	wnd.dh_pad_h = t + d;
 
-	wnd:resize(wnd.width, wnd.height);
+	wnd:resize(wnd.width, wnd.height, false, mask);
 end
 
 -- and grow it
-local function wnd_crop_append(wnd, t, l, d, r)
+local function wnd_crop_append(wnd, t, l, d, r, mask)
 	if (not wnd.crop_values) then
 		return wnd:set_crop(t, l, d, r);
 	end
@@ -2463,8 +2476,7 @@ local function wnd_crop_append(wnd, t, l, d, r)
 
 	wnd.dh_pad_h = wnd.crop_values[1] + wnd.crop_values[3];
 	wnd.dh_pad_w = wnd.crop_values[2] + wnd.crop_values[4];
-
-	wnd:resize(wnd.width, wnd.height);
+	wnd:resize(wnd.width, wnd.height, false, mask);
 end
 
 --
@@ -2472,15 +2484,27 @@ end
 -- range and the last cell will always pad to fit
 --
 local function wnd_grow(wnd, w, h)
-	if (not wnd.space or wnd.space.mode == "float") then
+	if (not wnd.space) then
+		return;
+	end
+
+	if (wnd.space.mode == "float") then
 		local stepw = math.floor(wnd.wm.effective_width * w);
 		local steph = math.floor(wnd.wm.effective_height * h);
 
 -- align to step size?
 		if (wnd.sz_delta and wnd.sz_delta[1] > 0 and wnd.sz_delta[2] > 0) then
+			if (w ~= 0) then
+				stepw = math.clamp(
+					math.floor(math.abs(wnd.sz_delta[1] / stepw)), 1) *
+					wnd.sz_delta[1] * math.sign(w);
+			end
 
-		else
-
+			if (h ~= 0) then
+				steph = math.clamp(
+					math.floor(math.abs(wnd.sz_delta[2] / steph)), 1) *
+					wnd.sz_delta[2] * math.sign(h);
+			end
 		end
 
 -- if the client is allowed to drive its own resize, go with that.
@@ -2488,28 +2512,32 @@ local function wnd_grow(wnd, w, h)
 			valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			wnd.max_w = math.clamp(wnd.max_w + stepw, 32, wnd.wm.effective_width);
 			wnd.max_h = math.clamp(wnd.max_h + steph, 32, wnd.wm.effective_height);
-			run_event(wnd, "resize", wnd.max_w, wnd.max_h);
+			wnd:displayhint(
+				wnd.effective_w + wnd.dh_pad_w, wnd.effective_h + wnd.dh_pad_h,
+				wnd.dispmask
+			);
+-- and for the forced scalemodes, just go with that
 		else
-			wnd:resize_effective(wnd.effective_w + stepw, wnd.effective_h + steph, true);
+			wnd:resize(wnd.width + stepw, wnd.height + steph, true);
 		end
 		return;
 	end
 
--- "grow" in float mode is different as it doesn't affect weights
-	if (wnd.space.mode ~= "tile" or (wnd.space.layouter and
-		wnd.space.layouter.block_grow)) then
+-- we don't care about grow in tabbed or if the layouter blocks us
+	if (wnd.space.mode ~= "tile" or
+		(wnd.space.layouter and wnd.space.layouter.block_grow)) then
 		return;
 	end
 
--- vertical weight is simpler, only got "parent" and "me", rest is subdivided
+-- for tiled mode, recalc all horizontal and vertical weights
 	if (h ~= 0) then
 		wnd.vweight = wnd.vweight + h;
 		wnd.parent.vweight = wnd.parent.vweight - h;
 	end
 
+-- horizontal being the worst as the siblings need to shrink
 	if (w ~= 0) then
 		wnd.weight = wnd.weight + w;
--- re-balance weight among siblings, take/give what wnd just gained / lost
 		if (#wnd.parent.children > 1) then
 			local ws = w / (#wnd.parent.children - 1);
 			for i=1,#wnd.parent.children do
@@ -2520,6 +2548,7 @@ local function wnd_grow(wnd, w, h)
 		end
 	end
 
+-- and force a relayout
 	wnd.space:resize();
 end
 
@@ -2641,27 +2670,51 @@ local function wnd_mouseclick(ctx, vid)
 end
 
 local function wnd_toggle_maximize(wnd)
-	if (wnd.float_dim) then
-		wnd.x = wnd.float_dim.x * wnd.wm.effective_width;
-		wnd.y = wnd.float_dim.y * wnd.wm.effective_height;
-		move_image(wnd.anchor, wnd.x, wnd.y,
-			wnd_animation_time(wnd, wnd.anchor, false, true));
-		wnd:resize(wnd.float_dim.w * wnd.wm.effective_width,
-			wnd.float_dim.h * wnd.wm.effective_height, true);
-		wnd.float_dim = nil;
+
+-- restore old?
+	if (wnd.maximized) then
+		local x = wnd.maximized.x * wnd.wm.effective_width;
+		local y = wnd.maximized.y * wnd.wm.effective_height;
+		wnd:move(x, y, false, true, false, true);
+
+		local neww = wnd.maximized.w * wnd.wm.effective_width + wnd.dh_pad_w;
+		local newh = wnd.maximized.h * wnd.wm.effective_height + wnd.dh_pad_h;
+
+		if (wnd.scalemode == "client") then
+			wnd:displayhint(neww, newh, wnd.dispmask);
+		else
+			wnd:resize(neww, newh, true);
+		end
+		wnd.maximized = nil;
+
+-- or define new, we have the option here to decide if the titlebar should
+-- be reattached to the statusbar to save more vertical space, and if the
+-- border region should be hidden though right now it is just oversize and
+-- position so the border falls outside
 	else
 		local cur = {};
 		local props = image_surface_resolve(wnd.anchor);
-		cur.x = props.x / wnd.wm.effective_width;
-		cur.y = props.y / wnd.wm.effective_height;
+		local neww = wnd.wm.effective_width;
+
+-- save relative so we can restore properly even if the screen changes
+		cur.x = wnd.x / wnd.wm.effective_width;
+		cur.y = wnd.y / wnd.wm.effective_height;
 		cur.w = wnd.width / wnd.wm.effective_width;
 		cur.h = wnd.height / wnd.wm.effective_height;
-		wnd.float_dim = cur;
-		wnd.x = 0;
-		wnd.y = 0;
-		move_image(wnd.anchor, wnd.x, wnd.y,
-			wnd_animation_time(wnd, wnd.anchor, false, true));
-		wnd:resize(wnd.wm.effective_width, wnd.wm.effective_height, true);
+		wnd.maximized = cur;
+
+		wnd:move(0, 0, false, true, false, true);
+		if (wnd.scalemode == "client") then
+			wnd:displayhint(
+				wnd.wm.effective_width + wnd.dh_pad_w,
+				wnd.wm.effective_height + wnd.dh_pad_h,
+				wnd.dispmask
+			);
+		else
+			wnd:resize(
+				wnd.wm.effective_width + wnd.border_w,
+				wnd.wm.effective_height + wnd.border_w, true);
+		end
 	end
 end
 
@@ -2883,8 +2936,8 @@ end
 local function wnd_dispmask(wnd, val, noflush)
 	wnd.dispmask = wnd.dispstat_block and wnd.dispmask or val;
 
-	if (not noflush and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		target_displayhint(wnd.external, 0, 0, wnd.dispmask);
+	if (not noflush) then
+		wnd:displayhint(0, 0, wnd.dispmask);
 	end
 end
 
@@ -2951,9 +3004,8 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	end
 
 -- propagate pixel density information
-	if (disptbl and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		target_displayhint(wnd.external,
-			0, 0, wnd.dispmask, get_disptbl(wnd, disptbl));
+	if (disptbl) then
+		wnd:displayhint(0, 0, wnd.dispmask, get_disptbl(wnd, disptbl));
 	end
 
 -- special handling, will be next selected
@@ -3032,10 +3084,30 @@ local function wnd_rebuild(v, bw)
 		hide_image(v.border);
 	else
 		show_image(v.border);
+		if (not bw) then
+			if (v.border_w == 0) then
+				bw = gconfig_get("borderw");
+			else
+				bw = v.border_w;
+			end
+		end
 	end
 
-	if (not bw) then
-		bw = v.border_w and v.border_w or gconfig_get("borderw");
+-- for tile, the window can't go outside its alloted size, but for float we
+-- want to be able to grow with the pad sizes
+	if (v.space.mode == "float") then
+		if (v.pad_left < bw) then
+			v.width = v.width + (bw - v.pad_left);
+		end
+		if (v.pad_right < bw) then
+			v.width = v.width + (bw - v.pad_right);
+		end
+		if (v.pad_top < bw + tbarh) then
+			v.height = v.height + (bw + tbarh - v.pad_top);
+		end
+		if (v.pad_bottom < bw + tbarh) then
+			v.height = v.height + (bw - v.pad_bottom);
+		end
 	end
 
 	v.pad_left = bw;
@@ -3124,6 +3196,8 @@ local border_mh = {
 	end,
 	out = function(ctx)
 		mouse_switch_cursor("default");
+		ctx.tag.in_drag_rz = false;
+		ctx.tag.in_drag_move = false;
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local wnd = ctx.tag;
@@ -3131,9 +3205,13 @@ local border_mh = {
 			set_borderstate(ctx);
 		end
 
--- protect against ugly "window destroyed just as we got drag"-
-		if (not wnd.drag_resize or not wnd.space.mode == "float") then
+-- protect against ugly "window destroyed just as we got drag"
+		if (not wnd.drag_resize or wnd.space.mode ~= "float") then
 			return;
+		end
+
+		if (not wnd.in_drag_rz and wnd.drag_rz_enter) then
+			wnd:drag_rz_enter(ctx.mask);
 		end
 
 -- some (wayland) clients need entirely different behaviors here
@@ -3150,12 +3228,19 @@ local border_mh = {
 		wnd_step_drag(wnd, ctx, vid, dx, dy);
 	end,
 	drop = function(ctx)
-		if (type(ctx.tag.in_drag_rz) == "function") then
-			ctx.tag:in_drag_rz(ctx.tag, ctx, vid, 0, 0, true);
+		local wnd = ctx.tag;
+		if (wnd ~= "float") then
+			return;
 		end
 
-		if (ctx.tag.drag_resize) then
-			ctx.tag:drag_resize(ctx, 0, 0, false);
+		if (type(wnd.in_drag_rz) == "function") then
+			wnd:in_drag_rz(ctx.tag, ctx, vid, 0, 0, true);
+		elseif (wnd.in_drag_rz) then
+			wnd:drag_resize(ctx, false);
+		end
+
+		if (wnd.drag_resize) then
+			wnd:drag_resize(ctx, 0, 0, false);
 		end
 	end
 };
@@ -3241,6 +3326,8 @@ local canvas_mh = {
 		mouse_show();
 		mouse_switch_cursor();
 		mouse_hidemask(false);
+		ctx.tag.in_drag_rz = false;
+		ctx.tag.in_drag_move = false;
 	end,
 
 	button = function(ctx, vid, ...)
@@ -3754,11 +3841,17 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 
 -- three mouse input responses, custom handler, block out region,
 -- let default canvas behavior apply
-	if (opts.mousehandler) then
-		opts.mousehandler.name = "overlay_mh";
-		opts.mousehandler.own = function(ctx, mvid) return mvid == vid; end;
-		mouse_addlistener(vid, opts.mousehandler);
-	elseif (not opts.block_mouse) then
+	if (opts.mouse_handler) then
+		opts.mouse_handler.name = "overlay_mh";
+		opts.mouse_handler.own = function(ctx, mvid) return mvid == vid; end;
+		local lst = {};
+		for k,v in pairs(opts.mouse_handler) do
+			if (type(v) == "function" and k ~= "own") then
+				table.insert(lst, k);
+			end
+		end
+		mouse_addlistener(opts.mouse_handler, lst);
+	elseif (opts.block_mouse) then
 		image_mask_set(vid, MASK_UNPICKABLE);
 	end
 
@@ -3769,7 +3862,7 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		yofs = opts.yofs and opts.yofs or 0,
 		wofs = opts.wofs and opts.wofs or 0,
 		hofs = opts.hofs and opts.hofs or 0,
-		mh = opts.mousehandler
+		mh = opts.mouse_handler
 	};
 
 	wnd.overlays[key] = overent;
@@ -3791,6 +3884,21 @@ local function wnd_guid(wnd, guid)
 		image_tracetag(wnd.external, recover);
 		wnd:recovertag(true);
 	end
+end
+
+local function default_displayhint(wnd, hw, hh, ...)
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
+	hw = math.clamp(hw, 0, MAX_SURFACEW);
+	hh = math.clamp(hh, 0, MAX_SURFACEH);
+	if (hw > 0 and hh > 0) then
+		wnd.hint_w = hw;
+		wnd.hint_h = hh;
+	end
+
+	target_displayhint(wnd.external, hw, hh, ...);
 end
 
 local function wnd_drop_overlay(wnd, key)
@@ -3961,6 +4069,9 @@ local wnd_setup = function(wm, source, opts)
 		add_popup = wnd_popup,
 		drop_popup = wnd_droppopup,
 		swap_alternate = wnd_setalternate,
+
+-- function hooks
+		displayhint = default_displayhint,
 	};
 
 -- this can be overridden / broken due to window restoration
@@ -4456,8 +4567,8 @@ local function tiler_scalef(wm, newf, disptbl)
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title();
-		if (disptbl and valid_vid(v.external, TYPE_FRAMESERVER)) then
-			target_displayhint(v.external, 0, 0, v.dispmask, get_disptbl(v, disptbl));
+		if (disptbl) then
+			v:displayhint(0, 0, v.dispmask, get_disptbl(v, disptbl));
 		end
 	end
 

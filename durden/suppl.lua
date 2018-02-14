@@ -33,6 +33,10 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
+function math.sign(val)
+	return (val < 0 and -1) or 1;
+end
+
 function math.clamp(val, low, high)
 	if (low and val < low) then
 		return low;
