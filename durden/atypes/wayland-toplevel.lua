@@ -12,7 +12,6 @@
 -- surface.
 --
 local toplevel_lut = {};
-local wl_resize;
 
 -- criterion: if the window has input focus (though according to spec
 -- it can loose focus during drag for unspecified reasons) and the mouse
@@ -83,7 +82,7 @@ local function set_dragrz_state(wnd, mask, from_wl)
 end
 
 toplevel_lut["resize"] = function(wnd, dx, dy)
-	if (active_display().selected ~= wnd) then
+	if (active_display().selected ~= wnd or wnd.space.mode ~= "float") then
 		return;
 	end
 
@@ -286,6 +285,8 @@ function wayland_toplevel_handler(wnd, source, status)
 		end
 
 		wnd:resize_effective(status.width, status.height, true, true);
+
+-- deferred from drag resize where the move should match the config change
 		if (wnd.move_mask) then
 			local dx = status.width - wnd.last_w;
 			local dy = status.height - wnd.last_h;
@@ -293,6 +294,7 @@ function wayland_toplevel_handler(wnd, source, status)
 			wnd.rz_acc_y = wnd.rz_acc_y - dy;
 			wnd:move(dx * wnd.move_mask[1], dy * wnd.move_mask[2], false, false, true, false);
 
+-- and similar action for toplevel reparenting
 		elseif (wnd.pending_center and wnd.pending_center.x) then
 			center_to(wnd, wnd.pending_center);
 			wnd.pending_center = nil;
@@ -325,8 +327,10 @@ local wl_displayhint = function(wnd, hw, hh, ...)
 --		end
 --	end
 
-	hw = math.clamp(hw, 0, MAX_SURFACEW);
-	hh = math.clamp(hh, 0, MAX_SURFACEH);
+	if (hw ~= 0 or hh ~= 0) then
+		hw = math.clamp(hw, 32, MAX_SURFACEW);
+		hh = math.clamp(hh, 32, MAX_SURFACEH);
+	end
 
 	target_displayhint(wnd.external, hw, hh, ...);
 end
@@ -345,6 +349,13 @@ wl_destroy = function(wnd, was_selected)
 	if (wnd.bridge and wnd.bridge.wl_children) then
 		wnd.bridge.wl_children[wnd.external] = nil;
 	end
+end
+
+local function wl_resize(wnd, neww, newh, efw, efh)
+	local props = image_storage_properties(wnd.canvas);
+	efw = math.clamp(efw - wnd.geom[1] - (props.width - wnd.geom[3]), 32);
+	efh = math.clamp(efh - wnd.geom[2] - (props.height - wnd.geom[4]), 32);
+	wnd:displayhint(efw + wnd.dh_pad_w, efh + wnd.dh_pad_h);
 end
 
 local toplevel_menu = {
@@ -404,6 +415,7 @@ return {
 		wnd.displayhint = wl_displayhint;
 		wnd.drag_rz_enter = set_dragrz_state;
 		wnd:add_handler("destroy", wl_destroy);
+		wnd:add_handler("resize", wl_resize);
 	end,
 	props = {
 		kbd_period = 0,

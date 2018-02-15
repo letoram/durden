@@ -81,7 +81,6 @@ function durden(argv)
 			local okstate, msg = pcall(res);
 			if (not okstate) then
 				warning(string.format("runtime error loading tool: %s - %s", v, msg));
-				print(msg);
 			end
 		end
 	end
