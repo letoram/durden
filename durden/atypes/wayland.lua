@@ -78,16 +78,16 @@ local function popup_handler(cl, source, status)
 -- account for popup being able to resize itself
 	if (status.kind == "resized") then
 		wayland_trace("popup resize to", status.width, status.height);
-			resize_image(source, status.width, status.height);
-			local wnd = wlwnds[source];
-			if (not wnd) then
-				return;
-			end
-			wnd:show();
-			if (wnd.popup_state) then
-				wnd:reposition(wnd.popup_state[1], wnd.popup_state[2],
-					wnd.popup_state[3], wnd.popup_state[4], wnd.popup_state[5]);
-			end
+		resize_image(source, status.width, status.height);
+		local wnd = wlwnds[source];
+		if (not wnd) then
+			return;
+		end
+		wnd:show();
+		if (wnd.popup_state) then
+			wnd:reposition(wnd.popup_state[1], wnd.popup_state[2],
+				wnd.popup_state[3], wnd.popup_state[4], wnd.popup_state[5]);
+		end
 
 -- wayland popups aren't very useful unless there's a relation so
 -- defer until we receive something

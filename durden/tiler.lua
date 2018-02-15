@@ -1679,8 +1679,7 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 			wnd_animation_time(wnd, src, false, false)
 		);
 	else
-		resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false)
-		);
+		resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false));
 	end
 
 	if (wnd.filtermode) then
@@ -1874,9 +1873,6 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	size_decor(wnd.width, wnd.height);
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
 	wnd:reposition();
---	active_display():message(string.format(
---		"border %f, lrtd: %f, %f, %f, %f",
---		bw, wnd.pad_left, wnd.pad_right, wnd.pad_top, wnd.pad_bottom));
 
 -- allow a relayouter to manipulate sizes etc. and finally, call all resize
 -- listeners. the most important one is in durden.lua which tells each external
@@ -2510,12 +2506,11 @@ local function wnd_grow(wnd, w, h)
 -- if the client is allowed to drive its own resize, go with that.
 		if (wnd.scalemode == "client" and
 			valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			wnd.max_w = math.clamp(wnd.max_w + stepw, 32, wnd.wm.effective_width);
-			wnd.max_h = math.clamp(wnd.max_h + steph, 32, wnd.wm.effective_height);
-			wnd:displayhint(
-				wnd.effective_w + wnd.dh_pad_w, wnd.effective_h + wnd.dh_pad_h,
-				wnd.dispmask
-			);
+			local width = math.clamp(wnd.width + stepw, 32);
+			local height = math.clamp(wnd.height + steph, 32);
+			local efw = width - (wnd.pad_left + wnd.pad_right);
+			local efh = height - (wnd.pad_top + wnd.pad_bottom);
+			run_event(wnd, "resize", width, height, efw, efh);
 -- and for the forced scalemodes, just go with that
 		else
 			wnd:resize(wnd.width + stepw, wnd.height + steph, true);
@@ -3803,7 +3798,10 @@ end
 
 local function wnd_synch_overlays(wnd)
 	for _,v in pairs(wnd.overlays) do
-		move_image(v.vid, v.xofs, v.yofs);
+		move_image(v.vid,
+			v.xofs - wnd.crop_values[2],
+			v.yofs - wnd.crop_values[1]
+		);
 		if (v.stretch) then
 			local w = math.clamp(
 				wnd.effective_w - v.xofs - v.wofs, 1, wnd.effective_w);
