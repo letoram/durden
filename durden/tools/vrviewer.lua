@@ -1,11 +1,15 @@
 --
--- Trivial VR / panoramic viewer
+-- Simple VR window manager and image- /model- viewer
 --
-
+-- this is intended to be wrapped around a small stub loader so
+-- that it can be broken out into a separate arcan appl of its own,
+-- not needing to piggyback on durden.
+--
 local hmd_arg = "";
 local vr_near = 0.01;
 local vr_far = 100.0;
-local distance = 1;
+local layer_distance = 0.2;
+local TIMEVAL = 20;
 
 local vert = [[
 uniform mat4 modelview;
@@ -73,39 +77,59 @@ local function get_valid_windows(cwin, model)
 	return lst;
 end
 
-local function set_model(wnd, kind)
-	local rmmodel = wnd.model;
-	wnd.last_model = kind;
+local function relayout_layer(wnd, layer)
+
+end
+
+local function layer_zpos(layer)
+	if (layer.fixed) then
+		return layer.dz;
+	else
+		return layer.index * -layer_distance + layer.dz;
+	end
+end
+
+local function build_model(wnd, layer, kind, name)
+	local model;
+	local depth = layer.depth;
 
 	if (kind == "cylinder") then
-		wnd.model = build_cylinder(distance, 0.5 * distance, 359, 1);
+		model = build_cylinder(depth, 0.5 * depth, 359, 1);
 	elseif (kind == "sphere") then
-		wnd.model = build_sphere(distance, 360, 360, 1, true);
+		model = build_sphere(depth, 360, 360, 1, true);
 	elseif (kind == "hemisphere") then
-		wnd.model = build_sphere(distance, 360, 180, 1, true);
+		model = build_sphere(depth, 360, 180, 1, true);
 --	elseif (kind == "flat") then need this for sbs-3d material
 	elseif (kind == "cube") then
-		wnd.model = build_3dbox(distance, distance, distance, 1);
-	elseif (kind == "plane") then
-		wnd.model = build_3dplane(-1, -1, 1, 1, distance, 0.2, 0.2, 1, true);
+		model = build_3dbox(depth, depth, depth, 1);
+	elseif (kind == "rectangle") then
+		local hd = depth * 0.5;
+		model = build_3dplane(
+			-hd, -hd, hd, hd, depth, depth / 20, depth / 20, 1, true);
 	else
 		return;
 	end
 
-	attrtag_model(wnd.model, "infinite", true);
-	swizzle_model(wnd.model);
-	show_image(wnd.model);
-	image_shader(wnd.model, geomshader);
-	if (wnd.vr_pipe) then
-		rendertarget_attach(wnd.vr_pipe, wnd.model, RENDERTARGET_DETACH);
+	if (not valid_vid(model)) then
+		return;
 	end
 
-	if (valid_vid(rmmodel)) then
-		if (valid_vid(wnd.model)) then
-			image_sharestorage(rmmodel, wnd.model);
-		end
-		delete_image(rmmodel);
-	end
+	swizzle_model(model);
+	show_image(model);
+	image_shader(model, geomshader);
+
+	image_sharestorage(wnd.placeholder, model);
+
+	rendertarget_attach(wnd.vr_pipe, model, RENDERTARGET_DETACH);
+	link_image(model, layer.anchor);
+
+-- need control over where the thing spawns ..
+	table.insert(layer.models,
+	{
+		vid = model,
+		name = name
+	});
+	move3d_model(model, 1.05 * depth * (#layer.models - 1), 0, 0);
 end
 
 -- when the VR bridge is active, we still want to be able to tune the
@@ -233,12 +257,13 @@ local function setup_vr_display(wnd, name, headless)
 end
 
 local function vr_destroy(wnd)
-	print("destroy, leases?", #wnd.leases);
 	for _,v in ipairs(wnd.leases) do
 		display_release(v.name);
 	end
 end
 
+-- HMD config == parameters from device -> display profile overrides ->
+-- temporary UI overrides -> ...
 -- tunables:
 --  step_ipd
 --  step_fov
@@ -257,34 +282,508 @@ end
 local hmdconfig = {
 };
 
+local function select_layer(wnd, layer)
+	if (wnd.selected_layer) then
+		if (wnd.selected_layer == layer) then
+			return;
+		end
+		wnd.selected_layer = nil;
+	end
+
+	wnd.selected_layer = layer;
+	move3d_model(layer.anchor, 0, 0, layer_zpos(layer), TIMEVAL);
+-- here we can set alpha based on distance as well
+end
+
+--
+-- Layers act as planes of models that are linked together via a shared
+-- positional anchor. One selected window per layer, one active layer per
+-- scene/window - in essence, a window manager.
+--
+-- The default layouer layouter puts the active layer at one depth, and
+-- the others go outwards, optionally with lower opacity
+--
+-- In this setup. the user is stationary, no motion controls are mapped,
+-- only head tracking.
+--
+
+local function reindex_layers(wnd)
+	local li = 1;
+	for i,v in ipairs(wnd.layers) do
+		if (not v.fixed) then
+			v.index = li;
+			li = li + 1;
+		end
+	end
+end
+
+local function add_layer(wnd, tag)
+	local layer = {
+		name = tag,
+		dx = 0, dy = 0, dz = 0,
+		depth = 0.1,
+		opacity = 1.0,
+		models = {},
+		anchor = null_surface(1, 1)
+	};
+
+	show_image(layer.anchor);
+	table.insert(wnd.layers, layer);
+	reindex_layers(wnd);
+
+	return layer;
+end
+
+local function add_model_menu(wnd, layer)
+
+-- deal with the 180/360 transition shader-wise
+	local lst = {
+		pointcloud = "Point Cloud",
+		sphere = "Sphere",
+		hemisphere = "Hemisphere",
+		rectangle = "Rectangle",
+		cylinder = "Cylinder",
+		cube = "Cube",
+	};
+
+	local res = {};
+	for k,v in pairs(lst) do
+		table.insert(res,
+		{
+		label = v, name = k, kind = "value",
+		validator = function(val)
+			return val and string.len(val) > 0;
+		end,
+		handler = function(ctx, val)
+			build_model(wnd, layer, k, val)
+		end,
+		description = string.format("Add a %s to the layer", v)
+		}
+		);
+	end
+	return res;
+end
+
+local function get_layer_settings(wnd, layer)
+	return {
+	{
+		name = "depth",
+		label = "Depth",
+		description = "Set the desired depth for new models",
+		kind = "value",
+		hint = "(0.001..99)",
+		initial = tostring(layer.depth),
+		validator = gen_valid_num(0.001, 99.0, 0.1),
+		handler = function(ctx, val)
+			layer.depth = tonumber(val);
+		end
+	},
+	{
+		name = "fixed",
+		label = "Fixed",
+		initial = layer.fixed and LBL_YES or LBL_NO,
+		set = {LBL_YES, LBL_NO},
+		kind = "value",
+		description = "Lock the layer in place",
+		handler = function(ctx, val)
+			layer.fixed = val == LBL_YES;
+			reindex_layers(wnd);
+		end
+	},
+	{
+		name = "ignore",
+		label = "Ignore",
+		description = "This layer will not be considered for relative selection",
+		set = {LBL_YES, LBL_NO},
+		kind = "value",
+		handler = function(ctx, val)
+			layer.ignore = val == LBL_YES;
+		end
+	},
+	};
+end
+
+local function set_source_asynch(wnd, layer, model, source, status)
+	if (status.kind == "load_failed" or status.kind == "terminated") then
+		delete_image(source);
+		return;
+	end
+	image_sharestorage(source, model.vid);
+	image_texfilter(source, FILTER_BILINEAR);
+end
+
+local function model_settings_menu(wnd, layer, model)
+	local res = {
+	{
+		name = "swap_n",
+		label = "Next",
+		kind = "action",
+		description = "Swap position with the previous one in the list",
+		eval = function() return #layer.models > 1; end,
+		handler = function()
+		end,
+	},
+	{
+		name = "swap_p",
+		label = "Previous",
+		kind = "action",
+		eval = function() return #layer.models > 1; end,
+		handler = function()
+		end,
+	},
+	{
+		name = "source",
+		label = "Source",
+		kind = "action",
+		description = "Specify the path to a resource that should be mapped to the model",
+		validator =
+		function(str)
+			return str and string.len(str) > 0;
+		end,
+		handler = function(ctx, res)
+			if (not resource(res)) then
+				return;
+			end
+			local vid = load_image_asynch(res,
+				function(...)
+					set_source_asynch(wnd, layer, model, ...);
+				end
+			);
+			if (valid_vid(vid)) then
+				link_image(vid, model.vid);
+			end
+		end
+	},
+	{
+		name = "destroy",
+		label = "Destroy",
+		kind = "action",
+		description = "Delete the model and all associated/mapped resources",
+		handler = function(ctx, res)
+			delete_image(model.vid);
+			for i,v in ipairs(layer.models) do
+				if (v == model) then
+					table.remove(layer.models, i);
+					return;
+				end
+			end
+		end
+	},
+	{
+		name = "browse",
+		label = "Browse",
+		description = "Browse for a source image or video to map to the model",
+		kind = "action",
+		eval = function() return type(browse_file) == "function"; end,
+		handler = function()
+			local loadfn = function(res)
+				local vid = load_image_asynch(res,
+					function(...)
+						set_source_asynch(wnd, layer, model, ...);
+					end
+				);
+				if (valid_vid(vid)) then
+					link_image(vid, model.vid);
+				end
+			end
+			browse_file({},
+				{png = loadfn, jpg = loadfn, bmp = loadfn}, SHARED_RESOURCE, nil);
+		end
+	},
+	{
+		name = "map",
+		label = "Map",
+		description = "Map the contents of another window to the model",
+		kind = "action",
+		handler = function()
+		end
+	},
+	};
+-- stereo, source, external connection point
+	return res;
+end
+
+local function change_model_menu(wnd, layer)
+	local res = {};
+
+	for i,v in ipairs(layer.models) do
+		table.insert(res,
+		{
+			name = v.name,
+			kind = "action",
+			submenu = true,
+			label = v.name,
+			handler = function()
+				return model_settings_menu(wnd, layer, v);
+			end,
+		});
+	end
+
+	return res;
+end
+
+local function get_layer_menu(wnd, layer)
+	return {
+		{
+			name = "add_model",
+			label = "Add Model",
+			description = "Add a new mappable model to the layer",
+			submenu = true,
+			kind = "action",
+			handler = function() return add_model_menu(wnd, layer); end,
+		},
+		{
+			label = "Open Terminal",
+			description = "Add a terminal premapped model to the layer",
+			kind = "action",
+			name = "terminal",
+			handler = function()
+-- go with model_menu + prespawn and attach, have special path for
+-- font size control based on projected near- screen size, font sz
+-- and from-terminal spawned connections
+			end
+		},
+		{
+			name = "models",
+			label = "Models",
+			description = "Manipulate individual models",
+			submenu = true,
+			kind = "action",
+			handler = function()
+				return change_model_menu(wnd, layer);
+			end,
+			eval = function() return #layer.models > 0; end,
+		},
+		{
+			name = "swap",
+			label = "Swap",
+			description = "Switch layer position with another layer",
+			kind = "value",
+			set = function()
+				local lst = {};
+				for _, v in ipairs(lst) do
+				end
+			end,
+			eval = function() return #wnd.layers > 1; end,
+			handler = function()
+print("FIXME");
+			end,
+		},
+		{
+			name = "hide",
+			label = "Hide",
+			kind = "action",
+			description = "Hide the layer",
+			eval = function() return layer.hidden == nil; end,
+			handler = function()
+				layer.hidden = true;
+				blend_image(layer.anchor, 0.0, TIMEVAL);
+			end,
+		},
+		{
+			name = "reveal",
+			label = "Reveal",
+			kind = "action",
+			description = "Show a previously hidden layer",
+			eval = function() return layer.hidden == true; end,
+			handler = function()
+				layer.hidden = nil;
+				blend_image(layer.anchor, layer.opacity, TIMEVAL);
+			end,
+		},
+		{
+			name = "focus",
+			label = "Focus",
+			description = "Set this layer as the active focus layer",
+			kind = "action",
+			eval = function() return #wnd.layers > 1 and wnd.focus_layer ~= layer; end,
+			handler = function()
+print("FIXME");
+			end,
+		},
+		{
+			name = "spin",
+			label = "Spin",
+			description = "Rotate the layer relatively around the y axis",
+			kind = "value",
+			initial = "0 0",
+			hint = "(degrees time)",
+			validator = suppl_valid_typestr("ff", 0.0, 359.0, 0.0),
+			handler = function(ctx, val)
+				local res = suppl_unpack_typestr("ff", val, -1000, 1000);
+				rotate3d_model(layer.anchor, 0, 0, res[1], res[2], ROTATE_RELATIVE);
+			end
+		},
+		{
+			name = "orient",
+			label = "Orient",
+			description = "Set the absolute rotation of the layer",
+			kind = "value",
+			validator = gen_valid_num(0, 359, 0),
+			handler = function()
+				local dx, dy, dz, dt = suppl_unpack_typestr("ffff", val, -10, 10);
+			end
+		},
+		{
+			name = "nudge",
+			label = "Nudge",
+			description = "Move the layer anchor relative to its current position",
+			hint = "(x y z dt)",
+			kind = "value",
+			eval = function(ctx, val)
+				return not layer.fixed;
+			end,
+			validator = suppl_valid_typestr("ffff", 0.0, 359.0, 0.0),
+			handler = function(ctx, val)
+				local res = suppl_unpack_typestr("ffff", val, -10, 10);
+				instant_image_transform(layer.anchor);
+				layer.dx = layer.dx + res[1];
+				layer.dy = layer.dy + res[2];
+				layer.dz = layer.dz + res[3];
+				move3d_model(layer.anchor, layer.dx, layer.dy, layer_zpos(layer), res[4]);
+			end,
+		},
+		{
+			name = "settings",
+			label = "Settings",
+			description = "Layer specific controls for layouting and window management";
+			kind = "action",
+			submenu = true,
+			handler = function()
+				return get_layer_settings(wnd, layer);
+			end
+		},
+	};
+end
+
+local function layer_menu(wnd)
+	local res = {};
+	if (wnd.selected_layer) then
+		table.insert(res, {
+			name = "current",
+			submenu = true,
+			kind = "action",
+			description = "Currently focused layer",
+			label = "Current",
+			handler = function() return get_layer_menu(wnd, wnd.selected_layer); end
+		});
+
+		table.insert(res, {
+			name = "push_pull",
+			label = "Push/Pull",
+			description = "Move all layers relatively closer (>0) or farther away (<0)",
+			kind = "value",
+			validator = gen_valid_float(-10, 10),
+			handler = function(ctx, val)
+				local step = tonumber(val);
+				for i,v in ipairs(wnd.layers) do
+					instant_image_transform(v.anchor);
+					v.dz = v.dz + step;
+					move3d_model(v.anchor, v.dx, v.dy, layer_zpos(layer), TIMEVAL);
+				end
+			end
+		});
+	end
+
+	table.insert(res, {
+	label = "Add",
+	description = "Add a new window layer";
+	kind = "value",
+	name = "add",
+	hint = "(tag name)",
+-- require layer to be unique
+	validator = function(str)
+		if (str and string.len(str) > 0) then
+			for _,v in ipairs(wnd.layers) do
+				if (v.tag == str) then
+					return false;
+				end
+			end
+			return true;
+		end
+		return false;
+	end,
+	handler = function(ctx, val)
+		local layer = add_layer(wnd, val);
+		select_layer(wnd, layer);
+	end
+	});
+
+	for k,v in ipairs(wnd.layers) do
+		table.insert(res, {
+			name = "layer_" .. v.name,
+			submenu = true,
+			kind = "action",
+			label = v.name,
+			handler = function() return get_layer_menu(wnd, v); end
+		});
+	end
+
+	return res;
+end
+
+local function load_presets(wnd, path)
+	local lst = system_load("tools/vrpresets/" .. path, false);
+	if (not lst) then
+		warning("vr-load preset (" .. path .. ") couldn't load/parse script");
+		return;
+	end
+	local cmds = lst();
+	if (not type(cmds) == "table") then
+		warning("vr-load preset (" .. path .. ") script did not return a table");
+	end
+	for i,v in ipairs(cmds) do
+		dispatch_symbol("#" .. v);
+	end
+end
+
+local function drag_rotate(ctx, vid, dx, dy)
+	rotate3d_model(ctx.wnd.cam, 0, dy, dx, 0, ROTATE_RELATIVE);
+end
+
+local function drag_layer(ctx, vid, dx, dy)
+	local layer = ctx.wnd.selected_layer;
+	if (not layer or layer.fixed) then
+		return;
+	end
+
+	layer.dz = layer.dz + 0.001 * dy + 0.001 * dx;
+	move3d_model(layer.anchor, layer.dx, layer.dy, layer_zpos(layer));
+end
+
 local function vrwnd()
 -- flip for rendertarget
 	local cam = null_surface(1, 1);
 	scale3d_model(cam, 1.0, -1.0, 1.0);
 
-	local unm = fill_surface(32, 32, 255, 255, 255);
-
 -- setup a rendetarget for this model alone, use unm as placeholder
 	local tgtsurf = alloc_surface(VRESW, VRESH);
-	define_rendertarget(tgtsurf, {cam, unm}, RENDERTARGET_DETACH,
-		RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
+	local placeholder = fill_surface(64, 64, 128, 128, 128);
+
+	define_rendertarget(tgtsurf, {cam, placeholder},
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
 	camtag_model(cam, vr_near, vr_far, 45.0, 1.33, true, true, 0, tgtsurf);
 
 -- and bind to a new window
 	local wnd = active_display():add_window(tgtsurf, {scalemode = "stretch"});
+
+	wnd.cam = cam;
+	wnd.placeholder = placeholder;
 	wnd.vr_pipe = tgtsurf;
 	wnd.rtgt_id = 0;
 	rendertarget_id(tgtsurf, 0);
-	set_model(wnd, "sphere");
-	image_sharestorage(unm, wnd.model);
-	delete_image(unm);
 
+-- leases that we have taken from the display manager
 	wnd.leases = {};
+
+-- all UI is arranged into layers of models
+	wnd.layers = {};
+
 	wnd:add_handler("destroy", vr_destroy);
 
-	wnd.bindings = {
-	TAB = function() wnd.model_move = not wnd.model_move; end
-	};
+-- no default symbol bindings
+	wnd.bindings = {};
+
 	wnd.clipboard_block = true;
 	wnd:set_title(string.format("VR/Panoramic - unmapped"));
 	wnd:add_handler("resize", function(ctx, w, h)
@@ -296,30 +795,21 @@ local function vrwnd()
 	end);
 
 -- switch mouse handler so canvas drag translates to rotating the camera
-	wnd.handlers.mouse.canvas.drag = function(ctx, vid, dx, dy)
-		rotate3d_model(cam, 0, dy, dx, 0, ROTATE_RELATIVE);
-		return true;
-	end
+	wnd.handlers.mouse.canvas.drag = drag_rotate;
 
 	local lst = {};
 	for k,v in pairs(wnd.handlers.mouse.canvas) do
 		table.insert(lst, k);
 	end
+	wnd.handlers.mouse.canvas.wnd = wnd;
 	mouse_droplistener(wnd.handlers.mouse.canvas);
 	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
 
 	show_image(tgtsurf);
 	wnd.menu_state_disable = true;
+
+-- add window specific menus that expose the real controls
 	wnd.actions = {
-		{
-		name = "map",
-		label = "Source",
-		submenu = true,
-		kind = "action",
-		description = "Set the contents of another window as the 3D model display",
-		eval = function() return  #get_valid_windows(wnd, res); end,
-		handler = function() return get_valid_windows(wnd, res); end
-		},
 		{
 		name = "close_vr",
 		description = "Terminate the current VR session and release the display",
@@ -333,7 +823,7 @@ local function vrwnd()
 		end
 		},
 		{
-		name = "vr_settings",
+		name = "settings",
 		kind = "value",
 		label = "VR Settings",
 		description = "Set the arguments that will be passed to the VR device",
@@ -342,26 +832,41 @@ local function vrwnd()
 		end,
 		},
 		{
-		name = "switch_model",
-		label = "Projection Model",
-		kind = "value",
-		description = "Set the source mapping projection model",
-		set = {"Sphere", "Hemisphere", "Cylinder", "Cube", "Plane"},
-		handler = function(ctx, val)
-			set_model(wnd, string.lower(val));
-		end
+		name = "layers",
+		kind = "action",
+		submenu = true,
+		label = "Layers",
+		description = "Model layers for controlling models and data sources",
+		handler = function() return layer_menu(wnd); end
 		},
 		{
-		name = "model_distance",
-		label = "Model Distance",
+		name = "preset",
+		label = "Preset",
 		kind = "value",
-		initial = distance,
-		hint = "(0.1 .. 99.0)",
-		description = "Set the infinite model distance value",
-		validator = gen_valid_num(0.1, 99.0),
+		set = function()
+			local set = glob_resource("tools/vrpresets/*.lua", APPL_RESOURCE);
+			return set;
+		end,
+		eval = function()
+			local set = glob_resource("tools/vrpresets/*.lua", APPL_RESOURCE);
+			return set and #set > 0;
+		end,
 		handler = function(ctx, val)
-			distance = tonumber(val);
-			set_model(wnd, wnd.last_model);
+			load_presets(wnd, val);
+		end,
+		},
+		{
+		name = "mouse",
+		kind = "value",
+		description = "Change the current mouse cursor behavior when dragged or locked",
+		label = "Mouse",
+		set = {"Selected", "View", "Layer Distance"},
+		handler = function(ctx, val)
+			if (val == "View") then
+				wnd.handlers.mouse.canvas.drag = drag_rotate;
+			elseif (val == "Layer Distance") then
+				wnd.handlers.mouse.canvas.drag = drag_layer;
+			end
 		end
 		},
 		{
@@ -371,46 +876,6 @@ local function vrwnd()
 		submenu = true,
 		eval = function() return wnd.vr_state ~= nil; end,
 		handler = hmdconfig
-		},
-		{
-		name = "eyeswap",
-		label = "Swap Left/Right",
-		kind = "action",
-		eval = function() return wnd.rtgt_id; end,
-		description = "Switch left and right eye position when mapping the source",
-		handler = function()
-			wnd.rtgt_id = wnd.rtgt_id == 0 and 1 or 0;
-			rendertarget_id(tgtsurf, wnd.rtgt_id);
-			if (wnd.vrstate and wnd.vr_state.rt_l) then
-				rendertarget_id(wnd.vr_state.rt_l, wnd.rtgt_id);
-				rendertarget_id(wnd.vr_state.rt_r, wnd.rtgt_id == 0 and 1 or 0);
-			end
-		end,
-		},
-		{
-		name = "stereo",
-		label = "Stereoscopic Model",
-		kind = "value",
-		description = "Determine how the mapped source should be interpreted",
-		set = {"side-by-side", "over-under", "monoscopic"},
-		handler = function(ctx, val)
-			if (val == "side-by-side") then
-				set_model_uniforms(
-					0.0, 0.0, 0.5, 1.0,
-					0.5, 0.0, 0.5, 1.0
-				);
-			elseif (val == "over-under") then
-				set_model_uniforms(
-					0.0, 0.0, 1.0, 0.5,
-					0.0, 0.5, 1.0, 0.5
-				);
-			else
-				set_model_uniforms(
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0
-				);
-			end
-		end
 		},
 		{
 		name = "setup_vr",

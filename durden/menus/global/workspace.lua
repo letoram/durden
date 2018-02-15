@@ -120,19 +120,6 @@ local save_ws = {
 		description = "Perform a shallow save of the workspace configuration",
 		handler = grab_global_function("save_space_shallow")
 	},
---	{
---		name = "workspace_save_deep",
---		label = "Complete",
---		kind = "action",
---		handler = grab_global_function("save_space_deep")
---	},
---	{
---		name = "workspace_save_drop",
---		label = "Drop",
---		kind = "action",
---		eval = function()	return true; end,
---		handler = grab_global_function("save_space_drop")
---	}
 };
 
 local function set_ws_background()
