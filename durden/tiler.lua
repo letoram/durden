@@ -2229,7 +2229,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 	if (abs) then
 		local props = image_surface_resolve(wnd.wm.anchor);
 		wnd.x = dx - props.x;
-		wnd.y = dy - props.y;
+		wnd.y = wnd.wm.yoffset + dy - props.y;
+
 	elseif (align) then
 		wnd.x = wnd.x + dx;
 		wnd.y = wnd.y + dy;
@@ -2241,6 +2242,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		end
 		wnd.x = wnd.x < 0 and 0 or wnd.x;
 		wnd.y = wnd.y < 0 and 0 or wnd.y;
+
 	else
 		wnd.x = wnd.x + dx;
 		wnd.y = wnd.y + dy;
@@ -2249,7 +2251,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 -- make sure the titlebar (if visible) isn't occluded by the statusbar
 	local tbarh = tbar_geth(wnd);
 	if (not noclamp) then
-		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
+		wnd.y = math.clamp(wnd.y, wnd.wm.yoffset, wnd.wm.ylimit - tbarh);
 	end
 	move_image(wnd.anchor, wnd.x, wnd.y, time);
 
@@ -2351,10 +2353,18 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 	end
 
 	res.reposition = function(pop, x1, y1, x2, y2, bias, chain)
+		if (wnd.crop_values) then
+			x1 = x1 - wnd.crop_values[2];
+			y1 = y1 - wnd.crop_values[1];
+			x2 = x2 - wnd.crop_values[2];
+			y2 = y2 - wnd.crop_values[1];
+		end
+
 		local ap = bias == 0 and (#wnd.popups > 0 and 3 or 1) or bias;
-			ap = bias_lut[ap] and bias_lut[ap] or ANCHOR_UL;
+		ap = bias_lut[ap] and bias_lut[ap] or ANCHOR_UL;
 		link_image(vid, res.anchor, ap);
 		move_image(res.anchor, x1, y1);
+
 		local props = image_surface_resolve(res.anchor);
 		local vprops = image_surface_resolve(vid);
 
@@ -2706,9 +2716,7 @@ local function wnd_toggle_maximize(wnd)
 				wnd.dispmask
 			);
 		else
-			wnd:resize(
-				wnd.wm.effective_width + wnd.border_w,
-				wnd.wm.effective_height + wnd.border_w, true);
+			wnd:resize(wnd.wm.effective_width, wnd.wm.effective_height, true);
 		end
 	end
 end
@@ -3798,10 +3806,11 @@ end
 
 local function wnd_synch_overlays(wnd)
 	for _,v in pairs(wnd.overlays) do
-		move_image(v.vid,
-			v.xofs - wnd.crop_values[2],
-			v.yofs - wnd.crop_values[1]
-		);
+		local xofs = wnd.crop_values and wnd.crop_values[2] or 0;
+		local yofs = wnd.crop_values and wnd.crop_values[1] or 0;
+
+		move_image(v.vid, v.xofs - xofs, v.yofs - yofs);
+
 		if (v.stretch) then
 			local w = math.clamp(
 				wnd.effective_w - v.xofs - v.wofs, 1, wnd.effective_w);

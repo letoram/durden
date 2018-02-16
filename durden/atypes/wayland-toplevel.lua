@@ -353,9 +353,14 @@ end
 
 local function wl_resize(wnd, neww, newh, efw, efh)
 	local props = image_storage_properties(wnd.canvas);
-	efw = math.clamp(efw - wnd.geom[1] - (props.width - wnd.geom[3]), 32);
-	efh = math.clamp(efh - wnd.geom[2] - (props.height - wnd.geom[4]), 32);
-	wnd:displayhint(efw + wnd.dh_pad_w, efh + wnd.dh_pad_h);
+	local nefw = efw;
+	local nefh = efh;
+	if (wnd.geom) then
+		nefw = wnd.geom[3] + (efw - wnd.last_w);
+		nefh = wnd.geom[4] + (efh - wnd.last_h);
+	end
+
+	wnd:displayhint(nefw + wnd.dh_pad_w, nefh + wnd.dh_pad_h);
 end
 
 local toplevel_menu = {
@@ -368,9 +373,16 @@ local toplevel_menu = {
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			if (val == LBL_YES) then
+				wnd.wl_autocrop = true;
+				local props = image_storage_properties(wnd.canvas);
+				wnd:set_crop(
+					wnd.geom[2], wnd.geom[1], -- t, l
+					props.height - wnd.geom[4] - wnd.geom[2], -- d
+					props.width - wnd.geom[3] - wnd.geom[1] -- r
+				);
 			else
+				wnd.wl_autocrop = false;
 				wnd:set_crop(0, 0, 0, 0);
-
 			end
 		end
 	},
@@ -412,6 +424,8 @@ return {
 		}
 	},
 	init = function(atype, wnd, source)
+		wnd.last_w = 0;
+		wnd.last_h = 0;
 		wnd.displayhint = wl_displayhint;
 		wnd.drag_rz_enter = set_dragrz_state;
 		wnd:add_handler("destroy", wl_destroy);
