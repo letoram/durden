@@ -5,11 +5,19 @@
 -- that it can be broken out into a separate arcan appl of its own,
 -- not needing to piggyback on durden.
 --
+-- open ended question, what dimension and density should the surface
+-- have -- do we displayhint based on layer distance? rules need to
+-- change with datasource. same problem with terminal font, we should
+-- keep settings separated from the rest of durden so the separation
+-- can go smoother.
+--
+
 local hmd_arg = "";
 local vr_near = 0.01;
 local vr_far = 100.0;
 local layer_distance = 0.2;
 local TIMEVAL = 20;
+local terminal_font = "";
 
 local vert = [[
 uniform mat4 modelview;
@@ -45,14 +53,28 @@ void main()
 }
 ]];
 
-local geomshader = build_shader(vert, nil, "vr_geom");
+local tfrag = [[
+uniform sampler2D map_tu0;
+varying vec2 texco;
+uniform float obj_opacity;
+void main()
+{
+	vec3 col = texture2D(map_tu0, vec2(texco.s, 1.0 - texco.t)).rgb;
+	gl_FragColor = vec4(col.rgb, obj_opacity);
+}
+]];
+
+local vrshaders = {
+	geom = build_shader(vert, nil, "vr_geom"),
+	term = build_shader(nil, tfrag, "vr_term")
+};
 
 local function set_model_uniforms(
 	leye_x, leye_y, leye_ss, leye_st, reye_x, reye_y, reye_ss, reye_st)
-	shader_uniform(geomshader, "ofs_leye", "ff", leye_x, leye_y);
-	shader_uniform(geomshader, "scale_leye", "ff", leye_ss, leye_st);
-	shader_uniform(geomshader, "ofs_reye", "ff", reye_x, reye_y);
-	shader_uniform(geomshader, "scale_reye", "ff", reye_ss, reye_st);
+	shader_uniform(vrshaders.geom, "ofs_leye", "ff", leye_x, leye_y);
+	shader_uniform(vrshaders.geom, "scale_leye", "ff", leye_ss, leye_st);
+	shader_uniform(vrshaders.geom, "ofs_reye", "ff", reye_x, reye_y);
+	shader_uniform(vrshaders.geom, "scale_reye", "ff", reye_ss, reye_st);
 end
 
 set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
@@ -85,8 +107,19 @@ local function layer_zpos(layer)
 	if (layer.fixed) then
 		return layer.dz;
 	else
+		print("layer pos:", layer.index * -layer_distance + layer.dz);
 		return layer.index * -layer_distance + layer.dz;
 	end
+end
+
+local function model_external(model, vid)
+	model.external = vid;
+	link_image(vid, model.vid);
+	image_texfilter(vid, FILTER_BILINEAR);
+	image_sharestorage(vid, model.vid);
+	image_shader(model.vid, vrshaders.term);
+	model.wnd.external = vid;
+	target_displayhint(vid, 1920, 1280);
 end
 
 local function build_model(wnd, layer, kind, name)
@@ -116,7 +149,7 @@ local function build_model(wnd, layer, kind, name)
 
 	swizzle_model(model);
 	show_image(model);
-	image_shader(model, geomshader);
+	image_shader(model, vrshaders.geom);
 
 	image_sharestorage(wnd.placeholder, model);
 
@@ -124,12 +157,29 @@ local function build_model(wnd, layer, kind, name)
 	link_image(model, layer.anchor);
 
 -- need control over where the thing spawns ..
-	table.insert(layer.models,
-	{
+	local res = {
 		vid = model,
-		name = name
-	});
+		name = name,
+		destroy = function()
+			table.remove_match(layer.models, model);
+			delete_image(model);
+		end,
+		set_external = model_external,
+		wnd = wnd
+	};
+
+-- models are actually treated as an anchored linked list in a 2D plane
+
+	table.insert(layer.models, res);
 	move3d_model(model, 1.05 * depth * (#layer.models - 1), 0, 0);
+	if (not layer.selected) then
+		layer.selected = model;
+	end
+
+-- need something to specify up/down/left/right
+-- and animate spawn of course :-)
+
+	return res;
 end
 
 -- when the VR bridge is active, we still want to be able to tune the
@@ -281,6 +331,9 @@ end
 --
 local hmdconfig = {
 };
+
+local function model_eventhandler(model, source, status)
+end
 
 local function select_layer(wnd, layer)
 	if (wnd.selected_layer) then
@@ -494,8 +547,31 @@ local function model_settings_menu(wnd, layer, model)
 		name = "map",
 		label = "Map",
 		description = "Map the contents of another window to the model",
-		kind = "action",
-		handler = function()
+		kind = "value",
+		set = function()
+			local lst = {};
+			for wnd in all_windows() do
+				if (valid_vid(wnd.external)) then
+					table.insert(lst, wnd:identstr());
+				end
+			end
+			return lst;
+		end,
+		eval = function()
+			for wnd in all_windows() do
+				if (valid_vid(wnd.external)) then
+					return true;
+				end
+			end
+		end,
+		handler = function(ctx, val)
+			for wnd in all_windows() do
+				if wnd:identstr() == val then
+					model.external = wnd.external;
+					image_sharestorage(wnd.canvas, model.vid);
+					return;
+				end
+			end
 		end
 	},
 	};
@@ -522,6 +598,7 @@ local function change_model_menu(wnd, layer)
 	return res;
 end
 
+local term_counter = 0;
 local function get_layer_menu(wnd, layer)
 	return {
 		{
@@ -538,9 +615,21 @@ local function get_layer_menu(wnd, layer)
 			kind = "action",
 			name = "terminal",
 			handler = function()
--- go with model_menu + prespawn and attach, have special path for
--- font size control based on projected near- screen size, font sz
--- and from-terminal spawned connections
+				term_counter = term_counter + 1;
+				local model =
+					build_model(wnd, layer, "rectangle", "term_" .. tostring(term_counter));
+				if (model) then
+					local vid = launch_avfeed("", "terminal",
+						function(...)
+							return model_eventhandler(wnd, model, ...);
+						end
+					);
+					if (valid_vid(vid)) then
+						model:set_external(vid);
+					else
+						model:destroy();
+					end
+				end
 			end
 		},
 		{
@@ -756,7 +845,7 @@ local function vrwnd()
 	local cam = null_surface(1, 1);
 	scale3d_model(cam, 1.0, -1.0, 1.0);
 
--- setup a rendetarget for this model alone, use unm as placeholder
+-- setup a rendertarget for this model alone
 	local tgtsurf = alloc_surface(VRESW, VRESH);
 	local placeholder = fill_surface(64, 64, 128, 128, 128);
 
@@ -771,6 +860,7 @@ local function vrwnd()
 	wnd.placeholder = placeholder;
 	wnd.vr_pipe = tgtsurf;
 	wnd.rtgt_id = 0;
+
 	rendertarget_id(tgtsurf, 0);
 
 -- leases that we have taken from the display manager

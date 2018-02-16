@@ -178,7 +178,7 @@ local function get_valid_windows(cwin, model)
 			table.insert(lst, {
 				kind = "action",
 				name = "map_" .. wnd.name,
-				label = wnd.title_text and wnd.title_text or wnd.name,
+				label = wnd:identstr(),
 				handler = function()
 					mesh_shader(model.vid, display, model.display_mesh);
 					set_image_as_frame(model.vid, wnd.canvas, model.display_slot);

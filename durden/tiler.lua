@@ -3876,6 +3876,10 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	wnd:synch_overlays();
 end
 
+local function wnd_identstr(wnd)
+	return wnd.name;
+end
+
 local function wnd_guid(wnd, guid)
 	if (wnd.config_tgt or not guid or
 		guid == "AAAAAAAAAAAAAAAAAAAAAA==") then
@@ -4039,6 +4043,7 @@ local wnd_setup = function(wm, source, opts)
 		grow = wnd_grow,
 		set_crop = wnd_crop,
 		append_crop = wnd_crop_append,
+		identstr = wnd_identstr,
 
 -- position/hierarchy/selection
 		reposition = wnd_repos,

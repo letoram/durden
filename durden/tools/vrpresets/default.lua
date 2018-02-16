@@ -7,9 +7,5 @@ return {
 "layers/layer_bg/models/bg/source=images/skymap.png",
 "layers/layer_bg/models/bg/connpoint=vrbg",
 "layers/add=fg",
-"layers/add=fg2",
-"layers/layer_fg/warp=cylinder",
-"layers/layer_fg/add_model/rectangle=test",
-"layers/layer_fg2/add_model/sphere=test2",
-"layers/layer_fg2/add_model/cube=test3"
+"layers/layer_fg/terminal"
 };
