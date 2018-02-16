@@ -133,6 +133,7 @@ local function popup_handler(cl, source, status)
 
 -- the overflow rules are more complex in xdg, but for now, just have the
 -- corner overflows "stack"
+
 		wnd:reposition(wnd.popup_state[1], wnd.popup_state[2],
 			wnd.popup_state[3], wnd.popup_state[4], wnd.popup_state[5]);
 
