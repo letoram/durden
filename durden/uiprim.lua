@@ -292,8 +292,7 @@ function uiprim_button(anchor, bgshname,
 end
 
 local function bar_resize(bar, neww, newh, time)
-	if (not neww or neww <= 0 or not newh or newh <= 0) or
-		(neww == bar.width and newh == bar.height) then
+	if (not neww or neww <= 0 or not newh or newh <= 0) then
 		return;
 	end
 
@@ -723,7 +722,7 @@ local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
 	link_image(vid, tbar.anchor, ANCHOR_LL);
 	move_image(vid, 0, -(image_surface_properties(vid).height));
 	image_inherit_order(vid, true);
-	order_image(vid, 2);
+	order_image(vid, 3);
 	tbar.impostor_active = true;
 end
 

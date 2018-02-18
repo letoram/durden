@@ -62,14 +62,23 @@ local function get_disptbl(wnd, tbl)
 end
 
 local function tbar_mode(mode)
-	return mode == "tile" or
-		(mode == "float" and not gconfig_get("float_tbar_override"));
+	return mode == "tile" or mode == "float";
 end
 
+-- wrapped so that we can easily add support for variable sized titlebars,
+-- possibly useful when dealing with touch interfaces where the 'cursor'
+-- tends to be fatter.
 local function tbar_geth(wnd)
 	assert(wnd ~= nil);
-	return (wnd.space and wnd.hide_titlebar and tbar_mode(wnd.space.mode))
-		and 0 or (wnd.wm.scalef * gconfig_get("tbar_sz"));
+	if (not wnd.space) then
+		return 0;
+	end
+
+	if (wnd.show_titlebar and tbar_mode(wnd.space.mode)) then
+		return math.floor(wnd.wm.scalef * gconfig_get("tbar_sz"));
+	end
+
+	return 0;
 end
 
 local function sbar_geth(wm, ign)
@@ -361,10 +370,10 @@ local function tiler_statusbar_update(wm)
 	local ybottom = 0;
 
 	if (statush > 0) then
-		local pl = math.floor(gconfig_get("sbar_lspace") * wm.width);
-		local pr = math.floor(gconfig_get("sbar_rspace") * wm.width);
-		ytop = math.floor(gconfig_get("sbar_tspace") * wm.height);
-		ybottom = math.floor(gconfig_get("sbar_bspace") * wm.height);
+		local pl = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
+		local pr = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
+		ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
+		ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
 		xpos = pl;
 		wm.statusbar:resize(wm.width - pl - pr, statush);
 	end
@@ -964,8 +973,8 @@ local function drop_fullscreen(space, swap)
 
 -- restore 'full-screen only' properties
 	local dw = space.selected;
-	dw.titlebar:show();
-	show_image(dw.border);
+	dw:set_titlebar(dw.fs_copy.show_titlebar);
+	dw:set_border(dw.fs_copy.show_border);
 	for k,v in pairs(dw.fs_copy) do dw[k] = v; end
 	dw.fs_copy = nil;
 	dw.fullscreen = nil;
@@ -979,8 +988,11 @@ local function drop_tab(space)
 -- relink the titlebars so that they anchor their respective windows rather
 -- than the client window itself.
 	for k,v in ipairs(res) do
-		v.titlebar:reanchor(v.anchor, 2, v.border_w, v.border_w);
-		show_image(v.border);
+		local bw = v.show_border and v.border_w or 0;
+		v.titlebar:reanchor(v.anchor, 2, bw, bw);
+		if (v.show_border) then
+			show_image(v.border);
+		end
 		show_image(v.anchor);
 	end
 
@@ -1008,15 +1020,17 @@ local function drop_float(space)
 end
 
 local function reassign_vtab(space, wnd)
-	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w, wnd.border_w);
+	local bw = wnd.show_border and wnd.border_w or 0;
+	wnd.titlebar:reanchor(wnd.anchor, 2, 0, 0);
 	show_image(wnd.anchor);
-	show_image(wnd.border);
+	show_image(wnd.border, wnd.show_border and 1 or 0);
 end
 
 local function reassign_tab(space, wnd)
-	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w, wnd.border_w);
+	local bw = wnd.show_border and wnd.border_w or 0;
+	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w);
 	show_image(wnd.anchor);
-	show_image(wnd.border);
+	show_image(wnd.border, wnd.show_border and 1 or 0);
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -1125,7 +1139,9 @@ local function set_fullscreen(space)
 -- keep a copy of properties we may want to change during fullscreen
 	dw.fs_copy = {
 		centered = dw.centered,
-		fullscreen = false
+		fullscreen = false,
+		show_border = dw.show_border,
+		show_titlebar = dw.show_titlebar
 	};
 	dw.centered = true;
 	dw.fullscreen = space.last_mode;
@@ -1138,8 +1154,8 @@ local function set_fullscreen(space)
 		hide_image(v.anchor);
 	end
 	show_image(dw.anchor);
-	dw.titlebar:hide();
-	hide_image(space.selected.border);
+	dw:set_border(false);
+	dw:set_titlebar(false);
 
 -- need to hook switching between workspaces to enable things like the sbar
 	space.mode_hook = drop_fullscreen;
@@ -1212,7 +1228,9 @@ local function set_tile(space, repos)
 
 	local tbl = linearize(space);
 	for _,v in ipairs(tbl) do
-		v.titlebar:switch_group("tile", true);
+		if (v.titlebar) then
+			v.titlebar:switch_group("tile", true);
+		end
 	end
 
 	if (space.layouter) then
@@ -1783,6 +1801,46 @@ local function wnd_show(wnd)
 	show_image(wnd.anchor);
 end
 
+local function wnd_size_decor(wnd, w, h, animate)
+-- redraw / update the decorations
+	local bw = wnd.show_border and wnd.border_w or 0;
+	local tbh = tbar_geth(wnd);
+	local interp = nil;
+	local at = 0;
+	local af = nil;
+
+	if (animate) then
+		at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
+	end
+
+	wnd.pad_top = bw;
+	wnd.pad_left = bw;
+	wnd.pad_right = bw;
+	wnd.pad_bottom = bw;
+
+	resize_image(wnd.anchor, w, h);
+
+	if (wnd.show_titlebar) then
+		wnd.titlebar:show();
+		wnd.titlebar:move(wnd.pad_left, wnd.pad_top, at, af);
+		wnd.titlebar:resize(
+			wnd.width - wnd.pad_left - wnd.pad_right, tbh, at, af);
+		wnd.pad_top = wnd.pad_top + tbh;
+	else
+		wnd.titlebar:hide();
+	end
+
+	if (wnd.show_border) then
+		reset_image_transform(wnd.border);
+		resize_image(wnd.border, w, h, at, af);
+		show_image(wnd.border);
+	else
+		hide_image(wnd.border);
+	end
+
+	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top, at, av);
+end
+
 --
 -- One of the worst functions in the entire project, the amount of
 -- edge cases are considerable. Test for:
@@ -1796,8 +1854,12 @@ end
 --  . spawn during float
 --
 local function wnd_resize(wnd, neww, newh, force, maskev)
-	if (wnd.in_drag_rz and not force or not valid_vid(wnd.canvas)
-		or not wnd.space) then
+	if (wnd.in_drag_rz and not force) then
+		return false;
+	end
+
+-- programming error, invoked on not-attached
+	if (not valid_vid(wnd.canvas) or not wnd.space) then
 		return false;
 	end
 
@@ -1855,23 +1917,9 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	wnd.width = wnd.effective_w + decw - wnd.dh_pad_w;
 	wnd.height = wnd.effective_h + dech - wnd.dh_pad_h;
 
--- redraw / update the decorations
-	local bw = wnd.border_w;
-	local tbh = tbar_geth(wnd);
-	local size_decor = function(w, h)
-		local interp = nil;
-		resize_image(wnd.anchor, w, h);
-		wnd.titlebar:move(bw, bw);
-		wnd.titlebar:resize(w - bw - bw, tbh,
-			wnd_animation_time(wnd, wnd.anchor, true, false));
-		resize_image(wnd.border, w, h,
-			wnd_animation_time(wnd, wnd.border, true, false));
-	end
-
 -- still up for experimentation, but this method favors
 -- the canvas size rather than the allocated tile size
-	size_decor(wnd.width, wnd.height);
-	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top);
+	wnd_size_decor(wnd, wnd.width, wnd.height, force);
 	wnd:reposition();
 
 -- allow a relayouter to manipulate sizes etc. and finally, call all resize
@@ -2224,6 +2272,8 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		return;
 	end
 
+-- make sure the titlebar (if visible) isn't occluded by the statusbar
+	local tbarh = tbar_geth(wnd);
 	local time = now and 0 or wnd_animation_time(wnd, wnd.anchor, false, true);
 
 	if (abs) then
@@ -2248,8 +2298,6 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		wnd.y = wnd.y + dy;
 	end
 
--- make sure the titlebar (if visible) isn't occluded by the statusbar
-	local tbarh = tbar_geth(wnd);
 	if (not noclamp) then
 		wnd.y = math.clamp(wnd.y, wnd.wm.yoffset, wnd.wm.ylimit - tbarh);
 	end
@@ -2566,29 +2614,6 @@ local function wnd_title(wnd, title)
 	local dsttbl = {gconfig_get("tbar_textstr")};
 	wnd.title_text = suppl_ptn_expand(dsttbl, gconfig_get("titlebar_ptn"), wnd);
 	wnd.titlebar:update("center", 1, dsttbl);
-
--- override if the mode requires it
-	local hide_titlebar = wnd.hide_titlebar;
-
-	if (wnd.space and not tbar_mode(wnd.space.mode)) then
-		hide_titlebar = false;
-	end
-
--- reflect titlebar state in position / padding
-	if (hide_titlebar) then
-		wnd.titlebar:hide();
-		wnd.pad_top = wnd.border_w;
-		wnd:resize(wnd.width, wnd.height);
-	else
-		wnd.pad_top = wnd.border_w + tbar_geth(wnd);
-		wnd.titlebar:show();
-		wnd:resize(wnd.width, wnd.height);
-	end
-
--- not all windows have a workspace, but if we do, we might need relayouting
-	if (wnd.space) then
-		wnd.space:resize(true);
-	end
 end
 
 convert_mouse_xy = function(wnd, x, y, rx, ry)
@@ -2823,7 +2848,7 @@ local function wnd_borderpos(wnd)
 	local cd_ll = dist(x-props.x, props.y + props.height - y);
 	local cd_lr = dist(props.x + props.width - x, props.y + props.height - y);
 
-	local lim = 16 < (0.5 * props.width) and 16 or (0.5 * props.width);
+	local lim = 32;
 	if (cd_ur < lim) then
 		return "ur";
 	elseif (cd_lr < lim) then
@@ -2987,9 +3012,6 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	wnd.wm = tiler;
 	oldsp:resize();
 
--- make sure titlebar sizes etc. match
-	wnd:rebuild_border(gconfig_get("borderw"));
-
 -- employ relayouting hooks to currently active ws
 	local dsp = tiler.spaces[tiler.space_ind];
 	wnd:assign_ws(dsp, true);
@@ -3080,48 +3102,71 @@ local function wnd_tofront(wnd)
 	order_image(wm.order_anchor, #wm.windows * 2 * WND_RESERVED);
 end
 
-local function wnd_rebuild(v, bw)
-	local tbarh = tbar_geth(v);
-	if (v.hide_border) then
-		bw = 0;
-		hide_image(v.border);
+local function wnd_titlebar(wnd, visible)
+	if (wnd.show_titlebar == visible) then
+		return;
+	end
+
+-- options not considered here is an 'undocked' titlebar that
+-- is attached to the statusbar, this could be done as part of
+-- marking the titlebar as invisible, and on wnd_select simply
+-- set/attach the titlebar in the statusbar region although
+-- with some size constraints.
+	local h;
+	if (not visible) then
+		h = tbar_geth(wnd);
+	end
+
+	wnd.show_titlebar = visible;
+	if (not visible) then
+		h = -h;
 	else
-		show_image(v.border);
-		if (not bw) then
-			if (v.border_w == 0) then
-				bw = gconfig_get("borderw");
-			else
-				bw = v.border_w;
-			end
+		h = tbar_geth(wnd);
+	end
+
+	if (wnd.space.mode == "float") then
+		wnd.height = wnd.height + h;
+		wnd_size_decor(wnd, wnd.width, wnd.height, false);
+
+	elseif (wnd.space.mode == "tile") then
+		wnd:resize(wnd.width, wnd.height, true, true);
+	end
+end
+
+local function wnd_border(wnd, visible, user_force, bw)
+	bw = (bw and bw > 0) and bw or wnd.border_w;
+
+-- early out no-ops
+	if (wnd.show_border == visible) then
+		if wnd.border_w == bw then
+			return;
 		end
 	end
 
--- for tile, the window can't go outside its alloted size, but for float we
--- want to be able to grow with the pad sizes
-	if (v.space.mode == "float") then
-		if (v.pad_left < bw) then
-			v.width = v.width + (bw - v.pad_left);
-		end
-		if (v.pad_right < bw) then
-			v.width = v.width + (bw - v.pad_right);
-		end
-		if (v.pad_top < bw + tbarh) then
-			v.height = v.height + (bw + tbarh - v.pad_top);
-		end
-		if (v.pad_bottom < bw + tbarh) then
-			v.height = v.height + (bw - v.pad_bottom);
-		end
+-- change border size or visibility?
+	local bdiff;
+	if (visible == wnd.show_border) then
+		bdiff = math.abs(wnd.border_w - bw);
+	else
+		bdiff = (visible and 1 or -1) * bw;
 	end
 
-	v.pad_left = bw;
-	v.pad_right = bw;
-	v.pad_top = bw + tbarh;
-	v.pad_bottom = bw;
-	v.border_w = bw;
+-- apply difference to pad region while respecting possibly custom padding
+	wnd.border_w = bw;
+	wnd.show_border = visible;
 
-	if (v.space.mode == "tile" or v.space.mode == "float") then
-		v:resize(v.width, v.height, true, true);
+-- with float, we can simply grow/shrink and redraw the decor
+	if (wnd.space.mode == "float") then
+		wnd.width = wnd.width + bdiff;
+		wnd.height = wnd.height + bdiff;
+		wnd_size_decor(wnd, wnd.width, wnd.height, false);
+
+-- for tile we need to actually resize a cascade of clients
+	elseif (wnd.space.mode == "tile") then
+		wnd:resize(wnd.width + bdiff, wnd.height + bdiff, true, true);
 	end
+
+-- and the other modes don't care about border
 end
 
 local titlebar_mh = {
@@ -3261,7 +3306,9 @@ local canvas_mh = {
 			return;
 		end
 
-		if (wnd.hide_titlebar and not wnd.in_drag_move) then
+-- if there is no titlebar, we need to provide some option to allow
+-- the window to be mouse-repositioned without it
+		if (not wnd.show_titlebar and not wnd.in_drag_move) then
 			local m1, _ = dispatch_meta();
 			if (m1) then
 				wnd.in_drag_move = true;
@@ -3531,11 +3578,13 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
--- can be intercepted by a hook handler that regulates placement but we
--- avoid it if we are attaching after recovery
+-- Can be intercepted by a hook handler that regulates placement
+-- but we avoid it if we are attaching after recovery. A proper hook
+-- handler then re-runs attachment when it has done its possible
+-- positioning and sizing
 	if ((dstindex == wm.space_ind and not res.attach_temp)
 		and wm.attach_hook and not from_hook) then
-		return wm:attach_hook(res);
+			return wm:attach_hook(res);
 	end
 
 	res:show();
@@ -3552,9 +3601,9 @@ local function wnd_ws_attach(res, from_hook)
 	res.space = space;
 	link_image(res.anchor, space.anchor);
 
+-- this should be improved by allowing w/h/x/y overrides based on
+-- history for the specific source or the class it belongs to
 	if (space.mode == "float") then
--- this should be improved by allowing w/h/x/y overrides based on history
--- for the specific source or the class it belongs to
 		local props = image_storage_properties(res.canvas);
 		res.width = props.width;
 		res.height = props.height;
@@ -3697,11 +3746,11 @@ local function wnd_recovertag(wnd, restore)
 		if (res["name"]) then
 			get_window_name(wnd, res["name"]);
 		end
-		if (res["hide_titlebar"]) then
-			wnd.hide_titlebar = true;
+		if (res["show_titlebar"]) then
+			wnd.show_titlebar = true;
 		end
-		if (res["hide_border"]) then
-			wnd.hide_border = true;
+		if (res["show_border"]) then
+			wnd.show_border = true;
 		end
 		if (res["title"]) then
 			wnd.title = res["title"];
@@ -3760,16 +3809,16 @@ local function wnd_recovertag(wnd, restore)
 	end
 
 -- custom overrides / dynamic settings
-	if (wnd.hide_titlebar) then
-		table.insert(recoverlst, "hide_titlebar=1");
+	if (wnd.show_titlebar) then
+		table.insert(recoverlst, "show_titlebar=1");
 	end
 
 	if (wnd.title) then
 		table.insert(recoverlst, string.format("title=%s", wnd.title));
 	end
 
-	if (wnd.hide_border) then
-		table.insert(recoverlst, "hide_border=1");
+	if (wnd.show_border) then
+		table.insert(recoverlst, "show_border=1");
 	end
 
 	if (wnd.prefix) then
@@ -4020,8 +4069,8 @@ local wnd_setup = function(wm, source, opts)
 
 -- decoration controls
 		cursor = "default",
-		hide_titlebar = gconfig_get("hide_titlebar"),
-		hide_border = false,
+		show_titlebar = not gconfig_get("hide_titlebar"),
+		show_border = true,
 		indirect_parent = nil,
 
 -- visual attribute- functions
@@ -4033,7 +4082,8 @@ local wnd_setup = function(wm, source, opts)
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
 		set_ident = wnd_ident,
-		rebuild_border = wnd_rebuild,
+		set_titlebar = wnd_titlebar,
+		set_border = wnd_border,
 		set_dispmask = wnd_dispmask,
 		toggle_maximize = wnd_toggle_maximize,
 		to_front = wnd_tofront,
@@ -4108,10 +4158,12 @@ local wnd_setup = function(wm, source, opts)
 
 	image_mask_set(res.anchor, MASK_UNPICKABLE);
 
+	local tbh = tbar_geth(res);
 	res.titlebar = uiprim_bar(res.anchor, ANCHOR_UL,
-		res.width - 2 * bw, tbar_geth(res), "titlebar", titlebar_mh);
+		res.width - 2 * bw, tbh, "titlebar", titlebar_mh);
 	res.titlebar.tag = res;
 	res.titlebar:move(bw, bw);
+	res.pad_top = res.pad_top + tbh;
 
 	res.titlebar:add_button("center", nil, "titlebar_text",
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
@@ -4422,7 +4474,7 @@ local function tiler_rebuild_border(tiler)
 	shader_update_uniform("border", "ui", "thickness", tw, s, "tiler-rebuild");
 
 	for i,v in ipairs(tiler.windows) do
-		v:rebuild_border(bw);
+		wnd_size_decor(v, v.width, v.height, false);
 	end
 end
 
@@ -4622,21 +4674,6 @@ local function tiler_switchbg(wm, newbg, mh)
 			v:set_background(wm.background_name);
 		end
 	end
-end
-
--- used when/if we have a RT, calctarget + reduction in size with
--- w * rel_w, h * rel_h and need some values about the aproximation
--- of the rendertarget. update and cache calculation when swapping ws.
---
--- [want_calc] is set if we want the built-in metrics and / or sample_chains
--- [rel_w, rel_h] are 0..1 multiplier of the RT contents
--- [update_rate] sets the amount of ticks between each update for the active
--- workspace
--- [sample_chain] is a list of callback functions that should be triggered
--- on the calctarget callback, to get custom measurements
---
-local function tiler_estimator(want_calc,
-	rel_w, rel_h, postproc_shader, update_rate, sample_chain)
 end
 
 function tiler_create(width, height, opts)

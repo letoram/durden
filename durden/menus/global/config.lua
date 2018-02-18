@@ -330,9 +330,9 @@ local durden_visual = {
 		name = "border_area",
 		label = "Border Area",
 		kind = "value",
-		hint = "(0..20)",
+		hint = "(0..40)",
 		inital = function() return tostring(gconfig_get("borderw")); end,
-		validator = gen_valid_num(0, 20),
+		validator = gen_valid_num(0, 40),
 		description = "Grow/Shrink the area reserved for the window border",
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
@@ -434,21 +434,6 @@ local durden_visual = {
 	}
 };
 
-local float_menu = {
-	{
-		name = "tbaroverride",
-		label = "Force-Titlebar",
-		kind = "value",
-		set = {LBL_YES, LBL_NO},
-		description = "Enable titlebars even if they are disabled in other modes",
-		initial = function() return
-			gconfig_get("float_tbar_override") and LBL_YES or LBL_NO end,
-		handler = function(ctx, val)
-			gconfig_set("float_tbar_override", val == LBL_YES);
-		end
-	}
-};
-
 local durden_workspace = {
 	{
 		name = "autodel",
@@ -471,14 +456,6 @@ local durden_workspace = {
 		handler = function(ctx, val)
 			gconfig_set("ws_default", val);
 		end
-	},
-	{
-		name = "float",
-		label = "Float",
-		submenu = true,
-		kind = "action",
-		description = "Settings exclusive to the floating workspace mode",
-		handler = float_menu
 	},
 	{
 		name = "adopt",

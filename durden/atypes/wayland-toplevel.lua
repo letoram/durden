@@ -272,14 +272,9 @@ function wayland_toplevel_handler(wnd, source, status)
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
-			wnd:rebuild_border();
 
--- the hidekey is used to force- block any attempt at restoring the
--- titlebar, working around an edge- case in workspace layout mode
--- transitions
 			if (valid_vid(wnd.titlebar.impostor_vid)) then
 			else
-				wnd.titlebar:hide("wayland");
 			end
 			wnd.meta_dragmove = true;
 		end
@@ -293,6 +288,7 @@ function wayland_toplevel_handler(wnd, source, status)
 			wnd.rz_acc_x = wnd.rz_acc_x - dx;
 			wnd.rz_acc_y = wnd.rz_acc_y - dy;
 			wnd:move(dx * wnd.move_mask[1], dy * wnd.move_mask[2], false, false, true, false);
+			wnd.move_mask = nil;
 
 -- and similar action for toplevel reparenting
 		elseif (wnd.pending_center and wnd.pending_center.x) then
@@ -444,8 +440,8 @@ return {
 		block_rz_hint = true,
 -- all allocations go on the parent
 		allowed_segments = {},
-		hide_border = true,
-		hide_titlebar = true
+		show_border = false,
+		show_titlebar = false
 	},
 	dispatch = {}
 };
