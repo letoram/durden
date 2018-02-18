@@ -382,9 +382,7 @@ return {
 		description = "Toggle the server-side decorated titlebar on/off",
 		handler = function()
 			local wnd = active_display().selected;
-			wnd.hide_titlebar = not wnd.hide_titlebar;
-			wnd:set_title();
-			wnd:resize_effective(wnd.effective_w, wnd.effective_h, true);
+			wnd:set_titlebar(not wnd.show_titlebar, true);
 		end
 	},
 	{
@@ -404,8 +402,7 @@ return {
 		description = "Toggle the server-side decorated window border on/off",
 		handler = function()
 			local wnd = active_display().selected;
-			wnd.hide_border = not wnd.hide_border;
-			wnd:rebuild_border();
+			wnd:set_border(not wnd.show_border, true);
 		end
 	},
 	{

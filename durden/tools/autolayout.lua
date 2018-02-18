@@ -6,7 +6,7 @@ local function save_wnd(wnd)
 		autocrop = wnd.autocrop,
 		shader = image_shader(wnd.canvas),
 		scalemode = wnd.scalemode,
-		hidetbar = wnd.hide_titlebar
+		showtbar = wnd.show_titlebar
 	};
 end
 
@@ -23,7 +23,7 @@ local function restore_wnd(wnd)
 
 	wnd.scalemode = wnd.old.scalemode;
 	wnd.autocrop = wnd.old.autocrop;
-	wnd.hide_titlebar = wnd.old.hidetbar;
+	wnd.show_titlebar = wnd.old.showtbar;
 	wnd.displayhint_block_wh = false;
 	blend_image(wnd.canvas, wnd.canvas_opa and wnd.canvas_opa or 1.0);
 	wnd:set_title();
@@ -82,8 +82,7 @@ local function side_imgcfg(wnd, btime)
 	end
 
 -- swap to side, maybe disable titlebar
-	wnd.hide_titlebar = not gconfig_get("autolay_sidetbar");
-	wnd:set_title();
+	wnd:set_titlebar(gconfig_get("autolay_sidetbar"));
 end
 
 local function sel_h(wnd, mouse)

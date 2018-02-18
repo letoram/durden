@@ -3,23 +3,23 @@ return {
 		name = "border_pad",
 		label = "Border Padding",
 		description = "Insert padding (% of display size)",
-		kind = "value";
+		kind = "value",
 		initial = function()
 			return string.format("%.2d %.2d %.2d %.2d",
-				gconfig_get("sbar_lspace")*100, gconfig_get("sbar_rspace")*100,
-				gconfig_get("sbar_tspace")*100, gconfig_get("sbar_bspace")*100);
+				gconfig_get("sbar_tspace"), gconfig_get("sbar_lspace"),
+				gconfig_get("sbar_dspace"), gconfig_get("sbar_rspace"));
 		end,
-		hint = "(l r t b) % (0..20)",
-		validator = suppl_valid_typestr("ffff", 0.0, 20.0, 0.0),
+		hint = "(t l d r) px",
+		validator = suppl_valid_typestr("ffff", 0.0, 100.0, 0.0),
 		handler = function(ctx, val)
 			local elem = string.split(val, " ");
 			if (#elem ~= 4) then
 				return;
 			end
-			gconfig_set("sbar_lspace", tonumber(elem[1]) * 0.01);
-			gconfig_set("sbar_rspace", tonumber(elem[2]) * 0.01);
-			gconfig_set("sbar_tspace", tonumber(elem[3]) * 0.01);
-			gconfig_set("sbar_bspace", tonumber(elem[4]) * 0.01);
+			gconfig_set("sbar_tspace", math.floor(tonumber(elem[1])));
+			gconfig_set("sbar_lspace", math.floor(tonumber(elem[2])));
+			gconfig_set("sbar_dspace", math.floor(tonumber(elem[3])));
+			gconfig_set("sbar_rspace", math.floor(tonumber(elem[4])));
 			for disp in all_tilers_iter() do
 				disp:tile_update();
 			end
