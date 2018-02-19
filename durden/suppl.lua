@@ -3,6 +3,11 @@
 -- (string and table manipulation, mostly plucked from the AWB
 -- project)
 
+-- versioning workaround
+if not (TD_HINT_MAXIMIZED) then
+	TD_HINT_MAXIMIZED = 8;
+end
+
 function string.split(instr, delim)
 	if (not instr) then
 		return {};
@@ -1083,8 +1088,12 @@ function suppl_widget_path(ctx, anchor, ident)
 		while start <= nm do
 			ctr = ctr + 1;
 			local anch = null_surface(cellw, rh);
-			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
 			link_image(anch, anchor);
+			local dy = 0;
+			if (gconfig_get("menu_helper")) then
+				dy = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
+			end
+			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
 			local w, h = match[start][1].show(ctx, anch, match[start][2]);
@@ -1093,9 +1102,9 @@ function suppl_widget_path(ctx, anchor, ident)
 -- position and slide only if we get a hint on dimensions consumed
 			if (w and h) then
 				if (ctr % 2 == 1) then
-					move_image(anch, cx, -h);
+					move_image(anch, cx, -h - dy);
 				else
-					move_image(anch, cx, props.height);
+					move_image(anch, cx, props.height - dy);
 					cx = cx + cellw;
 				end
 			else

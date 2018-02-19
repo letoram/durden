@@ -76,8 +76,15 @@ local function wnd_attach(wm, wnd)
 			wnd:show();
 		end);
 -- auto should really be to try and calculate the best fitting free space
-	elseif (mode == "cursor" or mode == "auto") then
+	elseif (mode == "cursor") then
 		local x, y = mouse_xy();
+		if (x + wnd.width > wnd.wm.effective_width) then
+			x = wnd.wm.effective_width - wnd.width;
+		end
+
+		if (y + wnd.width > wnd.wm.effective_height) then
+			y = wnd.wm.effective_height - wnd.height;
+		end
 		wnd:move(x, y, false, true, true);
 	else
 	end

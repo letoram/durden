@@ -45,13 +45,14 @@ function durden(argv)
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("ledm.lua")(); -- led controllers
 	system_load("display.lua")(); -- multidisplay management
-	system_load("extevh.lua")(); -- handlers for external events
 	system_load("iopipes.lua")(); -- status and command channels
 
 -- functions exposed to user through menus, binding and scripting
 	system_load("fglobal.lua")(); -- tiler- related global functions
 	system_load("menus/global/global.lua")(); -- desktop related global
 	system_load("menus/target/target.lua")(); -- shared window related global
+
+	system_load("extevh.lua")(); -- handlers for external events
 
 	kbd_repeat(0, 0);
 
