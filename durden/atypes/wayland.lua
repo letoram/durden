@@ -197,6 +197,8 @@ seglut["application"] = function(wnd, source, stat)
 		return false;
 	end
 
+	local ad = active_display();
+
 -- We need to track these so that reparenting is possible, viewport events
 -- carry the cookie of the window they're targeting.
 	if (cookie > 0) then
@@ -208,11 +210,17 @@ seglut["application"] = function(wnd, source, stat)
 		wnd.wl_children = {};
 	end
 
-	local newwnd = active_display():add_hidden_window(id);
+	local opts = {
+		show_titlebar = false,
+		show_border = false
+	};
+
+	local newwnd = active_display():add_hidden_window(id, opts);
 	if (not newwnd) then
 		return false;
 	end
 
+	newwnd.wl_autossd = gconfig_get("wl_decorations") == "autossd";
 	target_updatehandler(id,
 		function(source, status)
 			wayland_toplevel_handler(newwnd, source, status);
@@ -220,11 +228,11 @@ seglut["application"] = function(wnd, source, stat)
 	);
 
 -- note, this will not yield the REGISTER event
-		extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
-		newwnd.source_audio = aid;
-		wlwnds[id] = newwnd;
-		table.insert(wnd.wl_children, newwnd);
-		newwnd.bridge = wnd;
+	extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
+	newwnd.source_audio = aid;
+	wlwnds[id] = newwnd;
+	table.insert(wnd.wl_children, newwnd);
+	newwnd.bridge = wnd;
 
 	return true;
 end
@@ -296,6 +304,30 @@ local function wayland_buildwnd(wnd, source, stat)
 
 	return true;
 end
+
+gconfig_register("wl_decorations", "client");
+local wayland_settings = {
+{
+	name = "decorations",
+	label = "Decorations",
+	kind = "value",
+	description = "Set the default decoration policy for new clients",
+	set = {"client", "autossd"},
+	handler = function(ctx, val)
+		gconfig_set("wl_decorations", val);
+	end
+}
+};
+
+global_menu_register("settings",
+{
+	name = "wayland",
+	label = "Wayland",
+	kind = "action",
+	submenu = true,
+	description = "Global settings for all wayland clients",
+	handler = wayland_settings
+});
 
 return {
 	atype = "bridge-wayland",

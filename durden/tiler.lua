@@ -1,4 +1,4 @@
--- Copyright: 2015-2017, Björn Ståhl
+-- Copyright: 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Depends: display, shdrmgmt, lbar, suppl, mouse
@@ -967,7 +967,7 @@ local function drop_fullscreen(space, swap)
 	end
 
 -- safe-guard against bad code elsewhere
-	if (not space.selected) then
+	if (not space.selected or not space.selected.fs_copy) then
 		return;
 	end
 
@@ -975,7 +975,11 @@ local function drop_fullscreen(space, swap)
 	local dw = space.selected;
 	dw:set_titlebar(dw.fs_copy.show_titlebar);
 	dw:set_border(dw.fs_copy.show_border);
+
 	for k,v in pairs(dw.fs_copy) do dw[k] = v; end
+
+	dw:resize(dw.fs_copy.width, dw.fs_copy.height);
+
 	dw.fs_copy = nil;
 	dw.fullscreen = nil;
 	image_mask_set(dw.canvas, MASK_OPACITY);
@@ -1137,12 +1141,16 @@ local function set_fullscreen(space)
 	local dw = space.selected;
 
 -- keep a copy of properties we may want to change during fullscreen
-	dw.fs_copy = {
-		centered = dw.centered,
-		fullscreen = false,
-		show_border = dw.show_border,
-		show_titlebar = dw.show_titlebar
-	};
+	if (not dw.fs_copy) then
+		dw.fs_copy = {
+			centered = dw.centered,
+			fullscreen = false,
+			show_border = dw.show_border,
+			show_titlebar = dw.show_titlebar,
+			width = dw.width,
+			height = dw.height
+		};
+	end
 	dw.centered = true;
 	dw.fullscreen = space.last_mode;
 
@@ -2299,8 +2307,9 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 	end
 
 	if (not noclamp) then
-		wnd.y = math.clamp(wnd.y, wnd.wm.yoffset, wnd.wm.ylimit - tbarh);
+		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
 	end
+
 	move_image(wnd.anchor, wnd.x, wnd.y, time);
 
 	wnd:recovertag();
@@ -2378,18 +2387,29 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		delete_image(vid);
 		mouse_droplistener(pop);
 		for i=#wnd.popups, pop.index, -1 do
+			if (wnd.input_focus) then
+				table.remove_match(wnd.input_focus, wnd.popups[i]);
+				if (wnd.input_focus == 0) then
+					wnd.input_focus = nil;
+				end
+			end
 			wnd:drop_popup();
 		end
 	end
 
 -- we chain onwards so the res table exposes mostly the same entry points
--- as a norml window
+-- as a normal window
 	res.add_popup = function(pop, source, dcb)
 		return wnd:add_popup(source, dcb);
 	end
 
 	res.focus = function(pop, state)
-		wnd.input_focus = pop;
+		if (not wnd.input_focus) then
+			wnd.input_focus = {pop};
+		else
+			table.remove_match(wnd.input_focus, pop);
+			table.insert(wnd.input_focus, pop);
+		end
 	end
 
 	res.show = function(pop)
@@ -2491,8 +2511,11 @@ local function wnd_droppopup(wnd, all)
 		mouse_droplistener(pop);
 
 		table.remove(wnd.popups, #wnd.popups);
-		if (wnd.input_focus == pop) then
-			wnd.input_focus = wnd.popups[#wnd.popups];
+		if (wnd.input_focus) then
+			table.remove_match(wnd.input_focus, pop);
+			if (#wnd.input_focus == 0) then
+				wnd.input_focus = nil;
+			end
 		end
 	end
 end
@@ -2665,8 +2688,12 @@ local function wnd_mousebutton(ctx, ind, pressed, x, y)
 		return;
 
 -- collapse the entire tree on canvas- click
-	elseif (#wnd.popups > 0) then
+	elseif (#wnd.popups > 0 and pressed) then
 		wnd:drop_popup(true);
+		return;
+	end
+
+	if (wnd.input_grab) then
 		return;
 	end
 
@@ -2777,6 +2804,11 @@ end
 
 local function wnd_mousemotion(ctx, x, y, rx, ry)
 	local wnd = ctx.tag;
+
+-- filter out until the popup releases input focus
+	if (wnd.input_focus) then
+		return;
+	end
 
 	if (wnd.mouse_lock_center) then
 		local rt = {
@@ -3131,6 +3163,8 @@ local function wnd_titlebar(wnd, visible)
 	elseif (wnd.space.mode == "tile") then
 		wnd:resize(wnd.width, wnd.height, true, true);
 	end
+
+	wnd.space:resize();
 end
 
 local function wnd_border(wnd, visible, user_force, bw)
@@ -3167,6 +3201,7 @@ local function wnd_border(wnd, visible, user_force, bw)
 	end
 
 -- and the other modes don't care about border
+	wnd.space:resize();
 end
 
 local titlebar_mh = {
@@ -3346,7 +3381,7 @@ local canvas_mh = {
 		local tag = ctx.tag;
 		if (tag.in_drag_move) then
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
-				v(tag.space.wm, tag, dx, dy, true);
+				v(tag.space.wm, tag, 0, 0, true);
 			end
 			tag:recovertag();
 		end
@@ -3601,6 +3636,9 @@ local function wnd_ws_attach(res, from_hook)
 	res.space = space;
 	link_image(res.anchor, space.anchor);
 
+	tbh = tbar_geth(res);
+	res.pad_top = res.pad_top + tbh;
+
 -- this should be improved by allowing w/h/x/y overrides based on
 -- history for the specific source or the class it belongs to
 	if (space.mode == "float") then
@@ -3615,6 +3653,8 @@ local function wnd_ws_attach(res, from_hook)
 		else
 			res.x, res.y = mouse_xy();
 		end
+		res.max_w = wm.effective_width - res.x;
+		res.max_h = wm.effective_height - res.y;
 		move_image(res.anchor, res.x, res.y);
 	else
 	end
@@ -3656,8 +3696,8 @@ local function wnd_ws_attach(res, from_hook)
 -- trigger the resize cascade now that we know the layout..
 	if (res.space.mode == "float") then
 		local x, y = mouse_xy();
-		local w = res.width;
-		local h = res.height;
+		local w;
+		local h;
 
 		if (res.attach_temp) then
 			x = res.attach_temp[1] * wm.effective_width;
@@ -3667,12 +3707,20 @@ local function wnd_ws_attach(res, from_hook)
 			res.attach_temp = nil;
 		else
 -- hint the clamp against the display
-			w = res.wm.width - res.x;
-			h = res.wm.height - res.y;
+			w = math.clamp(res.wm.effective_width - x, 32, res.wm.effective_width);
+			h = math.clamp(res.wm.effective_height - y - res.wm.yoffset, 32, res.wm.ylimit);
 		end
 
+		y = y - active_display().yoffset;
+
+		res.max_w = w;
+		res.max_h = h;
 		res:move(x, y, true, true, true);
-		res:resize(w, h);
+		if (res.scalemode == "client") then
+			res:displayhint(w, h);
+		else
+			res:resize(w, h, true);
+		end
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
@@ -3946,7 +3994,7 @@ local function wnd_guid(wnd, guid)
 	end
 end
 
-local function default_displayhint(wnd, hw, hh, ...)
+local function default_displayhint(wnd, hw, hh, dm, ...)
 	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
 	end
@@ -3958,7 +4006,15 @@ local function default_displayhint(wnd, hw, hh, ...)
 		wnd.hint_h = hh;
 	end
 
-	target_displayhint(wnd.external, hw, hh, ...);
+	if (not dm) then
+		dm = wnd.dispmask;
+	end
+
+	if (wnd.space and wnd.space.mode ~= "float") then
+		dm = bit.bor(dm, TD_HINT_MAXIMIZED);
+	end
+
+	target_displayhint(wnd.external, hw, hh, dm, ...);
 end
 
 local function wnd_drop_overlay(wnd, key)
@@ -4142,6 +4198,14 @@ local wnd_setup = function(wm, source, opts)
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
 
+	if (opts.show_titlebar ~= nil) then
+		res.show_titlebar = opts.show_titlebar;
+	end
+
+	if (opts.show_border ~= nil) then
+		res.show_border = opts.show_border;
+	end
+
 -- for float mode
 	res.defer_x, res.defer_y = mouse_xy();
 
@@ -4158,16 +4222,17 @@ local wnd_setup = function(wm, source, opts)
 
 	image_mask_set(res.anchor, MASK_UNPICKABLE);
 
-	local tbh = tbar_geth(res);
+	local tbh = math.floor(wm.scalef * gconfig_get("tbar_sz"));
 	res.titlebar = uiprim_bar(res.anchor, ANCHOR_UL,
 		res.width - 2 * bw, tbh, "titlebar", titlebar_mh);
+
 	res.titlebar.tag = res;
 	res.titlebar:move(bw, bw);
-	res.pad_top = res.pad_top + tbh;
 
 	res.titlebar:add_button("center", nil, "titlebar_text",
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
-	res.titlebar:hide();
+--	res.titlebar:hide();
+	res:set_title("");
 
 -- set itself as part of another window's alternate slot, windows that
 -- share one hierarchical/visibility slot that can be swapped.
@@ -4224,7 +4289,6 @@ local function wnd_create(wm, source, opts)
 	local res = wnd_setup(wm, source, opts);
 	if (res) then
 		res:ws_attach();
-		res:set_title("");
 	end
 	return res;
 end

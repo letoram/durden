@@ -74,9 +74,14 @@ local function set_dragrz_state(wnd, mask, from_wl)
 		wnd.move_mask = {mask[3], mask[4]};
 		wnd.rz_acc_x = wnd.rz_acc_x + dx;
 		wnd.rz_acc_y = wnd.rz_acc_y + dy;
+
+		local tdm = wnd.dispmask;
+		if (not last) then
+			tdm = bit.bor(tdm, TD_HINT_CONTINUED);
+		end
 		wnd:displayhint(
 			wnd.last_w + wnd.rz_acc_x + wnd.rz_ofs_x,
-			wnd.last_h + wnd.rz_acc_y + wnd.rz_ofs_y, wnd.dispmask
+			wnd.last_h + wnd.rz_acc_y + wnd.rz_ofs_y, tdm
 		);
 	end
 end
@@ -97,11 +102,30 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 	set_dragrz_state(wnd, mask, true);
 end
 
+local function auto_ssd(wnd)
+	local props = image_storage_properties(wnd.canvas);
+		wnd:set_crop(
+			wnd.geom[2], wnd.geom[1], -- t, l
+			props.height - wnd.geom[4] - wnd.geom[2], -- d
+			props.width - wnd.geom[3] - wnd.geom[1] -- r
+	);
+
+-- also deploy wnd-impostor
+end
+
 -- try and center but don't go out of screen boundaries
 local function center_to(wnd, parent)
-	local dst_x = parent.x + 0.5 * (parent.width - wnd.width);
-	local dst_y = parent.y + 0.5 * (parent.height - wnd.height);
-	wnd:move(dst_x, dst_y, false, true, true, false);
+	local dw = wnd.width;
+	local dh = wnd.height;
+
+	if (parent.space and parent.space.mode == "float") then
+		wnd.max_w = parent.width * 0.8;
+		wnd.max_h = parent.height * 0.8;
+		dw = wnd.max_w;
+		dh = wnd.max_h;
+		wnd:displayhint(wnd.max_w, wnd.max_h);
+	end
+	wnd:move(parent.x, parent.y, false, true, true, false);
 end
 
 -- this is also triggered on_destroy for the toplevel window so the id
@@ -250,7 +274,9 @@ function wayland_toplevel_handler(wnd, source, status)
 				if (not wnd.geom or (wnd.geom[1] ~= x or
 					wnd.geom[2] ~= y or wnd.geom[3] ~= w or wnd.geom[4] ~= h)) then
 					wnd.geom = {x, y, w, h};
-
+					if (wnd.wl_autossd) then
+						auto_ssd(wnd);
+					end
 -- new geometry, if we're set to autocrop then do that, if we have an
 -- impostor defined, update it now
 				end
@@ -272,13 +298,8 @@ function wayland_toplevel_handler(wnd, source, status)
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
-
-			if (valid_vid(wnd.titlebar.impostor_vid)) then
-			else
-			end
 			wnd.meta_dragmove = true;
 		end
-
 		wnd:resize_effective(status.width, status.height, true, true);
 
 -- deferred from drag resize where the move should match the config change
@@ -296,39 +317,14 @@ function wayland_toplevel_handler(wnd, source, status)
 			wnd.pending_center = nil;
 		end
 
+-- apply autocrop- auto-impostor
+		if (wnd.last_w ~= status.width or wnd.last_h ~= status.height) then
+
+		end
+
 		wnd.last_w = status.width;
 		wnd.last_h = status.height;
 	end
-end
-
---
--- overload the default displayhint handler for the window in order to add
--- our own custom padding function to it that takes the last acknowledged
--- geometry into account.
---
-local wl_displayhint = function(wnd, hw, hh, ...)
-	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		return;
-	end
-
---	if (hw > 0 and hh > 0) then
---		active_display():message(string.format("wl-resize to %f, %f", hw, hh));
---		local pad_w, pad_h;
---		if (wnd.geom) then
---			local props = image_storage_properties(wnd.canvas);
---			pad_w = wnd.geom[1] + props.width - (wnd.geom[1] + wnd.geom[3]);
---			pad_h = wnd.geom[2] + props.height - (wnd.geom[2] + wnd.geom[4]);
---			hw = hw;
---			hh = hh;
---		end
---	end
-
-	if (hw ~= 0 or hh ~= 0) then
-		hw = math.clamp(hw, 32, MAX_SURFACEW);
-		hh = math.clamp(hh, 32, MAX_SURFACEH);
-	end
-
-	target_displayhint(wnd.external, hw, hh, ...);
 end
 
 wl_destroy = function(wnd, was_selected)
@@ -351,60 +347,36 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 	local props = image_storage_properties(wnd.canvas);
 	local nefw = efw;
 	local nefh = efh;
+
 	if (wnd.geom) then
 		nefw = wnd.geom[3] + (efw - wnd.last_w);
 		nefh = wnd.geom[4] + (efh - wnd.last_h);
 	end
 
-	wnd:displayhint(nefw + wnd.dh_pad_w, nefh + wnd.dh_pad_h);
+	wnd:displayhint(nefw + wnd.dh_pad_w, nefh + wnd.dh_pad_h, wnd.dispmask);
 end
 
 local toplevel_menu = {
 	{
 		name = "crop_geom",
-		label = "Crop Geometry",
+		label = "Auto-SSD",
 		kind = "value",
-		initial = function() return gconfig_get("wl_autocrop") and LBL_YES or LBL_NO; end,
+		description = "Automatically crop non-geometry area and impostor titlebar",
+		initial = function()
+			return active_display().selected.wl_autossd and LBL_YES or LBL_NO;
+		end,
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			if (val == LBL_YES) then
-				wnd.wl_autocrop = true;
-				local props = image_storage_properties(wnd.canvas);
-				wnd:set_crop(
-					wnd.geom[2], wnd.geom[1], -- t, l
-					props.height - wnd.geom[4] - wnd.geom[2], -- d
-					props.width - wnd.geom[3] - wnd.geom[1] -- r
-				);
+				wnd.wl_autossd = true;
+				auto_ssd(wnd);
 			else
-				wnd.wl_autocrop = false;
+				wnd.wl_autossd = false;
 				wnd:set_crop(0, 0, 0, 0);
 			end
 		end
-	},
-	{
-		name = "impostor",
-		label = "Impostor Headerbars",
-		kind = "value",
-		initial = function() return gconfig_get("wl_impostor") and LBL_YES or LBL_NO; end,
-		set = {LBL_YES, LBL_NO},
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			if (val == LBL_YES) then
-
-			end
-		end
-	},
-	{
-		name = "hide_subsurfaces",
-		kind = "value",
-		set = {"edges", "all", "none"},
-		initial = function()
-		end,
-		handler = function(ctx, val)
--- enumerate current subsurfaces and set/check
-		end
-	},
+	}
 };
 
 return {
@@ -422,7 +394,6 @@ return {
 	init = function(atype, wnd, source)
 		wnd.last_w = 0;
 		wnd.last_h = 0;
-		wnd.displayhint = wl_displayhint;
 		wnd.drag_rz_enter = set_dragrz_state;
 		wnd:add_handler("destroy", wl_destroy);
 		wnd:add_handler("resize", wl_resize);
@@ -440,8 +411,6 @@ return {
 		block_rz_hint = true,
 -- all allocations go on the parent
 		allowed_segments = {},
-		show_border = false,
-		show_titlebar = false
 	},
 	dispatch = {}
 };
