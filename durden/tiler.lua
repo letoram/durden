@@ -2679,6 +2679,7 @@ convert_mouse_xy = function(wnd, x, y, rx, ry)
 
 	wnd.last_ms[1] = res[1];
 	wnd.last_ms[2] = res[3];
+
 	return res;
 end
 
