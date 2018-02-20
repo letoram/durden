@@ -59,7 +59,7 @@ local function cloth_setup(wnd, destroy)
 -- if the titlebar is hidden, we take the other tactic of pinning to the
 -- mouse cursor position on canvas (assuming that actually initiated it)
 					local pin = (destroy == nil and y == 0 and
-						not destroy and not wnd.hide_titlebar);
+						not destroy and wnd.show_titlebar);
 
 					return px, py, pin, mass, damp_s, damp_t;
 			end
@@ -70,7 +70,7 @@ local function cloth_setup(wnd, destroy)
 	);
 
 -- four-point pin at cursor position
-	if (wnd.hide_titlebar) then
+	if (not wnd.show_titlebar) then
 		verlet_build.pin(wnd.verlet, tx, ty, true);
 		if (tx < t_s-1) then
 			verlet_build.pin(wnd.verlet, tx+1, ty, true);

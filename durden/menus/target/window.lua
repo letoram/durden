@@ -282,9 +282,40 @@ local function setup_surface(wnd, vid, px)
 	move_image(vid, 0, -px);
 end
 
+local function send_mouse_xy(wnd, x, y, rx, ry)
+	local iotbl = {
+		kind = "analog",
+		mouse = true,
+		devid = 0,
+		subid = 0,
+		samples = {x, rx}
+	};
+	local iotbl2 = {
+		kind = "analog",
+		mouse = true,
+		devid = 0,
+		subid = 1,
+		samples = {y, ry}
+	};
+
+	if (wnd.in_drag_move or wnd.in_drag_rz or
+		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+	target_input(wnd.external, iotbl);
+	target_input(wnd.external, iotbl2);
+end
+
 local function set_impostor(wnd, px)
 	local tbar_reg = null_surface(wnd.effective_w, px);
 	wnd.titlebar.last_impostor = px;
+
+	if (px == -1) then
+-- distance-field / raymarch horiz- vert in order to find an edge even if the source has
+-- a gradient, and if no such gradient is found, go with the possible symmetry in pad-
+-- vs contents.
+		px = 40;
+	end
 
 	show_image(tbar_reg);
 	image_sharestorage(wnd.canvas, tbar_reg);
@@ -294,13 +325,29 @@ local function set_impostor(wnd, px)
 		function(bar, w, h, dt, interp)
 			resize_image(tbar_reg, w, px, dt, interp);
 			setup_surface(wnd, tbar_reg, px);
-		end, {
+		end,
+
+-- just forward to the normal handlers, but remove the crop values temporarily
+-- so that the remapping that is normally done to account for the impostor is removed
+		{
 		button =
-		function()
-			active_display():message("impostor click");
+			function(ctx, vid, ind, pressed, x, y)
+			if (wnd.handlers and wnd.handlers.mouse.canvas.button) then
+				local cv = wnd.crop_values;
+				wnd.crop_values = nil;
+				wnd.handlers.mouse.canvas:button(vid, ind, pressed, x, y);
+				wnd.crop_values = cv;
+			end
 		end,
 		motion =
-		function()
+		function(ctx, vid, x, y, rx, ry)
+			if (wnd.handlers and wnd.handlers.mouse.canvas.motion) then
+				local aprop = image_surface_resolve(vid);
+				send_mouse_xy(wnd,
+					x - aprop.x + wnd.crop_values[2],
+					y - aprop.y + wnd.crop_values[1] - px, rx, ry
+				);
+			end
 		end
 		}
 	);
@@ -622,12 +669,6 @@ return {
 				if (num == 0) then
 					return;
 				end
-			end
-
-			if (num == -1) then
--- create a small slice, run through a horizontal edge detection, read back the result,
--- look for a match - actual implementation is in suppl.lua, update cropv
-				num = 10;
 			end
 
 			wnd:append_crop(num, 0, 0, 0);
