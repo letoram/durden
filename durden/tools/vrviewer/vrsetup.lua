@@ -39,12 +39,6 @@
 --   set_external
 --
 
-local layer_distance = 0.2;
-local near_layer_sz = 1024;
-local layer_sz_rate = 0.8;
-local TIMEVAL = 20;
-local terminal_font = "";
-
 local vert = [[
 uniform mat4 modelview;
 uniform mat4 projection;
@@ -108,7 +102,21 @@ set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
 -- when the VR bridge is active, we still want to be able to tune the
 -- distortion, fov, ...
 
-local function setup_vr_display(wnd, name, headless, callback)
+local function set_vr_defaults(ctx, opts)
+	local tbl = {
+		oversample = 1.4,
+		msaa = false,
+		hmdarg = "",
+
+	};
+	for k,v in pairs(tbl) do
+		ctx[k] = (opts[k] and opts[k]) or tbl[k];
+	end
+end
+
+local function setup_vr_display(wnd, headless, opts)
+	set_vr_defaults(wnd, opts);
+
 -- or make these status messages into some kind of logging console,
 -- probably best when we can make internal TUI connections and do
 -- it that way
@@ -122,12 +130,20 @@ local function setup_vr_display(wnd, name, headless, callback)
 			(md.height and md.height > 0) and md.height or 1024, MAX_SURFACEH);
 		local halfw = dispw * 0.5;
 
--- assume SBS configuration, L/R, combiner is where we apply distortion
+-- Assume SBS configuration, L/R, combiner is where we apply distortion
 -- and the rendertarget we bind to a preview window as well as map to
--- the display
+-- the display.
+--
+-- A few things are missing here, the big one is being able to set MSAA
+-- sampling and using the correct shader / sampler for that in the combiner
+-- stage.
+--
+-- The second is actual distortion parameters via a mesh.
+--
+-- The third is a stencil mask over the rendertarget (missing Lua API).
 		local combiner = alloc_surface(dispw, disph);
-		local l_eye = alloc_surface(halfw, disph);
-		local r_eye = alloc_surface(halfw, disph);
+		local l_eye = alloc_surface(halfw * opts.oversample_x, disph * opts.oversample_y);
+		local r_eye = alloc_surface(halfw * opts.oversample_y, disph * opts.oversample_y);
 		show_image({l_eye, r_eye});
 
 -- since we don't show any other models, this is fine without a depth buffer
@@ -269,15 +285,18 @@ local function build_model(layer, kind, name)
 	return res;
 end
 
-local function set_defaults(opts)
-	local defaults = {
-
+local function set_defaults(ctx, opts)
+	local tbl = {
+		layer_distance = 0.2,
+		near_layer_sz = 1024,
+		display_density = 33,
+		terminal_font = "default.ttf",
+		terminal_font_sz = 18,
+		animation_speed = 20
 	};
 
-	for k,v in pairs(defaults) do
-		if (not opts[k]) then
-			opts[k] = v;
-		end
+	for k,v in pairs(tbl) do
+		ctx[k] = (opts[k] and opts[k]) or tbl[k];
 	end
 end
 
@@ -295,7 +314,7 @@ local function layer_zpos(layer)
 	if (layer.fixed) then
 		return layer.dz;
 	else
-		local dv = layer.index * -layer_distance + layer.dz;
+		local dv = layer.index * -layer.ctx.layer_distance + layer.dz;
 		return dv;
 	end
 end
@@ -330,7 +349,7 @@ local function layer_select(layer)
 	end
 
 	layer.ctx.selected_layer = layer;
-	move3d_model(layer.anchor, 0, 0, layer_zpos(layer), TIMEVAL);
+	move3d_model(layer.anchor, 0, 0, layer_zpos(layer), layer.ctx.animation_speed);
 -- here we can set alpha based on distance as well
 end
 
@@ -367,24 +386,29 @@ local function layer_add(ctx, tag)
 end
 
 return function(ctx, surf, opts)
-	set_defaults(opts);
+	set_defaults(ctx, opts);
 
+-- render to texture, so flip y
 	local cam = null_surface(1, 1);
 	scale3d_model(cam, 1.0, -1.0, 1.0);
 
 -- reference color / texture to use as a placeholder
 	local placeholder = fill_surface(64, 64, 128, 128, 128);
 
+-- preview window, don't be picky
 	define_rendertarget(surf, {cam, placeholder},
 		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
 	camtag_model(cam, vr_near, vr_far, 45.0, 1.33, true, true, 0, surf);
 
+-- actual vtable and properties
 	ctx.add_layer = layer_add;
 	ctx.camera = cam;
 	ctx.placeholder = placeholder;
 	ctx.vr_pipe = surf;
-	ctx.rtgt_id = 0;
+	ctx.setup_vr = setup_vr_display;
 
+-- special case, always take the left eye view on stereoscopic sources,
+-- the real stereo pipe takes the right approach of course
 	rendertarget_id(surf, 0);
 
 -- all UI is arranged into layers of models
