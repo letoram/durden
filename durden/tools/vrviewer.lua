@@ -47,6 +47,7 @@ end
 
 local function vrwnd()
 	local preview = alloc_surface(320, 320);
+	image_texfilter(preview, FILTER_BILINEAR);
 
 -- and bind to a new window
 	local wnd = active_display():add_window(preview, {scalemode = "stretch"});
@@ -78,6 +79,7 @@ local function vrwnd()
 -- if the window gets dragged, resize the context to match
 	wnd:add_handler("resize", function(ctx, w, h)
 		if (not ctx.in_drag_rz) then
+			active_display():message(string.format("rz %f %f", w, h));
 			image_resize_storage(preview, w, h);
 			rendertarget_forceupdate(preview);
 		end
@@ -122,17 +124,26 @@ local function vrwnd()
 	end
 });
 
--- add hook to use the browser feature
-
--- add the full setup command that also leases the display
--- local disp = display_lease(name);
---	if (not disp and not headless) then
---		return;
---	end
--- wnd:message("Spawning VR Bridge");
--- local pipe = wnd:setup_vr();
--- display_release(name);
---
+	table.insert(wnd.actions,
+	{
+	name = "vrsetup",
+	kind = "action",
+	description = "Activate the VR pipe on a simulated window or real HMD",
+	set =
+	function()
+		local res = {"simulated"};
+		display_bytag("VR", function(name)
+			table.insert(res, name);
+		end);
+	end,
+	handler = function(ctx, val)
+		wnd.active_vr = wnd:setup_vr(val == "simulated", {});
+	end,
+	eval = function()
+		return not wnd.active_vr;
+	end
+	}
+	);
 
 	return wnd;
 end
