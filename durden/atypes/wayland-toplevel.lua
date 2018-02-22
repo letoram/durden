@@ -158,7 +158,7 @@ local function set_parent(wnd, id)
 		return;
 	end
 
-	if (not parent) then
+	if (not parent or not parent.add_overlay) then
 		wayland_trace("toplevel tried to reparent to unknown window");
 		return;
 	end
