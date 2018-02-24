@@ -39,6 +39,9 @@
 --   set_external
 --
 
+-- pending:
+-- set border color, do it in the fragment stage
+
 local vert = [[
 uniform mat4 modelview;
 uniform mat4 projection;
@@ -52,12 +55,17 @@ uniform vec2 scale_leye;
 uniform vec2 scale_reye;
 
 uniform int rtgt_id;
+uniform bool flip;
 
 varying vec2 texco;
 
 void main()
 {
 	vec2 tc = texcoord;
+	if (flip){
+		tc.t = 1.0 - tc.t;
+	}
+
 	vec4 vert = vertex;
 
 	if (rtgt_id == 0){
@@ -73,20 +81,8 @@ void main()
 }
 ]];
 
-local tfrag = [[
-uniform sampler2D map_tu0;
-varying vec2 texco;
-uniform float obj_opacity;
-void main()
-{
-	vec3 col = texture2D(map_tu0, vec2(texco.s, 1.0 - texco.t)).rgb;
-	gl_FragColor = vec4(col.rgb, obj_opacity);
-}
-]];
-
 local vrshaders = {
 	geom = build_shader(vert, nil, "vr_geom"),
-	term = build_shader(nil, tfrag, "vr_term")
 };
 
 local function set_model_uniforms(
@@ -95,6 +91,10 @@ local function set_model_uniforms(
 	shader_uniform(vrshaders.geom, "scale_leye", "ff", leye_ss, leye_st);
 	shader_uniform(vrshaders.geom, "ofs_reye", "ff", reye_x, reye_y);
 	shader_uniform(vrshaders.geom, "scale_reye", "ff", reye_ss, reye_st);
+	shader_uniform(vrshaders.geom, "flip", "b", false);
+
+	vrshaders.geom_inv = shader_ugroup(vrshaders.geom);
+	shader_uniform(vrshaders.geom_inv, "flip", "b", true);
 end
 
 set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
@@ -104,7 +104,8 @@ set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
 
 local function set_vr_defaults(ctx, opts)
 	local tbl = {
-		oversample = 1.4,
+		oversample_w = 1.4,
+		oversample_h = 1.4,
 		msaa = false,
 		hmdarg = "",
 
@@ -113,6 +114,13 @@ local function set_vr_defaults(ctx, opts)
 		ctx[k] = (opts[k] and opts[k]) or tbl[k];
 	end
 end
+
+local function model_eventhandler(wnd, model, source, status)
+	if (status.kind == "terminated") then
+-- indicate in some way that the client is broken
+	end
+end
+
 
 local function setup_vr_display(wnd, headless, opts)
 	set_vr_defaults(wnd, opts);
@@ -124,10 +132,12 @@ local function setup_vr_display(wnd, headless, opts)
 -- ideally, we'd get a display with two outputs so that we could map
 -- the rendertargets directly to the outputs, getting rid of one step
 	local setup_vrpipe = function(bridge, md, neck)
-		local dispw = math.clamp(
-			(md.width and md.width > 0) and md.width or 1920, MAX_SURFACEW);
-		local disph = math.clamp(
-			(md.height and md.height > 0) and md.height or 1024, MAX_SURFACEH);
+		local dispw = md.width > 0 and md.width or 1920;
+		local disph = md.height > 0 and md.height or 1024;
+		dispw = math.clamp(dispw, 256, MAX_SURFACEW);
+		disph = math.clamp(disph, 256, MAX_SURFACEH);
+		local eyew = math.clamp(dispw * wnd.oversample_w, 256, MAX_SURFACEW);
+		local eyeh = math.clamp(disph * wnd.oversample_h, 256, MAX_SURFACEH);
 		local halfw = dispw * 0.5;
 
 -- Assume SBS configuration, L/R, combiner is where we apply distortion
@@ -142,8 +152,8 @@ local function setup_vr_display(wnd, headless, opts)
 --
 -- The third is a stencil mask over the rendertarget (missing Lua API).
 		local combiner = alloc_surface(dispw, disph);
-		local l_eye = alloc_surface(halfw * opts.oversample_x, disph * opts.oversample_y);
-		local r_eye = alloc_surface(halfw * opts.oversample_y, disph * opts.oversample_y);
+		local l_eye = alloc_surface(eyew, eyeh);
+		local r_eye = alloc_surface(eyew, eyeh);
 		show_image({l_eye, r_eye});
 
 -- since we don't show any other models, this is fine without a depth buffer
@@ -153,6 +163,8 @@ local function setup_vr_display(wnd, headless, opts)
 		rendertarget_id(l_eye, 0);
 		rendertarget_id(r_eye, 1);
 		move_image(r_eye, halfw, 0);
+		resize_image(l_eye, halfw, disph);
+		resize_image(r_eye, halfw, disph);
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
@@ -171,9 +183,10 @@ local function setup_vr_display(wnd, headless, opts)
 			md.right_ar = halfw / disph;
 		end
 
-		camtag_model(cam_l, vr_near, vr_far, l_fov, md.right_ar, true, true, 0, l_eye);
+		camtag_model(cam_l, vr_near, vr_far, l_fov, md.left_ar, true, true, 0, l_eye);
 		camtag_model(cam_r, vr_near, vr_far, r_fov, md.right_ar, true, true, 0, r_eye);
 
+		print(dispw, disph, md.left_ar, md.right_ar, l_eye, r_eye);
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
@@ -190,6 +203,8 @@ local function setup_vr_display(wnd, headless, opts)
 			link_image(combiner, wnd.anchor);
 			map_video_display(combiner, disp.id, HINT_PRIMARY);
 		else
+			link_image(cam_l, wnd.camera);
+			link_image(cam_r, wnd.camera);
 			show_image(combiner);
 			headless(wnd, combiner);
 		end
@@ -198,7 +213,8 @@ local function setup_vr_display(wnd, headless, opts)
 -- debugging, fake a hmd and set up a pipe for that
 	if (headless) then
 		setup_vrpipe(nil, {
-			left_fov = 1.80763751, right_fov = 1,80763751,
+			width = 0, height = 0,
+			left_fov = 1.80763751, right_fov = 1.80763751,
 			left_ar = 0.888885, right_ar = 0.88885}, nil);
 		return;
 	end
@@ -230,8 +246,33 @@ local function setup_vr_display(wnd, headless, opts)
 	end);
 end
 
-local function model_external(model, vid)
--- do the displayhint based on the current layer depth
+local function model_external(model, vid, flip)
+	if (not valid_vid(vid, TYPE_FRAMESERVER)) then
+		if (model.external) then
+			model.external = nil;
+		end
+		return;
+	end
+
+-- it would probably be better to go with projecting the bounding
+-- vertices unto the screen and use the display+oversample factor
+	local bw = model.ctx.near_layer_sz * (model.layer.index > 1 and
+		((model.layer.index-1) * model.ctx.layer_falloff) or 1);
+
+	model.external = vid;
+	image_sharestorage(model.external, model.vid);
+
+	if (not model.layer.input_dst) then
+		model.layer.input_dst = model;
+	end
+
+	local h_ar = model.scale[1] / model.scale[2];
+	local v_ar = model.scale[2] / model.scale[1];
+
+	target_displayhint(model.external,
+		bw * h_ar, bw * v_ar, 0, {ppcm = model.ctx.density});
+
+	image_shader(model.vid, flip and vrshaders.geom_inv or vrshaders.geom);
 end
 
 local function build_model(layer, kind, name)
@@ -249,7 +290,10 @@ local function build_model(layer, kind, name)
 	elseif (kind == "rectangle") then
 		local hd = depth * 0.5;
 		model = build_3dplane(
-			-hd, -hd, hd, hd, depth, depth / 20, depth / 20, 1, true);
+			-hd, -hd, hd, hd, depth,
+			(depth / 20) * layer.ctx.subdiv_factor[1],
+			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
+		);
 	else
 		return;
 	end
@@ -271,6 +315,7 @@ local function build_model(layer, kind, name)
 	local res = {
 		vid = model,
 		name = name,
+		scale = {1, 1, 1},
 		destroy = function()
 			table.remove_match(layer.models, model);
 			delete_image(model);
@@ -290,9 +335,11 @@ local function set_defaults(ctx, opts)
 		layer_distance = 0.2,
 		near_layer_sz = 1024,
 		display_density = 33,
+		layer_falloff = 0.8,
 		terminal_font = "default.ttf",
 		terminal_font_sz = 18,
-		animation_speed = 20
+		animation_speed = 20,
+		subdiv_factor = {1.0, 1.0},
 	};
 
 	for k,v in pairs(tbl) do
@@ -353,6 +400,27 @@ local function layer_select(layer)
 -- here we can set alpha based on distance as well
 end
 
+local term_counter = 0;
+local function layer_add_terminal(layer)
+	term_counter = term_counter + 1;
+	local model = layer:add_model("rectangle", "term_" .. tostring(term_counter));
+	if (not model) then
+		return;
+	end
+
+	local vid = launch_avfeed("", "terminal",
+	function(...)
+		return model_eventhandler(wnd, model, ...);
+	end
+	);
+
+	if (valid_vid(vid)) then
+		model:set_external(vid, true);
+	else
+		model:destroy();
+	end
+end
+
 local function layer_set_fixed(layer, fixed)
 	layer.fixed = val == LBL_YES;
 	reindex_layers(layer.ctx);
@@ -365,6 +433,7 @@ local function layer_add(ctx, tag)
 		models = {},
 
 		add_model = layer_add_model,
+		add_terminal = layer_add_terminal,
 		step = layer_step,
 		zpos = layer_zpos,
 		set_fixed = layer_set_fixed,
@@ -383,6 +452,17 @@ local function layer_add(ctx, tag)
 	layer:select();
 
 	return layer;
+end
+
+local function vr_input(ctx, iotbl, multicast)
+	if (not ctx.selected_layer or not ctx.selected_layer.input_dst) then
+		return;
+	end
+	local dst = ctx.selected_layer.input_dst.external;
+	if (not valid_vid(dst, TYPE_FRAMESERVER)) then
+		return;
+	end
+	target_input(dst, iotbl);
 end
 
 return function(ctx, surf, opts)
@@ -406,6 +486,8 @@ return function(ctx, surf, opts)
 	ctx.placeholder = placeholder;
 	ctx.vr_pipe = surf;
 	ctx.setup_vr = setup_vr_display;
+	ctx.input_table = vr_input;
+	ctx.message = function(ctx, msg) print(msg); end;
 
 -- special case, always take the left eye view on stereoscopic sources,
 -- the real stereo pipe takes the right approach of course

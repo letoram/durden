@@ -79,7 +79,6 @@ local function vrwnd()
 -- if the window gets dragged, resize the context to match
 	wnd:add_handler("resize", function(ctx, w, h)
 		if (not ctx.in_drag_rz) then
-			active_display():message(string.format("rz %f %f", w, h));
 			image_resize_storage(preview, w, h);
 			rendertarget_forceupdate(preview);
 		end
@@ -127,7 +126,8 @@ local function vrwnd()
 	table.insert(wnd.actions,
 	{
 	name = "vrsetup",
-	kind = "action",
+	label = "Activate",
+	kind = "value",
 	description = "Activate the VR pipe on a simulated window or real HMD",
 	set =
 	function()
@@ -135,9 +135,19 @@ local function vrwnd()
 		display_bytag("VR", function(name)
 			table.insert(res, name);
 		end);
+		return res;
 	end,
 	handler = function(ctx, val)
-		wnd.active_vr = wnd:setup_vr(val == "simulated", {});
+		if (val == "simulated") then
+			wnd.active_vr = wnd:setup_vr(
+				function(ctx, vid)
+					local wnd = active_display():add_window(
+						vid, "VR Simulated Output", {scalemode = "stretch"});
+				end, {}
+			);
+		else
+			wnd.active_vr = wnd:setup_vr(false, {});
+		end
 	end,
 	eval = function()
 		return not wnd.active_vr;

@@ -2,19 +2,6 @@
 -- UI / menu mapping
 --
 
-local function model_eventhandler(model, source, status)
-end
-
-local function model_external(model, vid)
-	model.external = vid;
-	link_image(vid, model.vid);
-	image_texfilter(vid, FILTER_BILINEAR);
-	image_sharestorage(vid, model.vid);
-	image_shader(model.vid, vrshaders.term);
-	local dw, dh = layer_pxsz(layer);
-	target_displayhint(model.vid, dw, dh);
-end
-
 --
 -- Layers act as planes of models that are linked together via a shared
 -- positional anchor. One selected window per layer, one active layer per
@@ -260,20 +247,7 @@ local function get_layer_menu(wnd, layer)
 			kind = "action",
 			name = "terminal",
 			handler = function()
-				term_counter = term_counter + 1;
-				local model = layer:add_model("rectangle", "term_" .. tostring(term_counter));
-				if (model) then
-					local vid = launch_avfeed("", "terminal",
-						function(...)
-							return model_eventhandler(wnd, model, ...);
-						end
-					);
-					if (valid_vid(vid)) then
-						model:set_external(vid);
-					else
-						model:destroy();
-					end
-				end
+				layer:add_terminal();
 			end
 		},
 		{
@@ -484,8 +458,17 @@ local function global_settings(wnd, opts)
 	initial = function() return tostring(opts.near_layer_sz); end,
 	validator = gen_valid_num(256, 4096),
 	handler = function(ctx, val)
-		ctx.near_layer_sz = tonumber(val);
+		wnd.near_layer_sz = tonumber(val);
 	end
+	},
+	{
+		name = "vr_settings",
+		kind = "value",
+		label = "VR Bridge Config",
+		description = "Set the arguments that will be passed to the VR device",
+		handler = function(ctx, val)
+			wnd.hmd_arg = val;
+		end
 	}
 	};
 end
@@ -511,20 +494,11 @@ local res = {{
 	name = "settings",
 	submenu = true,
 	kind = "action",
-	description = "Global layer configuration",
-	label = "Settings",
+	description = "Layer/device configuration",
+	label = "Config",
 	handler = function(ctx)
 		return global_settings(wnd, opts);
 	end
-},
-{
-	name = "vr_settings",
-	kind = "value",
-	label = "VR Bridge Config",
-	description = "Set the arguments that will be passed to the VR device",
-	handler = function(ctx, val)
-		ctx.hmd_arg = val;
-	end,
 },
 {
 	name = "layers",
@@ -579,17 +553,5 @@ local res = {{
 		setup_vr_display(wnd, val);
 	end
 }};
-
-	if (DEBUGLEVEL > 0) then
-		table.insert(wnd.actions, {
-			name = "headless_vr";
-			label = "Headless VR",
-			kind = "action",
-			description = "Debug- VR window without a HMD display",
-			handler = function(ctx, val)
-				setup_vr_display(wnd, val, true);
-			end
-		});
-	end
 	return res;
 end
