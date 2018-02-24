@@ -72,6 +72,7 @@ local function vrwnd()
 	wnd:add_handler("destroy",
 	function()
 		for _,v in ipairs(wnd.leases) do
+			map_video_display(BADID, v.id);
 			display_release(v.name);
 		end
 	end);
@@ -132,8 +133,8 @@ local function vrwnd()
 	set =
 	function()
 		local res = {"simulated"};
-		display_bytag("VR", function(name)
-			table.insert(res, name);
+		display_bytag("VR", function(disp)
+			table.insert(res, disp.name);
 		end);
 		return res;
 	end,
@@ -143,10 +144,29 @@ local function vrwnd()
 				function(ctx, vid)
 					local wnd = active_display():add_window(
 						vid, "VR Simulated Output", {scalemode = "stretch"});
-				end, {}
+				end, {headless = true}
 			);
 		else
-			wnd.active_vr = wnd:setup_vr(false, {});
+			local disp = display_lease(val);
+			if (not disp) then
+				active_display():message("couldn't lease " .. val);
+				return;
+			end
+			table.insert(wnd.leases, disp);
+
+			wnd.active_vr = wnd:setup_vr(
+				function(ctx, vid)
+					if (BADID == vid) then
+						active_display():message("vr bridge terminated");
+						map_video_display(BADID, v.id);
+						table.remove_match(wnd.leases, disp);
+						display_release(disp.name);
+						return;
+					end
+					link_image(vid, wnd.anchor);
+					map_video_display(vid, disp.id, HINT_PRIMARY);
+				end, {}
+			);
 		end
 	end,
 	eval = function()

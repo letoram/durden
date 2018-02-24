@@ -17,11 +17,15 @@ local display_listeners = {};
 --uncomment to log display events to a separate file, there are so many
 --hw/os/... related issues for plug /unplug edge behaviors that this is
 --needed.
--- zap_resource("display.log");
--- local dbgoutp = open_nonblock("display.log", true);
+--zap_resource("display.log");
+--local dbgoutp = open_nonblock("display.log", true);
 local function display_debug(msg)
-	if (dbgoutp) then
-		dbgoutp:write(msg);
+	if (dbgoutp and type(msg) == "string") then
+		if (displays.main and
+			displays[displays.main] and displays[displays.main].tiler) then
+			active_display():message(msg);
+		end
+		dbgoutp:write(msg .. "\n");
 	end
 end
 
@@ -365,7 +369,7 @@ local function get_name(id)
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial;
 		display_debug(string.format(
-			"monitor %d resolved to %s, serial %s\n", id, model, serial));
+			"monitor %d resolved to %s, serial %s", id, model, serial));
 	end
 	return name;
 end
@@ -395,7 +399,7 @@ function display_event_handler(action, id)
 		return;
 	end
 
-	display_debug(string.format("id: %d, action: %s\n",
+	display_debug(string.format("id: %d, action: %s",
 		id and id or -1, action and action or ""));
 
 -- display subsystem and input subsystem are connected when it comes
@@ -600,6 +604,10 @@ function display_add(name, width, height, ppcm, id)
 				"found existing profile for %s", name));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
+				if (prof.tag) then
+					display_debug("display marked as ignored, adding with tag: " .. prof.tag);
+				end
+
 				table.insert(ignored, {
 					id = id, name = name,
 					width = width, height = height,
@@ -699,19 +707,34 @@ function display_bytag(tag, yield)
 end
 
 function display_lease(name)
+	display_debug("attempt lease on " .. tostring(name));
+
 	for k,v in ipairs(ignored) do
-		if (v.name == name and not v.leased) then
-			v.leased = true;
-			return v;
+		if (v.name == name) then
+			if (not v.leased) then
+				display_debug("marking display as leased");
+				v.leased = true;
+				return v;
+			else
+				display_debug("attempt to lease already leased display");
+			end
 		end
 	end
+
 end
 
 function display_release(name)
+	display_debug("attempting release on " .. tostring(name));
+
 	for k,v in ipairs(ignored) do
-		if (v.name == name and v.leased) then
-			v.leased = false;
-			return;
+		if (v.name == name) then
+			if (v.leased) then
+				display_debug("released display " .. tostring(name));
+				v.leased = false;
+				return;
+			else
+				display_debug("attempt to release non-leased display");
+			end
 		end
 	end
 end
@@ -957,8 +980,8 @@ function active_display(rt, raw)
 	end
 end
 
-local function save_active_display()
-	return displays.main;
+	local function save_active_display()
+		return displays.main;
 end
 
 --

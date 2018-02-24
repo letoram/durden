@@ -8,7 +8,10 @@
 --
 -- Basic use:
 -- local vr_setup = system_load("vrsetup.lua")();
--- vr_setup(myctx, myopts);
+-- vr_setup(myctx, vid, myopts);
+--
+-- vid will be converted into a rendertarget pipeline, and myctx will
+-- be populated with the following properties and methods:
 --
 -- Properties:
 -- camera(vid) : camera (left eye)
@@ -17,7 +20,7 @@
 --
 -- Methods:
 --  :add_layer(name) => layer
---  :setup_vrpipe(opts) => vid
+--  :setup_vr(opts) => vid
 --
 -- [Layer]
 -- Properties:
@@ -122,7 +125,7 @@ local function model_eventhandler(wnd, model, source, status)
 end
 
 
-local function setup_vr_display(wnd, headless, opts)
+local function setup_vr_display(wnd, callback, opts)
 	set_vr_defaults(wnd, opts);
 
 -- or make these status messages into some kind of logging console,
@@ -186,13 +189,12 @@ local function setup_vr_display(wnd, headless, opts)
 		camtag_model(cam_l, vr_near, vr_far, l_fov, md.left_ar, true, true, 0, l_eye);
 		camtag_model(cam_r, vr_near, vr_far, r_fov, md.right_ar, true, true, 0, r_eye);
 
-		print(dispw, disph, md.left_ar, md.right_ar, l_eye, r_eye);
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
-		if (not headless) then
+		if (not opts.headless) then
 			vr_map_limb(bridge, cam_l, neck, false, true);
 			vr_map_limb(bridge, cam_r, neck, false, true);
 			wnd.vr_state = {
@@ -201,17 +203,17 @@ local function setup_vr_display(wnd, headless, opts)
 			};
 			wnd:message("HMD active");
 			link_image(combiner, wnd.anchor);
-			map_video_display(combiner, disp.id, HINT_PRIMARY);
+			callback(wnd, combiner);
 		else
 			link_image(cam_l, wnd.camera);
 			link_image(cam_r, wnd.camera);
 			show_image(combiner);
-			headless(wnd, combiner);
+			callback(wnd, combiner);
 		end
 	end
 
 -- debugging, fake a hmd and set up a pipe for that
-	if (headless) then
+	if (opts.headless) then
 		setup_vrpipe(nil, {
 			width = 0, height = 0,
 			left_fov = 1.80763751, right_fov = 1.80763751,
@@ -219,19 +221,19 @@ local function setup_vr_display(wnd, headless, opts)
 		return;
 	end
 
-	local sc =
 	vr_setup(hmd_arg, function(source, status)
+		link_image(source, wnd.camera);
+
 		if (status.kind == "terminated") then
 			wnd:message("VR Bridge shut down (no devices/no permission)");
-			table.remove_match(wnd.leases, disp);
+			callback(nil);
 			wnd.vr_state = nil;
 			delete_image(source);
 		end
 		if (status.kind == "limb_removed") then
 			if (status.name == "neck") then
 				delete_image(source);
-				wnd.vr_state = nil;
-				table.remove_match(wnd.leases, disp);
+				callback(nil);
 			end
 		elseif (status.kind == "limb_added") then
 			if (status.name == "neck") then
@@ -468,7 +470,8 @@ end
 return function(ctx, surf, opts)
 	set_defaults(ctx, opts);
 
--- render to texture, so flip y
+-- render to texture, so flip y, camera is also used as a resource
+-- anchor for destroying everything else
 	local cam = null_surface(1, 1);
 	scale3d_model(cam, 1.0, -1.0, 1.0);
 
@@ -486,6 +489,7 @@ return function(ctx, surf, opts)
 	ctx.placeholder = placeholder;
 	ctx.vr_pipe = surf;
 	ctx.setup_vr = setup_vr_display;
+
 	ctx.input_table = vr_input;
 	ctx.message = function(ctx, msg) print(msg); end;
 
