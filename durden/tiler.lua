@@ -3891,15 +3891,18 @@ local function wnd_recovertag(wnd, restore)
 end
 
 local function wnd_inputtable(wnd, iotbl, multicast)
-	if (valid_vid(wnd.external)) then
-		target_input(wnd.external, iotbl);
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
 	end
+
+	target_input(wnd.external, iotbl);
 
 	if (multicast or wnd.multicast) then
 		for i,v in ipairs(wnd.children) do
 			wnd_inputtable(v, iotbl, true);
 		end
 	end
+	return true;
 end
 
 local function wnd_synch_overlays(wnd)
