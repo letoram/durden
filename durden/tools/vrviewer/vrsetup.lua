@@ -1,50 +1,3 @@
---
--- This set of scripts provides a basic pipeline setup/config
--- based on a returned configuration function that takes a context
--- to be filled, and a table of tuning options.
---
--- This setup can then be fed to a corresponding function in vrmenus.lua
--- to add a filesystem tree of options and controls.
---
--- Basic use:
--- local vr_setup = system_load("vrsetup.lua")();
--- vr_setup(myctx, vid, myopts);
---
--- vid will be converted into a rendertarget pipeline, and myctx will
--- be populated with the following properties and methods:
---
--- Properties:
--- camera(vid) : camera (left eye)
--- vr_pipe(vid) : rendertarget with objects
--- layers(table) : list of current layers
---
--- Methods:
---  :add_layer(name) => layer
---  :setup_vr(opts) => vid
---
--- [Layer]
--- Properties:
---   fixed(bool) : depth manipulation options don't affect the layer
---
--- Methods:
---   :build_model(kind(string), name(string) => model or nil
---                kind :- cylinder, sphere, hemisphere, cube, rectangle.
---
--- [Model]
--- Properties:
---   vid(vid)
---   name(string)
---   ctx(table) : reference back to myctx
---   layer(table) : reference to parent layer
---
--- Methods:
---   destroy()
---   set_external
---
-
--- pending:
--- set border color, do it in the fragment stage
-
 local vert = [[
 uniform mat4 modelview;
 uniform mat4 projection;
@@ -59,6 +12,7 @@ uniform vec2 scale_reye;
 
 uniform int rtgt_id;
 uniform bool flip;
+uniform float curve;
 
 varying vec2 texco;
 
@@ -79,13 +33,32 @@ void main()
 		tc *= scale_reye;
 		tc += ofs_reye;
 	}
+
+	gl_Position = projection * modelview * vert;
 	texco = tc;
-	gl_Position = projection * modelview * vertex;
+}
+]];
+
+-- shader used on each eye, one possible place for distortion but
+-- probably better to just use image_tesselation to displace the
+-- vertices on l_eye and r_eye once, and use the shader stage for
+-- variable vignette using obj_opacity as strength.
+local comb = [[
+uniform sampler2D map_tu0;
+varying vec2 texco;
+uniform float obj_opacity;
+
+void main()
+{
+	vec3 col = texture2D(map_tu0, texco).rgb;
+	gl_FragColor = vec4(col.rgb, 1.0);
 }
 ]];
 
 local vrshaders = {
 	geom = build_shader(vert, nil, "vr_geom"),
+	left = build_shader(nil, comb, "vr_eye_l"),
+	right = build_shader(nil, comb, "vr_eye_r")
 };
 
 local function set_model_uniforms(
@@ -95,16 +68,23 @@ local function set_model_uniforms(
 	shader_uniform(vrshaders.geom, "ofs_reye", "ff", reye_x, reye_y);
 	shader_uniform(vrshaders.geom, "scale_reye", "ff", reye_ss, reye_st);
 	shader_uniform(vrshaders.geom, "flip", "b", false);
+	shader_uniform(vrshaders.geom, "curve", "f", 0);
 
 	vrshaders.geom_inv = shader_ugroup(vrshaders.geom);
+	vrshaders.rect = shader_ugroup(vrshaders.geom);
+	vrshaders.rect_inv = shader_ugroup(vrshaders.geom);
+
+-- could ofc. just scale-1 the model instead of maintaining the shader state
 	shader_uniform(vrshaders.geom_inv, "flip", "b", true);
+	shader_uniform(vrshaders.rect_inv, "flip", "b", true);
+	shader_uniform(vrshaders.rect, "curve", "f", 0.5);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.5);
 end
 
 set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
 
 -- when the VR bridge is active, we still want to be able to tune the
 -- distortion, fov, ...
-
 local function set_vr_defaults(ctx, opts)
 	local tbl = {
 		oversample_w = 1.4,
@@ -117,13 +97,6 @@ local function set_vr_defaults(ctx, opts)
 		ctx[k] = (opts[k] and opts[k]) or tbl[k];
 	end
 end
-
-local function model_eventhandler(wnd, model, source, status)
-	if (status.kind == "terminated") then
--- indicate in some way that the client is broken
-	end
-end
-
 
 local function setup_vr_display(wnd, callback, opts)
 	set_vr_defaults(wnd, opts);
@@ -168,6 +141,8 @@ local function setup_vr_display(wnd, callback, opts)
 		move_image(r_eye, halfw, 0);
 		resize_image(l_eye, halfw, disph);
 		resize_image(r_eye, halfw, disph);
+		image_shader(l_eye, vrshaders.left);
+		image_shader(r_eye, vrshaders.right);
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
@@ -186,8 +161,8 @@ local function setup_vr_display(wnd, callback, opts)
 			md.right_ar = halfw / disph;
 		end
 
-		camtag_model(cam_l, vr_near, vr_far, l_fov, md.left_ar, true, true, 0, l_eye);
-		camtag_model(cam_r, vr_near, vr_far, r_fov, md.right_ar, true, true, 0, r_eye);
+		camtag_model(cam_l, 0.01, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
+		camtag_model(cam_r, 0.01, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
 
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
@@ -199,7 +174,8 @@ local function setup_vr_display(wnd, callback, opts)
 			vr_map_limb(bridge, cam_r, neck, false, true);
 			wnd.vr_state = {
 				l = cam_l, r = cam_r, meta = md,
-				rt_l = l_eye, rt_r = r_eye
+				rt_l = l_eye, rt_r = r_eye,
+				vid = bridge
 			};
 			wnd:message("HMD active");
 			link_image(combiner, wnd.anchor);
@@ -248,6 +224,13 @@ local function setup_vr_display(wnd, callback, opts)
 	end);
 end
 
+local function model_scale(model, vid, sx, sy, sz)
+	model.scalev[1] = sx;
+	model.scalev[2] = sy;
+	model.scalev[3] = sz;
+	model.layer:relayout();
+end
+
 local function model_external(model, vid, flip)
 	if (not valid_vid(vid, TYPE_FRAMESERVER)) then
 		if (model.external) then
@@ -268,18 +251,24 @@ local function model_external(model, vid, flip)
 		model.layer.input_dst = model;
 	end
 
-	local h_ar = model.scale[1] / model.scale[2];
-	local v_ar = model.scale[2] / model.scale[1];
+	local h_ar = model.scalev[1] / model.scalev[2];
+	local v_ar = model.scalev[2] / model.scalev[1];
 
 	target_displayhint(model.external,
-		bw * h_ar, bw * v_ar, 0, {ppcm = model.ctx.density});
+		bw * h_ar, bw * v_ar, 0,
+		{ppcm = model.ctx.density}
+	);
 
-	image_shader(model.vid, flip and vrshaders.geom_inv or vrshaders.geom);
+	image_shader(model.vid,
+		flip and model.shader.flip or model.shader.normal);
 end
 
 local function build_model(layer, kind, name)
 	local model;
 	local depth = layer.depth;
+	local shader = vrshaders.geom;
+	local shader_inv = vrshaders.geom_inv;
+
 	if (kind == "cylinder") then
 		model = build_cylinder(depth, 0.5 * depth, 359, 1);
 	elseif (kind == "sphere") then
@@ -290,12 +279,21 @@ local function build_model(layer, kind, name)
 	elseif (kind == "cube") then
 		model = build_3dbox(depth, depth, depth, 1);
 	elseif (kind == "rectangle") then
-		local hd = depth * 0.5;
+		local hd_h = depth * 0.5;
+		local hd_w = hd_h * (16.0 / 9.0);
+		shader = vrshaders.rect;
+		shader_inv = vrshaders.rect_inv;
 		model = build_3dplane(
-			-hd, -hd, hd, hd, depth,
+			-hd_w, -hd_h, hd_w, hd_h, depth,
 			(depth / 20) * layer.ctx.subdiv_factor[1],
 			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
 		);
+		image_tesselation(model, function(ref, n_v, vsz)
+			for i=1,n_v do
+				local x,y, z, w = ref:vertices(i);
+				ref:vertices(i, x, y, cos(0.5 * 3.1456 * x), w);
+			end
+		end);
 	else
 		return;
 	end
@@ -305,9 +303,9 @@ local function build_model(layer, kind, name)
 	end
 
 	swizzle_model(model);
-	show_image(model);
-	image_shader(model, vrshaders.geom);
+	image_shader(model, shader);
 
+-- in case mapping / loading fails
 	image_sharestorage(layer.ctx.placeholder, model);
 
 	rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
@@ -317,7 +315,11 @@ local function build_model(layer, kind, name)
 	local res = {
 		vid = model,
 		name = name,
-		scale = {1, 1, 1},
+		opacity = 1.0,
+		extctr = 0, -- external windows spawned via this model
+		shader = {normal = shader, flip = shader_inv},
+		scale_model = model_scale,
+		scalev = {1, 1, 1},
 		destroy = function()
 			table.remove_match(layer.models, model);
 			delete_image(model);
@@ -338,10 +340,10 @@ local function set_defaults(ctx, opts)
 		near_layer_sz = 1024,
 		display_density = 33,
 		layer_falloff = 0.8,
-		terminal_font = "default.ttf",
+		terminal_font = "hack.ttf",
 		terminal_font_sz = 18,
 		animation_speed = 20,
-		subdiv_factor = {1.0, 1.0},
+		subdiv_factor = {1.0, 0.4},
 	};
 
 	for k,v in pairs(tbl) do
@@ -402,6 +404,79 @@ local function layer_select(layer)
 -- here we can set alpha based on distance as well
 end
 
+local function model_eventhandler(wnd, model, source, status)
+	if (status.kind == "terminated") then
+-- need to check if the model is set to reset to placeholder / last set /
+-- open connpoint or to die on termination
+		model:destroy(EXIT_FAILURE, status.last_words);
+
+	elseif (status.kind == "resized") then
+		image_texfilter(source, FILTER_BILINEAR);
+		if (image_surface_resolve(model.vid).opacity ~= model.opacity) then
+			blend_image(model.vid, model.opacity, wnd.animation_speed);
+		end
+	end
+end
+
+-- terminal eventhandler behaves similarly to the default, but also send fonts
+local function terminal_eventhandler(wnd, model, source, status)
+	if (status.kind == "preroll") then
+		target_fonthint(source,
+			wnd.terminal_font, wnd.terminal_font_sz, FONT_PT_SZ, 4);
+	else
+		return model_eventhandler(wnd, model, source, status);
+	end
+end
+
+local clut = {
+	application = model_eventhandler,
+	terminal = terminal_eventhandler,
+	tui = terminal_eventhandler,
+	game = model_eventhandler,
+	multimedia = model_eventhandler,
+	["lightweight arcan"] = model_eventhandler,
+	["bridge-x11"] = model_eventhandler,
+	bowser = model_eventhandler,
+
+-- handlers to types that we don't accept as primary now
+	["bridge-wayland"] = nil,
+	clipboard = nil, -- no clipboard managers
+	wayland = nil, -- no
+	popup = nil,
+	icon = nil,
+	titlebar = nil,
+	sensor = nil,
+	service = nil,
+	debug = nil,
+	widget = nil,
+	accessibility = nil,
+	clipboard_paste = nil,
+	handover = nil
+};
+
+local function modelconn_eventhandler(layer, model, source, status)
+	if (status.kind == "registered") then
+-- based on segment type, install a new event-handler and tie to a new model
+		local dstfun = clut[status.segkind];
+		if (dstfun == nil) then
+			delete_image(source);
+			return;
+		else
+			model =
+				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
+			target_updatehandler(source, function(source, status)
+				return dstfun(layer.ctx, model, source, status);
+			end);
+			model:set_external(source);
+			show_image(model.vid);
+		end
+
+	elseif (status.kind == "terminated") then
+-- connection point died, should we both allocating a new one?
+		delete_image(source);
+	end
+end
+
 local term_counter = 0;
 local function layer_add_terminal(layer)
 	term_counter = term_counter + 1;
@@ -410,14 +485,35 @@ local function layer_add_terminal(layer)
 		return;
 	end
 
-	local vid = launch_avfeed("", "terminal",
+-- setup a new connection point that will bridge connections based on this model
+		local cp = "vr_term_";
+		for i=1,8 do
+			cp = cp .. string.char(string.byte("a") + math.random(1, 10));
+		end
+	local vid = launch_avfeed("env=ARCAN_CONNPATH="..cp, "terminal",
 	function(...)
-		return model_eventhandler(wnd, model, ...);
+		return terminal_eventhandler(layer.ctx, model, ...);
 	end
 	);
 
 	if (valid_vid(vid)) then
 		model:set_external(vid, true);
+		link_image(vid, model.vid);
+
+-- handover to a 'dispatch lut + create model' intermediate function
+		local conn = target_alloc(cp, function(source, status)
+			if (status.kind == "connected") then
+				target_updatehandler(source, function(...)
+					return modelconn_eventhandler(layer, model, ...);
+				end);
+			elseif (status.kind == "terminated") then
+				delete_image(source);
+			end
+		end);
+
+		if (valid_vid(conn)) then
+			link_image(conn, model.vid);
+		end
 	else
 		model:destroy();
 	end
@@ -436,10 +532,12 @@ local function layer_add(ctx, tag)
 
 		add_model = layer_add_model,
 		add_terminal = layer_add_terminal,
+
 		step = layer_step,
 		zpos = layer_zpos,
 		set_fixed = layer_set_fixed,
 		select = layer_select,
+		relayout = layer_relayout,
 
 		name = tag,
 
@@ -481,7 +579,7 @@ return function(ctx, surf, opts)
 -- preview window, don't be picky
 	define_rendertarget(surf, {cam, placeholder},
 		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
-	camtag_model(cam, vr_near, vr_far, 45.0, 1.33, true, true, 0, surf);
+	camtag_model(cam, 0.01, 100.0, 45.0, 1.33, true, true, 0, surf);
 
 -- actual vtable and properties
 	ctx.add_layer = layer_add;

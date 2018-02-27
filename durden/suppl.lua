@@ -1478,3 +1478,18 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
 
 	launch_menu = old_launch;
 end
+
+function suppl_scan_tools()
+	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(list) do
+		local res = system_load("tools/" .. v, 0);
+		if (not res) then
+			warning(string.format("couldn't parse tool: %s", v));
+		else
+			local okstate, msg = pcall(res);
+			if (not okstate) then
+				warning(string.format("runtime error loading tool: %s - %s", v, msg));
+			end
+		end
+	end
+end
