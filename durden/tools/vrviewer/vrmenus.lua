@@ -14,7 +14,6 @@
 -- only head tracking.
 --
 
-
 local function add_model_menu(wnd, layer)
 
 -- deal with the 180/360 transition shader-wise
@@ -86,11 +85,14 @@ end
 
 local function set_source_asynch(wnd, layer, model, source, status)
 	if (status.kind == "load_failed" or status.kind == "terminated") then
+		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
 		delete_image(source);
 		return;
+	elseif (status.kind == "loaded") then
+		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
+		image_sharestorage(source, model.vid);
+		image_texfilter(source, FILTER_BILINEAR);
 	end
-	image_sharestorage(source, model.vid);
-	image_texfilter(source, FILTER_BILINEAR);
 end
 
 
@@ -447,6 +449,20 @@ local function load_presets(wnd, prefix, path)
 	end
 end
 
+local function hmd_config(wnd, opts)
+	return {
+	{
+	name = "reset",
+	label = "Reset Orientation",
+	description = "Set the current orientation as the new base reference",
+	kind = "action",
+	handler = function()
+		active_display():message("sent reset event");
+		reset_target(wnd.vr_state.vid);
+	end
+	}};
+end
+
 
 local function global_settings(wnd, opts)
 	return {
@@ -532,8 +548,10 @@ local res = {{
 	label = "HMD Configuration",
 	kind = "action",
 	submenu = true,
-	eval = function() return wnd.vr_state ~= nil; end,
-	handler = hmdconfig
+	eval = function()
+		return wnd.vr_state ~= nil;
+	end,
+	handler = function() return hmd_config(wnd, opts); end
 },
 {
 	name = "setup_vr",
