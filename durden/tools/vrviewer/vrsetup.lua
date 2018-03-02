@@ -42,7 +42,8 @@ void main()
 -- shader used on each eye, one possible place for distortion but
 -- probably better to just use image_tesselation to displace the
 -- vertices on l_eye and r_eye once, and use the shader stage for
--- variable vignette using obj_opacity as strength.
+-- variable vignette using obj_opacity as strength. We also need
+-- variants to handle samplers that force external or multiplanar
 local comb = [[
 uniform sampler2D map_tu0;
 varying vec2 texco;
@@ -247,10 +248,6 @@ local function model_external(model, vid, flip)
 	model.external = vid;
 	image_sharestorage(model.external, model.vid);
 
-	if (not model.layer.input_dst) then
-		model.layer.input_dst = model;
-	end
-
 	local h_ar = model.scalev[1] / model.scalev[2];
 	local v_ar = model.scalev[2] / model.scalev[1];
 
@@ -263,37 +260,102 @@ local function model_external(model, vid, flip)
 		flip and model.shader.flip or model.shader.normal);
 end
 
+local function model_getsize(model)
+	return
+		model.scalev[1] * model.size[1],
+		model.scalev[2] * model.size[2],
+		model.scalev[3] * model.size[3];
+end
+
+local function model_destroy(model)
+	local layer = model.layer;
+
+	table.remove_match(model.layer, model);
+	if (model.layer.selected) then
+		model.layer.selected = nil;
+	end
+
+-- reparent children
+	for _,v in ipairs(model.children) do
+		v.parent = model.parent;
+		if (model.parent) then
+			tabl.insert(model.parent.children, v);
+		end
+	end
+
+-- abandon parent
+	if (model.parent) then
+		table.remove(model.parent.children, model);
+		model.parent = nil;
+	end
+
+-- clean up rendering resources
+	delete_image(model.vid);
+	if (valid_vid(model.external) and not model.external_protect) then
+		delete_image(model.external);
+	end
+
+-- make it easier to detect dangling references
+	for k,_ in ipairs(model) do
+		model[k] = nil;
+	end
+
+	layer:relayout();
+end
+
+local function model_show(model)
+	if (image_surface_properties(model.vid).opacity == model.opacity) then
+		return;
+	end
+
+	blend_image(model.vid, 1.0, model.ctx.animation_speed);
+	if (not model.layer.selected) then
+		model.layer:select(model);
+	end
+
+	model.layer:relayout();
+end
+
+local function model_reparent(model, new_parent)
+	if (model.parent) then
+		table.remove_match(model.parent.children, model);
+	end
+	if (new_parent) then
+		table.insert(new_parent.children, model);
+	end
+	model.layer:relayout();
+end
+
+local function model_mergecollapse(model)
+	model.merged = not model.merged;
+	model.layer:relayout();
+end
+
 local function build_model(layer, kind, name)
 	local model;
 	local depth = layer.depth;
+	local h_depth = depth * 0.5;
 	local shader = vrshaders.geom;
 	local shader_inv = vrshaders.geom_inv;
+	local size = {depth, depth, depth};
 
 	if (kind == "cylinder") then
-		model = build_cylinder(depth, 0.5 * depth, 359, 1);
+		model = build_cylinder(h_depth, depth, 359, 1);
 	elseif (kind == "sphere") then
-		model = build_sphere(depth, 360, 360, 1, true);
+		model = build_sphere(h_depth, 360, 360, 1, true);
 	elseif (kind == "hemisphere") then
-		model = build_sphere(depth, 360, 180, 1, true);
---	elseif (kind == "flat") then need this for sbs-3d material
+		model = build_sphere(h_depth, 360, 180, 1, true);
 	elseif (kind == "cube") then
 		model = build_3dbox(depth, depth, depth, 1);
 	elseif (kind == "rectangle") then
-		local hd_h = depth * 0.5;
-		local hd_w = hd_h * (16.0 / 9.0);
+		size[2] = depth * (9.0 / 16.0);
+		size[3] = 0.00001;
 		shader = vrshaders.rect;
 		shader_inv = vrshaders.rect_inv;
-		model = build_3dplane(
-			-hd_w, -hd_h, hd_w, hd_h, depth,
+		model = build_3dplane(-h_depth, -0.5*size[2], h_depth, 0.5*size[2], 0,
 			(depth / 20) * layer.ctx.subdiv_factor[1],
 			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
 		);
-		image_tesselation(model, function(ref, n_v, vsz)
-			for i=1,n_v do
-				local x,y, z, w = ref:vertices(i);
-				ref:vertices(i, x, y, cos(0.5 * 3.1456 * x), w);
-			end
-		end);
 	else
 		return;
 	end
@@ -318,12 +380,16 @@ local function build_model(layer, kind, name)
 		opacity = 1.0,
 		extctr = 0, -- external windows spawned via this model
 		shader = {normal = shader, flip = shader_inv},
+		parent = nil,
+		children = {},
 		scale_model = model_scale,
+		show = model_show,
+		set_parent = model_reparent,
+		get_size = model_getsize,
+		mergecollapse = model_mergecollapse,
+		size = size,
 		scalev = {1, 1, 1},
-		destroy = function()
-			table.remove_match(layer.models, model);
-			delete_image(model);
-		end,
+		destroy = model_destroy,
 		set_external = model_external,
 		ctx = layer.ctx
 	};
@@ -377,7 +443,6 @@ local function layer_add_model(layer, kind, name)
 	end
 
 	table.insert(layer.models, model);
-	move3d_model(model.vid, 1.05 * layer.depth * (#layer.models - 1), 0, 0);
 	if (not layer.selected) then
 		layer.selected = model;
 	end
@@ -386,9 +451,10 @@ local function layer_add_model(layer, kind, name)
 	return model;
 end
 
+-- this only changes the offset, the radius stays the same so no need to relayout
 local function layer_step(layer, dx, dy)
 	layer.dz = layer.dz + 0.001 * dy + 0.001 * dx;
-	move3d_model(layer.anchor, layer.dx, layer.dy, layer_zpos(layer));
+	move3d_model(layer.anchor, layer.dx, layer.dy, layer:zpos());
 end
 
 local function layer_select(layer)
@@ -400,7 +466,7 @@ local function layer_select(layer)
 	end
 
 	layer.ctx.selected_layer = layer;
-	move3d_model(layer.anchor, 0, 0, layer_zpos(layer), layer.ctx.animation_speed);
+	move3d_model(layer.anchor, 0, 0, layer:zpos(), layer.ctx.animation_speed);
 -- here we can set alpha based on distance as well
 end
 
@@ -412,9 +478,7 @@ local function model_eventhandler(wnd, model, source, status)
 
 	elseif (status.kind == "resized") then
 		image_texfilter(source, FILTER_BILINEAR);
-		if (image_surface_resolve(model.vid).opacity ~= model.opacity) then
-			blend_image(model.vid, model.opacity, wnd.animation_speed);
-		end
+		model:show();
 	end
 end
 
@@ -462,17 +526,19 @@ local function modelconn_eventhandler(layer, model, source, status)
 			delete_image(source);
 			return;
 		else
-			model =
+			local new_model =
 				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
-			target_updatehandler(source, function(source, status)
-				return dstfun(layer.ctx, model, source, status);
-			end);
-			model:set_external(source);
-			show_image(model.vid);
-		end
 
+			target_updatehandler(source, function(source, status)
+				return dstfun(layer.ctx, new_model, source, status);
+			end);
+			new_model:set_external(source);
+			new_model:set_parent(model);
+		end
+	elseif (status.kind == "resized") then
+		model:show();
 	elseif (status.kind == "terminated") then
--- connection point died, should we both allocating a new one?
+-- connection point died, should we bother allocating a new one?
 		delete_image(source);
 	end
 end
@@ -524,6 +590,84 @@ local function layer_set_fixed(layer, fixed)
 	reindex_layers(layer.ctx);
 end
 
+-- basic layout algorithm
+local function layer_relayout(layer)
+-- 1. separate models that have parents and root models
+	local root = {};
+	local chld = {};
+	local chld_collapse = {};
+	for _,v in ipairs(layer.models) do
+		if not v.parent then
+			table.insert(root, v);
+		end
+	end
+
+-- select is just about input, creation order is about position,
+-- our zero position is at 12 o clock, so add or sub math.pi as
+-- translation on the curve
+	local max_h = 0;
+	local h_pi = math.pi * 0.5;
+
+	local dphi_ccw = math.pi;
+	local dphi_cw = math.pi;
+
+-- oversize the placement radius somewhat to account for the
+-- alignment problem
+	local zp = layer:zpos();
+	local radius = math.abs(zp);
+
+	local function getang(phi)
+		phi = math.fmod(phi, 2 * math.pi);
+		return 180 * phi / math.pi - 180;
+	end
+
+-- position in a circle based on the layer z-pos as radius, but
+-- recall that the model is linked to the layer anchor so we need
+-- to translate first.
+	for i,v in ipairs(root) do
+		local w, h, d = v:get_size();
+		w = w + layer.spacing;
+		local z = 0;
+		local x = 0;
+		local ang = 0;
+		local hw = w * 0.5;
+		max_h = max_h > h and max_h or h;
+
+-- special case, at 12 o clock is 0, 0 @ 0 rad. ang is for billboarding,
+-- there should just be a model_flag for setting spherical/cylindrical
+-- billboarding (or just do it in shader) but it's not there at the
+-- moment and we don't want more shader variants or flags.
+-- would be nice, yet not always solvable, to align positioning at the
+-- straight angles (0, half-pi, pi, ...) though the focal point of the
+-- user will likely often be straight ahead and that gets special
+-- treatment anyhow.
+		if (i == 1) then
+			dphi_cw = dphi_cw + 1.5 * w;
+			dphi_ccw = dphi_ccw - 1.5 * w;
+			z = -radius - zp;
+
+		elseif (i % 2 == 0) then
+			x = radius * math.sin(dphi_cw + w);
+			z = radius * math.cos(dphi_cw + w) - zp;
+			ang = getang(dphi_cw);
+-- goes bad after one revolution, but that many clients is not very reasonable
+			dphi_cw = dphi_cw + w;
+		else
+			x = radius * math.sin(dphi_ccw - w);
+			z = radius * math.cos(dphi_ccw - w) - zp;
+			ang = getang(dphi_ccw);
+-- goes bad after one revolution, but that many clients is not very reasonable
+			dphi_ccw = dphi_ccw - w;
+		end
+
+-- unresolved, what to do if n_x or p_x reach pi?
+		instant_image_transform(v.vid);
+		move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
+		rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
+	end
+
+end
+
 local function layer_add(ctx, tag)
 	local layer = {
 		ctx = ctx,
@@ -543,6 +687,7 @@ local function layer_add(ctx, tag)
 
 		dx = 0, dy = 0, dz = 0,
 		depth = 0.1,
+		spacing = 0.05,
 		opacity = 1.0
 	};
 
@@ -555,10 +700,10 @@ local function layer_add(ctx, tag)
 end
 
 local function vr_input(ctx, iotbl, multicast)
-	if (not ctx.selected_layer or not ctx.selected_layer.input_dst) then
+	if (not ctx.selected_layer or not ctx.selected_layer.selected) then
 		return;
 	end
-	local dst = ctx.selected_layer.input_dst.external;
+	local dst = ctx.selected_layer.selected.external;
 	if (not valid_vid(dst, TYPE_FRAMESERVER)) then
 		return;
 	end

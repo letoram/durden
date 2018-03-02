@@ -185,6 +185,8 @@ global_menu_register("tools",
 	description = "Panoramic/VR Viewer",
 	kind = "action",
 -- engine version check
-	eval = function() return build_cylinder ~= nil; end,
+	eval = function()
+		return build_cylinder ~= nil;
+	end,
 	handler = vrwnd
 });
