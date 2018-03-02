@@ -45,6 +45,25 @@ local function drag_layer(ctx, vid, dx, dy)
 	layer:step(dx, dy);
 end
 
+local function drag_scale(ctx, vid, dx, dy)
+	local layer = ctx.wnd.selected_layer;
+	if (not layer or not layer.selected) then
+		return;
+	end
+	local model = layer.selected;
+
+-- disable animation temporarily
+	local as = model.ctx.animation_speed;
+	model.ctx.animation_speed = 0;
+
+	local tot = 0.01 * (dx + dy);
+	if (model.scalev[1] + tot > 0 and model.scalev[2] + tot > 0) then
+		model:scale(model.scalev[1] + tot, (model.scalev[2] + tot));
+	end
+
+	model.ctx.animation_speed = as;
+end
+
 local function vrwnd()
 	local preview = alloc_surface(320, 320);
 	image_texfilter(preview, FILTER_BILINEAR);
@@ -114,12 +133,14 @@ local function vrwnd()
 	kind = "value",
 	description = "Change the current mouse cursor behavior when dragged or locked",
 	label = "Mouse",
-	set = {"Selected", "View", "Layer Distance"},
+	set = {"Selected", "View", "Layer Distance", "Model Scale"},
 	handler = function(ctx, val)
 		if (val == "View") then
 			wnd.handlers.mouse.canvas.drag = drag_rotate;
 		elseif (val == "Layer Distance") then
 			wnd.handlers.mouse.canvas.drag = drag_layer;
+		elseif (val == "Model Scale") then
+			wnd.handlers.mouse.canvas.drag = drag_scale;
 		end
 	end
 });
