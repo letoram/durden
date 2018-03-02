@@ -73,18 +73,7 @@ function durden(argv)
 	table.insert(nt.on_wnd_create, wnd_create_handler);
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
-	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
-	for k,v in ipairs(list) do
-		local res = system_load("tools/" .. v, 0);
-		if (not res) then
-			warning(string.format("couldn't parse tool: %s", v));
-		else
-			local okstate, msg = pcall(res);
-			if (not okstate) then
-				warning(string.format("runtime error loading tool: %s - %s", v, msg));
-			end
-		end
-	end
+	suppl_scan_tools();
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution through configured database and browse

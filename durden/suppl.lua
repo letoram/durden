@@ -1479,10 +1479,63 @@ function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
 	launch_menu = old_launch;
 end
 
+-- check so that [table] match all the criteria for a valid table entry
+function suppl_menu_validate(table, prefix)
+	prefix = prefix and prefix or "";
+
+	if not type(table) == "table" then
+		return false, (prefix .. "not a table");
+	end
+
+	local typektbl = {
+		name = "string",
+		label = "string",
+		kind = "string",
+		description = "string"
+	};
+
+	for k, v in pairs(typektbl) do
+		if not table[k] then
+			return false, (prefix .. " missing field: " .. k);
+		elseif type(table[k]) ~= v then
+			return false,
+				string.format(
+					"%s wrong type on: %s, expected: %s, got: %s", prefix, k, v, type(table[k]));
+		end
+	end
+
+	if (table[kind] == "action") then
+		if (table[submenu]) then
+			if (table[handler] == "function") then
+-- could probably recurse suppl_menu_validate on the returned function, but since
+-- these MAY be context sensitive (i.e. selected window) this is possibly bad and
+-- marginally unusable, maybe as a pcall...
+			elseif (table[handler] == "table") then
+				return suppl_menu_validate(table[handler], prefix .. "/" .. table[name]);
+			else
+				return false, (prefix .. " invalid type on submenu");
+			end
+		elseif (type(table[handler]) ~= "function") then
+			return false, (prefix .. " handler is not a function");
+		end
+	end
+
+-- not much that can be done here, set, initial, validator, eval are all optional,
+-- should possibly have a verbose mode that exposes all these little things that
+-- 'should be' there but isn't directly a failure
+	if (table[kind] == "value") then
+		if (type(table[handler]) ~= "function") then
+			return false, (prefix .. " missing handler on value");
+		end
+	end
+
+	return true;
+end
+
 function suppl_scan_tools()
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(list) do
-		local res = system_load("tools/" .. v, 0);
+		local res, msg = system_load("tools/" .. v, false);
 		if (not res) then
 			warning(string.format("couldn't parse tool: %s", v));
 		else
