@@ -44,7 +44,7 @@ void main()
 -- vertices on l_eye and r_eye once, and use the shader stage for
 -- variable vignette using obj_opacity as strength. We also need
 -- variants to handle samplers that force external or multiplanar
-local comb = [[
+local combiner = [[
 uniform sampler2D map_tu0;
 varying vec2 texco;
 uniform float obj_opacity;
@@ -58,8 +58,8 @@ void main()
 
 local vrshaders = {
 	geom = build_shader(vert, nil, "vr_geom"),
-	left = build_shader(nil, comb, "vr_eye_l"),
-	right = build_shader(nil, comb, "vr_eye_r")
+	left = build_shader(nil, combiner, "vr_eye_l"),
+	right = build_shader(nil, combiner, "vr_eye_r")
 };
 
 local function set_model_uniforms(
@@ -151,8 +151,8 @@ local function setup_vr_display(wnd, callback, opts)
 		scale3d_model(cam_r, 1.0, -1.0, 1.0);
 
 -- adjustable delta?
-		local l_fov = (md.left_fov * 180 / 3.14159265359);
-		local r_fov = (md.right_fov * 180 / 3.14159265359);
+		local l_fov = (md.left_fov * 180 / math.pi);
+		local r_fov = (md.right_fov * 180 / math.pi);
 
 		if (md.left_ar < 0.01) then
 			md.left_ar = halfw / disph;
@@ -225,10 +225,15 @@ local function setup_vr_display(wnd, callback, opts)
 	end);
 end
 
-local function model_scale(model, vid, sx, sy, sz)
+local function model_scale(model, sx, sy, sz)
+	sx = sx and sx or model.scalev[1];
+	sy = sy and sy or model.scalev[2];
+	sz = sz and sz or model.scalev[3];
 	model.scalev[1] = sx;
 	model.scalev[2] = sy;
 	model.scalev[3] = sz;
+	scale3d_model(model.vid,
+		model.scalev[1], model.scalev[2], model.scalev[3], model.ctx.animation_speed);
 	model.layer:relayout();
 end
 
@@ -251,9 +256,14 @@ local function model_external(model, vid, flip)
 	local h_ar = model.scalev[1] / model.scalev[2];
 	local v_ar = model.scalev[2] / model.scalev[1];
 
+-- note: this will be sent during the preload stage, where the
+-- displayhint property for selection/visibility will be ignored.
+-- note: The HMD panels tend to have other LED configurations,
+-- though the data doesn't seem to be propagated via the VR bridge
+-- meaning that subpixel hinting will be a bad idea.
 	target_displayhint(model.external,
 		bw * h_ar, bw * v_ar, 0,
-		{ppcm = model.ctx.density}
+		{ppcm = model.ctx.display_density}
 	);
 
 	image_shader(model.vid,
@@ -270,7 +280,7 @@ end
 local function model_destroy(model)
 	local layer = model.layer;
 
-	table.remove_match(model.layer, model);
+	table.remove_match(layer.models, model);
 	if (model.layer.selected) then
 		model.layer.selected = nil;
 	end
@@ -310,10 +320,34 @@ local function model_show(model)
 
 	blend_image(model.vid, 1.0, model.ctx.animation_speed);
 	if (not model.layer.selected) then
-		model.layer:select(model);
+		model:select();
+	end
+
+-- note: this does not currently set INVISIBLE state, only FOCUS
+	if (valid_vid(model.external, TYPE_FRAMESERVER)) then
+		if (model.layer.selected ~= model) then
+			target_displayhint(model.external, 0, 0, TD_HINT_UNFOCUSED);
+		else
+			target_displayhint(model.external, 0, 0, 0);
+		end
 	end
 
 	model.layer:relayout();
+end
+
+local function model_select(model)
+	local layer = model.layer;
+
+	if (not valid_vid(model.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
+	if (layer.selected) then
+		target_displayhint(layer.selected.external, 0, 0, TD_HINT_UNFOCUSED);
+		layer.selected = nil;
+	end
+	layer.selected = model;
+	target_displayhint(model.external, 0, 0, 0);
 end
 
 local function model_reparent(model, new_parent)
@@ -382,7 +416,8 @@ local function build_model(layer, kind, name)
 		shader = {normal = shader, flip = shader_inv},
 		parent = nil,
 		children = {},
-		scale_model = model_scale,
+		select = model_select,
+		scale = model_scale,
 		show = model_show,
 		set_parent = model_reparent,
 		get_size = model_getsize,
@@ -407,7 +442,7 @@ local function set_defaults(ctx, opts)
 		display_density = 33,
 		layer_falloff = 0.8,
 		terminal_font = "hack.ttf",
-		terminal_font_sz = 18,
+		terminal_font_sz = 12,
 		animation_speed = 20,
 		subdiv_factor = {1.0, 0.4},
 	};
@@ -443,9 +478,6 @@ local function layer_add_model(layer, kind, name)
 	end
 
 	table.insert(layer.models, model);
-	if (not layer.selected) then
-		layer.selected = model;
-	end
 	model.layer = layer;
 
 	return model;
@@ -590,7 +622,24 @@ local function layer_set_fixed(layer, fixed)
 	reindex_layers(layer.ctx);
 end
 
--- basic layout algorithm
+-- basic layout algorithm,
+-- there are a number of improvements to consider here:
+--
+-- 1. spherical billboarding for the vertical rows
+--
+-- 2. even divide terminals per quadrant with larger spacing and
+--    only allow overlap / compaction on severe overallocation
+--    (though that can possibly be dealt with in spacing)
+--
+-- 3. scale each quadrant on overallocation relative to the
+--    distance from the 0,h_pi,pi,1.5pi,2pi phase angles.
+--
+-- 4. track left/right allocation so deletion don't get windows
+--    to swap sides, but rather rebalance from last round.
+--
+-- 5. move this code out of vrsetup.lua as this should really
+--    be left in the hand of other devs.
+--
 local function layer_relayout(layer)
 -- 1. separate models that have parents and root models
 	local root = {};
@@ -599,7 +648,16 @@ local function layer_relayout(layer)
 	for _,v in ipairs(layer.models) do
 		if not v.parent then
 			table.insert(root, v);
+		else
+			chld[v.parent] = chld[v.parent] and chld[v.parent] or {};
+			table.insert(chld, v.parent);
 		end
+	end
+
+-- make sure we have one element that is selected at least
+	if (not layer.selected and
+		valid_vid(root[1].external, TYPE_FRAMESERVER)) then
+		root[1]:select();
 	end
 
 -- select is just about input, creation order is about position,
@@ -613,7 +671,7 @@ local function layer_relayout(layer)
 
 -- oversize the placement radius somewhat to account for the
 -- alignment problem
-	local zp = layer:zpos();
+	local zp = layer.index * -layer.ctx.layer_distance;
 	local radius = math.abs(zp);
 
 	local function getang(phi)
@@ -664,8 +722,35 @@ local function layer_relayout(layer)
 		instant_image_transform(v.vid);
 		move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
 		rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
+		v.layer_ang = ang;
+		v.layer_pos = {x, 0, z};
 	end
 
+-- avoid linking to stay away from the cascade deletion problem, if it needs
+-- to be done for animations, then take the delete- and set a child as the
+-- new parent.
+	local as = layer.ctx.animation_speed;
+	for k,v in pairs(chld) do
+		local pw, ph, pd = k:get_size();
+		local ch = ph;
+		local lp = k.layer_pos;
+		local la = k.layer_ang;
+
+-- if collapsed, we increment depth by something symbolic to avoid z-fighting,
+-- then offset Y enough to just see the tip, otherwise use a similar strategy
+-- to the root, ignore billboarding for the time being.
+		for i,j in ipairs(k) do
+			if (i % 2 == 0) then
+				move_image(j.vid, lp[1], lp[2] - ch, lp[3], as);
+				ch = ch + ph;
+			else
+				move_image(j.vid, lp[1], lp[2] + ch, lp[3], as);
+			end
+			rotate3d_model(j.vid, k.layer_ang, as);
+			pw, ph, pd = j:get_size();
+			ch = ch + ph;
+		end
+	end
 end
 
 local function layer_add(ctx, tag)
