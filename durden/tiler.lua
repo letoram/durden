@@ -44,6 +44,7 @@ local function linearize(wnd)
 			df(v, df);
 		end
 	end
+
 	dive(wnd, dive);
 	return res;
 end
@@ -957,6 +958,10 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 end
 
 local function drop_fullscreen(space, swap)
+	if (space.hook_block) then
+		return;
+	end
+
 	workspace_activate(space, true);
 	sbar_show(space.wm);
 
@@ -972,6 +977,7 @@ local function drop_fullscreen(space, swap)
 	end
 
 -- restore 'full-screen only' properties
+	space.hook_block = true;
 	local dw = space.selected;
 	dw:set_titlebar(dw.fs_copy.show_titlebar);
 	dw:set_border(dw.fs_copy.show_border);
@@ -984,6 +990,7 @@ local function drop_fullscreen(space, swap)
 	dw.fullscreen = nil;
 	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
+	space.hook_block = false;
 end
 
 local function drop_tab(space)
@@ -1135,7 +1142,7 @@ local function set_vtab(space, repos)
 end
 
 local function set_fullscreen(space)
-	if (not space.selected) then
+	if (not space.selected or space.hook_block) then
 		return;
 	end
 	local dw = space.selected;
@@ -1153,6 +1160,7 @@ local function set_fullscreen(space)
 	end
 	dw.centered = true;
 	dw.fullscreen = space.last_mode;
+	space.hook_block = true;
 
 -- hide all images + statusbar
 	sbar_hide(dw.wm);
@@ -1162,6 +1170,7 @@ local function set_fullscreen(space)
 		hide_image(v.anchor);
 	end
 	show_image(dw.anchor);
+
 	dw:set_border(false);
 	dw:set_titlebar(false);
 
@@ -1177,6 +1186,7 @@ local function set_fullscreen(space)
 
 -- and send relayout / fullscreen hints that match the size of the WM
 	dw:resize(dw.wm.width, dw.wm.height);
+	space.hook_block = false;
 end
 
 -- floating mode has different rulesets for spawning, sizing and all windows
