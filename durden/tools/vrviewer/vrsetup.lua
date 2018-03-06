@@ -39,6 +39,8 @@ void main()
 }
 ]];
 
+local modelconn_eventhandler;
+
 -- shader used on each eye, one possible place for distortion but
 -- probably better to just use image_tesselation to displace the
 -- vertices on l_eye and r_eye once, and use the shader stage for
@@ -62,27 +64,30 @@ local vrshaders = {
 	right = build_shader(nil, combiner, "vr_eye_r")
 };
 
-local function set_model_uniforms(
-	leye_x, leye_y, leye_ss, leye_st, reye_x, reye_y, reye_ss, reye_st)
-	shader_uniform(vrshaders.geom, "ofs_leye", "ff", leye_x, leye_y);
-	shader_uniform(vrshaders.geom, "scale_leye", "ff", leye_ss, leye_st);
-	shader_uniform(vrshaders.geom, "ofs_reye", "ff", reye_x, reye_y);
-	shader_uniform(vrshaders.geom, "scale_reye", "ff", reye_ss, reye_st);
-	shader_uniform(vrshaders.geom, "flip", "b", false);
-	shader_uniform(vrshaders.geom, "curve", "f", 0);
+local function set_model_uniforms(shid,
+	leye_x, leye_y, leye_ss, leye_st, reye_x, reye_y, reye_ss, reye_st, flip, curve)
+	shader_uniform(shid, "ofs_leye", "ff", leye_x, leye_y);
+	shader_uniform(shid, "scale_leye", "ff", leye_ss, leye_st);
+	shader_uniform(shid, "ofs_reye", "ff", reye_x, reye_y);
+	shader_uniform(shid, "scale_reye", "ff", reye_ss, reye_st);
+	shader_uniform(shid, "flip", "b", flip);
+	shader_uniform(shid, "curve", "f", curve);
+end
+
+local function shader_defaults()
+	set_model_uniforms(
+		vrshaders.geom, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, false, 0);
 
 	vrshaders.geom_inv = shader_ugroup(vrshaders.geom);
 	vrshaders.rect = shader_ugroup(vrshaders.geom);
 	vrshaders.rect_inv = shader_ugroup(vrshaders.geom);
 
--- could ofc. just scale-1 the model instead of maintaining the shader state
 	shader_uniform(vrshaders.geom_inv, "flip", "b", true);
 	shader_uniform(vrshaders.rect_inv, "flip", "b", true);
 	shader_uniform(vrshaders.rect, "curve", "f", 0.5);
 	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.5);
 end
-
-set_model_uniforms(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
+shader_defaults();
 
 -- when the VR bridge is active, we still want to be able to tune the
 -- distortion, fov, ...
@@ -108,7 +113,8 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- ideally, we'd get a display with two outputs so that we could map
 -- the rendertargets directly to the outputs, getting rid of one step
-	local setup_vrpipe = function(bridge, md, neck)
+	local setup_vrpipe =
+	function(bridge, md, neck)
 		local dispw = md.width > 0 and md.width or 1920;
 		local disph = md.height > 0 and md.height or 1024;
 		dispw = math.clamp(dispw, 256, MAX_SURFACEW);
@@ -225,16 +231,21 @@ local function setup_vr_display(wnd, callback, opts)
 	end);
 end
 
-local function model_scale(model, sx, sy, sz)
-	sx = sx and sx or model.scalev[1];
-	sy = sy and sy or model.scalev[2];
-	sz = sz and sz or model.scalev[3];
-	model.scalev[1] = sx;
-	model.scalev[2] = sy;
-	model.scalev[3] = sz;
+local function model_scale(model, sx, sy, sz, save)
+	if (not sx) then
+		model.scalev = model.old_scalev;
+	else
+		model.scalev = {
+			sx,
+			sy and sy or model.scalev[2],
+			sz and sz or model.scalev[3]
+		};
+	end
+	if (save) then
+		model.old_scalev = model.scalev;
+	end
 	scale3d_model(model.vid,
 		model.scalev[1], model.scalev[2], model.scalev[3], model.ctx.animation_speed);
-	model.layer:relayout();
 end
 
 local function model_external(model, vid, flip)
@@ -266,6 +277,7 @@ local function model_external(model, vid, flip)
 		{ppcm = model.ctx.display_density}
 	);
 
+	model.flip = flip;
 	image_shader(model.vid,
 		flip and model.shader.flip or model.shader.normal);
 end
@@ -279,10 +291,19 @@ end
 
 local function model_destroy(model)
 	local layer = model.layer;
+	if (model.custom_shaders) then
+		for i,v in ipairs(model.custom_shaders) do
+			delete_shader(v);
+		end
+	end
 
+-- if we are currently selected, swap in something else
 	table.remove_match(layer.models, model);
-	if (model.layer.selected) then
-		model.layer.selected = nil;
+	if (layer.selected == model) then
+		layer:swap(true, 1);
+		if (layer.selected == model) then
+			layer.selected = nil;
+		end
 	end
 
 -- reparent children
@@ -305,6 +326,11 @@ local function model_destroy(model)
 		delete_image(model.external);
 	end
 
+-- custom shader? these are derived with shader_ugroup so delete is simple
+	if (model.shid) then
+		delete_shader(model.shid);
+	end
+
 -- make it easier to detect dangling references
 	for k,_ in ipairs(model) do
 		model[k] = nil;
@@ -313,7 +339,38 @@ local function model_destroy(model)
 	layer:relayout();
 end
 
+-- in any of the external event handlers, we do this on terminated to make sure
+-- that the object gets reactivated properly
+local function apply_connrole(layer, model, source)
+	local rv = false;
+
+	if (model.ext_name) then
+		delete_image(source);
+		model:set_connpoint(model.ext_name, model.ext_kind);
+		rv = true;
+	end
+
+	if (model.ext_kind) then
+		if (model.ext_kind == "reveal") then
+			model.active = false;
+			blend_image(model.vid, 0, model.ctx.animation_speed);
+			if (layer.models[1] == model) then
+				table.insert(layer.models, model);
+			end
+			model.layer:relayout();
+			rv = true;
+
+		elseif (model.ext_kind == "temporary" and valid_vid(model.source)) then
+			image_sharestorage(model.source, model.vid);
+			rv = true;
+		end
+	end
+
+	return rv;
+end
+
 local function model_show(model)
+	model.active = true;
 	if (image_surface_properties(model.vid).opacity == model.opacity) then
 		return;
 	end
@@ -333,6 +390,29 @@ local function model_show(model)
 	end
 
 	model.layer:relayout();
+end
+
+local function model_stereo(model, args)
+	if (#args ~= 8) then
+		return;
+	end
+
+	if (not model.custom_shaders) then
+		model.custom_shaders = {
+			shader_ugroup(model.shader.normal),
+			shader_ugroup(model.shader.flip)
+		};
+		model.shader.normal = model.custom_shaders[1];
+		model.shader.flip = model.custom_shaders[2];
+		image_shader(model.vid, model.custom_shaders[model.flip and 2 or 1]);
+	end
+
+	for i,v in ipairs(model.custom_shaders) do
+		shader_uniform(v, "ofs_leye", "ff", args[1], args[2]);
+		shader_uniform(v, "scale_leye", "ff", args[3], args[4]);
+		shader_uniform(v, "ofs_reye", "ff", args[5], args[6]);
+		shader_uniform(v, "scale_reye", "ff", args[7], args[8]);
+	end
 end
 
 local function model_select(model)
@@ -363,6 +443,38 @@ end
 local function model_mergecollapse(model)
 	model.merged = not model.merged;
 	model.layer:relayout();
+end
+
+-- same as the terminal spawn setup, just tag the kind so that we can
+-- deal with the behavior response in ext_kind
+local function model_connpoint(model, name, kind)
+	local cp = target_alloc(name,
+	function(source, status)
+		if (status.kind == "connected") then
+			target_updatehandler(source, function(...)
+				return modelconn_eventhandler(model.layer, model, ...);
+			end);
+		elseif (status.kind == "terminated") then
+			delete_image(source);
+		end
+	end);
+
+	if (not valid_vid(cp)) then
+		return;
+	end
+
+	link_image(cp, model.vid);
+	model.ext_kind = kind;
+
+-- special behavior: on termination, just set inactive and relaunch
+	if (kind == "reveal") then
+		model.ext_name = name;
+		model.active = false;
+		model.layer:relayout();
+
+	elseif (kind == "temporary") then
+		model.ext_name = name;
+	end
 end
 
 local function build_model(layer, kind, name)
@@ -409,6 +521,7 @@ local function build_model(layer, kind, name)
 
 -- need control over where the thing spawns ..
 	local res = {
+		active = true,
 		vid = model,
 		name = name,
 		opacity = 1.0,
@@ -422,8 +535,13 @@ local function build_model(layer, kind, name)
 		set_parent = model_reparent,
 		get_size = model_getsize,
 		mergecollapse = model_mergecollapse,
+		set_connpoint = model_connpoint,
+		set_stereo = model_stereo,
 		size = size,
 		scalev = {1, 1, 1},
+		old_scalev = {1, 1, 1}, -- history so we can revert
+		layer_ang = 0,
+		layer_pos = {0, 0, 0},
 		destroy = model_destroy,
 		set_external = model_external,
 		ctx = layer.ctx
@@ -460,6 +578,9 @@ local function reindex_layers(ctx)
 			li = li + 1;
 		end
 	end
+	for i,v in ipairs(ctx.layers) do
+		v:relayout();
+	end
 end
 
 local function layer_zpos(layer)
@@ -477,7 +598,11 @@ local function layer_add_model(layer, kind, name)
 		return;
 	end
 
-	table.insert(layer.models, model);
+	if (layer.models[1] and layer.models[1].active == false) then
+		table.insert(layer.models, model, 1);
+	else
+		table.insert(layer.models, model);
+	end
 	model.layer = layer;
 
 	return model;
@@ -506,10 +631,16 @@ local function model_eventhandler(wnd, model, source, status)
 	if (status.kind == "terminated") then
 -- need to check if the model is set to reset to placeholder / last set /
 -- open connpoint or to die on termination
-		model:destroy(EXIT_FAILURE, status.last_words);
+		if (not apply_connrole(model.layer, model, source)) then
+			model:destroy(EXIT_FAILURE, status.last_words);
+		end
+
+	elseif (status.kind == "registered") then
+		model:set_external(source);
 
 	elseif (status.kind == "resized") then
 		image_texfilter(source, FILTER_BILINEAR);
+		model:set_external(source, not status.origo_ll);
 		model:show();
 	end
 end
@@ -532,7 +663,7 @@ local clut = {
 	multimedia = model_eventhandler,
 	["lightweight arcan"] = model_eventhandler,
 	["bridge-x11"] = model_eventhandler,
-	bowser = model_eventhandler,
+	browser = model_eventhandler,
 
 -- handlers to types that we don't accept as primary now
 	["bridge-wayland"] = nil,
@@ -550,13 +681,23 @@ local clut = {
 	handover = nil
 };
 
-local function modelconn_eventhandler(layer, model, source, status)
+modelconn_eventhandler = function(layer, model, source, status)
 	if (status.kind == "registered") then
 -- based on segment type, install a new event-handler and tie to a new model
 		local dstfun = clut[status.segkind];
 		if (dstfun == nil) then
 			delete_image(source);
 			return;
+
+-- there is an external connection handler that takes over whatever this model was doing
+		elseif (model.ext_kind) then
+			target_updatehandler(source, function(source, status)
+				return dstfun(layer.ctx, model, source, status);
+			end);
+			model.external_old = model.external;
+			model.external = source;
+
+-- or it should be bound to a new model
 		else
 			local new_model =
 				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
@@ -564,19 +705,30 @@ local function modelconn_eventhandler(layer, model, source, status)
 			target_updatehandler(source, function(source, status)
 				return dstfun(layer.ctx, new_model, source, status);
 			end);
-			new_model:set_external(source);
-			new_model:set_parent(model);
+			dstfun(layer.ctx, new_model, source, status);
+
+-- reparent so that we start building this chain of clients vertically, but
+-- invert so that the new window takes precedence over the old one
+			if (model.parent) then
+				new_model:set_parent(model.parent);
+			else
+				model:set_parent(new_model);
+			end
 		end
 	elseif (status.kind == "resized") then
 		model:show();
 	elseif (status.kind == "terminated") then
 -- connection point died, should we bother allocating a new one?
 		delete_image(source);
+		if not (apply_connrole(model.layer, model, source)) then
+			model:destroy(EXIT_FAILURE, status.last_words);
+		end
 	end
 end
 
 local term_counter = 0;
-local function layer_add_terminal(layer)
+local function layer_add_terminal(layer, opts)
+	opts = opts and opts or "";
 	term_counter = term_counter + 1;
 	local model = layer:add_model("rectangle", "term_" .. tostring(term_counter));
 	if (not model) then
@@ -588,32 +740,33 @@ local function layer_add_terminal(layer)
 		for i=1,8 do
 			cp = cp .. string.char(string.byte("a") + math.random(1, 10));
 		end
-	local vid = launch_avfeed("env=ARCAN_CONNPATH="..cp, "terminal",
+	local vid = launch_avfeed("env=ARCAN_CONNPATH="..cp..":"..opts, "terminal",
 	function(...)
 		return terminal_eventhandler(layer.ctx, model, ...);
 	end
 	);
 
-	if (valid_vid(vid)) then
-		model:set_external(vid, true);
-		link_image(vid, model.vid);
+	if (not valid_vid(vid)) then
+		model:destroy();
+		return;
+	end
+
+	model:set_external(vid, true);
+	link_image(vid, model.vid);
 
 -- handover to a 'dispatch lut + create model' intermediate function
-		local conn = target_alloc(cp, function(source, status)
-			if (status.kind == "connected") then
-				target_updatehandler(source, function(...)
-					return modelconn_eventhandler(layer, model, ...);
-				end);
-			elseif (status.kind == "terminated") then
-				delete_image(source);
-			end
-		end);
-
-		if (valid_vid(conn)) then
-			link_image(conn, model.vid);
+	local conn = target_alloc(cp, function(source, status)
+		if (status.kind == "connected") then
+			target_updatehandler(source, function(...)
+				return modelconn_eventhandler(layer, model, ...);
+			end);
+		elseif (status.kind == "terminated") then
+			delete_image(source);
 		end
-	else
-		model:destroy();
+	end);
+
+	if (valid_vid(conn)) then
+		link_image(conn, model.vid);
 	end
 end
 
@@ -655,7 +808,7 @@ local function layer_relayout(layer)
 	end
 
 -- make sure we have one element that is selected at least
-	if (not layer.selected and
+	if (not layer.selected and root[1] and
 		valid_vid(root[1].external, TYPE_FRAMESERVER)) then
 		root[1]:select();
 	end
@@ -703,25 +856,32 @@ local function layer_relayout(layer)
 			dphi_cw = dphi_cw + 1.5 * w;
 			dphi_ccw = dphi_ccw - 1.5 * w;
 			z = -radius - zp;
+			got_first = true;
 
 		elseif (i % 2 == 0) then
 			x = radius * math.sin(dphi_cw + w);
 			z = radius * math.cos(dphi_cw + w) - zp;
 			ang = getang(dphi_cw);
 -- goes bad after one revolution, but that many clients is not very reasonable
-			dphi_cw = dphi_cw + w;
+			if (v.active) then
+				dphi_cw = dphi_cw + w;
+			end
 		else
 			x = radius * math.sin(dphi_ccw - w);
 			z = radius * math.cos(dphi_ccw - w) - zp;
 			ang = getang(dphi_ccw);
 -- goes bad after one revolution, but that many clients is not very reasonable
-			dphi_ccw = dphi_ccw - w;
+			if (v.active) then
+				dphi_ccw = dphi_ccw - w;
+			end
 		end
 
 -- unresolved, what to do if n_x or p_x reach pi?
-		instant_image_transform(v.vid);
-		move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
-		rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
+		if (v.active) then
+			move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
+			rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
+		end
+
 		v.layer_ang = ang;
 		v.layer_pos = {x, 0, z};
 	end
@@ -746,11 +906,76 @@ local function layer_relayout(layer)
 			else
 				move_image(j.vid, lp[1], lp[2] + ch, lp[3], as);
 			end
-			rotate3d_model(j.vid, k.layer_ang, as);
+			rotate3d_model(j.vid, 0, 0, k.layer_ang, as)
 			pw, ph, pd = j:get_size();
 			ch = ch + ph;
 		end
 	end
+end
+
+-- these functions are partially dependent on the layout scheme
+local function layer_swap(layer, left, count)
+	count = count and count or 1;
+
+	if (count < 1) then
+		return;
+	end
+
+-- swap with index[1], BUT only select if it can receive input and is active
+	local set = {};
+
+-- just grab the root nodes
+	for i,v in ipairs(layer.models) do
+		if (not v.parent) then
+			table.insert(set, {i, v});
+		end
+	end
+
+-- find the matching relative index using count
+	local sc = #set;
+	if (sc == 1) then
+		return;
+	end
+
+-- make sure that the starting search index is active
+	local ind = (left and 2) or 3;
+	while (set[ind] and not set[ind][2].active) do
+		ind = ind + 2;
+	end
+
+	while (count > 2 and set[ind]) do
+		ind = ind + 2;
+		if (set[ind][2].active) then
+			count = count - 1;
+		end
+	end
+
+	if (not set[ind]) then
+		return;
+	end
+
+	local focus = layer.models[1];
+	local new = set[ind][2];
+	layer.models[set[ind][1]] = focus;
+	layer.models[1] = new;
+
+-- offset the old focus point slightly so their animation path doesn't collide
+	if (focus.layer_pos) then
+		move3d_model(focus.vid, focus.layer_pos[1],
+			focus.layer_pos[2], focus.layer_pos[3] + 0.1, 0.5 * layer.ctx.animation_speed);
+--		rotate3d_model(focus.vid, 0, 0, 0, 0.5 * layer.ctx.animation_speed, ROTATE_RELATIVE);
+	end
+
+-- only the focus- window gets to run a >1 scale
+	new:scale();
+	focus:scale();
+	new:select();
+
+	layer:relayout();
+end
+
+-- same as _swap, but more movement and more directions
+local function layer_cycle(layer, left, step)
 end
 
 local function layer_add(ctx, tag)
@@ -761,6 +986,9 @@ local function layer_add(ctx, tag)
 
 		add_model = layer_add_model,
 		add_terminal = layer_add_terminal,
+
+		swap = layer_swap,
+		cycle = layer_cycle,
 
 		step = layer_step,
 		zpos = layer_zpos,
@@ -817,7 +1045,7 @@ return function(ctx, surf, opts)
 	ctx.placeholder = placeholder;
 	ctx.vr_pipe = surf;
 	ctx.setup_vr = setup_vr_display;
-
+	ctx.reindex_layers = reindex_layer;
 	ctx.input_table = vr_input;
 	ctx.message = function(ctx, msg) print(msg); end;
 

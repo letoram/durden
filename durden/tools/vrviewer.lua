@@ -58,8 +58,9 @@ local function drag_scale(ctx, vid, dx, dy)
 
 	local tot = 0.01 * (dx + dy);
 	if (model.scalev[1] + tot > 0 and model.scalev[2] + tot > 0) then
-		model:scale(model.scalev[1] + tot, (model.scalev[2] + tot));
+		model:scale(model.scalev[1] + tot, (model.scalev[2] + tot), nil, true);
 	end
+	model.layer:relayout();
 
 	model.ctx.animation_speed = as;
 end
