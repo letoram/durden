@@ -49,13 +49,14 @@ local function get_layer_settings(wnd, layer)
 	{
 		name = "depth",
 		label = "Depth",
-		description = "Set the desired depth for new models",
+		description = "Set the layer radius and desired depth for new models",
 		kind = "value",
 		hint = "(0.001..99)",
 		initial = tostring(layer.depth),
 		validator = gen_valid_num(0.001, 99.0, 0.1),
 		handler = function(ctx, val)
 			layer.depth = tonumber(val);
+			layer:relayout();
 		end
 	},
 	{
@@ -82,7 +83,6 @@ local function get_layer_settings(wnd, layer)
 	};
 end
 
-
 local function set_source_asynch(wnd, layer, model, source, status)
 	if (status.kind == "load_failed" or status.kind == "terminated") then
 		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
@@ -92,29 +92,50 @@ local function set_source_asynch(wnd, layer, model, source, status)
 		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
 		image_sharestorage(source, model.vid);
 		image_texfilter(source, FILTER_BILINEAR);
+		model.source = source;
 	end
 end
 
+local function build_connpoint(wnd, layer, model)
+	return {
+		{
+			name = "replace",
+			label = "Replace",
+			kind = "value",
+			description = "Replace model source with contents provided by an external connection",
+			validator = function(val) return val and string.len(val) > 0; end,
+			hint = "(connpoint name)",
+			handler = function(ctx, val)
+				model:set_connpoint(val, "replace");
+			end
+		},
+		{
+			name = "temporary",
+			label = "Temporary",
+			kind = "value",
+			hint = "(connpoint name)",
+			description = "Swap out model source whenever there is a connection active",
+			validator = function(val) return val and string.len(val) > 0; end,
+			handler = function(ctx, val)
+				model:set_connpoint(val, "temporary");
+			end
+		},
+		{
+			name = "reveal",
+			label = "Reveal",
+			kind = "value",
+			hint = "(connpoint name)",
+			description = "Model is only visible when there is a connection active",
+			validator = function(val) return val and string.len(val) > 0; end,
+			handler = function(ctx, val)
+				model:set_connpoint(val, "reveal");
+			end
+		}
+	};
+end
 
 local function model_settings_menu(wnd, layer, model)
 	local res = {
-	{
-		name = "swap_n",
-		label = "Next",
-		kind = "action",
-		description = "Swap position with the previous one in the list",
-		eval = function() return #layer.models > 1; end,
-		handler = function()
-		end,
-	},
-	{
-		name = "swap_p",
-		label = "Previous",
-		kind = "action",
-		eval = function() return #layer.models > 1; end,
-		handler = function()
-		end,
-	},
 	{
 		name = "source",
 		label = "Source",
@@ -133,6 +154,7 @@ local function model_settings_menu(wnd, layer, model)
 					set_source_asynch(wnd, layer, model, ...);
 				end
 			);
+-- link so life cycle matches model
 			if (valid_vid(vid)) then
 				link_image(vid, model.vid);
 			end
@@ -144,13 +166,7 @@ local function model_settings_menu(wnd, layer, model)
 		kind = "action",
 		description = "Delete the model and all associated/mapped resources",
 		handler = function(ctx, res)
-			delete_image(model.vid);
-			for i,v in ipairs(layer.models) do
-				if (v == model) then
-					table.remove(layer.models, i);
-					return;
-				end
-			end
+			model:destroy();
 		end
 	},
 	{
@@ -207,13 +223,58 @@ local function model_settings_menu(wnd, layer, model)
 			end
 		end
 	},
+	{
+		name = "connpoint",
+		label = "Connection Point",
+		description = "Allow external clients to connect and map to this model",
+		submenu = true,
+		kind = "action",
+		handler = function()
+			return build_connpoint(wnd, layer, model);
+		end
+	},
+	{
+		name = "stereoscopic",
+		label = "Stereoscopic Model",
+		description = "Mark the contents as stereoscopic and apply a view dependent mapping",
+		kind = "value",
+		set = {"none", "sbs", "oau"},
+
+		handler = function(ctx, val)
+			if (val == "none") then
+				model:set_stereo({
+					0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0
+				});
+			elseif (val == "sbs") then
+				model:set_stereo({
+					0.0, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0
+				});
+			elseif (val == "oau") then
+				model:set_stereo({
+					0.0, 0.0, 1.0, 0.5, 0.0, 0.5, 1.0, 0.5
+				});
+			end
+		end
+	},
 	};
 -- stereo, source, external connection point
 	return res;
 end
 
 local function change_model_menu(wnd, layer)
-	local res = {};
+	local res = {
+		name = "selected",
+		kind = "action",
+		submenu = true,
+		label = "Selected",
+		handler = function()
+			return model_settings_menu(wnd, layer, layer.selected);
+		end,
+		eval = function()
+			print("eval, selected", layer.selected);
+			return layer.selected ~= nil;
+		end
+	};
 
 	for i,v in ipairs(layer.models) do
 		table.insert(res,
@@ -231,7 +292,6 @@ local function change_model_menu(wnd, layer)
 	return res;
 end
 
-
 local term_counter = 0;
 local function get_layer_menu(wnd, layer)
 	return {
@@ -246,10 +306,10 @@ local function get_layer_menu(wnd, layer)
 		{
 			label = "Open Terminal",
 			description = "Add a terminal premapped model to the layer",
-			kind = "action",
+			kind = "value",
 			name = "terminal",
-			handler = function()
-				layer:add_terminal();
+			handler = function(ctx, val)
+				layer:add_terminal(val);
 			end
 		},
 		{
@@ -266,16 +326,60 @@ local function get_layer_menu(wnd, layer)
 		{
 			name = "swap",
 			label = "Swap",
+			eval = function()
+				return #layer.models > 1;
+			end,
+			kind = "value",
+			validator = function(val)
+				return (
+					gen_valid_num(-1*(#layer.models),1*(#layer.models))
+				)(val);
+			end,
+			hint = "(< 0: left, >0: right)",
+			description = "Switch center/focus window with one to the left or right",
+			handler = function(ctx, val)
+				val = tonumber(val);
+				if (val < 0) then
+					layer:swap(true, -1*val);
+				elseif (val > 0) then
+					layer:swap(false, val);
+				end
+			end
+		},
+		{
+			name = "switch",
+			label = "Switch",
 			description = "Switch layer position with another layer",
 			kind = "value",
 			set = function()
 				local lst = {};
-				for _, v in ipairs(lst) do
+				local i;
+				for j, v in ipairs(wnd.layers) do
+					if (v.name ~= layer.name) then
+						table.insert(lst, v.name);
+					end
 				end
+				return lst;
 			end,
 			eval = function() return #wnd.layers > 1; end,
-			handler = function()
-print("FIXME");
+			handler = function(ctx, val)
+				local me;
+				for me, v in ipairs(wnd.layers) do
+					if (v == layer.name) then
+						break;
+					end
+				end
+
+				local src;
+				for src, v in ipairs(wnd.layers) do
+					if (v.name == val) then
+						break;
+					end
+				end
+
+				wnd.layers[me] = wnd.layers[src];
+				wnd.layers[src] = layer;
+				wnd:reindex_layers();
 			end,
 		},
 		{
@@ -307,7 +411,6 @@ print("FIXME");
 			kind = "action",
 			eval = function() return #wnd.layers > 1 and wnd.focus_layer ~= layer; end,
 			handler = function()
-print("FIXME");
 			end,
 		},
 		{
