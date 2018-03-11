@@ -49,8 +49,7 @@ local shared_dispatch = {
 			return;
 		end
 
-		table.insert(wnd.input_labels,
-			{tbl.labelhint, tbl.idatatype, tbl.description});
+		local ent = {tbl.labelhint, tbl.idatatype, tbl.description};
 
 -- add the default as binding unless there's a collision
 		if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
@@ -59,10 +58,14 @@ local shared_dispatch = {
 				sym = decode_modifiers(tbl.modifiers) .. "_" .. sym;
 			end
 
+-- keep track of the translated string as we might want to present it
 			if (not wnd.labels[sym]) then
 				wnd.labels[sym] = tbl.labelhint;
+				ent[4] = sym;
 			end
 		end
+
+		table.insert(wnd.input_labels, ent);
 	end
 };
 

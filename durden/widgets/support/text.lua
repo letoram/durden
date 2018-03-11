@@ -34,27 +34,28 @@ return {
 		end
 
 		local tbl, heights, outw, outh, asc = render_text(out);
+		if (not valid_vid(tbl)) then
+			return;
+		end
 
-		if (valid_vid(tbl)) then
-			local bdw = outw + outh;
-			local bdh = (heights[#heights]+outh) + outh;
-			local bdw = bdw > props.width and props.width or bdw;
-			local bdh = bdh > props.height and props.height or bdh;
-			local backdrop = fill_surface(bdw, bdh, 20, 20, 20);
-			link_image(backdrop, anchor);
-			link_image(tbl, backdrop);
-			image_inherit_order(backdrop, true);
-			image_inherit_order(tbl, true);
+		local bdw = outw + outh;
+		local bdh = (heights[#heights]+outh) + outh;
+		local bdw = bdw > props.width and props.width or bdw;
+		local bdh = bdh > props.height and props.height or bdh;
+		local backdrop = fill_surface(bdw, bdh, 20, 20, 20);
+		link_image(backdrop, anchor);
+		link_image(tbl, backdrop);
+		image_inherit_order(backdrop, true);
+		image_inherit_order(tbl, true);
 --			center_image(tbl, anchor);
 --			center_image(backdrop, anchor);
-			show_image({backdrop, tbl});
-			order_image(backdrop, 1);
-			order_image(tbl, 1);
-			image_clip_on(tbl, CLIP_SHALLOW);
-			image_clip_on(backdrop, CLIP_SHALLOW);
-			image_mask_set(tbl, MASK_UNPICKABLE);
-			image_mask_set(backdrop, MASK_UNPICKABLE);
-			return bdw, bdh;
-		end
+		show_image({backdrop, tbl});
+		order_image(backdrop, 1);
+		order_image(tbl, 1);
+		image_clip_on(tbl, CLIP_SHALLOW);
+		image_clip_on(backdrop, CLIP_SHALLOW);
+		image_mask_set(tbl, MASK_UNPICKABLE);
+		image_mask_set(backdrop, MASK_UNPICKABLE);
+		return bdw, bdh, tbl, heights;
 	end
 };
