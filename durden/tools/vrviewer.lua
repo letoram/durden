@@ -56,10 +56,9 @@ local function drag_scale(ctx, vid, dx, dy)
 	local as = model.ctx.animation_speed;
 	model.ctx.animation_speed = 0;
 
+-- work with a 'scale factor' which retains aspect ratio even when on the sides
 	local tot = 0.01 * (dx + dy);
-	if (model.scalev[1] + tot > 0 and model.scalev[2] + tot > 0) then
-		model:scale(model.scalev[1] + tot, (model.scalev[2] + tot), nil, true);
-	end
+	model:scale_factor(tot, true);
 	model.layer:relayout();
 
 	model.ctx.animation_speed = as;
@@ -83,7 +82,9 @@ local function vrwnd()
 	wnd:set_title(string.format("VR/Panoramic - unmapped"));
 
 -- this will append functions for adding layers and models
-	setup_vr(wnd, preview, {});
+	setup_vr(wnd, preview, {
+		prefix = "tools/vrviewer"
+	});
 
 -- leases that we have taken from the display manager
 	wnd.leases = {};
@@ -138,10 +139,24 @@ local function vrwnd()
 	handler = function(ctx, val)
 		if (val == "View") then
 			wnd.handlers.mouse.canvas.drag = drag_rotate;
+			wnd.handlers.mouse.canvas.motion = function() end;
+
 		elseif (val == "Layer Distance") then
 			wnd.handlers.mouse.canvas.drag = drag_layer;
+			wnd.handlers.mouse.canvas.motion = function() end;
+
 		elseif (val == "Model Scale") then
 			wnd.handlers.mouse.canvas.drag = drag_scale;
+			wnd.handlers.mouse.canvas.motion = function() end;
+
+		elseif (val == "Model Rotate") then
+			wnd.handlers.mouse.canvas.drag = drag_spin;
+			wnd.handlers.mouse.canvas.motion = function() end;
+		else
+			wnd.handlers.mouse.canvas.drag = function() end;
+			wnd.handlers.mouse.canvas.motion = function(ctx, vid, dx, dy, x, y)
+-- missing, forward mouse input to client
+			end;
 		end
 	end
 });

@@ -1,19 +1,3 @@
---
--- UI / menu mapping
---
-
---
--- Layers act as planes of models that are linked together via a shared
--- positional anchor. One selected window per layer, one active layer per
--- scene/window - in essence, a window manager.
---
--- The default layouer layouter puts the active layer at one depth, and
--- the others go outwards, optionally with lower opacity
---
--- In this setup. the user is stationary, no motion controls are mapped,
--- only head tracking.
---
-
 local function add_model_menu(wnd, layer)
 
 -- deal with the 180/360 transition shader-wise
@@ -23,6 +7,7 @@ local function add_model_menu(wnd, layer)
 		hemisphere = "Hemisphere",
 		rectangle = "Rectangle",
 		cylinder = "Cylinder",
+		halfcylinder = "Half-Cylinder",
 		cube = "Cube",
 	};
 
@@ -35,7 +20,8 @@ local function add_model_menu(wnd, layer)
 			return val and string.len(val) > 0;
 		end,
 		handler = function(ctx, val)
-			layer:add_model(k, val)
+			layer:add_model(k, val);
+			layer:relayout();
 		end,
 		description = string.format("Add a %s to the layer", v)
 		}
@@ -49,35 +35,47 @@ local function get_layer_settings(wnd, layer)
 	{
 		name = "depth",
 		label = "Depth",
-		description = "Set the layer radius and desired depth for new models",
+		description = "Set the default layer thickness",
 		kind = "value",
 		hint = "(0.001..99)",
 		initial = tostring(layer.depth),
-		validator = gen_valid_num(0.001, 99.0, 0.1),
+		validator = gen_valid_num(0.001, 99.0),
 		handler = function(ctx, val)
 			layer.depth = tonumber(val);
+		end
+	},
+	{
+		name = "radius",
+		label = "Radius",
+		description = "Set the layouting radius",
+		kind = "value",
+		hint = "(0.001..99)",
+		initial = tostring(layer.radius),
+		validator = gen_valid_num(0.001, 99.0),
+		handler = function(ctx, val)
+			layer.radius = tonumber(val);
 			layer:relayout();
 		end
 	},
 	{
 		name = "fixed",
 		label = "Fixed",
-		initial = layer.fixed and LBL_YES or LBL_NO,
-		set = {LBL_YES, LBL_NO},
+		initial = layer.fixed and "true" or "false",
+		set = {"true", "false"},
 		kind = "value",
 		description = "Lock the layer in place",
 		handler = function(ctx, val)
-			layer:set_fixed(val == LBL_YES);
+			layer:set_fixed(val == "true");
 		end
 	},
 	{
 		name = "ignore",
 		label = "Ignore",
 		description = "This layer will not be considered for relative selection",
-		set = {LBL_YES, LBL_NO},
+		set = {"true", "false"},
 		kind = "value",
 		handler = function(ctx, val)
-			layer.ignore = val == LBL_YES;
+			layer.ignore = val == "true";
 		end
 	},
 	};
@@ -139,7 +137,7 @@ local function model_settings_menu(wnd, layer, model)
 	{
 		name = "source",
 		label = "Source",
-		kind = "action",
+		kind = "value",
 		description = "Specify the path to a resource that should be mapped to the model",
 		validator =
 		function(str)
@@ -149,11 +147,14 @@ local function model_settings_menu(wnd, layer, model)
 			if (not resource(res)) then
 				return;
 			end
+			switch_default_imageproc(IMAGEPROC_FLIPH);
 			local vid = load_image_asynch(res,
 				function(...)
 					set_source_asynch(wnd, layer, model, ...);
 				end
 			);
+			switch_default_imageproc(IMAGEPROC_NORMAL);
+
 -- link so life cycle matches model
 			if (valid_vid(vid)) then
 				link_image(vid, model.vid);
@@ -193,13 +194,56 @@ local function model_settings_menu(wnd, layer, model)
 		end
 	},
 	{
+		name = "rotate",
+		label = "Rotate",
+		description = "Set the current model-layer relative rotation",
+		kind = "value",
+		validator = suppl_valid_typestr("fff", -359, 359, 0),
+		handler = function(ctx, val)
+			local res = suppl_unpack_typestr("fff", -359, 359);
+			model.rel_ang[1] = res[1];
+			model.rel_ang[2] = res[2];
+			model.rel_ang[3] = res[3];
+		end,
+	},
+	{
+		name = "flip",
+		label = "Flip",
+		description = "Force- override t-coordinate space (vertical flip)",
+		kind = "value",
+		set = {"true", "false"},
+		handler = function(ctx, val)
+			if (val == "true") then
+				model.force_flip = true;
+			else
+				model.force_flip = false;
+			end
+			image_shader(model.vid,
+				model.force_flip and model.shader.flip or model.shader.normal);
+		end
+	},
+	{
+		name = "spin",
+		label = "Spin",
+		description = "Increment or decrement the current model-layer relative rotation",
+		kind = "value",
+		validator = suppl_valid_typestr("fff", -359, 359, 0),
+		handler = function(ctx, val)
+			local res = suppl_unpack_typestr("fff", -359, 359);
+			model.rel_ang[1] = math.fmod(model.rel_ang[1] + res[1], 360);
+			model.rel_ang[2] = math.fmod(model.rel_ang[2] + res[2], 360);
+			model.rel_ang[3] = math.fmod(model.rel_ang[3] + res[3], 360);
+		end,
+	},
+	{
 		name = "map",
 		label = "Map",
 		description = "Map the contents of another window to the model",
 		kind = "value",
+		eval =  function() return type(durden) == "function"; end,
 		set = function()
 			local lst = {};
-			for wnd in all_windows() do
+			for wnd in all_windows(true) do
 				if (valid_vid(wnd.external)) then
 					table.insert(lst, wnd:identstr());
 				end
@@ -207,14 +251,14 @@ local function model_settings_menu(wnd, layer, model)
 			return lst;
 		end,
 		eval = function()
-			for wnd in all_windows() do
+			for wnd in all_windows(true) do
 				if (valid_vid(wnd.external)) then
 					return true;
 				end
 			end
 		end,
 		handler = function(ctx, val)
-			for wnd in all_windows() do
+			for wnd in all_windows(true) do
 				if wnd:identstr() == val then
 					model.external = wnd.external;
 					image_sharestorage(wnd.canvas, model.vid);
@@ -232,6 +276,16 @@ local function model_settings_menu(wnd, layer, model)
 		handler = function()
 			return build_connpoint(wnd, layer, model);
 		end
+	},
+	{
+		name = "curvature",
+		label = "Curvature",
+		kind = "value",
+		description = "Set the model curvature z- distortion",
+		handler = function(ctx, val)
+			model:set_curvature(tonumber(val));
+		end,
+		validator = gen_valid_num(-0.5, 0.5),
 	},
 	{
 		name = "stereoscopic",
@@ -271,7 +325,6 @@ local function change_model_menu(wnd, layer)
 			return model_settings_menu(wnd, layer, layer.selected);
 		end,
 		eval = function()
-			print("eval, selected", layer.selected);
 			return layer.selected ~= nil;
 		end
 	};
@@ -347,6 +400,18 @@ local function get_layer_menu(wnd, layer)
 			end
 		},
 		{
+			name = "destroy",
+			label = "Destroy",
+			description = "Destroy the layer and all associated models and connections",
+			kind = "value",
+			set = {"true", "false"},
+			handler = function(ctx, val)
+				if (val == "true") then
+					layer:destroy();
+				end
+			end
+		},
+		{
 			name = "switch",
 			label = "Switch",
 			description = "Switch layer position with another layer",
@@ -390,7 +455,7 @@ local function get_layer_menu(wnd, layer)
 			eval = function() return layer.hidden == nil; end,
 			handler = function()
 				layer.hidden = true;
-				blend_image(layer.anchor, 0.0, TIMEVAL);
+				blend_image(layer.anchor, 0.0, wnd.animation_speed);
 			end,
 		},
 		{
@@ -401,7 +466,7 @@ local function get_layer_menu(wnd, layer)
 			eval = function() return layer.hidden == true; end,
 			handler = function()
 				layer.hidden = nil;
-				blend_image(layer.anchor, layer.opacity, TIMEVAL);
+				blend_image(layer.anchor, layer.opacity, wnd.animation_speed);
 			end,
 		},
 		{
@@ -409,32 +474,12 @@ local function get_layer_menu(wnd, layer)
 			label = "Focus",
 			description = "Set this layer as the active focus layer",
 			kind = "action",
-			eval = function() return #wnd.layers > 1 and wnd.focus_layer ~= layer; end,
-			handler = function()
+			eval = function()
+				return #wnd.layers > 1 and wnd.selected_layer ~= layer;
 			end,
-		},
-		{
-			name = "spin",
-			label = "Spin",
-			description = "Rotate the layer relatively around the y axis",
-			kind = "value",
-			initial = "0 0",
-			hint = "(degrees time)",
-			validator = suppl_valid_typestr("ff", 0.0, 359.0, 0.0),
-			handler = function(ctx, val)
-				local res = suppl_unpack_typestr("ff", val, -1000, 1000);
-				rotate3d_model(layer.anchor, 0, 0, res[1], res[2], ROTATE_RELATIVE);
-			end
-		},
-		{
-			name = "orient",
-			label = "Orient",
-			description = "Set the absolute rotation of the layer",
-			kind = "value",
-			validator = gen_valid_num(0, 359, 0),
 			handler = function()
-				local dx, dy, dz, dt = suppl_unpack_typestr("ffff", val, -10, 10);
-			end
+				wnd.selected_layer = layer;
+			end,
 		},
 		{
 			name = "nudge",
@@ -452,7 +497,7 @@ local function get_layer_menu(wnd, layer)
 				layer.dx = layer.dx + res[1];
 				layer.dy = layer.dy + res[2];
 				layer.dz = layer.dz + res[3];
-				move3d_model(layer.anchor, layer.dx, layer.dy, layer_zpos(layer), res[4]);
+				move3d_model(layer.anchor, layer.dx, layer.dy, layer:zpos(), res[4]);
 			end,
 		},
 		{
@@ -479,6 +524,7 @@ local function layer_menu(wnd)
 			submenu = true,
 			kind = "action",
 			description = "Currently focused layer",
+			eval = function() return wnd.selected_layer ~= nil; end,
 			label = "Current",
 			handler = function() return get_layer_menu(wnd, wnd.selected_layer); end
 		});
@@ -494,7 +540,7 @@ local function layer_menu(wnd)
 				for i,v in ipairs(wnd.layers) do
 					instant_image_transform(v.anchor);
 					v.dz = v.dz + step;
-					move3d_model(v.anchor, v.dx, v.dy, layer_zpos(layer), TIMEVAL);
+					move3d_model(v.anchor, v.dx, v.dy, layer:zpos(), wnd.animation_speed);
 				end
 			end
 		});
@@ -502,7 +548,7 @@ local function layer_menu(wnd)
 
 	table.insert(res, {
 	label = "Add",
-	description = "Add a new window layer";
+	description = "Add a new model layer";
 	kind = "value",
 	name = "add",
 	hint = "(tag name)",
@@ -537,18 +583,27 @@ local function layer_menu(wnd)
 end
 
 
-local function load_presets(wnd, prefix, path)
-	local lst = system_load(prefix .. "presets/" .. path, false);
+local function load_space(wnd, prefix, path)
+	local lst = system_load(prefix .. "spaces/" .. path, false);
 	if (not lst) then
-		warning("vr-load preset (" .. path .. ") couldn't load/parse script");
+		warning("vr-load space (" .. path .. ") couldn't load/parse script");
 		return;
 	end
 	local cmds = lst();
 	if (not type(cmds) == "table") then
-		warning("vr-load preset (" .. path .. ") script did not return a table");
+		warning("vr-load space (" .. path .. ") script did not return a table");
 	end
+
+-- defer layouter until all has been loaded
+	local dispatch = wnd.default_layouter;
+	wnd.default_layouter = function() end;
 	for i,v in ipairs(cmds) do
 		dispatch_symbol("#" .. v);
+	end
+
+	wnd.default_layouter = dispatch;
+	for _,v in ipairs(wnd.layers) do
+		v:relayout();
 	end
 end
 
@@ -569,17 +624,6 @@ end
 
 local function global_settings(wnd, opts)
 	return {
-	{
-	name = "near_size",
-	label = "Near Size",
-	description = "Reported display base size for nearest layer",
-	kind = "value";
-	initial = function() return tostring(opts.near_layer_sz); end,
-	validator = gen_valid_num(256, 4096),
-	handler = function(ctx, val)
-		wnd.near_layer_sz = tonumber(val);
-	end
-	},
 	{
 		name = "vr_settings",
 		kind = "value",
@@ -603,7 +647,7 @@ local res = {{
 	kind = "action",
 	label = "Close VR",
 	eval = function()
-		return wnd.in_vr ~= nil;
+		return wnd.in_vr ~= nil and type(durden) == "function";
 	end,
 	handler = function()
 		wnd:drop_vr();
@@ -615,6 +659,7 @@ local res = {{
 	kind = "action",
 	description = "Layer/device configuration",
 	label = "Config",
+	eval = function() return type(durden) == "function"; end,
 	handler = function(ctx)
 		return global_settings(wnd, opts);
 	end
@@ -630,20 +675,20 @@ local res = {{
 	end
 },
 {
-	name = "preset",
-	label = "Preset",
+	name = "space",
+	label = "Space",
 	kind = "value",
 	set =
 	function()
-		local set = glob_resource(opts.prefix .. "presets/*.lua", APPL_RESOURCE);
+		local set = glob_resource(opts.prefix .. "spaces/*.lua", APPL_RESOURCE);
 		return set;
 	end,
 	eval = function()
-		local set = glob_resource(opts.prefix .. "presets/*.lua", APPL_RESOURCE);
+		local set = glob_resource(opts.prefix .. "spaces/*.lua", APPL_RESOURCE);
 		return set and #set > 0;
 	end,
 	handler = function(ctx, val)
-		load_presets(wnd, opts.prefix, val);
+		load_space(wnd, opts.prefix, val);
 	end,
 },
 {
@@ -668,10 +713,10 @@ local res = {{
 	eval = function()
 		local res;
 		display_bytag("VR", function(disp) res = true; end);
-		return res;
+		return res and type(durden) == "function";
 	end,
 	handler = function(ctx, val)
-		setup_vr_display(wnd, val);
+		wnd:setup_vr(wnd, val);
 	end
 }};
 	return res;

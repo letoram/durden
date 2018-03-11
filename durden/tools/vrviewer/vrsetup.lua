@@ -5,6 +5,7 @@ uniform mat4 projection;
 attribute vec2 texcoord;
 attribute vec4 vertex;
 
+/* for sbs- ou- remapping */
 uniform vec2 ofs_leye;
 uniform vec2 ofs_reye;
 uniform vec2 scale_leye;
@@ -19,6 +20,7 @@ varying vec2 texco;
 void main()
 {
 	vec2 tc = texcoord;
+
 	if (flip){
 		tc.t = 1.0 - tc.t;
 	}
@@ -34,8 +36,24 @@ void main()
 		tc += ofs_reye;
 	}
 
-	gl_Position = projection * modelview * vert;
+	if (curve > 0.0){
+		vert.z -= sin(3.14 * tc.s) * curve;
+	}
+
 	texco = tc;
+	gl_Position = projection * modelview * vert;
+}
+]];
+
+local frag = [[
+uniform sampler2D map_tu0;
+uniform float obj_opacity;
+varying vec2 texco;
+
+void main()
+{
+	vec3 col = texture2D(map_tu0, texco).rgb;
+	gl_FragColor = vec4(col.rgb, obj_opacity);
 }
 ]];
 
@@ -48,8 +66,8 @@ local modelconn_eventhandler;
 -- variants to handle samplers that force external or multiplanar
 local combiner = [[
 uniform sampler2D map_tu0;
-varying vec2 texco;
 uniform float obj_opacity;
+varying vec2 texco;
 
 void main()
 {
@@ -59,7 +77,7 @@ void main()
 ]];
 
 local vrshaders = {
-	geom = build_shader(vert, nil, "vr_geom"),
+	geom = build_shader(vert, frag, "vr_geom"),
 	left = build_shader(nil, combiner, "vr_eye_l"),
 	right = build_shader(nil, combiner, "vr_eye_r")
 };
@@ -76,16 +94,16 @@ end
 
 local function shader_defaults()
 	set_model_uniforms(
-		vrshaders.geom, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, false, 0);
+		vrshaders.geom, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, true, 0);
 
 	vrshaders.geom_inv = shader_ugroup(vrshaders.geom);
 	vrshaders.rect = shader_ugroup(vrshaders.geom);
 	vrshaders.rect_inv = shader_ugroup(vrshaders.geom);
 
-	shader_uniform(vrshaders.geom_inv, "flip", "b", true);
-	shader_uniform(vrshaders.rect_inv, "flip", "b", true);
-	shader_uniform(vrshaders.rect, "curve", "f", 0.5);
-	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.5);
+	shader_uniform(vrshaders.geom_inv, "flip", "b", false);
+	shader_uniform(vrshaders.rect_inv, "flip", "b", false);
+	shader_uniform(vrshaders.rect, "curve", "f", 0.01);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.01);
 end
 shader_defaults();
 
@@ -231,6 +249,9 @@ local function setup_vr_display(wnd, callback, opts)
 	end);
 end
 
+local function model_scale_factor(model, factor, relative)
+end
+
 local function model_scale(model, sx, sy, sz, save)
 	if (not sx) then
 		model.scalev = model.old_scalev;
@@ -277,9 +298,15 @@ local function model_external(model, vid, flip)
 		{ppcm = model.ctx.display_density}
 	);
 
-	model.flip = flip;
-	image_shader(model.vid,
-		flip and model.shader.flip or model.shader.normal);
+-- gets updated on_resize with origo_ll
+	if (model.force_flip ~= nil) then
+		image_shader(model.vid,
+				model.force_flip and model.shader.flip or model.shader.normal);
+	else
+		model.flip = flip;
+		image_shader(model.vid,
+			flip and model.shader.flip or model.shader.normal);
+	end
 end
 
 local function model_getsize(model)
@@ -291,20 +318,53 @@ end
 
 local function model_destroy(model)
 	local layer = model.layer;
-	if (model.custom_shaders) then
-		for i,v in ipairs(model.custom_shaders) do
-			delete_shader(v);
-		end
-	end
 
 -- if we are currently selected, swap in something else
-	table.remove_match(layer.models, model);
 	if (layer.selected == model) then
 		layer:swap(true, 1);
 		if (layer.selected == model) then
 			layer.selected = nil;
 		end
 	end
+
+	table.remove_match(layer.models, model);
+
+-- rebalance the list of models so the positioning doesn't "flip", we can
+-- do this by finding every root after our deletion point and inverting
+-- their position
+--	local ind;
+--	for ind=1,#layer.models do
+--		if (layer.models[ind] == model) then
+--			break;
+--		end
+--	end
+
+-- resolve into X = X+1 but ignore non-root node
+--	local nexti = function(ind)
+--		local res;
+--		for res=ind+1, #layer.models do
+--			if (not layer.models[res].parent) then
+--				return res;
+--			end
+--		end
+--		return nil;
+--	end
+
+-- swap next after deletion index with the one after that, preventing
+-- the deletion-left/right inversion problem
+--	local start = nexti(ind);
+--	while start do
+--		local st = nexti(start);
+--		local tmp = layer.models[start];
+--		if (st) then
+--			layer.models[start] = layer.models[st];
+--			layer.models[st] = tmp;
+--			start = layer.models[st];
+--		else
+--			break;
+--		end
+--	end
+--	table.remove(layer.models, ind);
 
 -- reparent children
 	for _,v in ipairs(model.children) do
@@ -314,13 +374,19 @@ local function model_destroy(model)
 		end
 	end
 
--- abandon parent
 	if (model.parent) then
 		table.remove(model.parent.children, model);
 		model.parent = nil;
 	end
 
--- clean up rendering resources
+-- clean up rendering resources, but defer on animation
+	local destroy = function()
+	if (model.custom_shaders) then
+		for i,v in ipairs(model.custom_shaders) do
+			delete_shader(v);
+		end
+	end
+
 	delete_image(model.vid);
 	if (valid_vid(model.external) and not model.external_protect) then
 		delete_image(model.external);
@@ -334,6 +400,15 @@ local function model_destroy(model)
 -- make it easier to detect dangling references
 	for k,_ in ipairs(model) do
 		model[k] = nil;
+	end
+	end
+
+-- animate fade out if desired
+	if (model.ctx.animation_speed > 0) then
+		blend_image(model.vid, 0.0, model.ctx.animation_speed);
+		tag_image_transform(model.vid, MASK_OPACITY, destroy);
+	else
+		destroy();
 	end
 
 	layer:relayout();
@@ -375,7 +450,6 @@ local function model_show(model)
 		return;
 	end
 
-	blend_image(model.vid, 1.0, model.ctx.animation_speed);
 	if (not model.layer.selected) then
 		model:select();
 	end
@@ -389,14 +463,11 @@ local function model_show(model)
 		end
 	end
 
+	blend_image(model.vid, model.opacity, model.ctx.animation_time);
 	model.layer:relayout();
 end
 
-local function model_stereo(model, args)
-	if (#args ~= 8) then
-		return;
-	end
-
+local function model_split_shader(model)
 	if (not model.custom_shaders) then
 		model.custom_shaders = {
 			shader_ugroup(model.shader.normal),
@@ -406,12 +477,27 @@ local function model_stereo(model, args)
 		model.shader.flip = model.custom_shaders[2];
 		image_shader(model.vid, model.custom_shaders[model.flip and 2 or 1]);
 	end
+end
+
+local function model_stereo(model, args)
+	if (#args ~= 8) then
+		return;
+	end
+
+	model_split_shader(model);
 
 	for i,v in ipairs(model.custom_shaders) do
 		shader_uniform(v, "ofs_leye", "ff", args[1], args[2]);
 		shader_uniform(v, "scale_leye", "ff", args[3], args[4]);
 		shader_uniform(v, "ofs_reye", "ff", args[5], args[6]);
 		shader_uniform(v, "scale_reye", "ff", args[7], args[8]);
+	end
+end
+
+local function model_curvature(model, curv)
+	model_split_shader(model);
+	for i,v in ipairs(model.custom_shaders) do
+		shader_uniform(v, "curve", "f", 0.0);
 	end
 end
 
@@ -486,9 +572,11 @@ local function build_model(layer, kind, name)
 	local size = {depth, depth, depth};
 
 	if (kind == "cylinder") then
-		model = build_cylinder(h_depth, depth, 359, 1);
+		model = build_cylinder(h_depth, depth, 360, 1);
+	elseif (kind == "halfcylinder") then
+		model = build_cylinder(h_depth, depth, 360, 1, "half");
 	elseif (kind == "sphere") then
-		model = build_sphere(h_depth, 360, 360, 1, true);
+		model = build_sphere(h_depth, 360, 360, 1, false);
 	elseif (kind == "hemisphere") then
 		model = build_sphere(h_depth, 360, 180, 1, true);
 	elseif (kind == "cube") then
@@ -519,16 +607,18 @@ local function build_model(layer, kind, name)
 	rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
 	link_image(model, layer.anchor);
 
--- need control over where the thing spawns ..
 	local res = {
 		active = true,
 		vid = model,
 		name = name,
-		opacity = 1.0,
+		ctx = layer.ctx,
 		extctr = 0, -- external windows spawned via this model
-		shader = {normal = shader, flip = shader_inv},
 		parent = nil,
 		children = {},
+
+-- method vtable
+		destroy = model_destroy,
+		set_external = model_external,
 		select = model_select,
 		scale = model_scale,
 		show = model_show,
@@ -537,14 +627,19 @@ local function build_model(layer, kind, name)
 		mergecollapse = model_mergecollapse,
 		set_connpoint = model_connpoint,
 		set_stereo = model_stereo,
+		set_curvature = model_curvature,
+
+-- positioning / sizing, drawing
+		shader = {normal = shader, flip = shader_inv},
+		opacity = 1.0,
 		size = size,
 		scalev = {1, 1, 1},
-		old_scalev = {1, 1, 1}, -- history so we can revert
+		old_scalev = {1, 1, 1},
+		scale_factor = 1.0,
 		layer_ang = 0,
 		layer_pos = {0, 0, 0},
-		destroy = model_destroy,
-		set_external = model_external,
-		ctx = layer.ctx
+		rel_ang = {0, 0, 0},
+		rel_pos = {0, 0, 0},
 	};
 
 -- need something to specify up/down/left/right
@@ -584,22 +679,23 @@ local function reindex_layers(ctx)
 end
 
 local function layer_zpos(layer)
-	if (layer.fixed) then
-		return layer.dz;
-	else
-		local dv = layer.index * -layer.ctx.layer_distance + layer.dz;
-		return dv;
-	end
+	return layer.dz;
 end
 
 local function layer_add_model(layer, kind, name)
+	for k,v in ipairs(layer.models) do
+		if (v.name == name) then
+			return;
+		end
+	end
+
 	local model = build_model(layer, kind, name);
 	if (not model) then
 		return;
 	end
 
 	if (layer.models[1] and layer.models[1].active == false) then
-		table.insert(layer.models, model, 1);
+		table.insert(layer.models, 1, model);
 	else
 		table.insert(layer.models, model);
 	end
@@ -640,7 +736,7 @@ local function model_eventhandler(wnd, model, source, status)
 
 	elseif (status.kind == "resized") then
 		image_texfilter(source, FILTER_BILINEAR);
-		model:set_external(source, not status.origo_ll);
+		model:set_external(source, status.origo_ll);
 		model:show();
 	end
 end
@@ -668,7 +764,6 @@ local clut = {
 -- handlers to types that we don't accept as primary now
 	["bridge-wayland"] = nil,
 	clipboard = nil, -- no clipboard managers
-	wayland = nil, -- no
 	popup = nil,
 	icon = nil,
 	titlebar = nil,
@@ -771,146 +866,8 @@ local function layer_add_terminal(layer, opts)
 end
 
 local function layer_set_fixed(layer, fixed)
-	layer.fixed = val == LBL_YES;
+	layer.fixed = fixed;
 	reindex_layers(layer.ctx);
-end
-
--- basic layout algorithm,
--- there are a number of improvements to consider here:
---
--- 1. spherical billboarding for the vertical rows
---
--- 2. even divide terminals per quadrant with larger spacing and
---    only allow overlap / compaction on severe overallocation
---    (though that can possibly be dealt with in spacing)
---
--- 3. scale each quadrant on overallocation relative to the
---    distance from the 0,h_pi,pi,1.5pi,2pi phase angles.
---
--- 4. track left/right allocation so deletion don't get windows
---    to swap sides, but rather rebalance from last round.
---
--- 5. move this code out of vrsetup.lua as this should really
---    be left in the hand of other devs.
---
-local function layer_relayout(layer)
--- 1. separate models that have parents and root models
-	local root = {};
-	local chld = {};
-	local chld_collapse = {};
-	for _,v in ipairs(layer.models) do
-		if not v.parent then
-			table.insert(root, v);
-		else
-			chld[v.parent] = chld[v.parent] and chld[v.parent] or {};
-			table.insert(chld, v.parent);
-		end
-	end
-
--- make sure we have one element that is selected at least
-	if (not layer.selected and root[1] and
-		valid_vid(root[1].external, TYPE_FRAMESERVER)) then
-		root[1]:select();
-	end
-
--- select is just about input, creation order is about position,
--- our zero position is at 12 o clock, so add or sub math.pi as
--- translation on the curve
-	local max_h = 0;
-	local h_pi = math.pi * 0.5;
-
-	local dphi_ccw = math.pi;
-	local dphi_cw = math.pi;
-
--- oversize the placement radius somewhat to account for the
--- alignment problem
-	local zp = layer.index * -layer.ctx.layer_distance;
-	local radius = math.abs(zp);
-
-	local function getang(phi)
-		phi = math.fmod(phi, 2 * math.pi);
-		return 180 * phi / math.pi - 180;
-	end
-
--- position in a circle based on the layer z-pos as radius, but
--- recall that the model is linked to the layer anchor so we need
--- to translate first.
-	for i,v in ipairs(root) do
-		local w, h, d = v:get_size();
-		w = w + layer.spacing;
-		local z = 0;
-		local x = 0;
-		local ang = 0;
-		local hw = w * 0.5;
-		max_h = max_h > h and max_h or h;
-
--- special case, at 12 o clock is 0, 0 @ 0 rad. ang is for billboarding,
--- there should just be a model_flag for setting spherical/cylindrical
--- billboarding (or just do it in shader) but it's not there at the
--- moment and we don't want more shader variants or flags.
--- would be nice, yet not always solvable, to align positioning at the
--- straight angles (0, half-pi, pi, ...) though the focal point of the
--- user will likely often be straight ahead and that gets special
--- treatment anyhow.
-		if (i == 1) then
-			dphi_cw = dphi_cw + 1.5 * w;
-			dphi_ccw = dphi_ccw - 1.5 * w;
-			z = -radius - zp;
-			got_first = true;
-
-		elseif (i % 2 == 0) then
-			x = radius * math.sin(dphi_cw + w);
-			z = radius * math.cos(dphi_cw + w) - zp;
-			ang = getang(dphi_cw);
--- goes bad after one revolution, but that many clients is not very reasonable
-			if (v.active) then
-				dphi_cw = dphi_cw + w;
-			end
-		else
-			x = radius * math.sin(dphi_ccw - w);
-			z = radius * math.cos(dphi_ccw - w) - zp;
-			ang = getang(dphi_ccw);
--- goes bad after one revolution, but that many clients is not very reasonable
-			if (v.active) then
-				dphi_ccw = dphi_ccw - w;
-			end
-		end
-
--- unresolved, what to do if n_x or p_x reach pi?
-		if (v.active) then
-			move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
-			rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
-		end
-
-		v.layer_ang = ang;
-		v.layer_pos = {x, 0, z};
-	end
-
--- avoid linking to stay away from the cascade deletion problem, if it needs
--- to be done for animations, then take the delete- and set a child as the
--- new parent.
-	local as = layer.ctx.animation_speed;
-	for k,v in pairs(chld) do
-		local pw, ph, pd = k:get_size();
-		local ch = ph;
-		local lp = k.layer_pos;
-		local la = k.layer_ang;
-
--- if collapsed, we increment depth by something symbolic to avoid z-fighting,
--- then offset Y enough to just see the tip, otherwise use a similar strategy
--- to the root, ignore billboarding for the time being.
-		for i,j in ipairs(k) do
-			if (i % 2 == 0) then
-				move_image(j.vid, lp[1], lp[2] - ch, lp[3], as);
-				ch = ch + ph;
-			else
-				move_image(j.vid, lp[1], lp[2] + ch, lp[3], as);
-			end
-			rotate3d_model(j.vid, 0, 0, k.layer_ang, as)
-			pw, ph, pd = j:get_size();
-			ch = ch + ph;
-		end
-	end
 end
 
 -- these functions are partially dependent on the layout scheme
@@ -963,7 +920,6 @@ local function layer_swap(layer, left, count)
 	if (focus.layer_pos) then
 		move3d_model(focus.vid, focus.layer_pos[1],
 			focus.layer_pos[2], focus.layer_pos[3] + 0.1, 0.5 * layer.ctx.animation_speed);
---		rotate3d_model(focus.vid, 0, 0, 0, 0.5 * layer.ctx.animation_speed, ROTATE_RELATIVE);
 	end
 
 -- only the focus- window gets to run a >1 scale
@@ -978,7 +934,33 @@ end
 local function layer_cycle(layer, left, step)
 end
 
+local function layer_destroy(layer)
+
+	for i,v in ipairs(layer.ctx.layers) do
+		if (v == layer) then
+			table.remove(layer.ctx.layers, i);
+			break;
+		end
+	end
+	if (layer.ctx.selected_layer == layer) then
+		layer.ctx.selected_layer = layer.ctx.layers[1];
+	end
+
+-- rest will cascade
+	delete_image(layer.anchor);
+
+	for k,v in pairs(layer) do
+		layer[k] = nil;
+	end
+end
+
 local function layer_add(ctx, tag)
+	for k,v in ipairs(ctx.layers) do
+		if (v.name == tag) then
+			return;
+		end
+	end
+
 	local layer = {
 		ctx = ctx,
 		anchor = null_surface(1, 1),
@@ -994,11 +976,15 @@ local function layer_add(ctx, tag)
 		zpos = layer_zpos,
 		set_fixed = layer_set_fixed,
 		select = layer_select,
-		relayout = layer_relayout,
+		relayout = function(...)
+			return ctx.default_layouter(...);
+		end,
+		destroy = layer_destroy,
 
 		name = tag,
 
 		dx = 0, dy = 0, dz = 0,
+		radius = 0.5,
 		depth = 0.1,
 		spacing = 0.05,
 		opacity = 1.0
@@ -1039,7 +1025,10 @@ return function(ctx, surf, opts)
 		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
 	camtag_model(cam, 0.01, 100.0, 45.0, 1.33, true, true, 0, surf);
 
+	local prefix = opts.prefix and opts.prefix or "";
+
 -- actual vtable and properties
+	ctx.default_layouter = system_load(prefix .. "/layouters/default.lua")();
 	ctx.add_layer = layer_add;
 	ctx.camera = cam;
 	ctx.placeholder = placeholder;

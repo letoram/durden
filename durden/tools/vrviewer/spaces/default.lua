@@ -2,10 +2,11 @@ return {
 -- background, can't be swapped in and at the end of the viewport
 "layers/add=bg",
 "layers/layer_bg/settings/depth=99.0",
+"layers/layer_bg/settings/radius=99.0",
 "layers/layer_bg/settings/fixed=true",
 "layers/layer_bg/settings/ignore=true",
 "layers/layer_bg/add_model/sphere=bg",
-"layers/layer_bg/models/bg/source=sky_photo4.jpg",
+"layers/layer_bg/models/bg/source=park.png",
 
 -- allow a temporary override of the source using the 360bg connpoint
 "layers/layer_bg/models/bg/connpoint/temporary=360bg",
