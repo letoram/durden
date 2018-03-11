@@ -15,6 +15,44 @@
 -- minimize : minimize- target controls
 -- bginput  : input handlers for the wallpaper image (if one is set)
 --
+
+local floatmenu = {
+{
+	kind = "value",
+	name = "spawn_action",
+	initial = gconfig_get("advfloat_spawn"),
+	label = "Spawn Method",
+	description = "Change how new windows are being sized and positioned",
+-- missing (split/share selected) or join selected
+	set = {"click", "cursor", "draw", "auto"},
+	handler = function(ctx, val)
+		mode = val;
+		gconfig_set("advfloat_spawn", val);
+	end
+},
+{
+	kind = "value",
+	name = "icons",
+	label = "Icons",
+	description = "Control how the tool should manage icons",
+	eval = function() return false; end,
+	set = {"disabled", "global", "workspace"},
+	initial = gconfig_get("advfloat_icon"),
+	handler = function(ctx, val)
+		gconfig_set("advfloat_icon", val);
+	end
+}
+};
+
+global_menu_register("settings/wspaces",
+{
+	kind = "action",
+	name = "float",
+	submenu = true,
+	label = "Float",
+	description = "Advanced float workspace layout",
+	handler = floatmenu
+});
 system_load("tools/advfloat/cactions.lua")();
 system_load("tools/advfloat/minimize.lua")();
 system_load("tools/advfloat/spawnctl.lua")();
@@ -56,33 +94,4 @@ global_menu_register("workspace",
 		return active_display().spaces[active_display().space_ind].mode == "float";
 	end,
 	handler = workspace_menu
-});
-
-global_menu_register("settings/wspaces/float",
-{
-	kind = "value",
-	name = "spawn_action",
-	initial = gconfig_get("advfloat_spawn"),
-	label = "Spawn Method",
-	description = "Change how new windows are being sized and positioned",
--- missing (split/share selected) or join selected
-	set = {"click", "cursor", "draw", "auto"},
-	handler = function(ctx, val)
-		mode = val;
-		gconfig_set("advfloat_spawn", val);
-	end
-});
-
-global_menu_register("settings/wspaces/float",
-{
-	kind = "value",
-	name = "icons",
-	label = "Icons",
-	description = "Control how the tool should manage icons",
-	eval = function() return false; end,
-	set = {"disabled", "global", "workspace"},
-	initial = gconfig_get("advfloat_icon"),
-	handler = function(ctx, val)
-		gconfig_set("advfloat_icon", val);
-	end
 });
