@@ -15,6 +15,10 @@
 	   launcher- script for reasonable defaults for linux/BSDs with
 		 arcan on egl-dri platform.
 
+  * widgets/input:
+     new widget (target/input activated) that presents client provided
+     input labels as clickable options
+
 Minor:
   * regression in hotplugging causing nil table member dereference
 	  on remove event with active listeners
