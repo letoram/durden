@@ -258,7 +258,7 @@ function ui_scheme_menu(scope, tgt)
 			handler = function()
 				if (scope == "global") then
 					local lst = {};
-					for wnd in all_windows() do
+					for wnd in all_windows(true) do
 						table.insert(lst, wnd);
 					end
 					run_domain(v.actions, v.palette, lst);

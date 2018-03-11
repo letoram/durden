@@ -329,6 +329,10 @@ local function wnd_deselect(wnd, nopick)
 end
 
 local function output_mouse_devent(btl, wnd)
+	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		return;
+	end
+
 	btl.kind = "digital";
 	btl.mouse = true;
 
@@ -2102,8 +2106,9 @@ local function wnd_reassign(wnd, ind, ninv)
 		return;
 	end
 
+-- this ugly mess should really be split up into func/type
 	if (type(ind) == "string") then
-		for k,v in pairs(wm.spaces) do
+		for k,v in ipairs(wm.spaces) do
 			if (v.label == ind) then
 				ind = k;
 			end
@@ -2119,6 +2124,10 @@ local function wnd_reassign(wnd, ind, ninv)
 				ind = i;
 				break;
 			end
+		end
+		if (type(ind) == "table") then
+			warning("migrate couldn't space with matching table");
+			return;
 		end
 	else
 		newspace = wm.spaces[ind];
@@ -2822,6 +2831,9 @@ local function wnd_mousemotion(ctx, x, y, rx, ry)
 	end
 
 	if (wnd.mouse_lock_center) then
+		if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			return;
+		end
 		local rt = {
 			kind = "analog",
 			mouse = true,
@@ -2985,8 +2997,40 @@ local function wnd_getname(wnd)
 	end
 end
 
+-- allow one or multiple listeners in a chain, since this can be
+-- high frequency, try to avoid a table indirection if possible
+local function wnd_add_dispatch(wnd, ev, fun)
+	if (wnd.dispatch[ev]) then
+		if (type(wnd.dispatch[ev]) == "function") then
+			wnd.dispatch[ev] = {wnd.dispatch[ev]};
+		end
+		table.insert(wnd.dispatch[ev], fun);
+	else
+		wnd.dispatch[ev] = fun;
+	end
+end
+
+local function wnd_drop_dispatch(wnd, ev, fun)
+	if (not wnd.dispatch[ev]) then
+		warning("tried to remove handler for unhandled event: " .. ev);
+		return;
+	end
+	if (type(wnd.dispatch[ev]) == "function") then
+		if (wnd.dispatch[ev] == fun) then
+			wnd.dispatch[ev] = nil;
+		else
+			warning("tried to remove unregistered handler for: " .. ev);
+		end
+	else
+		table.remove_match(wnd.dispatch[ev], fun);
+-- demote back to single function
+		if (#wnd.dispatch[ev] == 1) then
+			wnd.dispatch[ev] = wnd.dispatch[ev][1];
+		end
+	end
+end
+
 local function wnd_addhandler(wnd, ev, fun)
-	assert(ev);
 	if (wnd.handlers[ev] == nil) then
 		warning("tried to add handler for unknown event: " .. ev);
 		return;
@@ -2998,7 +3042,7 @@ end
 local function wnd_drophandler(wnd, ev, fun)
 	assert(ev);
 	if (wnd.handlers[ev] == nil) then
-		warning("tried to add handler for unknown event: " .. ev);
+		warning("tried to remove handler for unknown event: " .. ev);
 		return;
 	end
 	table.remove_match(wnd.handlers[ev], fun);
@@ -4188,6 +4232,8 @@ local wnd_setup = function(wm, source, opts)
 		get_name = wnd_getname,
 		add_handler = wnd_addhandler,
 		drop_handler = wnd_drophandler,
+		add_dispatch = wnd_add_dispatch,
+		drop_dispatch = wnd_drop_dispatch,
 		migrate = wnd_migrate,
 		resize_effective = wnd_effective_resize,
 		recovertag = wnd_recovertag,

@@ -428,12 +428,25 @@ function extevh_default(source, stat)
 			active_display().debug_console:event_dispatch(wnd, stat.kind, stat);
 		end
 
--- and only forward if the window handler accepts
-		if (wnd.dispatch[stat.kind](wnd, source, stat)) then
+-- and if it absorbs the event, break the chain
+		local disp = wnd.dispatch[stat.kind];
+		local res = false;
+
+-- 1:1 or 1:many
+		if (type(disp) == "function") then
+			res = disp(wnd, source, stat);
+		elseif (type(disp) == "table") then
+			for i,v in ipairs(disp) do
+				res = v(wnd, source, stat) or res;
+			end
+		end
+
+		if (res) then
 			return;
 		end
 	end
 
+-- or use the default handler if provided
 	if (defhtbl[stat.kind]) then
 		defhtbl[stat.kind](wnd, source, stat);
 	else
