@@ -3,6 +3,10 @@
 --
 
 return function(layer)
+	if (layer.fixed) then
+		return;
+	end
+
 -- 1. separate models that have parents and root models
 	local root = {};
 	local chld = {};
@@ -22,35 +26,23 @@ return function(layer)
 		root[1]:select();
 	end
 
--- select is just about input, creation order is about position,
--- our zero position is at 12 o clock, so add or sub math.pi as
--- translation on the curve
 	local max_h = 0;
-	local h_pi = math.pi * 0.5;
-
-	local dphi_ccw = math.pi;
-	local dphi_cw = math.pi;
-
--- oversize the placement radius somewhat to account for the
--- alignment problem
-	local zp = layer.index * -layer.ctx.layer_distance;
-	local radius = math.abs(zp);
 
 	local function getang(phi)
-		phi = math.fmod(phi, 2 * math.pi);
-		return 180 * phi / math.pi - 180;
+		phi = math.fmod(-phi + 0.5*math.pi, 2 * math.pi);
+		return 180 * phi / math.pi;
 	end
 
--- position in a circle based on the layer z-pos as radius, but
--- recall that the model is linked to the layer anchor so we need
--- to translate first.
+	local rad = layer.radius;
+	local dphi_ccw = 0.5 * math.pi;
+	local dphi_cw = 0.5 * math.pi;
+
 	for i,v in ipairs(root) do
 		local w, h, d = v:get_size();
-		w = w + layer.spacing;
+		w = w + layer.spacing * 1.0 / rad;
 		local z = 0;
 		local x = 0;
 		local ang = 0;
-		local hw = w * 0.5;
 		max_h = max_h > h and max_h or h;
 
 -- special case, at 12 o clock is 0, 0 @ 0 rad. ang is for billboarding,
@@ -62,33 +54,41 @@ return function(layer)
 -- user will likely often be straight ahead and that gets special
 -- treatment anyhow.
 		if (i == 1) then
-			dphi_cw = dphi_cw + 1.5 * w;
-			dphi_ccw = dphi_ccw - 1.5 * w;
-			z = -radius - zp;
-			got_first = true;
+			z = -rad * math.sin(dphi_cw);
+			dphi_cw = dphi_cw - 0.5 * w;
+			dphi_ccw = dphi_ccw + 0.5 * w;
 
 		elseif (i % 2 == 0) then
-			x = radius * math.sin(dphi_cw + w);
-			z = radius * math.cos(dphi_cw + w) - zp;
-			ang = getang(dphi_cw);
--- goes bad after one revolution, but that many clients is not very reasonable
+			x = -rad * math.cos(dphi_cw - w);
+			z = -rad * math.sin(dphi_cw - w);
+
+			ang = getang(dphi_cw - 0.5 * w);
 			if (v.active) then
-				dphi_cw = dphi_cw + w;
+				dphi_cw = dphi_cw - w;
 			end
 		else
-			x = radius * math.sin(dphi_ccw - w);
-			z = radius * math.cos(dphi_ccw - w) - zp;
-			ang = getang(dphi_ccw);
--- goes bad after one revolution, but that many clients is not very reasonable
+			x = -rad * math.cos(dphi_ccw + w);
+			z = -rad * math.sin(dphi_ccw + w);
+
+			ang = getang(dphi_ccw + 0.5 * w);
 			if (v.active) then
-				dphi_ccw = dphi_ccw - w;
+				dphi_ccw = dphi_ccw + w;
 			end
 		end
 
 -- unresolved, what to do if n_x or p_x reach pi?
 		if (v.active) then
-			move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
-			rotate3d_model(v.vid, 0, 0, ang, v.ctx.animation_speed);
+			if (math.abs(v.layer_pos[1] - x) ~= 0.0001) or
+				(math.abs(v.layer_pos[3] - z) ~= 0.0001) or
+				(math.abs(v.layer_ang ~= ang) ~= 0.0001) then
+
+--			instant_image_transform(v.vid);
+				move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
+				rotate3d_model(v.vid,
+					v.rel_ang[1], v.rel_ang[2], v.rel_ang[3] + ang,
+					v.ctx.animation_speed
+				);
+			end
 		end
 
 		v.layer_ang = ang;
