@@ -337,6 +337,10 @@ local durden_visual = {
 		handler = function(ctx, val)
 			gconfig_set("borderw", tonumber(val));
 			active_display():rebuild_border();
+			for wnd in all_windows(nil, true) do
+				wnd.border_w = tonumber(val);
+				wnd:resize(wnd.width, wnd.height);
+			end
 			for k,v in pairs(active_display().spaces) do
 				v:resize();
 			end

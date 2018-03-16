@@ -78,7 +78,7 @@ local moverz_menu = {
 	handler = function(ctx, val)
 		local num = tonumber(val);
 		local wnd = active_display().selected;
-		wnd:grow(val, 0);
+		wnd:grow(num, 0);
 	end
 },
 {
@@ -91,7 +91,7 @@ local moverz_menu = {
 	handler = function(ctx, val)
 		local num = tonumber(val);
 		local wnd = active_display().selected;
-		wnd:grow(0, val);
+		wnd:grow(0, num);
 	end
 },
 {
@@ -562,7 +562,6 @@ return {
 					local new = null_surface(x2-x1, y2-y1);
 					image_sharestorage(wnd.canvas, new);
 
-
 -- calculate crop in source surface relative coordinates
 					local t = (y1 - props.y) / props.height;
 					local l = (x1 - props.x) / props.width;
@@ -571,8 +570,7 @@ return {
 
 -- bind to a window, with optional input-routing but run this as a one-off
 -- timer to handle the odd case where the add-window event would trigger
--- another selection region to nest. setting this too short seems to fail
--- to trigger the hook altogether (interesting)
+-- another selection region to nest.
 					local source_name = wnd.name;
 
 					timer_add_periodic("wndspawn", 2, true, function()
@@ -581,7 +579,7 @@ return {
 						end
 
 						show_image(new);
-						local cwin = active_display():add_window(new, {scalemode = "aspect"});
+						local cwin = active_display():add_window(new, {scalemode = "stretch"});
 						if (not cwin) then
 							delete_image(new);
 							return;
@@ -592,7 +590,7 @@ return {
 							cwin.origo_ll = wnd.origo_ll;
 							cwin:set_crop(
 								t * sprops.height, l * sprops.width,
-								d * sprops.height, r * sprops.width
+								d * sprops.height, r * sprops.width, false, true
 							);
 						end
 
@@ -608,6 +606,7 @@ return {
 						recrop();
 						cwin:set_title("Slice");
 						cwin.source_name = wnd.name;
+						cwin.name = cwin.name .. "_crop";
 
 -- add references to the external source
 					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
