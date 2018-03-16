@@ -56,7 +56,9 @@ local function wnd_attach(wm, wnd)
 		end
 		DURDEN_REGIONSEL_TRIGGER = function()
 			activate_pending();
-			wnd:show();
+			if (wnd.show) then
+				wnd:show();
+			end
 			DURDEN_REGIONFAIL_TRIGGER = nil;
 		end
 	elseif (mode == "draw") then

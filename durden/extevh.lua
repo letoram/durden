@@ -35,40 +35,6 @@ end
 
 load_archetypes();
 
--- default event handlers for events that can be overridden by an atype
-local shared_dispatch = {
-	input_label = function(wnd, source, tbl)
-		if (not wnd.input_labels) then
-			wnd.input_labels = {};
-		end
-
--- NOTE: this does not currently respect:
--- a. "description update to language switch response"
--- b. per- datatype translation
-		if (#wnd.input_labels > 100) then
-			return;
-		end
-
-		local ent = {tbl.labelhint, tbl.idatatype, tbl.description};
-
--- add the default as binding unless there's a collision
-		if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
-			local sym = SYMTABLE[tbl.initial];
-			if (tbl.modifiers > 0) then
-				sym = decode_modifiers(tbl.modifiers) .. "_" .. sym;
-			end
-
--- keep track of the translated string as we might want to present it
-			if (not wnd.labels[sym]) then
-				wnd.labels[sym] = tbl.labelhint;
-				ent[4] = sym;
-			end
-		end
-
-		table.insert(wnd.input_labels, ent);
-	end
-};
-
 -- check / manage external window creation interception
 local extevh_track = {};
 function extevh_set_intercept(path, handler)
@@ -148,6 +114,37 @@ function extevh_clipboard(wnd, source, status)
 end
 
 local defhtbl = {};
+defhtbl["input_label"] =
+function(wnd, source, tbl)
+	if (not wnd.input_labels) then
+		wnd.input_labels = {};
+	end
+
+-- NOTE: this does not currently respect:
+-- a. "description update to language switch response"
+-- b. per- datatype translation
+	if (#wnd.input_labels > 100) then
+		return;
+	end
+
+	local ent = {tbl.labelhint, tbl.idatatype, tbl.description};
+
+-- add the default as binding unless there's a collision
+	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
+		local sym = SYMTABLE[tbl.initial];
+		if (tbl.modifiers > 0) then
+			sym = table.concat(decode_modifiers(tbl.modifiers), "_") .. "_" .. sym;
+		end
+
+-- keep track of the translated string as we might want to present it
+		if (not wnd.labels[sym]) then
+			wnd.labels[sym] = tbl.labelhint;
+			ent[4] = sym;
+		end
+	end
+
+	table.insert(wnd.input_labels, ent);
+end
 
 defhtbl["frame"] =
 function(wnd, source, stat)
@@ -274,7 +271,7 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	end
 
 	wnd.bindings = atbl.bindings;
-	wnd.dispatch = merge_dispatch(shared_dispatch, atbl.dispatch);
+	wnd.dispatch = atbl.dispatch;
 	wnd.labels = atbl.labels and atbl.labels or {};
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
 	wnd.atype = atype;

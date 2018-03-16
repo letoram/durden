@@ -1713,11 +1713,16 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		end
 
 		image_set_txcos(wnd.canvas, {s1, t1, s2, t1, s2, t2, s1, t2});
-		resize_image(src,
-			outw - wnd.crop_values[2] - wnd.crop_values[4],
-			outh - wnd.crop_values[1] - wnd.crop_values[3],
-			wnd_animation_time(wnd, src, false, false)
-		);
+
+		if (not wnd.ignore_crop) then
+			resize_image(src,
+				outw - wnd.crop_values[2] - wnd.crop_values[4],
+				outh - wnd.crop_values[1] - wnd.crop_values[3],
+				wnd_animation_time(wnd, src, false, false)
+			);
+		else
+			resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false));
+		end
 	else
 		resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false));
 	end
@@ -1890,8 +1895,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	newh = math.clamp(newh, wnd.wm.min_height);
 
 	if (not force) then
-		neww = math.clamp(neww, nil, wnd.max_w);
-		newh = math.clamp(newh, nil, wnd.max_h);
+		neww = math.clamp(neww, nil, wnd.max_w, wnd.dh_pad_w);
+		newh = math.clamp(newh, nil, wnd.max_h, wnd.dh_pad_h);
 	end
 
 -- take the properties of the backing store, subtract the crop area
@@ -2540,7 +2545,7 @@ local function wnd_droppopup(wnd, all)
 end
 
 -- define a new crop region and remap mouse coordinates
-local function wnd_crop(wnd, t, l, d, r, mask)
+local function wnd_crop(wnd, t, l, d, r, mask, nopad)
 	local props = image_storage_properties(wnd.canvas);
 	t = math.clamp(t, 0, props.width);
 	l = math.clamp(l, 0, props.height);
@@ -2551,8 +2556,15 @@ local function wnd_crop(wnd, t, l, d, r, mask)
 -- when sending window sizes, add these values in order to go from sliced
 -- window size to actual surface size, since we are now cropped, there is
 -- more area for the client to use
-	wnd.dh_pad_w = l + r;
-	wnd.dh_pad_h = t + d;
+	if (nopad) then
+		wnd.dh_pad_w = 0;
+		wnd.dh_pad_h = 0;
+		wnd.ignore_crop = true;
+	else
+		wnd.ignore_crop = false;
+		wnd.dh_pad_w = l + r;
+		wnd.dh_pad_h = t + d;
+	end
 
 	wnd:resize(wnd.width, wnd.height, false, mask);
 end
