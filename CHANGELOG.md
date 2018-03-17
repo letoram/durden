@@ -7,9 +7,9 @@
 	   autolayout now recurses when one pass didn't position all windows
      autolayout also got a hide/reveal mode
 
-	 tools/vrviewer:
-     added VR viewer for 180/360 panoramic monoscopic or stereoscopic
-     sources
+	 tools/vrviewer
+	   added 'vrviewer', an integreated 3D/VR tool that acts as a
+		 3D desktop-within-the-desktop.
 
   * distr/durden:
 	   launcher- script for reasonable defaults for linux/BSDs with
@@ -19,9 +19,25 @@
      new widget (target/input activated) that presents client provided
      input labels as clickable options
 
+	* custom-crop:
+	   support cropping [t l d r] px from the canvas area
+
+	* impostors:
+	   crop t- px and bind to a toggle-able titlebar
+
+Breaking:
+  * statusbar visual config area changed to [px] from % point and
+	  order changed to [t l r d] to match similar functions
+
+	* target titlebar controls moved to its own group as it started
+	  to grow large
+
 Minor:
   * regression in hotplugging causing nil table member dereference
 	  on remove event with active listeners
+
+  * reworked most sizing / positioning code to be less strict on
+	  client- driven resizing
 
 # 0.4.0
   * Display region sharing now supports force-pushing into clients

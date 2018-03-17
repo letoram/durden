@@ -292,20 +292,33 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Stereoscopic Model",
 		description = "Mark the contents as stereoscopic and apply a view dependent mapping",
 		kind = "value",
-		set = {"none", "sbs", "oau"},
+		set = {"none", "sbs", "sbs-rl", "oau", "oau-rl"},
 
 		handler = function(ctx, val)
 			if (val == "none") then
 				model:set_stereo({
-					0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0
 				});
 			elseif (val == "sbs") then
 				model:set_stereo({
-					0.0, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0
+					0.0, 0.0, 0.5, 1.0,
+					0.5, 0.0, 0.5, 1.0
+				});
+			elseif (val == "sbs-rl") then
+				model:set_stereo({
+					0.5, 0.0, 0.5, 1.0,
+					0.0, 0.0, 0.5, 1.0
 				});
 			elseif (val == "oau") then
 				model:set_stereo({
-					0.0, 0.0, 1.0, 0.5, 0.0, 0.5, 1.0, 0.5
+					0.0, 0.0, 1.0, 0.5,
+					0.0, 0.5, 1.0, 0.5
+				});
+			elseif (val == "oau-rl") then
+				model:set_stereo({
+					0.0, 0.5, 1.0, 0.5,
+					0.0, 0.0, 1.0, 0.5
 				});
 			end
 		end
