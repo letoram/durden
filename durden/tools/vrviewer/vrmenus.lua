@@ -240,28 +240,27 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Map",
 		description = "Map the contents of another window to the model",
 		kind = "value",
-		eval =  function() return type(durden) == "function"; end,
 		set = function()
 			local lst = {};
-			for wnd in all_windows(true) do
-				if (valid_vid(wnd.external)) then
-					table.insert(lst, wnd:identstr());
-				end
+			for wnd in all_windows(nil, true) do
+				table.insert(lst, wnd:identstr());
 			end
 			return lst;
 		end,
 		eval = function()
-			for wnd in all_windows(true) do
-				if (valid_vid(wnd.external)) then
-					return true;
-				end
+			if (type(durden) ~= "function") then
+				return false;
+			end
+			for wnd in all_windows(nil, true) do
+				return true;
 			end
 		end,
 		handler = function(ctx, val)
-			for wnd in all_windows(true) do
+			for wnd in all_windows(nil, true) do
 				if wnd:identstr() == val then
 					model.external = wnd.external;
 					image_sharestorage(wnd.canvas, model.vid);
+					model:show();
 					return;
 				end
 			end
