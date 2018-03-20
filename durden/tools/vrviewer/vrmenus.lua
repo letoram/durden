@@ -329,6 +329,7 @@ end
 
 local function change_model_menu(wnd, layer)
 	local res = {
+	{
 		name = "selected",
 		kind = "action",
 		submenu = true,
@@ -339,6 +340,7 @@ local function change_model_menu(wnd, layer)
 		eval = function()
 			return layer.selected ~= nil;
 		end
+	}
 	};
 
 	for i,v in ipairs(layer.models) do

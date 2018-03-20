@@ -321,61 +321,76 @@ local function model_destroy(model)
 
 -- if we are currently selected, swap in something else
 	if (layer.selected == model) then
-		layer:swap(true, 1);
+		if (#model.children > 0) then
+			for i=2,#model.children do
+				model.children[i].parent = model.children[1];
+				table.insert(model.children[1].children, model.children[i]);
+			end
+			model.children[1].parent = nil;
+			layer.selected = model.children[1];
+			model.children = {};
+		else
+			layer:swap(true, 1);
+		end
 		if (layer.selected == model) then
 			layer.selected = nil;
 		end
 	end
 
-	table.remove_match(layer.models, model);
-
 -- rebalance the list of models so the positioning doesn't "flip", we can
 -- do this by finding every root after our deletion point and inverting
 -- their position
---	local ind;
---	for ind=1,#layer.models do
---		if (layer.models[ind] == model) then
---			break;
---		end
---	end
+	local ind;
+	for i=1,#layer.models do
+		if (layer.models[i] == model) then
+			ind = i;
+			break;
+		end
+	end
+	if (not ind) then
+		warning("no match in destroy()");
+		return;
+	end
 
--- resolve into X = X+1 but ignore non-root node
---	local nexti = function(ind)
---		local res;
---		for res=ind+1, #layer.models do
---			if (not layer.models[res].parent) then
---				return res;
---			end
---		end
---		return nil;
---	end
+-- resolve into X = X+1 in either X or Y dimension
+	local nexti = function(ind)
+		local res;
+		for res=ind+1, #layer.models do
+			if (model.parent == layer.models[res].parent) then
+				return res;
+			end
+		end
+		return nil;
+	end
+-- swap next after deletion index with the one after that,
+-- preventing the deletion-left/right inversion problem
+	local start = nexti(ind);
+	while start do
+		local st = nexti(start);
+		local tmp = layer.models[start];
+		if (st) then
+			layer.models[start] = layer.models[st];
+			layer.models[st] = tmp;
+			start = nexti(st);
+		else
+			break;
+		end
+	end
+	table.remove(layer.models, ind);
 
--- swap next after deletion index with the one after that, preventing
--- the deletion-left/right inversion problem
---	local start = nexti(ind);
---	while start do
---		local st = nexti(start);
---		local tmp = layer.models[start];
---		if (st) then
---			layer.models[start] = layer.models[st];
---			layer.models[st] = tmp;
---			start = layer.models[st];
---		else
---			break;
---		end
---	end
---	table.remove(layer.models, ind);
-
--- reparent children
-	for _,v in ipairs(model.children) do
-		v.parent = model.parent;
-		if (model.parent) then
-			tabl.insert(model.parent.children, v);
+-- rebalance in x or y?
+	if (#model.children > 0) then
+		for i=2,#model.children do
+			model.children.parent = model.children[1];
+		end
+		if (model.children[1]) then
+			model.children[1].parent = nil;
 		end
 	end
 
+-- make sure parent doesn't keep on tracking
 	if (model.parent) then
-		table.remove(model.parent.children, model);
+		table.remove_match(model.parent.children, model);
 		model.parent = nil;
 	end
 
@@ -405,12 +420,13 @@ local function model_destroy(model)
 
 -- animate fade out if desired
 	if (model.ctx.animation_speed > 0) then
-		blend_image(model.vid, 0.0, model.ctx.animation_speed);
+		blend_image(model.vid, 0.0, 0.5* model.ctx.animation_speed);
 		tag_image_transform(model.vid, MASK_OPACITY, destroy);
 	else
 		destroy();
 	end
 
+-- and rebalance / reposition
 	layer:relayout();
 end
 
@@ -420,6 +436,7 @@ local function apply_connrole(layer, model, source)
 	local rv = false;
 
 	if (model.ext_name) then
+		print("reactivate ", model.ext_name);
 		delete_image(source);
 		model:set_connpoint(model.ext_name, model.ext_kind);
 		rv = true;
@@ -520,9 +537,18 @@ local function model_reparent(model, new_parent)
 	if (model.parent) then
 		table.remove_match(model.parent.children, model);
 	end
+
+-- if there's a new parent, it gets all the old children too
 	if (new_parent) then
 		table.insert(new_parent.children, model);
+		for i,v in ipairs(model.children) do
+			table.insert(new_parent.children, v);
+			v.parent = new_parent;
+		end
 	end
+	model.children = {};
+
+	model.parent = new_parent;
 	model.layer:relayout();
 end
 
@@ -531,19 +557,32 @@ local function model_mergecollapse(model)
 	model.layer:relayout();
 end
 
--- same as the terminal spawn setup, just tag the kind so that we can
--- deal with the behavior response in ext_kind
-local function model_connpoint(model, name, kind)
+-- same as the terminal spawn setup, just tag the kind so that
+-- we can deal with the behavior response in ext_kind
+local function model_connpoint(model, name, kind, nosw)
 	local cp = target_alloc(name,
 	function(source, status)
 		if (status.kind == "connected") then
 			target_updatehandler(source, function(...)
 				return modelconn_eventhandler(model.layer, model, ...);
 			end);
+
+		if (kind == "child") then
+			return model_connpoint(model, name, kind, true);
+		end
+
+-- this should only happen in rare (OOM) circumstances, then it is
+-- probably better to do nother here or spawn a timer
 		elseif (status.kind == "terminated") then
 			delete_image(source);
 		end
 	end);
+
+-- there might be a current connection point that we override
+	if (not nosw and valid_vid(model.ext_cp, TYPE_FRAMESERVER)) then
+		delete_image(model.ext_cp);
+		model.ext_cp = nil;
+	end
 
 	if (not valid_vid(cp)) then
 		return;
@@ -551,15 +590,15 @@ local function model_connpoint(model, name, kind)
 
 	link_image(cp, model.vid);
 	model.ext_kind = kind;
+	model.ext_name = name;
+	model.ext_cp = cp;
 
 -- special behavior: on termination, just set inactive and relaunch
 	if (kind == "reveal") then
-		model.ext_name = name;
 		model.active = false;
 		model.layer:relayout();
 
 	elseif (kind == "temporary") then
-		model.ext_name = name;
 	end
 end
 
@@ -732,6 +771,7 @@ local function model_eventhandler(wnd, model, source, status)
 		end
 
 	elseif (status.kind == "registered") then
+		print(debug.traceback());
 		model:set_external(source);
 
 	elseif (status.kind == "resized") then
@@ -785,7 +825,7 @@ modelconn_eventhandler = function(layer, model, source, status)
 			return;
 
 -- there is an external connection handler that takes over whatever this model was doing
-		elseif (model.ext_kind) then
+		elseif (model.ext_kind ~= "child") then
 			target_updatehandler(source, function(source, status)
 				return dstfun(layer.ctx, model, source, status);
 			end);
@@ -797,6 +837,7 @@ modelconn_eventhandler = function(layer, model, source, status)
 			local new_model =
 				layer:add_model("rectangle", model.name .. "_ext_" .. tostring(model.extctr));
 
+			model.extctr = model.extctr + 1;
 			target_updatehandler(source, function(source, status)
 				return dstfun(layer.ctx, new_model, source, status);
 			end);
@@ -807,6 +848,9 @@ modelconn_eventhandler = function(layer, model, source, status)
 			if (model.parent) then
 				new_model:set_parent(model.parent);
 			else
+				if (model.layer.selected == model) then
+					new_model:select();
+				end
 				model:set_parent(new_model);
 			end
 		end
@@ -846,23 +890,10 @@ local function layer_add_terminal(layer, opts)
 		return;
 	end
 
+-- special case, we both have an external vid and a means of connecting
 	model:set_external(vid, true);
 	link_image(vid, model.vid);
-
--- handover to a 'dispatch lut + create model' intermediate function
-	local conn = target_alloc(cp, function(source, status)
-		if (status.kind == "connected") then
-			target_updatehandler(source, function(...)
-				return modelconn_eventhandler(layer, model, ...);
-			end);
-		elseif (status.kind == "terminated") then
-			delete_image(source);
-		end
-	end);
-
-	if (valid_vid(conn)) then
-		link_image(conn, model.vid);
-	end
+	model:set_connpoint(cp, "child");
 end
 
 local function layer_set_fixed(layer, fixed)
@@ -932,6 +963,7 @@ end
 
 -- same as _swap, but more movement and more directions
 local function layer_cycle(layer, left, step)
+
 end
 
 local function layer_destroy(layer)

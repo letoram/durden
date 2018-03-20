@@ -16,11 +16,11 @@ return function(layer)
 			table.insert(root, v);
 		else
 			chld[v.parent] = chld[v.parent] and chld[v.parent] or {};
-			table.insert(chld, v.parent);
+			table.insert(chld[v.parent], v);
 		end
 	end
 
--- make sure we have one element that is selected at least
+-- make sure we have one element that is selected and visible
 	if (not layer.selected and root[1] and
 		valid_vid(root[1].external, TYPE_FRAMESERVER)) then
 		root[1]:select();
@@ -108,16 +108,15 @@ return function(layer)
 -- if collapsed, we increment depth by something symbolic to avoid z-fighting,
 -- then offset Y enough to just see the tip, otherwise use a similar strategy
 -- to the root, ignore billboarding for the time being.
-		for i,j in ipairs(k) do
+		for i,j in ipairs(v) do
 			if (i % 2 == 0) then
-				move_image(j.vid, lp[1], lp[2] - ch, lp[3], as);
-				ch = ch + ph;
+				move3d_model(j.vid, lp[1], lp[2] - ch, lp[3], as);
+				ch = ch + ph + layer.spacing;
 			else
-				move_image(j.vid, lp[1], lp[2] + ch, lp[3], as);
+				move3d_model(j.vid, lp[1], lp[2] + ch, lp[3], as);
 			end
-			rotate3d_model(j.vid, 0, 0, k.layer_ang, as)
+			rotate3d_model(j.vid, 0, 0, la, as)
 			pw, ph, pd = j:get_size();
-			ch = ch + ph;
 		end
 	end
 end
