@@ -176,7 +176,7 @@ function table.remove_match(tbl, match)
 	for k,v in ipairs(tbl) do
 		if (v == match) then
 			table.remove(tbl, k);
-			return v;
+			return v, k;
 		end
 	end
 
