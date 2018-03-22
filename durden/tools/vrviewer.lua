@@ -58,7 +58,7 @@ local function drag_scale(ctx, vid, dx, dy)
 
 -- work with a 'scale factor' which retains aspect ratio even when on the sides
 	local tot = 0.01 * (dx + dy);
-	model:scale_factor(tot, true);
+	model:set_scale_factor(tot, true);
 	model.layer:relayout();
 
 	model.ctx.animation_speed = as;

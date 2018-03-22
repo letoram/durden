@@ -58,6 +58,40 @@ local function get_layer_settings(wnd, layer)
 		end
 	},
 	{
+		name = "spacing",
+		label = "Spacing",
+		initial = tostring(layer.spacing),
+		kind = "value",
+		hint = "(0..1)",
+		description = "Radius/Depth/Width dependent model spacing",
+		validator = gen_valid_float(0.0, 1.0),
+		handler = function(ctx, val)
+			layer.spacing = tonumber(val);
+		end
+	},
+	{
+		name = "active_scale",
+		label = "Active Scale",
+		description = "Default focus slot scale factor for new models",
+		initial = tostring(layer.active_scale),
+		kind = "value",
+		validator = gen_valid_float(0.0, 100.0),
+		handler = function(ctx, val)
+			layer.active_scale = tonumber(val);
+		end
+	},
+	{
+		name = "inactive_scale",
+		label = "Inactive Scale",
+		description = "Default inactive slot scale factor for new models",
+		initial = tostring(layer.inactive_scale),
+		kind = "value",
+		validator = gen_valid_float(0.0, 100.0),
+		handler = function(ctx, val)
+			layer.inactive_scale = tonumber(val);
+		end
+	},
+	{
 		name = "fixed",
 		label = "Fixed",
 		initial = layer.fixed and "true" or "false",
@@ -81,14 +115,18 @@ local function get_layer_settings(wnd, layer)
 	};
 end
 
-local function set_source_asynch(wnd, layer, model, source, status)
+local function set_source_asynch(wnd, layer, model, subid, source, status)
 	if (status.kind == "load_failed" or status.kind == "terminated") then
 		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
 		delete_image(source);
 		return;
 	elseif (status.kind == "loaded") then
 		blend_image(model.vid, model.opacity, model.ctx.animation_speed);
-		image_sharestorage(source, model.vid);
+		if (subid) then
+			set_image_as_frame(model.vid, source, subid);
+		else
+			image_sharestorage(source, model.vid);
+		end
 		image_texfilter(source, FILTER_BILINEAR);
 		model.source = source;
 	end
@@ -132,8 +170,53 @@ local function build_connpoint(wnd, layer, model)
 	};
 end
 
-local function model_settings_menu(wnd, layer, model)
-	local res = {
+local function add_mapping_options(tbl, wnd, layer, model, subid)
+	table.insert(tbl,
+	{
+		name = "connpoint",
+		label = "Connection Point",
+		description = "Allow external clients to connect and map to this model",
+		submenu = true,
+		kind = "action",
+		handler = function()
+			return build_connpoint(wnd, layer, model);
+		end
+	});
+	local load_handler = function(ctx, res, flip)
+		if (not resource(res)) then
+			return;
+		end
+		if (flip) then
+			switch_default_imageproc(IMAGEPROC_FLIPH);
+		end
+		local vid = load_image_asynch(res,
+			function(...)
+				set_source_asynch(wnd, layer, model, subid, ...);
+			end
+		);
+		switch_default_imageproc(IMAGEPROC_NORMAL);
+
+-- link so life cycle matches model
+		if (valid_vid(vid)) then
+			link_image(vid, model.vid);
+		end
+	end
+
+	table.insert(tbl,
+	{
+		name = "source_inv",
+		label = "Source-flip",
+		kind = "value",
+		description = "Specify the path to a resource that should be mapped to the model",
+		validator =
+		function(str)
+			return str and string.len(str) > 0;
+		end,
+		handler = function(ctx, res)
+			load_handler(ctx, res, false);
+		end
+	});
+	table.insert(tbl,
 	{
 		name = "source",
 		label = "Source",
@@ -144,32 +227,42 @@ local function model_settings_menu(wnd, layer, model)
 			return str and string.len(str) > 0;
 		end,
 		handler = function(ctx, res)
-			if (not resource(res)) then
-				return;
-			end
-			switch_default_imageproc(IMAGEPROC_FLIPH);
-			local vid = load_image_asynch(res,
-				function(...)
-					set_source_asynch(wnd, layer, model, ...);
-				end
-			);
-			switch_default_imageproc(IMAGEPROC_NORMAL);
-
--- link so life cycle matches model
-			if (valid_vid(vid)) then
-				link_image(vid, model.vid);
-			end
+			load_handler(ctx, res, true);
 		end
-	},
+	});
+	table.insert(tbl,
 	{
-		name = "destroy",
-		label = "Destroy",
-		kind = "action",
-		description = "Delete the model and all associated/mapped resources",
-		handler = function(ctx, res)
-			model:destroy();
+		name = "map",
+		label = "Map",
+		description = "Map the contents of another window to the model",
+		kind = "value",
+		set = function()
+			local lst = {};
+			for wnd in all_windows(nil, true) do
+				table.insert(lst, wnd:identstr());
+			end
+			return lst;
+		end,
+		eval = function()
+			if (type(durden) ~= "function" or subid ~= nil) then
+				return false;
+			end
+			for wnd in all_windows(nil, true) do
+				return true;
+			end
+		end,
+		handler = function(ctx, val)
+			for wnd in all_windows(nil, true) do
+				if wnd:identstr() == val then
+					model.external = wnd.external;
+					image_sharestorage(wnd.canvas, model.vid);
+					model:show();
+					return;
+				end
+			end
 		end
-	},
+	});
+	table.insert(tbl,
 	{
 		name = "browse",
 		label = "Browse",
@@ -182,7 +275,7 @@ local function model_settings_menu(wnd, layer, model)
 			local loadfn = function(res)
 				local vid = load_image_asynch(res,
 					function(...)
-						set_source_asynch(wnd, layer, model, ...);
+						set_source_asynch(wnd, layer, model, nil, ...);
 					end
 				);
 				if (valid_vid(vid)) then
@@ -191,6 +284,47 @@ local function model_settings_menu(wnd, layer, model)
 			end
 			browse_file({},
 				{png = loadfn, jpg = loadfn, bmp = loadfn}, SHARED_RESOURCE, nil);
+		end
+	});
+end
+
+local function gen_face_menu(wnd, layer, model)
+	local res = {};
+	for i=1, model.n_sides do
+		table.insert(res, {
+			name = tostring(i),
+			label = tostring(i),
+			kind = "action",
+			submenu = true,
+			handler = function()
+				local res = {};
+				add_mapping_options(res, wnd, layer, model, i-1);
+				return res;
+			end
+		});
+	end
+	return res;
+end
+
+local function model_settings_menu(wnd, layer, model)
+	local res = {
+	{
+		name = "chld_swap",
+		label = "Child Swap",
+		kind = "value",
+		hint = "(<0 +y, >0 -y)",
+		description = "Switch parent slot with a relative child",
+		handler = function(ctx, val)
+			model:vswap(tonumber(val));
+		end
+	},
+	{
+		name = "destroy",
+		label = "Destroy",
+		kind = "action",
+		description = "Delete the model and all associated/mapped resources",
+		handler = function(ctx, res)
+			model:destroy();
 		end
 	},
 	{
@@ -236,44 +370,30 @@ local function model_settings_menu(wnd, layer, model)
 		end,
 	},
 	{
-		name = "map",
-		label = "Map",
-		description = "Map the contents of another window to the model",
+		name = "scale",
+		label = "Scale Factor",
+		description = "Set model-focus (center slot) scale factor",
 		kind = "value",
-		set = function()
-			local lst = {};
-			for wnd in all_windows(nil, true) do
-				table.insert(lst, wnd:identstr());
-			end
-			return lst;
-		end,
-		eval = function()
-			if (type(durden) ~= "function") then
-				return false;
-			end
-			for wnd in all_windows(nil, true) do
-				return true;
-			end
-		end,
+		validator = gen_valid_num(0.5, 10.0),
 		handler = function(ctx, val)
-			for wnd in all_windows(nil, true) do
-				if wnd:identstr() == val then
-					model.external = wnd.external;
-					image_sharestorage(wnd.canvas, model.vid);
-					model:show();
-					return;
-				end
-			end
+			return model:set_scale_factor(tonumber(val));
 		end
 	},
 	{
-		name = "connpoint",
-		label = "Connection Point",
-		description = "Allow external clients to connect and map to this model",
-		submenu = true,
-		kind = "action",
+		name = "multimap",
+		label = "Multimap",
+		description = "Set the model to have one texture per face",
+		eval = function() return model.n_sides and model.n_sides > 1; end,
 		handler = function()
-			return build_connpoint(wnd, layer, model);
+		end,
+	},
+	{
+		name = "merge_collapse",
+		label = "Merge/Collapse",
+		description = "Toggle between Merged(stacked) and Collapsed child layouting",
+		kind = "action",
+		handler = function(ctx)
+			model.merged = not model.merged;
 		end
 	},
 	{
@@ -321,9 +441,22 @@ local function model_settings_menu(wnd, layer, model)
 				});
 			end
 		end
-	},
+		}
 	};
--- stereo, source, external connection point
+
+-- if the source is in cubemap state, we need to work differently
+	add_mapping_options(res, wnd, layer, model, nil);
+	if (model.n_sides and model.n_sides > 1) then
+		table.insert(res, {
+			name = "faces",
+			label = "Faces",
+			kind = "action",
+			submenu = true,
+			description = "Map data sources to individual model faces",
+			handler = function() return gen_face_menu(wnd, layer, model); end
+		});
+	end
+
 	return res;
 end
 
@@ -394,13 +527,12 @@ local function get_layer_menu(wnd, layer)
 			name = "swap",
 			label = "Swap",
 			eval = function()
-				return #layer.models > 1;
+				return layer:count_root() > 1;
 			end,
 			kind = "value",
-			validator = function(val)
-				return (
-					gen_valid_num(-1*(#layer.models),1*(#layer.models))
-				)(val);
+			validator = function(val) --not exact
+				local cnt = layer:count_root();
+				return (gen_valid_num(-cnt,cnt))(val);
 			end,
 			hint = "(< 0: left, >0: right)",
 			description = "Switch center/focus window with one to the left or right",
@@ -410,6 +542,29 @@ local function get_layer_menu(wnd, layer)
 					layer:swap(true, -1*val);
 				elseif (val > 0) then
 					layer:swap(false, val);
+				end
+			end
+		},
+		{
+			name = "cycle",
+			label = "Cycle",
+			eval = function()
+				return #layer.models > 1;
+			end,
+			kind = "value",
+			validator = function(val)
+				return (
+					gen_valid_num(-1*(#layer.models),1*(#layer.models))
+				)(val);
+			end,
+			hint = "(< 0: left, >0: right)",
+			description = "Cycle windows on left or right side",
+			handler = function(ctx, val)
+				val = tonumber(val);
+				if (val < 0) then
+					layer:cycle(true, -1*val);
+				else
+					layer:cycle(false, val);
 				end
 			end
 		},
@@ -544,6 +699,21 @@ local function layer_menu(wnd)
 		});
 
 		table.insert(res, {
+			name = "grow_shrink",
+			label = "Grow/Shrink",
+			description = "Increment (>0) or decrement (<0) the layout radius of all layers",
+			kind = "value",
+			validator = gen_valid_float(-10, 10),
+			handler = function(ctx, val)
+				local step = tonumber(val);
+				for i,v in ipairs(wnd.layers) do
+					instant_image_transform(v.anchor);
+					v.radius = v.radius + step;
+					v:relayout();
+				end
+			end
+		});
+		table.insert(res, {
 			name = "push_pull",
 			label = "Push/Pull",
 			description = "Move all layers relatively closer (>0) or farther away (<0)",
@@ -554,7 +724,7 @@ local function layer_menu(wnd)
 				for i,v in ipairs(wnd.layers) do
 					instant_image_transform(v.anchor);
 					v.dz = v.dz + step;
-					move3d_model(v.anchor, v.dx, v.dy, layer:zpos(), wnd.animation_speed);
+					move3d_model(v.anchor, v.dx, v.dy, v:zpos(), wnd.animation_speed);
 				end
 			end
 		});
@@ -592,6 +762,16 @@ local function layer_menu(wnd)
 			handler = function() return get_layer_menu(wnd, v); end
 		});
 	end
+
+	table.insert(res, {
+		name = "dump",
+		kind = "action",
+		label = "Dump",
+		description = "Dump all layer configuration to stdout",
+		handler = function()
+			wnd:dump(print);
+		end
+	});
 
 	return res;
 end

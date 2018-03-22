@@ -41,7 +41,7 @@ void main()
 	}
 
 	texco = tc;
-	gl_Position = projection * modelview * vert;
+	gl_Position = (projection * modelview) * vert;
 }
 ]];
 
@@ -102,8 +102,8 @@ local function shader_defaults()
 
 	shader_uniform(vrshaders.geom_inv, "flip", "b", false);
 	shader_uniform(vrshaders.rect_inv, "flip", "b", false);
-	shader_uniform(vrshaders.rect, "curve", "f", 0.01);
-	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.01);
+	shader_uniform(vrshaders.rect, "curve", "f", 0.1);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.1);
 end
 shader_defaults();
 
@@ -250,23 +250,23 @@ local function setup_vr_display(wnd, callback, opts)
 end
 
 local function model_scale_factor(model, factor, relative)
+	if (relative) then
+		model.scale_factor = model.scale_factor + factor;
+	else
+		model.scale_factor = factor;
+	end
 end
 
-local function model_scale(model, sx, sy, sz, save)
-	if (not sx) then
-		model.scalev = model.old_scalev;
-	else
-		model.scalev = {
-			sx,
-			sy and sy or model.scalev[2],
-			sz and sz or model.scalev[3]
-		};
+local function model_scale(model, sx, sy, sz)
+	if (not sx or not sy or not sz) then
+		return;
 	end
-	if (save) then
-		model.old_scalev = model.scalev;
-	end
-	scale3d_model(model.vid,
-		model.scalev[1], model.scalev[2], model.scalev[3], model.ctx.animation_speed);
+
+	model.scalev = {
+		sx,
+		sy and sy or model.scalev[2],
+		sz and sz or model.scalev[3]
+	};
 end
 
 local function model_external(model, vid, flip)
@@ -285,14 +285,15 @@ local function model_external(model, vid, flip)
 	model.external = vid;
 	image_sharestorage(model.external, model.vid);
 
-	local h_ar = model.scalev[1] / model.scalev[2];
-	local v_ar = model.scalev[2] / model.scalev[1];
+	local h_ar = model.size[1] / model.size[2];
+	local v_ar = model.size[2] / model.size[1];
 
 -- note: this will be sent during the preload stage, where the
 -- displayhint property for selection/visibility will be ignored.
 -- note: The HMD panels tend to have other LED configurations,
 -- though the data doesn't seem to be propagated via the VR bridge
--- meaning that subpixel hinting will be a bad idea.
+-- meaning that subpixel hinting will be a bad idea (which it kindof
+-- is regardless in this context).
 	target_displayhint(model.external,
 		bw * h_ar, bw * v_ar, 0,
 		{ppcm = model.ctx.display_density}
@@ -309,89 +310,92 @@ local function model_external(model, vid, flip)
 	end
 end
 
-local function model_getsize(model)
+local function model_getscale(model)
+	local sf;
+
+	if (model.layer.selected == model
+		or model.layer.selected == model.parent) then
+		sf = model.scale_factor;
+	else
+		sf = model.layer.inactive_scale;
+	end
+
 	return
-		model.scalev[1] * model.size[1],
-		model.scalev[2] * model.size[2],
-		model.scalev[3] * model.size[3];
+		model.scalev[1] * sf, model.scalev[2] * sf, model.scalev[3] * sf;
+end
+
+local function model_getsize(model, noscale)
+	local sx = 1.0;
+	local sy = 1.0;
+	local sz = 1.0;
+
+	if (not noscale) then
+		sx, sy, sz = model_getscale(model);
+	end
+
+	return
+		sx * model.size[1],
+		sy * model.size[2],
+		sz * model.size[3];
 end
 
 local function model_destroy(model)
 	local layer = model.layer;
 
--- if we are currently selected, swap in something else
+-- reparent any children
+	local dst;
+	local dst_i;
+
+	for i,v in ipairs(layer.models) do
+		if (v.parent == model) then
+			if (dst) then
+				v.parent = dst;
+			else
+				dst = v;
+				dst_i = i;
+				dst.parent = nil;
+			end
+		end
+	end
+
+-- inherit any selected state
 	if (layer.selected == model) then
-		if (#model.children > 0) then
-			for i=2,#model.children do
-				model.children[i].parent = model.children[1];
-				table.insert(model.children[1].children, model.children[i]);
-			end
-			model.children[1].parent = nil;
-			layer.selected = model.children[1];
-			model.children = {};
-		else
-			layer:swap(true, 1);
-		end
-		if (layer.selected == model) then
-			layer.selected = nil;
+		layer.selected = nil;
+		if (dst) then
+			dst:select();
 		end
 	end
 
--- rebalance the list of models so the positioning doesn't "flip", we can
--- do this by finding every root after our deletion point and inverting
--- their position
-	local ind;
-	for i=1,#layer.models do
-		if (layer.models[i] == model) then
-			ind = i;
-			break;
-		end
-	end
-	if (not ind) then
-		warning("no match in destroy()");
-		return;
-	end
+-- switch in the new child in this slot
+	if (dst) then
+		table.remove(layer.models, dst_i);
+		local i = table.find_i(layer.models, model);
+		layer.models[i] = dst;
+	else
+-- rebalance by swapping slot for every parentless node
+		local ind = table.find_i(layer.models, model);
+		table.remove(layer.models, ind);
+		ind = ind - 1;
 
--- resolve into X = X+1 in either X or Y dimension
-	local nexti = function(ind)
-		local res;
-		for res=ind+1, #layer.models do
-			if (model.parent == layer.models[res].parent) then
-				return res;
+		local nexti = function(ind)
+			for i=ind+1,#layer.models do
+				if (layer.models[i].parent == nil) then
+					return i;
+				end
 			end
 		end
-		return nil;
-	end
--- swap next after deletion index with the one after that,
--- preventing the deletion-left/right inversion problem
-	local start = nexti(ind);
-	while start do
-		local st = nexti(start);
-		local tmp = layer.models[start];
-		if (st) then
-			layer.models[start] = layer.models[st];
-			layer.models[st] = tmp;
-			start = nexti(st);
-		else
-			break;
-		end
-	end
-	table.remove(layer.models, ind);
 
--- rebalance in x or y?
-	if (#model.children > 0) then
-		for i=2,#model.children do
-			model.children.parent = model.children[1];
+		local ind = nexti(ind);
+		while (ind) do
+			local swap = nexti(ind);
+			if (not swap) then
+				break;
+			end
+			local old = layer.models[ind];
+			layer.models[ind] = layer.models[swap];
+			layer.models[swap] = old;
+			ind = nexti(swap);
 		end
-		if (model.children[1]) then
-			model.children[1].parent = nil;
-		end
-	end
-
--- make sure parent doesn't keep on tracking
-	if (model.parent) then
-		table.remove_match(model.parent.children, model);
-		model.parent = nil;
 	end
 
 -- clean up rendering resources, but defer on animation
@@ -410,6 +414,10 @@ local function model_destroy(model)
 -- custom shader? these are derived with shader_ugroup so delete is simple
 	if (model.shid) then
 		delete_shader(model.shid);
+	end
+
+	if (valid_vid(model.ext_cp)) then
+		delete_image(model.ext_cp);
 	end
 
 -- make it easier to detect dangling references
@@ -436,7 +444,6 @@ local function apply_connrole(layer, model, source)
 	local rv = false;
 
 	if (model.ext_name) then
-		print("reactivate ", model.ext_name);
 		delete_image(source);
 		model:set_connpoint(model.ext_name, model.ext_kind);
 		rv = true;
@@ -514,42 +521,27 @@ end
 local function model_curvature(model, curv)
 	model_split_shader(model);
 	for i,v in ipairs(model.custom_shaders) do
-		shader_uniform(v, "curve", "f", 0.0);
+		shader_uniform(v, "curve", "f", curv);
 	end
 end
 
 local function model_select(model)
 	local layer = model.layer;
 
-	if (not valid_vid(model.external, TYPE_FRAMESERVER)) then
+	if (layer.selected == model) then
 		return;
 	end
 
-	if (layer.selected) then
+	if (layer.selected and
+		valid_vid(layer.selected.external, TYPE_FRAMESERVERE)) then
 		target_displayhint(layer.selected.external, 0, 0, TD_HINT_UNFOCUSED);
-		layer.selected = nil;
 	end
+
+	if (valid_vid(model.external, TYPE_FRAMESERVER)) then
+		target_displayhint(model.external, 0, 0, 0);
+	end
+
 	layer.selected = model;
-	target_displayhint(model.external, 0, 0, 0);
-end
-
-local function model_reparent(model, new_parent)
-	if (model.parent) then
-		table.remove_match(model.parent.children, model);
-	end
-
--- if there's a new parent, it gets all the old children too
-	if (new_parent) then
-		table.insert(new_parent.children, model);
-		for i,v in ipairs(model.children) do
-			table.insert(new_parent.children, v);
-			v.parent = new_parent;
-		end
-	end
-	model.children = {};
-
-	model.parent = new_parent;
-	model.layer:relayout();
 end
 
 local function model_mergecollapse(model)
@@ -602,7 +594,96 @@ local function model_connpoint(model, name, kind, nosw)
 	end
 end
 
+local function model_swapparent(model)
+	local parent = model.parent;
+
+	if (not parent) then
+		return;
+	end
+
+-- swap index slots so they get the same position on layout
+	local parent_ind = table.find_i(model.layer.models, parent);
+	local child_ind = table.find_i(model.layer.models, model);
+	model.layer.models[parent_ind] = model;
+	model.layer.models[child_ind] = parent;
+
+-- and take over the parent role for all affected nodes
+	for i,v in ipairs(model.layer.models) do
+		if (v.parent == parent) then
+			v.parent = model;
+		end
+	end
+	parent.parent = model;
+	model.parent = nil;
+
+-- swap selection as well
+	if (model.layer.selected == parent) then
+		model:select();
+	end
+
+	model.layer:relayout();
+end
+
+local function model_vswap(model, step)
+	local lst = {};
+	for i,v in ipairs(model.layer.models) do
+		if (v.parent == model) then
+			table.insert(lst, v);
+		end
+	end
+
+	local start = step < 0 and 2 or 1;
+	step = math.abs(step);
+
+	for i=start,#lst,2 do
+		step = step - 1;
+		if (step == 0) then
+			lst[i]:swap_parent();
+			return;
+		end
+	end
+end
+
 local function build_model(layer, kind, name)
+	local res = {
+		active = true, -- inactive are exempt from layouting
+		name = name, -- unique global identifier
+		ctx = layer.ctx,
+		extctr = 0, -- external windows spawned via this model
+		parent = nil,
+
+-- positioning / sizing, drawing
+		opacity = 1.0,
+
+-- normalized scale values that accounts for the aspect ratio
+		scalev = {1, 1, 1},
+
+-- an 'in focus' scale factor, the 'out of focus' scale factor is part of the layer
+		scale_factor = layer.active_scale,
+
+-- cached layouter values to measure change
+		layer_ang = 0,
+		layer_pos = {0, 0, 0},
+		rel_ang = {0, 0, 0},
+		rel_pos = {0, 0, 0},
+
+-- method vtable
+		destroy = model_destroy,
+		set_external = model_external,
+		select = model_select,
+		scale = model_scale,
+		show = model_show,
+		vswap = model_vswap,
+		swap_parent = model_swapparent,
+		get_size = model_getsize,
+		get_scale = model_getscale,
+		mergecollapse = model_mergecollapse,
+		set_connpoint = model_connpoint,
+		set_stereo = model_stereo,
+		set_curvature = model_curvature,
+		set_scale_factor = model_scale_factor
+	};
+
 	local model;
 	local depth = layer.depth;
 	local h_depth = depth * 0.5;
@@ -619,13 +700,16 @@ local function build_model(layer, kind, name)
 	elseif (kind == "hemisphere") then
 		model = build_sphere(h_depth, 360, 180, 1, true);
 	elseif (kind == "cube") then
-		model = build_3dbox(depth, depth, depth, 1);
+		model = build_3dbox(depth, depth, depth, 1, true);
+		image_framesetsize(model, 6, FRAMESET_SPLIT);
+		res.n_sides = 6;
 	elseif (kind == "rectangle") then
 		size[2] = depth * (9.0 / 16.0);
-		size[3] = 0.00001;
+		size[3] = 0.01;
 		shader = vrshaders.rect;
 		shader_inv = vrshaders.rect_inv;
-		model = build_3dplane(-h_depth, -0.5*size[2], h_depth, 0.5*size[2], 0,
+		model = build_3dplane(
+			-h_depth, -0.5*size[2], h_depth, 0.5*size[2], 0,
 			(depth / 20) * layer.ctx.subdiv_factor[1],
 			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
 		);
@@ -637,52 +721,15 @@ local function build_model(layer, kind, name)
 		return;
 	end
 
+	res.shader = {normal = shader, flip = shader_inv};
+	res.size = size;
+	res.vid = model;
+
 	swizzle_model(model);
 	image_shader(model, shader);
-
--- in case mapping / loading fails
 	image_sharestorage(layer.ctx.placeholder, model);
-
 	rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
 	link_image(model, layer.anchor);
-
-	local res = {
-		active = true,
-		vid = model,
-		name = name,
-		ctx = layer.ctx,
-		extctr = 0, -- external windows spawned via this model
-		parent = nil,
-		children = {},
-
--- method vtable
-		destroy = model_destroy,
-		set_external = model_external,
-		select = model_select,
-		scale = model_scale,
-		show = model_show,
-		set_parent = model_reparent,
-		get_size = model_getsize,
-		mergecollapse = model_mergecollapse,
-		set_connpoint = model_connpoint,
-		set_stereo = model_stereo,
-		set_curvature = model_curvature,
-
--- positioning / sizing, drawing
-		shader = {normal = shader, flip = shader_inv},
-		opacity = 1.0,
-		size = size,
-		scalev = {1, 1, 1},
-		old_scalev = {1, 1, 1},
-		scale_factor = 1.0,
-		layer_ang = 0,
-		layer_pos = {0, 0, 0},
-		rel_ang = {0, 0, 0},
-		rel_pos = {0, 0, 0},
-	};
-
--- need something to specify up/down/left/right
--- and animate spawn of course :-)
 
 	return res;
 end
@@ -771,7 +818,6 @@ local function model_eventhandler(wnd, model, source, status)
 		end
 
 	elseif (status.kind == "registered") then
-		print(debug.traceback());
 		model:set_external(source);
 
 	elseif (status.kind == "resized") then
@@ -841,19 +887,20 @@ modelconn_eventhandler = function(layer, model, source, status)
 			target_updatehandler(source, function(source, status)
 				return dstfun(layer.ctx, new_model, source, status);
 			end);
-			dstfun(layer.ctx, new_model, source, status);
 
--- reparent so that we start building this chain of clients vertically, but
--- invert so that the new window takes precedence over the old one
-			if (model.parent) then
-				new_model:set_parent(model.parent);
-			else
-				if (model.layer.selected == model) then
-					new_model:select();
-				end
-				model:set_parent(new_model);
-			end
+			local parent = model.parent and model.parent or model;
+			new_model.parent = parent;
+			new_model:swap_parent();
+
+			dstfun(layer.ctx, new_model, source, status);
 		end
+	elseif (status.kind == "segment_request") then
+		if (not clut[status.segkind]) then
+			return;
+		end
+--		local new_model =
+--			layer:add_model("rectangle", model.name, .. "_" .. segkind);
+
 	elseif (status.kind == "resized") then
 		model:show();
 	elseif (status.kind == "terminated") then
@@ -963,7 +1010,44 @@ end
 
 -- same as _swap, but more movement and more directions
 local function layer_cycle(layer, left, step)
+	if (step == 0) then
+		layer:relayout();
+		return;
+	end
 
+	local step_index = function(ind, n)
+		while (n > 0 and layer.models[ind]) do
+			if (not layer.models[ind].parent and layer.models[ind].active) then
+				n = n - 1;
+			end
+			ind = ind + 1;
+		end
+		return layer.models[ind] and ind or nil;
+	end
+
+	local starti = step_index(1, 1);
+	if (not left) then
+		starti = step_index(starti+1, 1);
+	end
+
+	if (not starti) then
+		return;
+	end
+
+	local model = layer.models[starti];
+
+	local nexti = step_index(starti+1, 2);
+	while (nexti) do
+		local candidate = step_index(nexti+1, 2);
+		if (candidate) then
+			layer.models[starti] = layer.models[nexti];
+		else
+			layer.models[nexti] = model;
+		end
+		nexti = candidate;
+	end
+
+	layer_cycle(layer, left, step - 1);
 end
 
 local function layer_destroy(layer)
@@ -986,6 +1070,60 @@ local function layer_destroy(layer)
 	end
 end
 
+local function dump(ctx, outf)
+	local node_string = function(j)
+		return string.format(
+			"name='%s' active='%s' scale_factor='%f' scale='%f %f %f' opacity='%f'",
+			j.name, j.active and "yes" or "no", j.scale_factor,
+			j.scalev[1], j.scalev[2], j.scalev[3], j.opacity
+		);
+	end
+
+	local dump_children = function(layer, model)
+		for i,j in ipairs(layer.models) do
+			if (j.parent == model) then
+				outf(string.format("\t\t<child index='%d' %s/>", i, node_string(j)));
+			end
+		end
+	end
+
+	for k,v in ipairs(ctx.layers) do
+		outf(string.format(
+			"<layer name='%s' index='%d' radius='%f' depth='%f' spacing='%f' opacity='%f'" ..
+			" inactive_scale='%f'>", v.name, k, v.radius, v.depth, v.spacing, v.opacity,
+			v.inactive_scale));
+
+		for i,j in ipairs(v.models) do
+			if (not j.parent) then
+				outf(string.format("\t<node index='%d' %s/>", i, node_string(j)));
+				dump_children(v, j);
+			end
+		end
+
+		outf("</layer>");
+	end
+end
+
+local function layer_count_root(layer)
+	local cnt = 0;
+	for i,v in ipairs(layer.models) do
+		if (v.parent == nil) then
+			cnt = cnt + 1;
+		end
+	end
+	return cnt;
+end
+
+local function layer_count_children(layer, model)
+	local cnt = 0;
+	for i,v in ipairs(layer.models) do
+		if (v.parent == model) then
+			cnt = cnt + 1;
+		end
+	end
+	return cnt;
+end
+
 local function layer_add(ctx, tag)
 	for k,v in ipairs(ctx.layers) do
 		if (v.name == tag) then
@@ -1001,7 +1139,11 @@ local function layer_add(ctx, tag)
 		add_model = layer_add_model,
 		add_terminal = layer_add_terminal,
 
+		count_root = layer_count_root,
+		count_children = layer_count_children,
+
 		swap = layer_swap,
+		swapv = layer_swap_vertical,
 		cycle = layer_cycle,
 
 		step = layer_step,
@@ -1019,7 +1161,9 @@ local function layer_add(ctx, tag)
 		radius = 0.5,
 		depth = 0.1,
 		spacing = 0.05,
-		opacity = 1.0
+		opacity = 1.0,
+		active_scale = 1.2,
+		inactive_scale = 0.8,
 	};
 
 	show_image(layer.anchor);
@@ -1068,6 +1212,7 @@ return function(ctx, surf, opts)
 	ctx.setup_vr = setup_vr_display;
 	ctx.reindex_layers = reindex_layer;
 	ctx.input_table = vr_input;
+	ctx.dump = dump;
 	ctx.message = function(ctx, msg) print(msg); end;
 
 -- special case, always take the left eye view on stereoscopic sources,
