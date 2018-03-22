@@ -21,9 +21,13 @@ return function(layer)
 	end
 
 -- make sure we have one element that is selected and visible
-	if (not layer.selected and root[1] and
-		valid_vid(root[1].external, TYPE_FRAMESERVER)) then
-		root[1]:select();
+	if (not layer.selected) then
+		for i,v in ipairs(root) do
+			if (v.active) then
+				v:select();
+				break;
+			end
+		end
 	end
 
 	local max_h = 0;
@@ -36,10 +40,11 @@ return function(layer)
 	local rad = layer.radius;
 	local dphi_ccw = 0.5 * math.pi;
 	local dphi_cw = 0.5 * math.pi;
+	local as = layer.ctx.animation_speed;
 
 	for i,v in ipairs(root) do
-		local w, h, d = v:get_size();
-		w = w + layer.spacing * 1.0 / rad;
+		local w, h, d = v:get_size(i ~= 1);
+		w = (w + layer.spacing) * 1.0 / rad;
 		local z = 0;
 		local x = 0;
 		local ang = 0;
@@ -82,12 +87,15 @@ return function(layer)
 				(math.abs(v.layer_pos[3] - z) ~= 0.0001) or
 				(math.abs(v.layer_ang ~= ang) ~= 0.0001) then
 
---			instant_image_transform(v.vid);
-				move3d_model(v.vid, x, 0, z, v.ctx.animation_speed);
+				move3d_model(v.vid, x, 0, z, as);
 				rotate3d_model(v.vid,
 					v.rel_ang[1], v.rel_ang[2], v.rel_ang[3] + ang,
-					v.ctx.animation_speed
+					as
 				);
+
+-- scale3d broken unless set to 1 for z (!)
+				local sx, sy, sz = v:get_scale();
+				scale3d_model(v.vid, sx, sy, 1, as);
 			end
 		end
 
@@ -98,25 +106,39 @@ return function(layer)
 -- avoid linking to stay away from the cascade deletion problem, if it needs
 -- to be done for animations, then take the delete- and set a child as the
 -- new parent.
-	local as = layer.ctx.animation_speed;
 	for k,v in pairs(chld) do
 		local pw, ph, pd = k:get_size();
-		local ch = ph;
+		local ch = 0.5 * ph;
+		local dz = 0.0;
 		local lp = k.layer_pos;
 		local la = k.layer_ang;
 
--- if collapsed, we increment depth by something symbolic to avoid z-fighting,
+-- if merged, we increment depth by something symbolic to avoid z-fighting,
 -- then offset Y enough to just see the tip, otherwise use a similar strategy
 -- to the root, ignore billboarding for the time being.
 		for i,j in ipairs(v) do
-			if (i % 2 == 0) then
-				move3d_model(j.vid, lp[1], lp[2] - ch, lp[3], as);
-				ch = ch + ph + layer.spacing;
+			if (j.parent.merged) then
+				ph = ph * 0.1;
+				dz = dz + 0.001;
 			else
-				move3d_model(j.vid, lp[1], lp[2] + ch, lp[3], as);
+				ph = ph * 0.5;
 			end
+
+			if (i % 2 == 0) then
+				move3d_model(j.vid, lp[1], lp[2] - ch, lp[3] - dz, as);
+				if (j.active) then
+					ch = ch + ph;
+				end
+			else
+				move3d_model(j.vid, lp[1], lp[2] + ch, lp[3] - dz, as);
+			end
+
 			rotate3d_model(j.vid, 0, 0, la, as)
-			pw, ph, pd = j:get_size();
+			local sx, sy, sz = j:get_scale();
+			scale3d_model(j.vid, sx, sy, 1, as);
+			if (j.active) then
+				pw, ph, pd = j:get_size();
+			end
 		end
 	end
 end
