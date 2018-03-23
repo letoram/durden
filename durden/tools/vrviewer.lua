@@ -36,6 +36,18 @@ local function drag_rotate(ctx, vid, dx, dy)
 	rotate3d_model(ctx.wnd.camera, 0, dy, dx, 0, ROTATE_RELATIVE);
 end
 
+local function model_rotate(ctx, vid, dx, dy)
+	local layer = ctx.wnd.selected_layer;
+	if (not layer or not layer.selected) then
+		return;
+	end
+	local v = layer.selected;
+	v.rel_ang[2] = v.rel_ang[2] + dy;
+	v.rel_ang[3] = v.rel_ang[3] + dx;
+	rotate3d_model(v.vid,
+		v.rel_ang[1], v.rel_ang[2], v.rel_ang[3] + v.layer_ang);
+end
+
 local function drag_layer(ctx, vid, dx, dy)
 	local layer = ctx.wnd.selected_layer;
 	if (not layer or layer.fixed) then
@@ -135,7 +147,7 @@ local function vrwnd()
 	kind = "value",
 	description = "Change the current mouse cursor behavior when dragged or locked",
 	label = "Mouse",
-	set = {"Selected", "View", "Layer Distance", "Model Scale"},
+	set = {"Selected", "View", "Layer Distance", "Model Scale", "Model Rotate"},
 	handler = function(ctx, val)
 		if (val == "View") then
 			wnd.handlers.mouse.canvas.drag = drag_rotate;
@@ -150,7 +162,7 @@ local function vrwnd()
 			wnd.handlers.mouse.canvas.motion = function() end;
 
 		elseif (val == "Model Rotate") then
-			wnd.handlers.mouse.canvas.drag = drag_spin;
+			wnd.handlers.mouse.canvas.drag = model_rotate;
 			wnd.handlers.mouse.canvas.motion = function() end;
 		else
 			wnd.handlers.mouse.canvas.drag = function() end;

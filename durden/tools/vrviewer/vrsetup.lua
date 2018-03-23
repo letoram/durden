@@ -52,8 +52,8 @@ varying vec2 texco;
 
 void main()
 {
-	vec3 col = texture2D(map_tu0, texco).rgb;
-	gl_FragColor = vec4(col.rgb, obj_opacity);
+	vec4 col = texture2D(map_tu0, texco);
+	gl_FragColor = vec4(col.rgb, col.a); //* obj_opacity);
 }
 ]];
 
@@ -704,12 +704,11 @@ local function build_model(layer, kind, name)
 		image_framesetsize(model, 6, FRAMESET_SPLIT);
 		res.n_sides = 6;
 	elseif (kind == "rectangle") then
-		size[2] = depth * (9.0 / 16.0);
-		size[3] = 0.01;
+		res.scalev[2] = 1.0; -- 0.5625;
 		shader = vrshaders.rect;
 		shader_inv = vrshaders.rect_inv;
 		model = build_3dplane(
-			-h_depth, -0.5*size[2], h_depth, 0.5*size[2], 0,
+			-h_depth, -h_depth, h_depth, h_depth, 0,
 			(depth / 20) * layer.ctx.subdiv_factor[1],
 			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
 		);
@@ -737,12 +736,12 @@ end
 local function set_defaults(ctx, opts)
 	local tbl = {
 		layer_distance = 0.2,
-		near_layer_sz = 1024,
+		near_layer_sz = 1280,
 		display_density = 33,
-		layer_falloff = 0.8,
+		layer_falloff = 0.9,
 		terminal_font = "hack.ttf",
-		terminal_font_sz = 12,
-		animation_speed = 20,
+		terminal_font_sz = 18,
+		animation_speed = 5,
 		subdiv_factor = {1.0, 0.4},
 	};
 
@@ -809,6 +808,7 @@ local function layer_select(layer)
 -- here we can set alpha based on distance as well
 end
 
+local clut;
 local function model_eventhandler(wnd, model, source, status)
 	if (status.kind == "terminated") then
 -- need to check if the model is set to reset to placeholder / last set /
@@ -817,6 +817,28 @@ local function model_eventhandler(wnd, model, source, status)
 			model:destroy(EXIT_FAILURE, status.last_words);
 		end
 
+	elseif (status.kind == "segment_request") then
+		local kind = clut[status.segkind];
+		if (not kind) then
+			return;
+		end
+
+		local new_model =
+			model.layer:add_model("rectangle",
+				string.format("%s_ext_%s_%s", model.name, tostring(model.extctr), kind));
+
+		if (not new_model) then
+			return;
+		end
+
+		local vid = accept_target(
+		function(source, status)
+			return kind(model.layer.ctx, new_model, source, status);
+		end);
+
+		model.extctr = model.extctr + 1;
+		new_model:set_external(vid);
+		new_model.parent = model.parent and model.parent or model;
 	elseif (status.kind == "registered") then
 		model:set_external(source);
 
@@ -837,7 +859,7 @@ local function terminal_eventhandler(wnd, model, source, status)
 	end
 end
 
-local clut = {
+clut = {
 	application = model_eventhandler,
 	terminal = terminal_eventhandler,
 	tui = terminal_eventhandler,
@@ -894,13 +916,6 @@ modelconn_eventhandler = function(layer, model, source, status)
 
 			dstfun(layer.ctx, new_model, source, status);
 		end
-	elseif (status.kind == "segment_request") then
-		if (not clut[status.segkind]) then
-			return;
-		end
---		local new_model =
---			layer:add_model("rectangle", model.name, .. "_" .. segkind);
-
 	elseif (status.kind == "resized") then
 		model:show();
 	elseif (status.kind == "terminated") then
@@ -1160,6 +1175,7 @@ local function layer_add(ctx, tag)
 		dx = 0, dy = 0, dz = 0,
 		radius = 0.5,
 		depth = 0.1,
+		vspacing = 0.01,
 		spacing = 0.05,
 		opacity = 1.0,
 		active_scale = 1.2,
