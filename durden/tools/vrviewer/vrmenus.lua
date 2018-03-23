@@ -62,11 +62,23 @@ local function get_layer_settings(wnd, layer)
 		label = "Spacing",
 		initial = tostring(layer.spacing),
 		kind = "value",
-		hint = "(0..1)",
+		hint = "(-10..10)",
 		description = "Radius/Depth/Width dependent model spacing",
-		validator = gen_valid_float(0.0, 1.0),
+		validator = gen_valid_float(-10.0, 10.0),
 		handler = function(ctx, val)
 			layer.spacing = tonumber(val);
+		end
+	},
+	{
+		name = "vspacing",
+		label = "Vertical Spacing",
+		initial = tostring(layer.spacing),
+		kind = "value",
+		hint = "(-10..10)",
+		description = "Laying spacing for vertical children",
+		validator = gen_valid_float(-10.0, 10.0),
+		handler = function(ctx, val)
+			layer.vspacing = tonumber(val);
 		end
 	},
 	{
@@ -378,14 +390,6 @@ local function model_settings_menu(wnd, layer, model)
 		handler = function(ctx, val)
 			return model:set_scale_factor(tonumber(val));
 		end
-	},
-	{
-		name = "multimap",
-		label = "Multimap",
-		description = "Set the model to have one texture per face",
-		eval = function() return model.n_sides and model.n_sides > 1; end,
-		handler = function()
-		end,
 	},
 	{
 		name = "merge_collapse",

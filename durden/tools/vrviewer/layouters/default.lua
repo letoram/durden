@@ -10,7 +10,6 @@ return function(layer)
 -- 1. separate models that have parents and root models
 	local root = {};
 	local chld = {};
-	local chld_collapse = {};
 	for _,v in ipairs(layer.models) do
 		if not v.parent then
 			table.insert(root, v);
@@ -31,53 +30,71 @@ return function(layer)
 	end
 
 	local max_h = 0;
+	local h_pi = math.pi * 0.5;
 
 	local function getang(phi)
 		phi = math.fmod(-phi + 0.5*math.pi, 2 * math.pi);
-		return 180 * phi / math.pi;
+		return math.deg(phi);
 	end
 
-	local rad = layer.radius;
-	local dphi_ccw = 0.5 * math.pi;
-	local dphi_cw = 0.5 * math.pi;
+	local dphi_ccw = h_pi;
+	local dphi_cw = h_pi;
+	local function ptoc(phi)
+		return
+			-layer.radius * math.cos(phi),
+			-layer.radius * math.sin(phi);
+	end
+
 	local as = layer.ctx.animation_speed;
+	local in_first = true;
 
 	for i,v in ipairs(root) do
-		local w, h, d = v:get_size(i ~= 1);
-		w = (w + layer.spacing) * 1.0 / rad;
-		local z = 0;
+-- get scaled model size
+		local w,h, _ = v:get_size();
 		local x = 0;
+		local z = 0;
 		local ang = 0;
-		max_h = max_h > h and max_h or h;
+		local mpx, mpz = ptoc(h_pi);
 
--- special case, at 12 o clock is 0, 0 @ 0 rad. ang is for billboarding,
--- there should just be a model_flag for setting spherical/cylindrical
--- billboarding (or just do it in shader) but it's not there at the
--- moment and we don't want more shader variants or flags.
--- would be nice, yet not always solvable, to align positioning at the
--- straight angles (0, half-pi, pi, ...) though the focal point of the
--- user will likely often be straight ahead and that gets special
--- treatment anyhow.
-		if (i == 1) then
-			z = -rad * math.sin(dphi_cw);
-			dphi_cw = dphi_cw - 0.5 * w;
-			dphi_ccw = dphi_ccw + 0.5 * w;
+-- find the bounding points
+		local p1x = mpx - 0.5 * (w + layer.spacing);
+		local p2x = mpx + 0.5 * (w + layer.spacing);
 
-		elseif (i % 2 == 0) then
-			x = -rad * math.cos(dphi_cw - w);
-			z = -rad * math.sin(dphi_cw - w);
+-- get half-arc length
+		local p1p = math.atan(p1x / mpz);
+		local p2p = math.atan(p2x / mpz);
+		local half_len = 0.5 * (p2p - p1p);
 
-			ang = getang(dphi_cw - 0.5 * w);
+-- special case, @12-o-clock (0.5pi) the object is already centered,
+-- so only step by half, not by the whole - note that this does not
+		if (in_first) then
 			if (v.active) then
-				dphi_cw = dphi_cw - w;
+				dphi_ccw = dphi_ccw + half_len;
+				dphi_cw = dphi_cw - half_len;
+				ang = h_pi;
+				x = 0;
+				z = -layer.radius;
+				in_first = false;
+			end
+
+-- dphi_(c)cw points at where the model should begin or end
+		elseif (i % 2 == 0) then
+			if (v.active) then
+				dphi_ccw = dphi_ccw + half_len;
+				x,z = ptoc(dphi_ccw);
+				ang = getang(dphi_ccw);
+				dphi_ccw = dphi_ccw + half_len;
+			else
+				x,z = ptoc(dphi_ccw);
 			end
 		else
-			x = -rad * math.cos(dphi_ccw + w);
-			z = -rad * math.sin(dphi_ccw + w);
-
-			ang = getang(dphi_ccw + 0.5 * w);
 			if (v.active) then
-				dphi_ccw = dphi_ccw + w;
+				dphi_cw = dphi_cw - half_len;
+				x,z = ptoc(dphi_cw);
+				ang = getang(dphi_cw);
+				dphi_cw = dphi_cw - half_len;
+			else
+				x,z = ptoc(dphi_cw);
 			end
 		end
 
@@ -107,38 +124,46 @@ return function(layer)
 -- to be done for animations, then take the delete- and set a child as the
 -- new parent.
 	for k,v in pairs(chld) do
-		local pw, ph, pd = k:get_size();
-		local ch = 0.5 * ph;
 		local dz = 0.0;
 		local lp = k.layer_pos;
 		local la = k.layer_ang;
+		local of_py = 0;
+		local of_ny = 0;
 
 -- if merged, we increment depth by something symbolic to avoid z-fighting,
 -- then offset Y enough to just see the tip, otherwise use a similar strategy
 -- to the root, ignore billboarding for the time being.
-		for i,j in ipairs(v) do
-			if (j.parent.merged) then
-				ph = ph * 0.1;
-				dz = dz + 0.001;
-			else
-				ph = ph * 0.5;
-			end
-
-			if (i % 2 == 0) then
-				move3d_model(j.vid, lp[1], lp[2] - ch, lp[3] - dz, as);
-				if (j.active) then
-					ch = ch + ph;
-				end
-			else
-				move3d_model(j.vid, lp[1], lp[2] + ch, lp[3] - dz, as);
-			end
-
+		local pw, ph, pd = k:get_size();
+		local mf = k.merged and 0.1 or 0.1;
+		of_py = ph;
+		for i=1,#v,2 do
+			local j = v[i];
+			move3d_model(j.vid, lp[1], lp[2] + of_py, lp[3] - dz, as);
 			rotate3d_model(j.vid, 0, 0, la, as)
 			local sx, sy, sz = j:get_scale();
 			scale3d_model(j.vid, sx, sy, 1, as);
 			if (j.active) then
 				pw, ph, pd = j:get_size();
+				of_py = of_py + ph + layer.vspacing;
+				dz = dz + 0.01;
 			end
 		end
+
+		local pw, ph, pd = k:get_size();
+		of_ny = -ph;
+		dz = 0.0;
+		for i=2,#v,2 do
+			local j = v[i];
+			move3d_model(j.vid, lp[1], lp[2] + of_ny, lp[3] - dz, as);
+			rotate3d_model(j.vid, 0, 0, la, as)
+			local sx, sy, sz = j:get_scale();
+			scale3d_model(j.vid, sx, sy, 1, as);
+			if (j.active) then
+				pw, ph, pd = j:get_size();
+				of_ny = of_ny - ph - layer.vspacing;
+				dz = dz + 0.01;
+			end
+		end
+
 	end
 end
