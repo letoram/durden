@@ -321,10 +321,10 @@ end
 local function model_settings_menu(wnd, layer, model)
 	local res = {
 	{
-		name = "chld_swap",
+		name = "child_swap",
 		label = "Child Swap",
 		kind = "value",
-		hint = "(<0 +y, >0 -y)",
+		hint = "(<0 -y, >0 +y)",
 		description = "Switch parent slot with a relative child",
 		handler = function(ctx, val)
 			model:vswap(tonumber(val));
@@ -346,10 +346,11 @@ local function model_settings_menu(wnd, layer, model)
 		kind = "value",
 		validator = suppl_valid_typestr("fff", -359, 359, 0),
 		handler = function(ctx, val)
-			local res = suppl_unpack_typestr("fff", -359, 359);
+			local res = suppl_unpack_typestr("fff", val, -359, 359);
 			model.rel_ang[1] = res[1];
 			model.rel_ang[2] = res[2];
 			model.rel_ang[3] = res[3];
+			rotate3d_model(model.vid, model.rel_ang[1], model.rel_ang[2], model.rel_ang[3]);
 		end,
 	},
 	{
@@ -375,10 +376,13 @@ local function model_settings_menu(wnd, layer, model)
 		kind = "value",
 		validator = suppl_valid_typestr("fff", -359, 359, 0),
 		handler = function(ctx, val)
-			local res = suppl_unpack_typestr("fff", -359, 359);
-			model.rel_ang[1] = math.fmod(model.rel_ang[1] + res[1], 360);
-			model.rel_ang[2] = math.fmod(model.rel_ang[2] + res[2], 360);
-			model.rel_ang[3] = math.fmod(model.rel_ang[3] + res[3], 360);
+			local res = suppl_unpack_typestr("fff", val, -359, 359);
+			if (res) then
+				model.rel_ang[1] = math.fmod(model.rel_ang[1] + res[1], 360);
+				model.rel_ang[2] = math.fmod(model.rel_ang[2] + res[2], 360);
+				model.rel_ang[3] = math.fmod(model.rel_ang[3] + res[3], 360);
+				rotate3d_model(model.vid, model.rel_ang[1], model.rel_ang[2], model.rel_ang[3]);
+			end
 		end,
 	},
 	{
@@ -388,7 +392,20 @@ local function model_settings_menu(wnd, layer, model)
 		kind = "value",
 		validator = gen_valid_num(0.5, 10.0),
 		handler = function(ctx, val)
-			return model:set_scale_factor(tonumber(val));
+			model:set_scale_factor(tonumber(val));
+			model.layouter:relayout();
+		end
+	},
+	{
+		name = "opacity",
+		label = "Opacity",
+		description = "Set model opacity",
+		kind = "value",
+		hint = "(0: hidden .. 1: opaque)",
+		initial = tostring(model.opacity),
+		handler = function(ctx, val)
+			model.opacity = suppl_apply_num(val, model.opacity);
+			blend_image(model.vid, model.opacity);
 		end
 	},
 	{
@@ -816,7 +833,31 @@ local function hmd_config(wnd, opts)
 		active_display():message("sent reset event");
 		reset_target(wnd.vr_state.vid);
 	end
-	}};
+	},
+	{
+	name = "ipd",
+	label = "IPD",
+	description = "Override the 'interpupilary distance'",
+	kind = "value",
+	validator = gen_valid_num(0.0, 1.0),
+	handler = function(ctx, val)
+		local num = tonumber(val);
+		wnd.ipd = num;
+		move3d_model(wnd.vr_state.l, -wnd.ipd * 0.5, 0, 0);
+		move3d_model(wnd.vr_state.r, wnd.ipd * 0.5, 0, 0);
+	end
+	},
+	{
+	name = "distortion",
+	label = "Distortion",
+	description = "Override the distortion model used",
+	kind = "value",
+	set = {"none", "basic"},
+	handler = function(ctx, val)
+		wnd.vr_state:set_distortion(val);
+	end
+	}
+};
 end
 
 
@@ -836,8 +877,12 @@ end
 
 return
 function(wnd, opts)
-	system_load(
-		(opts.prefix and opts.prefix or "") .. "vrsetup.lua")(ctx, opts);
+	opts = opts and opts or {};
+	if (not opts.prefix) then
+		opts.prefix = "";
+	end
+
+	system_load(opts.prefix .. "vrsetup.lua")(ctx, opts);
 
 local res = {{
 	name = "close_vr",
@@ -890,7 +935,7 @@ local res = {{
 	end,
 },
 {
-	name = "hmdconfig",
+	name = "hmd",
 	label = "HMD Configuration",
 	kind = "action",
 	submenu = true,

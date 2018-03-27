@@ -62,24 +62,49 @@ local modelconn_eventhandler;
 -- shader used on each eye, one possible place for distortion but
 -- probably better to just use image_tesselation to displace the
 -- vertices on l_eye and r_eye once, and use the shader stage for
--- variable vignette using obj_opacity as strength. We also need
--- variants to handle samplers that force external or multiplanar
-local combiner = [[
+-- variable vignette using obj_opacity as strength.
+local distort = [[
 uniform sampler2D map_tu0;
 uniform float obj_opacity;
+
+uniform vec2 lens_center;
+uniform vec2 viewport_scale;
+uniform float warp_scale;
+uniform vec4 distortion;
+uniform vec4 aberration;
+
 varying vec2 texco;
 
 void main()
 {
-	vec3 col = texture2D(map_tu0, texco).rgb;
-	gl_FragColor = vec4(col.rgb, 1.0);
+	vec2 r = (texco * viewport_scale - lens_center) / warp_scale;
+	float r_mag = length(r);
+
+	vec2 r_displaced = r *
+		(distortion.w + distortion.z * r_mag +
+		distortion.y * r_mag * r_mag +
+		distortion.x * r_mag * r_mag * r_mag);
+
+	r_displaced *= warp_scale;
+
+	vec2 tc_r = (lens_center + aberration.r * r_displaced) / viewport_scale;
+	vec2 tc_g = (lens_center + aberration.g * r_displaced) / viewport_scale;
+	vec2 tc_b = (lens_center + aberration.b * r_displaced) / viewport_scale;
+
+	float cr = texture2D(map_tu0, tc_r).r;
+	float cg = texture2D(map_tu0, tc_g).g;
+	float cb = texture2D(map_tu0, tc_b).b;
+
+	if (tc_g.x < 0.0 || tc_g.x > 1.0 || tc_g.y < 0.0 || tc_g.y > 1.0)
+		discard;
+
+	gl_FragColor = vec4(cr, cg, cb, 1.0);
 }
 ]];
 
 local vrshaders = {
 	geom = build_shader(vert, frag, "vr_geom"),
-	left = build_shader(nil, combiner, "vr_eye_l"),
-	right = build_shader(nil, combiner, "vr_eye_r")
+	distortion = build_shader(nil, distort, "vr_distortion")
 };
 
 local function set_model_uniforms(shid,
@@ -113,12 +138,51 @@ local function set_vr_defaults(ctx, opts)
 	local tbl = {
 		oversample_w = 1.4,
 		oversample_h = 1.4,
-		msaa = false,
 		hmdarg = "",
-
 	};
 	for k,v in pairs(tbl) do
 		ctx[k] = (opts[k] and opts[k]) or tbl[k];
+	end
+end
+
+local function vr_distortion(vrctx, model)
+	if (not model or model == "none") then
+		image_shader(vrctx.rt_l, "DEFAULT");
+		image_shader(vrctx.rt_r, "DEFAULT");
+		image_set_txcos_default(vrctx.rt_l);
+		image_set_txcos_default(vrctx.rt_r);
+	else
+		local md = vrctx.meta;
+		local shid = vrctx.shid;
+		local center_x = 0.5 * md.horizontal - 0.5 * md.hsep;
+		local center_y = 0.5 * md.hsep;
+		local warp_scale = center_x > center_y and center_x or center_y;
+		local view_fs = 0.5 * md.horizontal;
+		local view_ft = md.vertical;
+		local dst = md.distortion;
+		local abb = md.abberation;
+
+		shader_uniform(shid, "lens_center", "ff", center_x, center_y);
+		shader_uniform(shid, "warp_scale", "f", warp_scale);
+		shader_uniform(shid, "viewport_scale", "ff", view_fs, view_ft);
+ 		shader_uniform(shid, "distortion", "ffff", dst[1], dst[2], dst[3], dst[4]);
+		shader_uniform(shid, "aberration", "fff", abb[1], abb[2], abb[3]);
+
+		image_shader(vrctx.rt_l, shid);
+		image_shader(vrctx.rt_r, shid);
+-- set so that the txcos reflect screen position
+		image_set_txcos(vrctx.rt_l,
+		{0.0, 0.0,
+		 0.5, 0.0,
+		 0.5, 1.0,
+		 0.0, 1.0
+		});
+	image_set_txcos(vrctx.rt_r,
+		{0.5, 0.0,
+		 1.0, 0.0,
+		 1.0, 1.0,
+		 0.5, 1.0
+		});
 	end
 end
 
@@ -131,8 +195,17 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- ideally, we'd get a display with two outputs so that we could map
 -- the rendertargets directly to the outputs, getting rid of one step
+--
+-- this currently leaks one shader_ugroup per invocation
+--
 	local setup_vrpipe =
 	function(bridge, md, neck)
+		for k,v in pairs(opts) do
+			if (opts[k]) then
+				md[k] = opts[k];
+			end
+		end
+
 		local dispw = md.width > 0 and md.width or 1920;
 		local disph = md.height > 0 and md.height or 1024;
 		dispw = math.clamp(dispw, 256, MAX_SURFACEW);
@@ -152,13 +225,24 @@ local function setup_vr_display(wnd, callback, opts)
 -- The second is actual distortion parameters via a mesh.
 --
 -- The third is a stencil mask over the rendertarget (missing Lua API).
-		local combiner = alloc_surface(dispw, disph);
+		local combiner;
+		if (not opts.no_combiner) then
+			combiner = alloc_surface(dispw, disph);
+			show_image(combiner);
+			if (valid_vid(wnd.anchor)) then
+				link_image(combiner, wnd.anchor);
+			end
+		end
+
+		local dshader = shader_ugroup(vrshaders.distortion);
 		local l_eye = alloc_surface(eyew, eyeh);
 		local r_eye = alloc_surface(eyew, eyeh);
 		show_image({l_eye, r_eye});
 
 -- since we don't show any other models, this is fine without a depth buffer
-		define_rendertarget(combiner, {l_eye, r_eye});
+		if (combiner) then
+			define_rendertarget(combiner, {l_eye, r_eye});
+		end
 		define_linktarget(l_eye, wnd.vr_pipe);
 		define_linktarget(r_eye, wnd.vr_pipe);
 		rendertarget_id(l_eye, 0);
@@ -166,17 +250,14 @@ local function setup_vr_display(wnd, callback, opts)
 		move_image(r_eye, halfw, 0);
 		resize_image(l_eye, halfw, disph);
 		resize_image(r_eye, halfw, disph);
-		image_shader(l_eye, vrshaders.left);
-		image_shader(r_eye, vrshaders.right);
 
 		local cam_l = null_surface(1, 1);
 		local cam_r = null_surface(1, 1);
 		scale3d_model(cam_l, 1.0, -1.0, 1.0);
 		scale3d_model(cam_r, 1.0, -1.0, 1.0);
 
--- adjustable delta?
-		local l_fov = (md.left_fov * 180 / math.pi);
-		local r_fov = (md.right_fov * 180 / math.pi);
+		local l_fov = math.deg(md.left_fov);
+		local r_fov = math.deg(md.right_fov);
 
 		if (md.left_ar < 0.01) then
 			md.left_ar = halfw / disph;
@@ -189,40 +270,52 @@ local function setup_vr_display(wnd, callback, opts)
 		camtag_model(cam_l, 0.01, 100.0, l_fov, md.left_ar, true, true, 0, l_eye);
 		camtag_model(cam_r, 0.01, 100.0, r_fov, md.right_ar, true, true, 0, r_eye);
 
+-- ipd is set by moving l_eye to -sep, r_eye to +sep
+		if (md.ipd) then
+			move3d_model(cam_l, -md.ipd * 0.5, 0, 0);
+			move3d_model(cam_r, md.ipd * 0.5, 0, 0);
+		end
+
 -- the distortion model has three options, no distortion, fragment shader
 -- distortion and (better) mesh distortion that can be configured with
 -- image_tesselation (not too many subdivisions, maybe 30, 40 something
 
--- ipd is set by moving l_eye to -sep, r_eye to +sep
+		wnd.vr_state = {
+			l = cam_l, r = cam_r, meta = md,
+			rt_l = l_eye, rt_r = r_eye,
+			set_distortion = vr_distortion,
+			vid = bridge, shid = dshader,
+			wnd = wnd
+		};
+		wnd.vr_state:set_distortion(md.distortion_model);
+
 		if (not opts.headless) then
 			vr_map_limb(bridge, cam_l, neck, false, true);
 			vr_map_limb(bridge, cam_r, neck, false, true);
-			wnd.vr_state = {
-				l = cam_l, r = cam_r, meta = md,
-				rt_l = l_eye, rt_r = r_eye,
-				vid = bridge
-			};
 			wnd:message("HMD active");
-			link_image(combiner, wnd.anchor);
-			callback(wnd, combiner);
+			callback(wnd, combiner, l_eye, r_eye);
 		else
 			link_image(cam_l, wnd.camera);
 			link_image(cam_r, wnd.camera);
-			show_image(combiner);
-			callback(wnd, combiner);
+			callback(wnd, combiner, l_eye, r_eye);
 		end
 	end
 
--- debugging, fake a hmd and set up a pipe for that
+-- debugging, fake a hmd and set up a pipe for that, use rift- like distortion vals
 	if (opts.headless) then
 		setup_vrpipe(nil, {
-			width = 0, height = 0,
+			width = VRESW*0.5, height = VRESH,
+			horizontal = 0.126, vertical = 0.07100,
+			hsep = 0.063500, center = 0.049694,
 			left_fov = 1.80763751, right_fov = 1.80763751,
-			left_ar = 0.888885, right_ar = 0.88885}, nil);
+			left_ar = 0.888885, right_ar = 0.88885,
+			distortion = {0.247, -0.145, 0.103, 0.795},
+			abberation = {0.985, 1.000, 1.015}
+		}, nil);
 		return;
 	end
 
-	vr_setup(hmd_arg, function(source, status)
+	vr_setup(opts.hmdarg, function(source, status)
 		link_image(source, wnd.camera);
 
 		if (status.kind == "terminated") then
@@ -285,9 +378,6 @@ local function model_external(model, vid, flip)
 	model.external = vid;
 	image_sharestorage(model.external, model.vid);
 
-	local h_ar = model.size[1] / model.size[2];
-	local v_ar = model.size[2] / model.size[1];
-
 -- note: this will be sent during the preload stage, where the
 -- displayhint property for selection/visibility will be ignored.
 -- note: The HMD panels tend to have other LED configurations,
@@ -295,7 +385,7 @@ local function model_external(model, vid, flip)
 -- meaning that subpixel hinting will be a bad idea (which it kindof
 -- is regardless in this context).
 	target_displayhint(model.external,
-		bw * h_ar, bw * v_ar, 0,
+		bw * model.scalev[1], bw * model.scalev[2], 0,
 		{ppcm = model.ctx.display_density}
 	);
 
@@ -313,8 +403,7 @@ end
 local function model_getscale(model)
 	local sf;
 
-	if (model.layer.selected == model
-		or model.layer.selected == model.parent) then
+	if (model.layer.selected == model) then
 		sf = model.scale_factor;
 	else
 		sf = model.layer.inactive_scale;
@@ -487,7 +576,11 @@ local function model_show(model)
 		end
 	end
 
-	blend_image(model.vid, model.opacity, model.ctx.animation_time);
+	local as = model.ctx.animation_speed;
+	scale3d_model(model.vid, 0.01, 0.01, 1, 0);
+	blend_image(model.vid, model.opacity, as);
+	local sx, sy, sz = model:get_scale();
+	scale3d_model(model.vid, sx, sy, 1, as);
 	model.layer:relayout();
 end
 
@@ -624,6 +717,12 @@ local function model_swapparent(model)
 	model.layer:relayout();
 end
 
+local function model_input(model, iotbl)
+-- missing, track LABEL translations and apply for default keybindings
+-- and or game specific devices
+	return iotbl;
+end
+
 local function model_vswap(model, step)
 	local lst = {};
 	for i,v in ipairs(model.layer.models) do
@@ -681,7 +780,8 @@ local function build_model(layer, kind, name)
 		set_connpoint = model_connpoint,
 		set_stereo = model_stereo,
 		set_curvature = model_curvature,
-		set_scale_factor = model_scale_factor
+		set_scale_factor = model_scale_factor,
+		preprocess_input = model_input
 	};
 
 	local model;
@@ -704,7 +804,7 @@ local function build_model(layer, kind, name)
 		image_framesetsize(model, 6, FRAMESET_SPLIT);
 		res.n_sides = 6;
 	elseif (kind == "rectangle") then
-		res.scalev[2] = 1.0; -- 0.5625;
+		res.scalev[2] = 0.5625;
 		shader = vrshaders.rect;
 		shader_inv = vrshaders.rect_inv;
 		model = build_3dplane(
@@ -845,6 +945,11 @@ local function model_eventhandler(wnd, model, source, status)
 	elseif (status.kind == "resized") then
 		image_texfilter(source, FILTER_BILINEAR);
 		model:set_external(source, status.origo_ll);
+		if (status.width > status.height) then
+			model:scale(1, status.height / status.width, 1);
+		else
+			model:scale(status.width / status.height, 1, 1);
+		end
 		model:show();
 	end
 end
@@ -853,7 +958,7 @@ end
 local function terminal_eventhandler(wnd, model, source, status)
 	if (status.kind == "preroll") then
 		target_fonthint(source,
-			wnd.terminal_font, wnd.terminal_font_sz, FONT_PT_SZ, 4);
+			wnd.terminal_font, wnd.terminal_font_sz * FONT_PT_SZ, 2);
 	else
 		return model_eventhandler(wnd, model, source, status);
 	end
@@ -1175,7 +1280,7 @@ local function layer_add(ctx, tag)
 		dx = 0, dy = 0, dz = 0,
 		radius = 0.5,
 		depth = 0.1,
-		vspacing = 0.01,
+		vspacing = 0.2,
 		spacing = 0.05,
 		opacity = 1.0,
 		active_scale = 1.2,
