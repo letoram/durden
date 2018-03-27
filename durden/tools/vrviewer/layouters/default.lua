@@ -110,7 +110,6 @@ return function(layer)
 					as
 				);
 
--- scale3d broken unless set to 1 for z (!)
 				local sx, sy, sz = v:get_scale();
 				scale3d_model(v.vid, sx, sy, 1, as);
 			end
@@ -127,40 +126,41 @@ return function(layer)
 		local dz = 0.0;
 		local lp = k.layer_pos;
 		local la = k.layer_ang;
-		local of_py = 0;
-		local of_ny = 0;
+		local of_y = 0;
 
--- if merged, we increment depth by something symbolic to avoid z-fighting,
--- then offset Y enough to just see the tip, otherwise use a similar strategy
--- to the root, ignore billboarding for the time being.
+-- note that there is no vertical billboarding here, the idea being that you
+-- only need peripheral visual queue to know if you want to swap up / down
 		local pw, ph, pd = k:get_size();
 		local mf = k.merged and 0.1 or 0.1;
-		of_py = ph;
+
+-- starts at half- old, then apply half new (they may have different scaling)
+		of_y = ph;
 		for i=1,#v,2 do
 			local j = v[i];
-			move3d_model(j.vid, lp[1], lp[2] + of_py, lp[3] - dz, as);
 			rotate3d_model(j.vid, 0, 0, la, as)
 			local sx, sy, sz = j:get_scale();
 			scale3d_model(j.vid, sx, sy, 1, as);
 			if (j.active) then
 				pw, ph, pd = j:get_size();
-				of_py = of_py + ph + layer.vspacing;
+				of_y = of_y + ph + layer.vspacing;
+				move3d_model(j.vid, lp[1], lp[2] + of_y, lp[3] - dz, as);
 				dz = dz + 0.01;
 			end
 		end
 
 		local pw, ph, pd = k:get_size();
-		of_ny = -ph;
+		of_y = ph + layer.vspacing;
 		dz = 0.0;
+
 		for i=2,#v,2 do
 			local j = v[i];
-			move3d_model(j.vid, lp[1], lp[2] + of_ny, lp[3] - dz, as);
 			rotate3d_model(j.vid, 0, 0, la, as)
 			local sx, sy, sz = j:get_scale();
 			scale3d_model(j.vid, sx, sy, 1, as);
 			if (j.active) then
 				pw, ph, pd = j:get_size();
-				of_ny = of_ny - ph - layer.vspacing;
+				of_y = of_y + ph + layer.vspacing;
+				move3d_model(j.vid, lp[1], lp[2] - of_y, lp[3] - dz, as);
 				dz = dz + 0.01;
 			end
 		end
