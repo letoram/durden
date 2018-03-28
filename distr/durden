@@ -29,6 +29,10 @@ fi
 # of fonts and logs in this folder will define the font and logpaths
 if [ ! -d "$arcan_resources" ]; then
 	mkdir -p "$arcan_resources"
+
+# this will automatically set the ARCAN_STATEBASEPATH used for application
+# state snapeshots (if supported)
+	mkdir -p "$arcan_resources/savestates"
 	ln -s "$HOME" "$arcan_resources/home"
 fi
 
