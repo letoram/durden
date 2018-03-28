@@ -270,8 +270,8 @@ function extevh_apply_atype(wnd, atype, source, stat)
 		end
 	end
 
-	wnd.bindings = atbl.bindings;
-	wnd.dispatch = atbl.dispatch;
+	wnd.bindings = atbl.bindings and atbl.bindings or {};
+	wnd.dispatch = atbl.dispatch and atbl.dispatch or {};
 	wnd.labels = atbl.labels and atbl.labels or {};
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
 	wnd.atype = atype;
