@@ -1,6 +1,7 @@
 #!/bin/sh
 
 arcan_base=${HOME}/.arcan
+applname="$(basename $0)"
 
 if [ ! -z "${XDG_DATA_HOME}" ]; then
 	arcan_base=${XDG_DATA_HOME}/arcan
@@ -74,7 +75,7 @@ export ARCAN_APPLSTOREPATH=${1:-$arcan_applout}
 export ARCAN_RESOURCEPATH=${1:-$arcan_resources}
 
 # local writable custom / saved scripts that should shadow the builtin ones
-overlay=$ARCAN_APPLSTOREPATH/durden
+overlay=$ARCAN_APPLSTOREPATH/$applname
 if [ ! -d "$overlay/output" ]; then
 	overrides="output ipc devmaps/display devmaps/keyboard devmaps/game devmaps/led devmaps/schemes devmaps/touch tools widgets"
 	for i in $overrides; do
@@ -88,7 +89,7 @@ fi
 # snap due to the possibility of sensitive data)
 while true; do
 	starttime=$(date +%s)
-	if /usr/bin/arcan "${distargs}" -b durden durden "$@"; then
+	if /usr/bin/arcan "${distargs}" -b $applname $applname "$@"; then
 		exit
 	fi
 	stoptime=$(date +%s)
