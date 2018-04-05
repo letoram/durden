@@ -250,7 +250,6 @@ update_default_font = function(key, val)
 	end
 
 	for disp in all_tilers_iter() do
-		disp.font_sf = rfhf;
 		disp:update_scalef(disp.scalef);
 	end
 
