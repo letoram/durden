@@ -74,19 +74,6 @@ local synch_menu = {
 
 local retrosub = {
 	{
-	name = "gamewnd_reqdbg",
-	label = "Debug-stats",
-	kind = "action",
-	eval = function() return DEBUGLEVEL > 0; end,
-	handler = function(ctx, val)
-		local wnd = active_display().selected;
-		if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			local vid = target_alloc(wnd.external, function() end, "debug");
-			durden_launch(vid, "game:debug", "");
-		end
-	end
-	},
-	{
 	name = "gamewnd_syncopt",
 	label = "Synchronization",
 	kind = "action",

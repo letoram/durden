@@ -8,12 +8,12 @@
      autolayout also got a hide/reveal mode
 
 	 tools/vrviewer
-	   added 'vrviewer', an integreated 3D/VR tool that acts as a
+	   added 'vrviewer', an integrated 3D/VR tool that acts as a
 		 3D desktop-within-the-desktop.
 
   * distr/durden:
 	   launcher- script for reasonable defaults for linux/BSDs with
-		 arcan on egl-dri platform.
+		 arcan on egl-dri (native) platform.
 
   * widgets/input:
      new widget (target/input activated) that presents client provided
