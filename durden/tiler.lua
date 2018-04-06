@@ -1653,22 +1653,23 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	if ((wnd.scalemode == "normal" or
 		wnd.scalemode == "client") and not force) then
+
 		if (props.width > 0 and props.height > 0) then
 			outw = props.width < maxw and props.width or maxw;
 			outh = props.height < maxh and props.height or maxh;
 		end
 
-	elseif (force or wnd.scalemode == "stretch") then
-		outw = maxw;
-		outh = maxh;
-
 	elseif (wnd.scalemode == "aspect") then
 		local ar = props.width / props.height;
 		local wr = props.width / maxw;
-		local hr = props.height/ maxh;
+		local hr = props.height / maxh;
 
 		outw = hr > wr and maxh * ar or maxw;
 		outh = hr < wr and maxw / ar or maxh;
+
+	elseif (force or wnd.scalemode == "stretch") then
+		outw = maxw;
+		outh = maxh;
 	end
 
 	outw = math.floor(outw);
