@@ -39,8 +39,8 @@ local defaults = {
 	borderw = 1,
 	bordert = 1,
 
--- right now, the options are 'none', 'image', 'auto'
-	preview_mode = "auto",
+-- right now, the options are 'none', 'image', 'full'
+	preview_mode = "full",
 
 -- for the first run, enable more helpers
 	first_run = true,
