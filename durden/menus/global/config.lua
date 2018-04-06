@@ -287,6 +287,20 @@ function ui_scheme_menu(scope, tgt)
 	return res;
 end
 
+local config_browser = {
+	{
+		name = "preview",
+		label = "Preview",
+		description = "Control what type of resources will be previewed",
+		kind = "value",
+		initial = function(ctx, val) return gconfig_get("preview_mode"); end,
+		set = {"none", "image", "full"},
+		handler = function(ctx, val)
+			gconfig_set("preview_mode", val);
+		end
+	}
+};
+
 local durden_visual = {
 -- thickness is dependent on area, make sure the labels and
 -- constraints update dynamically
@@ -940,6 +954,14 @@ return {
 			return string.match(FRAMESERVER_MODES, "terminal") ~= nil;
 		end,
 		handler = config_terminal
+	},
+	{
+		name = "browser",
+		label = "Browser",
+		kind = "action",
+		submenu = true,
+		description = "Resource browser options",
+		handler = config_browser
 	},
 	{
 		name = "scheme",
