@@ -88,21 +88,22 @@ local function accept_cancel(wm, accept)
 	local inp = ictx.inp;
 	destroy(wm, ictx);
 
-	if (accept) then
-		local base = inp.msg;
-		if (ictx.force_completion or string.len(base) == 0) then
-			if (inp.set and inp.set[inp.csel]) then
-				base = type(inp.set[inp.csel]) == "table" and
-					inp.set[inp.csel][3] or inp.set[inp.csel];
-			end
-		end
--- save set as well
-		ictx.get_cb(ictx.cb_ctx, base, true, inp.set, inp);
-	else
+	if (not accept) then
 		if (ictx.on_cancel) then
 			ictx:on_cancel();
 		end
+		return;
 	end
+
+	local base = inp.msg;
+	if (ictx.force_completion or string.len(base) == 0) then
+		if (inp.set and inp.set[inp.csel]) then
+			base = type(inp.set[inp.csel]) == "table" and
+				inp.set[inp.csel][3] or inp.set[inp.csel];
+		end
+	end
+
+	ictx.get_cb(ictx.cb_ctx, base, true, inp.set, inp);
 end
 
 --
@@ -376,7 +377,7 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 		sym == ictx.caret_left or sym == ictx.caret_right or
 		sym == ictx.step_n or sym == ictx.step_p)) then
 		if (ictx.meta_handler and
-			ictx.meta_handler(wm, sym, iotbl, lutsym, meta)) then
+			ictx:meta_handler(sym, iotbl, lutsym, meta)) then
 			return;
 			end
 		end

@@ -1,4 +1,4 @@
--- Copyright: 2015-2017, Björn Ståhl
+-- Copyright: 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Brower covers a lbar- based resource picker for
@@ -78,7 +78,11 @@ local function match_ext(v, tbl)
 		return false;
 	end
 
-	return tbl[ext];
+	if (tbl[ext]) then
+		return tbl[ext];
+	else
+		return tbl["*"];
+	end
 end
 
 local browser_path = menu_path_new();
@@ -393,20 +397,15 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 -- a little hack to be able to add meta + direction handling,
 -- this is to be used for filter (prefix, regex) and preview mode switching
 -- (simple/advance) and for playlist management (add- to queue)
-	lbar.meta_handler = function(wm, sym, iotbl, lutsym, meta)
-		if (sym == SYSTEM_KEYS["caret_right"]) then
-			if (not lbctx.in_preview) then
-				lbctx.in_preview = {};
-			end
-			return true;
+	lbar.meta_handler =
+	function(ctx, sym, iotbl, lutsym, meta)
+		if (sym == SYSTEM_KEYS["next"]) then
+-- add to queue..
+		elseif (sym == SYSTEM_KEYS["previous"]) then
+-- pop from queue..
+		elseif (sym == SYSTEM_KEYS["caret_right"]) then
+-- switch preview mode
 		elseif (sym == SYSTEM_KEYS["caret_left"]) then
-			if (lbctx.in_preview) then
-				for i,v in ipairs(lbctx.in_preview) do
-					v:destroy();
-				end
-				lbctx.in_preview = nil;
-			end
-			return true;
 		end
 	end
 
