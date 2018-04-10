@@ -454,6 +454,12 @@ local function lbar_helper(lbar, lbl)
 		return;
 	end
 
+-- don't repeat ourselves
+	if (lbl == lbar.last_helper) then
+		return;
+	end
+	lbar.last_helper = lbl;
+
 -- build text and bar
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	if (not lbar.helper_bg) then

@@ -117,6 +117,16 @@ local function show(ctx, anchor, ofs)
 				sz = image_surface_resolve(vid).height;
 			end
 
+-- need to re-resolve as our list is sorted
+			local wnd = active_display().selected;
+			local lbar = tiler_lbar_isactive(true);
+			local lbl = ctx.group_cache[ofs][lasti];
+			lbl = table.find_key_i(wnd.input_labels, 1, lbl);
+			if (lbl) then
+				lbl = wnd.input_labels[lbl][3];
+				lbar:set_helper(lbl and lbl or "");
+			end
+
 			resize_image(ctx.cursor, w, sz);
 			local props = image_surface_resolve(ctx.cursor);
 		end,
