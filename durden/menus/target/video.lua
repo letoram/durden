@@ -206,7 +206,10 @@ local advanced = {
 		local wnd = active_display().selected;
 		local vid = target_alloc(wnd.external, function() end, "debug");
 		if (valid_vid(vid)) then
-			durden_launch(vid, "debug", "");
+			local newwnd = durden_launch(vid, "debug", "");
+			if (newwnd) then
+				extevh_apply_atype(newwnd, wnd.atype, vid, {});
+			end
 		end
 	end
 	},
