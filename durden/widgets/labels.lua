@@ -47,6 +47,7 @@ local function probe(ctx, yh)
 -- and return the number of allocations we need
 	ctx.group_cache = ct;
 	ctx.mouseh = {};
+	ctx.cursor_opa = 0.2;
 	ctx.cursor = color_surface(16, 16, 255, 255, 255);
 	if (valid_vid(ctx.cursor)) then
 		image_inherit_order(ctx.cursor, true);
@@ -101,6 +102,10 @@ local function show(ctx, anchor, ofs)
 			lbl = table.find_key_i(wnd.input_labels, 1, lbl);
 			if (lbl) then
 				send_input(wnd, wnd.input_labels[lbl][1]);
+				if (valid_vid(ctx.cursor)) then
+					blend_image(ctx.cursor, ctx.cursor_opa * 3, 5);
+					blend_image(ctx.cursor, ctx.cursor_opa, 5);
+				end
 			end
 		end,
 		hover = function(ctx, vid, x, y, active)
@@ -135,7 +140,7 @@ local function show(ctx, anchor, ofs)
 				return;
 			end
 			link_image(ctx.cursor, vid);
-			blend_image(ctx.cursor, 0.2);
+			blend_image(ctx.cursor, ctx.cursor_opa);
 			order_image(ctx.cursor, 1);
 		end,
 		out = function()
