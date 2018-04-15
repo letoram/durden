@@ -326,6 +326,8 @@ global_menu_register("settings",
 	kind = "action",
 	submenu = true,
 	description = "Global settings for all wayland clients",
+-- disable for now, code isn't all too robust
+	eval = function() return false; end,
 	handler = wayland_settings
 });
 

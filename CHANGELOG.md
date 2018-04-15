@@ -25,6 +25,9 @@
 	* impostors:
 	   crop t- px and bind to a toggle-able titlebar
 
+  * browser:
+	   add controls for preview-launch delay, and allow video previews
+
 Breaking:
   * statusbar visual config area changed to [px] from % point and
 	  order changed to [t l r d] to match similar functions
@@ -33,8 +36,12 @@ Breaking:
 	  to grow large
 
 Minor:
+  * activate GPU rescan on hotplug event
+
   * regression in hotplugging causing nil table member dereference
 	  on remove event with active listeners
+
+  * input focus can be changed by explicit display path / name
 
   * reworked most sizing / positioning code to be less strict on
 	  client- driven resizing

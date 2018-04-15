@@ -78,7 +78,7 @@ local function match_ext(v, tbl)
 		return false;
 	end
 
-	if (tbl[ext]) then
+	if (tbl[string.lower(ext)]) then
 		return tbl[ext];
 	else
 		return tbl["*"];
@@ -148,7 +148,8 @@ end
 
 local function browser_timer(ctx)
 	ctx.counter = ctx.counter + 1;
-	if (ctx.counter > 10 and ctx.preview and not ctx.preview.used) then
+	if (ctx.counter > gconfig_get("browser_timer")
+		and ctx.preview and not ctx.preview.used) then
 		local res = ctx.preview.trigger(table.concat(ctx.path, "/"),
 			ctx.preview.name,
 			ctx.namespace,

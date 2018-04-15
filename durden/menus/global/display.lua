@@ -62,6 +62,21 @@ end
 local function gen_disp_menu(disp)
 	return {
 		{
+		name = "focus",
+		eval = function() return disp.id ~= nil; end,
+		label = "Input Focus",
+		kind = "action",
+		description = "Move input focus to this display",
+		handler = function()
+			for v in all_displays_iter() do
+				if (v.id == disp.id) then
+					display_cycle_active(v.ind);
+					return;
+				end
+			end
+		end
+		},
+		{
 		name = "state",
 		eval = function() return disp.id ~= nil; end,
 		label = "Toggle On/Off",

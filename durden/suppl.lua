@@ -1206,6 +1206,11 @@ local function lbar_fun(ctx, instr, done, lastv, inp_st)
 
 -- and filter these through the possible eval() function
 	for i=1,#subs do
+		if (subs[i].eval and type(subs[i].eval) ~= "function") then
+			active_display():message(string.format("malformed entry: %s", subs[i].name));
+			subs[i].eval = function() return true; end
+		end
+
 		if ((subs[i].eval == nil or subs[i].eval(ctx.handler, instr)) and
 			(ctx.show_invisible or not subs[i].invisible)) then
 			if (subs[i].submenu) then
