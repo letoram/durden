@@ -393,6 +393,7 @@ function display_set_backlight(name, ctrl, ind)
 	led_intensity(ctrl, ind, 255.0 * disp.backlight);
 end
 
+local last_rescan = CLOCK;
 function display_event_handler(action, id)
 	local ddisp, newh;
 	if (displays.simple) then
@@ -473,6 +474,10 @@ function display_event_handler(action, id)
 				v("removed", name, ddisp.tiler, id);
 			end
 		end
+
+	elseif (action == "changed") then
+		active_display():message("rescanning GPUs on hotlug");
+		video_displaymodes();
 	end
 
 	return newh;

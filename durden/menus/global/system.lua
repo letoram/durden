@@ -12,6 +12,14 @@ local exit_query = {
 	kind = "action",
 	dangerous = true,
 	handler = function() shutdown(); end
+},
+{
+	name = "silent",
+	label = "Silent",
+	description = "Shutdown, but don't tell external connections to terminate",
+	kind = "action",
+	dangerous = true,
+	handler = function() shutdown("", EXIT_SILENT); end
 }
 };
 

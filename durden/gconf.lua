@@ -40,7 +40,8 @@ local defaults = {
 	bordert = 1,
 
 -- right now, the options are 'none', 'image', 'full'
-	preview_mode = "full",
+	browser_preview = "full",
+	browser_timer = 5,
 
 -- for the first run, enable more helpers
 	first_run = true,

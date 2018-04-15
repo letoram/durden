@@ -289,14 +289,26 @@ end
 
 local config_browser = {
 	{
-		name = "preview",
+		name = "preview_mode",
 		label = "Preview",
 		description = "Control what type of resources will be previewed",
 		kind = "value",
-		initial = function(ctx, val) return gconfig_get("preview_mode"); end,
+		initial = function(ctx, val) return gconfig_get("browser_preview"); end,
 		set = {"none", "image", "full"},
 		handler = function(ctx, val)
-			gconfig_set("preview_mode", val);
+			gconfig_set("browser_preview", val);
+		end
+	},
+	{
+		name = "preview_delay",
+		label = "Timer",
+		description = "The amount of 'hover' ticks before preview is activated",
+		kind = "value",
+		hint = "1..100",
+		validator = gen_valid_num(1, 100),
+		inital = function() return tostring(gconfig_get("browser_timer")); end,
+		handler = function(ctx, val)
+			gconfig_set("browser_timer", tonumber(val));
 		end
 	}
 };

@@ -175,7 +175,7 @@ return function()
 		run = imgwnd,
 		col = HC_PALETTE[1],
 		selcol = HC_PALETTE[1],
-		preview = gconfig_get("preview_mode") ~= "none" and imgprev or nil
+		preview = gconfig_get("browser_preview") ~= "none" and imgprev or nil
 	};
 
 	local audhnd = {
@@ -188,7 +188,7 @@ return function()
 		run = decwnd,
 		col = HC_PALETTE[3],
 		selcol = HC_PALETTE[3],
-		preview = gconfig_get("preview_mode") == "full" and decprev or nil
+		preview = gconfig_get("browser_preview") == "full" and decprev or nil
 	};
 
 	local defhnd = {
@@ -200,7 +200,7 @@ return function()
 -- decode- frameserver doesn't have a way to query type and extension for
 -- a specific resource, and running probes on all files in a folder with
 -- 10k entries might be a little excessive
-	local ffmts = {jpg = imghnd, png = imghnd, bmp = imghnd,
+	local ffmts = {jpg = imghnd, jpeg = imghnd, png = imghnd, bmp = imghnd,
 		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
 		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
 		flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
