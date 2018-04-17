@@ -889,6 +889,67 @@ end
 
 local widgets = {};
 
+-- support script for implementing a mouse- based interpretation
+-- of a menu table (with submenus etc.)
+--
+-- opts:
+-- x, y = spawn at specific coordinate (else mouse)
+-- max_x, max_y = position based on these constraints (else VRESW, VRESH)
+-- bg = vid to use for background, else shader + bgcol will be set
+-- bgcol = color for fill surface or 64, 64, 64
+-- destroy = hook when the popup is destroyed
+--
+-- parent: usually called from within the popup itself to handle submenus
+--         has an on_focus handler when all its children have died
+--
+function suppl_popup(menu, opts, parent)
+	local lines = {
+		opts.fmt and opts.fmt or ""
+	};
+	local ents = {};
+	opts = opts and opts or {};
+
+	if (not opts.x) then
+		opts.x, opts.y = mouse_xy();
+	end
+
+	if (not opts.bg and not opts.bgcol) then
+		opts.bgcol = {64, 64, 64};
+	end
+
+-- filter out valid entries
+	for k,v in ipairs(menu) do
+		if (not v.eval or v:eval()) then
+			local str = type(v.label) == "string" and v.label or v:label();
+			table.insert(lst, str);
+			table.insert(lst, "\\n\\r");
+			table.insert(ents, v);
+		end
+	end
+
+-- early out
+	if (#lines == 1) then
+		return;
+	end
+
+	local vid, heights, outw, outh, ascend = render_text(lines);
+	if (not valid_vid(vid)) then
+		return;
+	end
+	image_mask_set(vid, MASK_UNPICKABLE);
+	image_clip_on(vid, CLIP_SHALLOW);
+
+-- build frame or use preset vid
+	local anchor;
+	if (type(opts.bg) == "number") then
+		anchor = opts.bg;
+	else
+		anchor = fill_surface(outw, outh, unpack(opts.bgcol));
+	end
+
+	show_image(anchor);
+end
+
 function suppl_widget_scan()
 	local res = glob_resource("widgets/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(res) do
@@ -1033,7 +1094,7 @@ end
 -- [ident]:str matches path/special:function to match against widget
 -- paths and [reserved]:num is the number of center- used pixels to avoid.
 --
-function suppl_widget_path(ctx, anchor, ident)
+function suppl_widget_path(ctx, anchor, ident, barh)
 	local match = {};
 	local fi = 0;
 
@@ -1090,7 +1151,10 @@ function suppl_widget_path(ctx, anchor, ident)
 			local anch = null_surface(cellw, rh);
 			link_image(anch, anchor);
 			local dy = 0;
-			if (gconfig_get("menu_helper")) then
+
+-- only account for the helper unless the caller explicitly set a height,
+-- and only for the "top" level"
+			if (gconfig_get("menu_helper") and not barh and ctr % 2 == 1) then
 				dy = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
 			end
 			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
