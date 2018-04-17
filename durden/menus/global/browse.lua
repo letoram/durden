@@ -1,5 +1,6 @@
 --  fn = vid reference for pre-existing image and video preview sessions
 local prev_cache = {};
+local lastent = "";
 -- track lastpath so we can meta-launch browse internal and resume old path
 local lastpath = "";
 
@@ -61,7 +62,12 @@ local function toggle_ent(v, match)
 	end
 end
 
-local function setup_prev(src, anchor, xofs, basew)
+local function setup_prev(src, anchor, xofs, basew, fn)
+	local opa = 0.3;
+	if (fn == lastprev) then
+		opa = 1.0;
+	end
+
 	local time = gconfig_get("animation");
 	link_image(src, anchor);
 	resize_image(src, basew, 0);
@@ -69,7 +75,7 @@ local function setup_prev(src, anchor, xofs, basew)
 	resize_image(src, 8, 8);
 	move_image(src, xofs + basew * 0.5, 0);
 	resize_image(src, basew, 0, time);
-	blend_image(src, 1.0, time);
+	blend_image(src, opa, time);
 	nudge_image(src, -basew * 0.5, -props.height, time);
 	image_inherit_order(src, true);
 end
@@ -85,6 +91,8 @@ local function decprev(path, name, space, anchor, xofs, basew, mh)
 		toggle_ent(v, k == fn);
 	end
 
+	lastent = fn;
+
 	if (prev_cache[fn]) then
 		return;
 	end
@@ -93,7 +101,7 @@ local function decprev(path, name, space, anchor, xofs, basew, mh)
 		launch_decode(fn, "pos=0.5:noaudio:loop",
 	function(source, status)
 		if (status.kind == "resized") then
-			setup_prev(source, anchor, xofs, basew);
+			setup_prev(source, anchor, xofs, basew, fn);
 			if (mh) then
 				mh.child = source;
 			end
