@@ -1,3 +1,12 @@
+-- compatibility workaround
+if not TD_HINT_FULLSCREEN then
+	TD_HINT_FULLSCREEN = 16;
+end
+
+if not TD_HINT_MAXIMIZED then
+	TD_HINT_MAXIMIZED = 8;
+end
+
 local vert = [[
 uniform mat4 modelview;
 uniform mat4 projection;
@@ -53,7 +62,7 @@ varying vec2 texco;
 void main()
 {
 	vec4 col = texture2D(map_tu0, texco);
-	gl_FragColor = vec4(col.rgb, col.a); //* obj_opacity);
+	gl_FragColor = vec4(col.rgb, col.a * obj_opacity);
 }
 ]];
 
@@ -71,20 +80,22 @@ uniform vec2 lens_center;
 uniform vec2 viewport_scale;
 uniform float warp_scale;
 uniform vec4 distortion;
-uniform vec4 aberration;
+uniform vec3 aberration;
 
 varying vec2 texco;
 
 void main()
 {
-	vec2 r = (texco * viewport_scale - lens_center) / warp_scale;
+	vec2 r = (texco * viewport_scale - lens_center);
+	r /= warp_scale;
 	float r_mag = length(r);
 
-	vec2 r_displaced = r *
-		(distortion.w + distortion.z * r_mag +
+	vec2 r_displaced = r * (
+		distortion.w +
+		distortion.z * r_mag +
 		distortion.y * r_mag * r_mag +
-		distortion.x * r_mag * r_mag * r_mag);
-
+		distortion.x * r_mag * r_mag * r_mag
+	);
 	r_displaced *= warp_scale;
 
 	vec2 tc_r = (lens_center + aberration.r * r_displaced) / viewport_scale;
@@ -119,7 +130,7 @@ end
 
 local function shader_defaults()
 	set_model_uniforms(
-		vrshaders.geom, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, true, 0);
+		vrshaders.geom, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, true, 0.1);
 
 	vrshaders.geom_inv = shader_ugroup(vrshaders.geom);
 	vrshaders.rect = shader_ugroup(vrshaders.geom);
@@ -127,8 +138,8 @@ local function shader_defaults()
 
 	shader_uniform(vrshaders.geom_inv, "flip", "b", false);
 	shader_uniform(vrshaders.rect_inv, "flip", "b", false);
-	shader_uniform(vrshaders.rect, "curve", "f", 0.1);
-	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.1);
+	shader_uniform(vrshaders.rect, "curve", "f", 0.5);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", 0.5);
 end
 shader_defaults();
 
@@ -154,40 +165,36 @@ local function vr_distortion(vrctx, model)
 	else
 		local md = vrctx.meta;
 		local shid = vrctx.shid;
-		local center_x = 0.5 * md.horizontal - 0.5 * md.hsep;
-		local center_y = 0.5 * md.hsep;
-		local warp_scale = center_x > center_y and center_x or center_y;
-		local view_fs = 0.5 * md.horizontal;
-		local view_ft = md.vertical;
+		local viewport = {md.horizontal * 0.5, md.vertical};
+		local center_l = {viewport[1] - 0.5 * md.hsep, md.vpos};
+		local center_r = {md.hsep * 0.5, md.vpos};
+		local warp_scale = center_l[1] > center_r[1] and center_l[1] or center_r[1];
 		local dst = md.distortion;
 		local abb = md.abberation;
 
-		shader_uniform(shid, "lens_center", "ff", center_x, center_y);
+		shader_uniform(shid, "lens_center", "ff", center_l[1], center_l[2]);
 		shader_uniform(shid, "warp_scale", "f", warp_scale);
-		shader_uniform(shid, "viewport_scale", "ff", view_fs, view_ft);
+		shader_uniform(shid, "viewport_scale", "ff", viewport[1], viewport[2]);
  		shader_uniform(shid, "distortion", "ffff", dst[1], dst[2], dst[3], dst[4]);
 		shader_uniform(shid, "aberration", "fff", abb[1], abb[2], abb[3]);
 
+		local rsh = shader_ugroup(shid);
+		shader_uniform(rsh, "lens_center", "ff", center_r[1], center_r[2]);
+
 		image_shader(vrctx.rt_l, shid);
-		image_shader(vrctx.rt_r, shid);
--- set so that the txcos reflect screen position
-		image_set_txcos(vrctx.rt_l,
-		{0.0, 0.0,
-		 0.5, 0.0,
-		 0.5, 1.0,
-		 0.0, 1.0
-		});
-	image_set_txcos(vrctx.rt_r,
-		{0.5, 0.0,
-		 1.0, 0.0,
-		 1.0, 1.0,
-		 0.5, 1.0
-		});
+		image_shader(vrctx.rt_r, rsh);
+		image_set_txcos_default(vrctx.rt_l);
+		image_set_txcos_default(vrctx.rt_r);
 	end
 end
 
 local function setup_vr_display(wnd, callback, opts)
 	set_vr_defaults(wnd, opts);
+
+-- no need for rendertarget redirection if we're going monoscopic/windowed
+	if (not valid_vid(wnd.vr_pipe)) then
+		return;
+	end
 
 -- or make these status messages into some kind of logging console,
 -- probably best when we can make internal TUI connections and do
@@ -272,8 +279,8 @@ local function setup_vr_display(wnd, callback, opts)
 
 -- ipd is set by moving l_eye to -sep, r_eye to +sep
 		if (md.ipd) then
-			move3d_model(cam_l, -md.ipd * 0.5, 0, 0);
-			move3d_model(cam_r, md.ipd * 0.5, 0, 0);
+			move3d_model(cam_l, md.ipd * 0.5, 0, 0);
+			move3d_model(cam_r, -md.ipd * 0.5, 0, 0);
 		end
 
 -- the distortion model has three options, no distortion, fragment shader
@@ -342,6 +349,36 @@ local function setup_vr_display(wnd, callback, opts)
 	end);
 end
 
+local function layer_rebalance(layer, ind)
+	local nexti = function(ind)
+		for i=ind+1,#layer.models do
+			if (layer.models[i].parent == nil) then
+				return i;
+			end
+		end
+	end
+
+	local ind = nexti(ind);
+	while (ind) do
+		local swap = nexti(ind);
+		if (not swap) then
+			break;
+		end
+		local old = layer.models[ind];
+		layer.models[ind] = layer.models[swap];
+		layer.models[swap] = old;
+		ind = nexti(swap);
+	end
+end
+
+local function model_display_source(model, vid)
+	if (model.display_index) then
+		set_image_as_frame(model.vid, vid, model.display_index);
+	else
+		image_sharestorage(vid, model.vid);
+	end
+end
+
 local function model_scale_factor(model, factor, relative)
 	if (relative) then
 		model.scale_factor = model.scale_factor + factor;
@@ -372,11 +409,6 @@ local function model_external(model, vid, flip)
 
 -- it would probably be better to go with projecting the bounding
 -- vertices unto the screen and use the display+oversample factor
-	local bw = model.ctx.near_layer_sz * (model.layer.index > 1 and
-		((model.layer.index-1) * model.ctx.layer_falloff) or 1);
-
-	model.external = vid;
-	image_sharestorage(model.external, model.vid);
 
 -- note: this will be sent during the preload stage, where the
 -- displayhint property for selection/visibility will be ignored.
@@ -384,10 +416,13 @@ local function model_external(model, vid, flip)
 -- though the data doesn't seem to be propagated via the VR bridge
 -- meaning that subpixel hinting will be a bad idea (which it kindof
 -- is regardless in this context).
-	target_displayhint(model.external,
-		bw * model.scalev[1], bw * model.scalev[2], 0,
-		{ppcm = model.ctx.display_density}
-	);
+	if (model.external ~= vid) then
+		local w, h = model:get_displayhint_size();
+		target_displayhint(vid, w, h, 0, {ppcm = model.ctx.display_density});
+	end
+
+	model.external = vid;
+	model:set_display_source(vid);
 
 -- gets updated on_resize with origo_ll
 	if (model.force_flip ~= nil) then
@@ -463,32 +498,16 @@ local function model_destroy(model)
 	else
 -- rebalance by swapping slot for every parentless node
 		local ind = table.find_i(layer.models, model);
-		table.remove(layer.models, ind);
-		ind = ind - 1;
+		if (ind) then
+			table.remove(layer.models, ind);
+			ind = ind - 1;
 
-		local nexti = function(ind)
-			for i=ind+1,#layer.models do
-				if (layer.models[i].parent == nil) then
-					return i;
-				end
-			end
-		end
-
-		local ind = nexti(ind);
-		while (ind) do
-			local swap = nexti(ind);
-			if (not swap) then
-				break;
-			end
-			local old = layer.models[ind];
-			layer.models[ind] = layer.models[swap];
-			layer.models[swap] = old;
-			ind = nexti(swap);
+			layer_rebalance(layer, ind);
 		end
 	end
 
 -- clean up rendering resources, but defer on animation
-	local destroy = function()
+	local destroy = function(tmpmodel)
 	if (model.custom_shaders) then
 		for i,v in ipairs(model.custom_shaders) do
 			delete_shader(v);
@@ -510,13 +529,20 @@ local function model_destroy(model)
 	end
 
 -- make it easier to detect dangling references
-	for k,_ in ipairs(model) do
+	for k,_ in pairs(model) do
 		model[k] = nil;
 	end
 	end
 
--- animate fade out if desired
+-- animate fade out if desired, this has ugly subtle asynch races as the
+-- different event handlers that may be attached to objects that are linked to
+-- the vid MAY invoke members during this time.. including destroy ..
 	if (model.ctx.animation_speed > 0) then
+		for k,v in pairs(model) do
+			if (type(v) == "function") then
+				model[k] = function() end
+			end
+		end
 		blend_image(model.vid, 0.0, 0.5* model.ctx.animation_speed);
 		tag_image_transform(model.vid, MASK_OPACITY, destroy);
 	else
@@ -539,17 +565,14 @@ local function apply_connrole(layer, model, source)
 	end
 
 	if (model.ext_kind) then
-		if (model.ext_kind == "reveal") then
+		if (model.ext_kind == "reveal" or model.ext_kind == "reveal-focus") then
 			model.active = false;
 			blend_image(model.vid, 0, model.ctx.animation_speed);
-			if (layer.models[1] == model) then
-				table.insert(layer.models, model);
-			end
 			model.layer:relayout();
 			rv = true;
 
 		elseif (model.ext_kind == "temporary" and valid_vid(model.source)) then
-			image_sharestorage(model.source, model.vid);
+			model:set_display_source(model.source);
 			rv = true;
 		end
 	end
@@ -563,16 +586,35 @@ local function model_show(model)
 		return;
 	end
 
-	if (not model.layer.selected) then
+-- special case, swap in on reveal
+	if (model.ext_kind and model.ext_kind == "reveal-focus") then
+		local ind;
+		for i=1,#model.layer.models do
+			if (model.layer.models[i].active) then
+				ind = i;
+				break;
+			end
+		end
+
+		if (ind and model.layer.models[ind] ~= model) then
+			local mind = table.find_i(model.layer.models, model);
+			local foc = model.layer.models[ind];
+			model.layer.models[ind] = model;
+			model.layer.models[mind] = foc;
+			model:select();
+		end
+
+	elseif (not model.layer.selected) then
 		model:select();
 	end
 
 -- note: this does not currently set INVISIBLE state, only FOCUS
 	if (valid_vid(model.external, TYPE_FRAMESERVER)) then
 		if (model.layer.selected ~= model) then
-			target_displayhint(model.external, 0, 0, TD_HINT_UNFOCUSED);
+			target_displayhint(model.external, 0, 0,
+				bit.bor(TD_HINT_UNFOCUSED, TD_HINT_MAXIMIZED));
 		else
-			target_displayhint(model.external, 0, 0, 0);
+			target_displayhint(model.external, 0, 0, TD_HINT_MAXIMIZED);
 		end
 	end
 
@@ -627,11 +669,12 @@ local function model_select(model)
 
 	if (layer.selected and
 		valid_vid(layer.selected.external, TYPE_FRAMESERVERE)) then
-		target_displayhint(layer.selected.external, 0, 0, TD_HINT_UNFOCUSED);
+		target_displayhint(layer.selected.external, 0, 0,
+			bit.bor(TD_HINT_UNFOCUSED, TD_HINT_MAXIMIZED));
 	end
 
 	if (valid_vid(model.external, TYPE_FRAMESERVER)) then
-		target_displayhint(model.external, 0, 0, 0);
+		target_displayhint(model.external, 0, 0, TD_HINT_MAXIMIZED);
 	end
 
 	layer.selected = model;
@@ -679,7 +722,7 @@ local function model_connpoint(model, name, kind, nosw)
 	model.ext_cp = cp;
 
 -- special behavior: on termination, just set inactive and relaunch
-	if (kind == "reveal") then
+	if (kind == "reveal" or kind == "reveal-focus") then
 		model.active = false;
 		model.layer:relayout();
 
@@ -743,7 +786,14 @@ local function model_vswap(model, step)
 	end
 end
 
-local function build_model(layer, kind, name)
+local function model_get_displayhint_size(model)
+	local bw = model.ctx.near_layer_sz * (model.layer.index > 1 and
+		((model.layer.index-1) * model.ctx.layer_falloff) or 1);
+
+	return bw * model.scalev[1], bw * model.scalev[2];
+end
+
+local function build_model(layer, kind, name, ref)
 	local res = {
 		active = true, -- inactive are exempt from layouting
 		name = name, -- unique global identifier
@@ -776,11 +826,15 @@ local function build_model(layer, kind, name)
 		swap_parent = model_swapparent,
 		get_size = model_getsize,
 		get_scale = model_getscale,
+		get_displayhint_size = model_get_displayhint_size,
 		mergecollapse = model_mergecollapse,
 		set_connpoint = model_connpoint,
+		release_child = model_release,
+		adopt_child = model_adopt,
 		set_stereo = model_stereo,
 		set_curvature = model_curvature,
 		set_scale_factor = model_scale_factor,
+		set_display_source = model_display_source,
 		preprocess_input = model_input
 	};
 
@@ -812,8 +866,13 @@ local function build_model(layer, kind, name)
 			(depth / 20) * layer.ctx.subdiv_factor[1],
 			(depth / 20) * layer.ctx.subdiv_factor[2], 1, true
 		);
-	else
-		return;
+	elseif (kind == "custom") then
+		if (not valid_vid(ref)) then
+			warning("custom model specified but invalid ref");
+			return;
+		end
+		model = ref;
+		size = {2, 2, 2}; -- assuming -1..1 in all dimensions
 	end
 
 	if (not valid_vid(model)) then
@@ -824,10 +883,14 @@ local function build_model(layer, kind, name)
 	res.size = size;
 	res.vid = model;
 
-	swizzle_model(model);
-	image_shader(model, shader);
-	image_sharestorage(layer.ctx.placeholder, model);
-	rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
+	if (kind ~= "custom") then
+		swizzle_model(model);
+		image_shader(model, shader);
+	end
+
+	if (valid_vid(layer.ctx.vr_pipe)) then
+		rendertarget_attach(layer.ctx.vr_pipe, model, RENDERTARGET_DETACH);
+	end
 	link_image(model, layer.anchor);
 
 	return res;
@@ -842,6 +905,7 @@ local function set_defaults(ctx, opts)
 		terminal_font = "hack.ttf",
 		terminal_font_sz = 18,
 		animation_speed = 5,
+		curve = 0.5,
 		subdiv_factor = {1.0, 0.4},
 	};
 
@@ -867,14 +931,14 @@ local function layer_zpos(layer)
 	return layer.dz;
 end
 
-local function layer_add_model(layer, kind, name)
+local function layer_add_model(layer, kind, name, ...)
 	for k,v in ipairs(layer.models) do
 		if (v.name == name) then
 			return;
 		end
 	end
 
-	local model = build_model(layer, kind, name);
+	local model = build_model(layer, kind, name, ...);
 	if (not model) then
 		return;
 	end
@@ -911,7 +975,7 @@ end
 local clut;
 local function model_eventhandler(wnd, model, source, status)
 	if (status.kind == "terminated") then
--- need to check if the model is set to reset to placeholder / last set /
+-- need to check if the model is set to reset to last set /
 -- open connpoint or to die on termination
 		if (not apply_connrole(model.layer, model, source)) then
 			model:destroy(EXIT_FAILURE, status.last_words);
@@ -925,7 +989,9 @@ local function model_eventhandler(wnd, model, source, status)
 
 		local new_model =
 			model.layer:add_model("rectangle",
-				string.format("%s_ext_%s_%s", model.name, tostring(model.extctr), kind));
+				string.format("%s_ext_%s_%s",
+				model.name, tostring(model.extctr), status.segkind)
+			);
 
 		if (not new_model) then
 			return;
@@ -964,6 +1030,70 @@ local function terminal_eventhandler(wnd, model, source, status)
 	end
 end
 
+-- This is for the bridge connection that probes basic display properties
+-- subsegment requests here map to actual wayland surfaces.
+local function wayland_eventhandler(wnd, model, source, status)
+	if (status.kind == "preroll") then
+		local width, height = model:get_displayhint_size();
+		target_displayhint(source, width, height, 0, {ppcm = wnd.display_density});
+		target_flags(source, TARGET_ALLOWGPU);
+
+	elseif (status.kind == "segment_request") then
+		if (status.segkind == "multimedia") then
+-- subsurface, let default-reject apply
+		elseif (status.segkind == "cursor") then
+-- cursor, don't reject but allow only one
+			if (model.mouse_cursor) then
+				delete_image(model.mouse_cursor);
+			end
+			model.mouse_cursor = accept_target(function(...) end);
+			if (not valid_vid(model.mouse_cursor)) then
+				return;
+			end
+			link_image(model.mouse_cursor, model.vid);
+		elseif (status.segkind == "popup") then
+-- popup, default reject
+		elseif (status.segkind == "clipboard") then
+-- clipboard, default reject
+		elseif (status.segkind == "application") then
+-- actual toplevel, first assign to this model, wait with the splitting
+-- out, linking etc. actions until we're later with the project
+			if (valid_vid(model.toplevel)) then
+				delete_image(model.toplevel);
+			end
+			model.toplevel = accept_target(
+			function(source, status)
+				return model_eventhandler(model.ctx, model, source, status);
+			end);
+			if (not valid_vid(model.toplevel)) then
+				return;
+			end
+
+-- recall that the bridge is technically still alive, but we don't
+-- want it to be the input handler for the model anymore, so replace
+-- that..
+			local width, height = model:get_displayhint_size();
+			target_displayhint(source, width, height,
+				TD_HINT_MAXIMIZED, {ppcm = wnd.display_density});
+			model:set_display_source(model.toplevel);
+			link_image(model.toplevel, model.vid);
+
+-- yet we still need to relink to the model anchor so we get the cascade
+-- deletion cleanup goodness
+			if (model.external == source) then
+				model.external = model.toplevel;
+				link_image(source, model.vid);
+			end
+		end
+	elseif (status.kind == "terminated") then
+		if (model.destroy) then
+			model:destroy();
+		else
+			delete_image(source);
+		end
+	end
+end
+
 clut = {
 	application = model_eventhandler,
 	terminal = terminal_eventhandler,
@@ -975,7 +1105,7 @@ clut = {
 	browser = model_eventhandler,
 
 -- handlers to types that we don't accept as primary now
-	["bridge-wayland"] = nil,
+	["bridge-wayland"] = wayland_eventhandler,
 	clipboard = nil, -- no clipboard managers
 	popup = nil,
 	icon = nil,
@@ -1128,46 +1258,74 @@ local function layer_swap(layer, left, count)
 	layer:relayout();
 end
 
--- same as _swap, but more movement and more directions
+local function layer_merge(layer, left, step)
+end
+
+-- same as _swap, but more movement
 local function layer_cycle(layer, left, step)
 	if (step == 0) then
 		layer:relayout();
 		return;
 	end
 
-	local step_index = function(ind, n)
+-- this should really be reworked to handle both directions
+-- (change the recurse stage and the step_index)
+	step = math.abs(step);
+
+	local step_index = function(ind, n, step)
+		step = step and step or 1;
+		ind = ind + step;
+
 		while (n > 0 and layer.models[ind]) do
 			if (not layer.models[ind].parent and layer.models[ind].active) then
 				n = n - 1;
+				if (n == 0) then
+					break;
+				end
 			end
-			ind = ind + 1;
+			ind = ind + step;
 		end
 		return layer.models[ind] and ind or nil;
 	end
 
-	local starti = step_index(1, 1);
-	if (not left) then
-		starti = step_index(starti+1, 1);
+	local rooti = step_index(0, 1);
+	local startv = layer.models[rooti];
+
+-- left starts 1 from root, right 2, then alternate left/right
+	local firsti = left and step_index(rooti, 1) or step_index(rooti, 2);
+	local starti = firsti;
+
+	local lasti;
+	while (starti) do
+		lasti = starti;
+		starti = step_index(starti, 2);
 	end
 
-	if (not starti) then
+	if (not lasti) then
 		return;
 	end
 
-	local model = layer.models[starti];
+-- bubble-step towards start
+	starti = lasti;
+	local carryv = layer.models[rooti];
 
-	local nexti = step_index(starti+1, 2);
-	while (nexti) do
-		local candidate = step_index(nexti+1, 2);
-		if (candidate) then
-			layer.models[starti] = layer.models[nexti];
-		else
-			layer.models[nexti] = model;
-		end
-		nexti = candidate;
+	while(starti and starti >= firsti) do
+		assert(carryv.parent == nil);
+		local nextv = layer.models[starti];
+		layer.models[starti] = carryv;
+		carryv = nextv;
+		starti = step_index(starti, 2, -1);
 	end
 
-	layer_cycle(layer, left, step - 1);
+	layer.models[rooti] = carryv;
+
+-- tail recurse if more than one step
+	if (step > 1) then
+		layer_cycle(layer, left, step - 1);
+	else
+		layer.models[rooti]:select();
+		layer:relayout();
+	end
 end
 
 local function layer_destroy(layer)
@@ -1192,10 +1350,13 @@ end
 
 local function dump(ctx, outf)
 	local node_string = function(j)
+		local pos = image_surface_resolve(j.vid);
 		return string.format(
-			"name='%s' active='%s' scale_factor='%f' scale='%f %f %f' opacity='%f'",
+			"name='%s' active='%s' scale_factor='%.2f' scale='%.2f %.2f %.2f' opacity='%.2f'" ..
+			"pos='%.2f %.2f %.2f' parent='%s'",
 			j.name, j.active and "yes" or "no", j.scale_factor,
-			j.scalev[1], j.scalev[2], j.scalev[3], j.opacity
+			j.scalev[1], j.scalev[2], j.scalev[3], j.opacity,
+			pos.x, pos.y, pos.z, j.parent and j.parent.name or "no"
 		);
 	end
 
@@ -1209,8 +1370,8 @@ local function dump(ctx, outf)
 
 	for k,v in ipairs(ctx.layers) do
 		outf(string.format(
-			"<layer name='%s' index='%d' radius='%f' depth='%f' spacing='%f' opacity='%f'" ..
-			" inactive_scale='%f'>", v.name, k, v.radius, v.depth, v.spacing, v.opacity,
+			"<layer name='%s' index='%d' radius='%.2f' depth='%.2f' spacing='%.2f' opacity='%.2f'" ..
+			" inactive_scale='%.2f'>", v.name, k, v.radius, v.depth, v.spacing, v.opacity,
 			v.inactive_scale));
 
 		for i,j in ipairs(v.models) do
@@ -1242,6 +1403,18 @@ local function layer_count_children(layer, model)
 		end
 	end
 	return cnt;
+end
+
+local function model_release(model, ind, top)
+	if (not layer.selected) then
+		return;
+	end
+
+	local in_top = true;
+
+	table.remove(layer.models, children[ind]);
+	layer.models[dsti].parent = nil;
+	layer_rebalance(layer, dsti);
 end
 
 local function layer_add(ctx, tag)
@@ -1314,13 +1487,18 @@ return function(ctx, surf, opts)
 	local cam = null_surface(1, 1);
 	scale3d_model(cam, 1.0, -1.0, 1.0);
 
--- reference color / texture to use as a placeholder
-	local placeholder = fill_surface(64, 64, 128, 128, 128);
+-- we may need to use the default 'render to world' when running
+-- monoscopic in a windowed mode
+	if (valid_vid(surf)) then
+		define_rendertarget(surf, {cam},
+			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
 
--- preview window, don't be picky
-	define_rendertarget(surf, {cam, placeholder},
-		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, -1, RENDERTARGET_FULL);
-	camtag_model(cam, 0.01, 100.0, 45.0, 1.33, true, true, 0, surf);
+-- special case, always take the left eye view on stereoscopic sources,
+-- the real stereo pipe takes the right approach of course
+		rendertarget_id(surf, 0);
+	end
+
+	camtag_model(cam, 0.01, 100.0, 45.0, VRESW/VRESH, true, true, 0, surf);
 
 	local prefix = opts.prefix and opts.prefix or "";
 
@@ -1328,7 +1506,6 @@ return function(ctx, surf, opts)
 	ctx.default_layouter = system_load(prefix .. "/layouters/default.lua")();
 	ctx.add_layer = layer_add;
 	ctx.camera = cam;
-	ctx.placeholder = placeholder;
 	ctx.vr_pipe = surf;
 	ctx.setup_vr = setup_vr_display;
 	ctx.reindex_layers = reindex_layer;
@@ -1336,9 +1513,9 @@ return function(ctx, surf, opts)
 	ctx.dump = dump;
 	ctx.message = function(ctx, msg) print(msg); end;
 
--- special case, always take the left eye view on stereoscopic sources,
--- the real stereo pipe takes the right approach of course
-	rendertarget_id(surf, 0);
+-- this is actually shared global state, should move to instance into ctx
+	shader_uniform(vrshaders.rect, "curve", "f", opts.curve);
+	shader_uniform(vrshaders.rect_inv, "curve", "f", opts.curve);
 
 -- all UI is arranged into layers of models
 	ctx.layers = {};

@@ -48,9 +48,12 @@ function meta_guard(s1, s2)
 		function()
 		bindcall("bind_menu", LBL_METAGUARD_MENU,
 		function()
+		bindcall("bind_tmenu", LBL_METAGUARD_TMENU,
+		function()
 		end
-		)end)
-		end);
+		)end
+		)end
+		)end);
 
 		mgc = 0;
 		active_display():message();

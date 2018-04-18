@@ -175,6 +175,22 @@ local function defprev(fn, path)
 	end
 end
 
+local function triggerfun(ctx, a, b, c)
+	print("triggered", ctx, a, b, c);
+end
+
+local function preview_hnd(ctx)
+	print("preview");
+end
+
+local function queue_hnd(ctx)
+	print("queue");
+end
+
+local function cancel_hnd(ctx)
+	print("cancel");
+end
+
 return function()
 -- for universal file picker, this is where we should implement the hooks
 -- that redirects to the correct window - all in all we should move this
@@ -183,22 +199,23 @@ return function()
 		run = imgwnd,
 		col = HC_PALETTE[1],
 		selcol = HC_PALETTE[1],
-		preview = gconfig_get("browser_preview") ~= "none" and imgprev or nil
+		preview = gconfig_get("browser_preview") ~= "none" and imgprev or nil,
 	};
 
 	local audhnd = {
 		run = decwnd,
 		col = HC_PALETTE[2],
-		selcol = HC_PALETTE[2]
+		selcol = HC_PALETTE[2],
 	};
 
 	local dechnd = {
 		run = decwnd,
 		col = HC_PALETTE[3],
 		selcol = HC_PALETTE[3],
-		preview = gconfig_get("browser_preview") == "full" and decprev or nil
+		preview = gconfig_get("browser_preview") == "full" and decprev or nil,
 	};
 
+-- this is where we can queue a list of handlers to invoke
 	local defhnd = {
 		run = function() end,
 		preview = defprev,
@@ -212,8 +229,11 @@ return function()
 		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
 		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
 		flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
-		webm = dechnd, ["*"] = defhnd
+		webm = dechnd, ["*"] = defhnd,
+		on_preview = preview_hnd,
+		on_queue = queue_hdn,
+		on_cancel = cancel_hnd
 	};
 
-	browse_file(nil, ffmts, SHARED_RESOURCE, nil, nil, {});
+	browse_file(nil, ffmts, SHARED_RESOURCE, triggerfun, nil, {});
 end

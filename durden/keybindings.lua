@@ -17,12 +17,12 @@ SYSTEM_KEYS = {
 ["cancel"] = "ESCAPE",
 ["next"] = "UP",
 ["previous"] = "DOWN",
-["caret_home"] = "HOME",
-["caret_end"]  = "END",
-["caret_left"] = "LEFT",
-["caret_right"] = "RIGHT",
-["caret_delete"] = "DELETE",
-["caret_erase"] = "BACKSPACE"
+["home"] = "HOME",
+["end"]  = "END",
+["left"] = "LEFT",
+["right"] = "RIGHT",
+["delete"] = "DELETE",
+["erase"] = "BACKSPACE"
 };
 
 --

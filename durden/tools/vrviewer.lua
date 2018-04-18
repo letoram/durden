@@ -95,7 +95,8 @@ local function vrwnd()
 
 -- this will append functions for adding layers and models
 	setup_vr(wnd, preview, {
-		prefix = "tools/vrviewer"
+		prefix = "tools/vrviewer",
+		curve = 0.9
 	});
 
 -- leases that we have taken from the display manager
