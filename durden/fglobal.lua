@@ -367,7 +367,13 @@ gf["rebind_basic"] = function(chain)
 		{"Accept", "accept"},
 		{"Cancel", "cancel"},
 		{"Next", "next"},
-		{"Previous", "previous"}
+		{"Previous", "previous"},
+		{"Home", "home"},
+		{"End", "end"},
+		{"Left", "left"},
+		{"Right", "right"},
+		{"Erase", "erase"},
+		{"Delete", "delete"}
 	};
 
 	local used = {};

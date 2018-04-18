@@ -178,6 +178,17 @@ local function build_connpoint(wnd, layer, model)
 			handler = function(ctx, val)
 				model:set_connpoint(val, "reveal");
 			end
+		},
+		{
+			name = "reveal_focus",
+			label = "Reveal-Focus",
+			kind = "value",
+			hint = "(connpoint name)",
+			description = "Similar to reveal (show model on connect), but also set to focus slot",
+			validator = function(val) return val and string.len(val) > 0; end,
+			handler = function(ctx, val)
+				model:set_connpoint(val, "reveal-focus");
+			end
 		}
 	};
 end
@@ -390,10 +401,10 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Scale Factor",
 		description = "Set model-focus (center slot) scale factor",
 		kind = "value",
-		validator = gen_valid_num(0.5, 10.0),
+		validator = gen_valid_num(0.1, 100.0),
 		handler = function(ctx, val)
 			model:set_scale_factor(tonumber(val));
-			model.layouter:relayout();
+			model.layer:relayout();
 		end
 	},
 	{
@@ -415,6 +426,7 @@ local function model_settings_menu(wnd, layer, model)
 		kind = "action",
 		handler = function(ctx)
 			model.merged = not model.merged;
+			model.layer:relayout();
 		end
 	},
 	{
@@ -638,26 +650,14 @@ local function get_layer_menu(wnd, layer)
 			end,
 		},
 		{
-			name = "hide",
-			label = "Hide",
-			kind = "action",
-			description = "Hide the layer",
-			eval = function() return layer.hidden == nil; end,
-			handler = function()
-				layer.hidden = true;
-				blend_image(layer.anchor, 0.0, wnd.animation_speed);
-			end,
-		},
-		{
-			name = "reveal",
-			label = "Reveal",
-			kind = "action",
-			description = "Show a previously hidden layer",
-			eval = function() return layer.hidden == true; end,
-			handler = function()
-				layer.hidden = nil;
-				blend_image(layer.anchor, layer.opacity, wnd.animation_speed);
-			end,
+			name = "opacity",
+			label = "Opacity",
+			kind = "value",
+			description = "Set the layer opacity",
+			validator = gen_valid_num(0.0, 1.0),
+			handler = function(ctx, val)
+				blend_image(layer.anchor, tonumber(val), wnd.animation_speed);
+			end
 		},
 		{
 			name = "focus",
@@ -830,7 +830,6 @@ local function hmd_config(wnd, opts)
 	description = "Set the current orientation as the new base reference",
 	kind = "action",
 	handler = function()
-		active_display():message("sent reset event");
 		reset_target(wnd.vr_state.vid);
 	end
 	},
@@ -842,10 +841,25 @@ local function hmd_config(wnd, opts)
 	validator = gen_valid_num(0.0, 1.0),
 	handler = function(ctx, val)
 		local num = tonumber(val);
-		wnd.ipd = num;
-		move3d_model(wnd.vr_state.l, -wnd.ipd * 0.5, 0, 0);
-		move3d_model(wnd.vr_state.r, wnd.ipd * 0.5, 0, 0);
+		wnd.vr_state.meta.ipd = num;
+		move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+		warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
 	end
+	},
+	{
+		name = "step_ipd",
+		label = "Step IPD",
+		kind = "value",
+		description = "relatively nudge the 'interpupilary distance'",
+		validator = gen_valid_num(-1.0, 1.0),
+		handler = function(ctx, val)
+			local num = tonumber(val);
+			wnd.vr_state.meta.ipd = wnd.vr_state.meta.ipd + num;
+			move3d_model(wnd.vr_state.l, -wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			move3d_model(wnd.vr_state.r, wnd.vr_state.meta.ipd * 0.5, 0, 0);
+			warning(string.format("change ipd: %f", wnd.vr_state.meta.ipd));
+		end
 	},
 	{
 	name = "distortion",

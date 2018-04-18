@@ -89,7 +89,7 @@ fi
 # snap due to the possibility of sensitive data)
 while true; do
 	starttime=$(date +%s)
-	if /usr/bin/arcan "${distargs}" -b $applname $applname "$@"; then
+	if arcan "${distargs}" -b $applname $applname "$@"; then
 		exit
 	fi
 	stoptime=$(date +%s)

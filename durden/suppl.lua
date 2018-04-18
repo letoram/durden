@@ -630,12 +630,12 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 --				redraw(ctx);
 			end
 		end,
-		caret_left   = SYSTEM_KEYS["caret_left"],
-		caret_right  = SYSTEM_KEYS["caret_right"],
-		caret_home   = SYSTEM_KEYS["caret_home"],
-		caret_end    = SYSTEM_KEYS["caret_end"],
-		caret_delete = SYSTEM_KEYS["caret_delete"],
-		caret_erase  = SYSTEM_KEYS["caret_erase"]
+		caret_left   = SYSTEM_KEYS["left"],
+		caret_right  = SYSTEM_KEYS["right"],
+		caret_home   = SYSTEM_KEYS["home"],
+		caret_end    = SYSTEM_KEYS["end"],
+		caret_delete = SYSTEM_KEYS["delete"],
+		caret_erase  = SYSTEM_KEYS["erase"]
 	} or ctx;
 
 	ctx.view_str = function()

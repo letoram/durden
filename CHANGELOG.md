@@ -46,6 +46,10 @@ Minor:
   * reworked most sizing / positioning code to be less strict on
 	  client- driven resizing
 
+  * expose target menu binding in recovery binding handler
+
+  * expose input caret manipulation as part of basic bindings
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.

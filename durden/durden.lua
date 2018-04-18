@@ -758,10 +758,10 @@ function durden_regionsel_input(iotbl, fromim)
 				mouse_select_set(items[1]);
 			end
 -- keyboard mouse navigation, could probably be moved to some
-		elseif (SYSTEM_KEYS["caret_left"] == sym) then
+		elseif (SYSTEM_KEYS["left"] == sym) then
 			local mx, my = mouse_xy();
 			mouse_absinput(mx-8, my);
-		elseif (SYSTEM_KEYS["caret_right"] == sym) then
+		elseif (SYSTEM_KEYS["right"] == sym) then
 			local mx, my = mouse_xy();
 			mouse_absinput(mx+8, my);
 		elseif (SYSTEM_KEYS["next"] == sym) then

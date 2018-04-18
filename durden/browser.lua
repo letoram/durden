@@ -392,6 +392,10 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 		local m1, m2 = dispatch_meta();
 		if (m1) then
 			step_up(lbctx);
+
+-- forward cancel so the queue may be processed
+		elseif (extensions.on_cancel) then
+			extensions:on_cancel();
 		end
 	end
 
@@ -401,12 +405,21 @@ function browse_file(pathtbl, extensions, mask, donecb, tblmin, opts)
 	lbar.meta_handler =
 	function(ctx, sym, iotbl, lutsym, meta)
 		if (sym == SYSTEM_KEYS["next"]) then
--- add to queue..
+			if (extensions.on_queue) then
+				return extensions:on_queue("lastfile");
+			end
 		elseif (sym == SYSTEM_KEYS["previous"]) then
--- pop from queue..
-		elseif (sym == SYSTEM_KEYS["caret_right"]) then
--- switch preview mode
-		elseif (sym == SYSTEM_KEYS["caret_left"]) then
+			if (extensions.on_queue) then
+				return extensions:on_queue();
+			end
+		elseif (sym == SYSTEM_KEYS["right"]) then
+			if (extensions.on_preview) then
+				return extensions:on_preview(true);
+			end
+		elseif (sym == SYSTEM_KEYS["left"]) then
+			if (extensions.on_preview) then
+				return extensions:on_preview(false);
+			end
 		end
 	end
 
