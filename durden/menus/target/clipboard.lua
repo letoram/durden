@@ -9,7 +9,7 @@ local function pastefun(wnd, msg)
 --			wnd.external, "", {null_surface(1,1)}, {},
 --			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0, function()
 --		end);
-		wnd.clipboard_out = define_nulltarget(wnd.external,
+		wnd.clipboard_out = define_nulltarget(wnd.external, "clipboard",
 		function(source, status)
 			if (status.kind == "terminated") then
 				delete_image(source);

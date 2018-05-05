@@ -596,16 +596,8 @@ local durden_system = {
 			return path == ":disabled" and "[disabled]" or pth;
 		end,
 		handler = function(ctx, val)
-			if (CONTROL_CHANNEL) then
-				CONTROL_CHANNEL:close();
-				zap_resource(gconfig_get("control_path"));
-				CONTROL_CHANNEL = nil;
-			end
-
 			if (string.len(val) == 0) then
 				val = ":disabled";
-			else
-				COMMAND_CHANNEL = open_nonblock("<ipc/" .. val);
 			end
 			gconfig_set("control_path", val, true);
 		end
