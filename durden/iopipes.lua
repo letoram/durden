@@ -1,16 +1,36 @@
+
+-- needed to track available connections
+local clients = {};
+local control_socket;
+
+local function update_control(key, val)
+-- close automatically unlinks
+	if (control_socket) then
+		control_socket:close();
+		control_socket = nil;
+	end
+
+	for k,v in ipairs(clients) do
+		v:close();
+	end
+	clients = {};
+
+	if (val == ":disabled") then
+		return;
+	end
+
+	control_socket = open_nonblock("=ipc/" .. val);
+end
+
+gconfig_listen("control_path", "iopipes", update_control);
+update_control("", gconfig_get("control_path"));
+
 -- unsetting these values will prevent all external communication that is not
 -- using the nonauth- connection or regular input devices
 local sbar_fn = gconfig_get("status_path");
 if (sbar_fn ~= nil and string.len(sbar_fn) > 0 and sbar_fn ~= ":disabled") then
 	zap_resource("ipc/" .. sbar_fn);
 	STATUS_CHANNEL = open_nonblock("<ipc/" .. sbar_fn);
-end
-
-local cchan_fn = gconfig_get("control_path");
-if (cchan_fn ~= nil and string.len(cchan_fn) > 0 and cchan_fn ~= ":disabled") then
-	zap_resource("ipc/" .. cchan_fn);
-	CONTROL_CHANNEL = open_nonblock("<ipc/" .. cchan_fn);
-	CONTROL_CHANNEL_OUT = open_nonblock("<ipc/" .. cchan_fn .. "_out", true);
 end
 
 local ochan_fn = gconfig_get("output_path");
@@ -300,15 +320,21 @@ local commands = {
 			local list = {};
 			for k,v in ipairs(res) do
 				if (v.name and v.label) then
+					local ent;
 					if (v.submenu) then
-						table.insert(list, v.name .. "/");
+						ent = v.name .. "/";
 					elseif (v.kind == "value") then
-						table.insert(list, v.name .. "=");
+						ent = v.name .. "=";
 					else
-						table.insert(list, v.name);
+						ent = v.name;
+					end
+
+					if (not v.eval or v:eval()) then
+						table.insert(list, ent);
 					end
 				end
 			end
+
 			table.sort(list);
 			local msg = table.concat(list, "\n");
 			return msg .. "\nOK\n";
@@ -318,8 +344,12 @@ local commands = {
 
 -- present more detailed information about a single target
 	read = function(line, res, remainder)
+		if (not type(res) == "table") then
+			return "EINVAL, broken entry\n";
+		end
+
 		if (not res.name or not res.label) then
-			return "EINVAL, broken menu entry\n";
+			return "kind: directory\nOK\n";
 		end
 
 		local ret = {"name: ", res.name, "\n", "label: ", res.label, "\n"};
@@ -329,7 +359,7 @@ local commands = {
 
 		if (res.kind == "action") then
 			if (res.submenu) then
-				table.insert(ret, "kind: submenu\n");
+				table.insert(ret, "kind: directory\n");
 			else
 				table.insert(ret, "kind: action\n");
 			end
@@ -400,12 +430,15 @@ local commands = {
 	end
 };
 
-local function poll_control_channel()
-	local line = CONTROL_CHANNEL:read();
-	if (line == nil or string.len(line) == 0) then
-		return;
+local function cl_wr(cl, line, ind)
+	local i, ok = cl:write(line);
+	if (not ok) then
+		cl:close();
+		table.remove(clients, ind);
 	end
+end
 
+local function do_line(line, cl, ind)
 -- Split up and determine command, the initial #, ! check is done in order
 -- to not break backward compatibility. The limitation being that those
 -- commands can't control the target window.
@@ -422,28 +455,48 @@ local function poll_control_channel()
 	end
 
 	if (not commands[cmd]) then
-		CONTROL_CHANNEL_OUT:write(string.format("EINVAL: bad command(%s)\n", cmd));
+		cl_wr(cl, string.format("EINVAL: bad command(%s)\n", cmd), ind);
 		return;
 	else
 		local res, msg, remainder = menu_resolve_path(line);
 		if (not res) then
-			CONTROL_CHANNEL_OUT:write("EINVAL:" .. msg .. "\n");
+			cl_wr(cl, "EINVAL:" .. msg .. "\n", ind);
 		else
 			local msg = commands[cmd](line, res, remainder);
-			CONTROL_CHANNEL_OUT:write(msg);
+			cl_wr(cl, msg, ind);
+		end
+	end
+end
+
+local function poll_control_channel()
+-- still lack a trigger mechanism in arcan to get notified on a connection
+	local nc = control_socket:accept();
+	if (nc) then
+		table.insert(clients, nc);
+	end
+
+	for i=#clients,1,-1 do
+		local line, ok = clients[i]:read();
+		if (not ok) then
+			clients[i]:close();
+			table.remove(clients, i);
+		end
+
+		if (line and string.len(line) > 0) then
+			do_line(line, clients[i], i);
 		end
 	end
 end
 
 -- open question is if we should check lock-state here and if we're in locked
 -- input, also disable polling status / control
-timer_add_periodic("status_control", 8, false,
+timer_add_periodic("status_control", 1, false,
 function()
 	if (STATUS_CHANNEL) then
 		poll_status_channel();
 	end
 
-	if (CONTROL_CHANNEL and CONTROL_CHANNEL_OUT) then
+	if (control_socket) then
 		poll_control_channel();
 	end
 end, true

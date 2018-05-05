@@ -35,6 +35,9 @@ Breaking:
 	* target titlebar controls moved to its own group as it started
 	  to grow large
 
+	* control channel (ipc pipes) have switched to using a domain
+	  socket for both input and output
+
 Minor:
   * activate GPU rescan on hotplug event
 
@@ -49,6 +52,9 @@ Minor:
   * expose target menu binding in recovery binding handler
 
   * expose input caret manipulation as part of basic bindings
+
+	* system shutdown gets a silent option that doesn't tell clients
+	  to shut down, but rather to reconnect or migrate
 
 # 0.4.0
   * Display region sharing now supports force-pushing into clients

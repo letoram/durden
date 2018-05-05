@@ -140,9 +140,35 @@ function menu_resolve_path(line, wnd)
 		menu = get_global_menu();
 	elseif (ns == "#") then
 		menu = get_shared_menu();
-	else
-		return nil, "invalid namespace";
+
+-- special "control channel as filesystem" approach (i.e. what should have been
+-- done from the beginning without having to navigate legacy.
+	elseif (ns == "/") then
+		if (#items == 0) then
+			return {
+				{name = "global", kind = "action", submenu = true, label = "Global"},
+				{name = "target", label = "Target",
+					kind = "action", submenu = true,
+					eval = function() return active_display().selected ~= nil; end
+				}
+			}, "", val;
+		end
+
+		if (items[1] == "global") then
+			menu = get_global_menu();
+			table.remove(items, 1);
+		elseif (items[1] == "target") then
+			table.remove(items, 1);
+			menu = get_shared_menu();
+		else
+			return nil, "invalid namespace";
+		end
 	end
+
+-- MISSING:
+-- 1. allow another namespace to simply enumerate all windows by name
+-- 2. special paths, like one for 'all windows' or all windows where tag=...
+-- 3. the returned values when running actually need some kind of wrapper
 
 	while #items > 0 do
 		local ent = nil;
