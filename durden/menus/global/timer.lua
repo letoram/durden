@@ -13,150 +13,123 @@ local function list_timers(tag, hfun, group, active)
 	return res;
 end
 
-local function timerval(val)
-	local num = tonumber(val);
-	return num ~= nil and num > 0;
-end
-
-local function menu_spawn(cb)
-	IN_CUSTOM_BIND = true;
-	launch_menu_hook(
-		function(path)
-			IN_CUSTOM_BIND = false;
-			launch_menu_hook(nil);
-			cb(path, true);
-		end
-	);
-
-	local ctx = grab_global_function("global_actions")();
-	ctx.on_cancel = function()
-		IN_CUSTOM_BIND = false;
-		launch_menu_hook(nil);
-		cb("", false);
-	end
-end
-
-local function run_menu(cb, name, doublefun)
-	IN_CUSTOM_BIND = true;
-	menu_spawn(
-	function(path, ok)
-		if (not ok) then
+local function query_timer_name(n, cb)
+	local paths = {};
+	local bind_fun;
+	bind_fun = function(path)
+		if (not path) then
 			return;
 		end
-
-		if (doublefun) then
-			menu_spawn(function(path2, ok)
-				if (ok) then
-					cb(name, path, path2);
-				end
-			end);
+		n = n - 1;
+		table.insert(paths, path);
+		if (n > 0) then
+			dispatch_symbol_bind(bind_fun);
 		else
-			cb(name, path);
+			cb(paths);
 		end
 	end
-	);
+
+	dispatch_symbol_bind(bind_fun);
 end
 
-local function query_timer_name(cb, doublefun)
-	suppl_run_value({
-		name = "add_cv",
-		hint = "(Name)",
-		kind = "value",
-		validator = function(val)
-			return val and string.len(val) > 0;
-		end,
--- get slightly messy here as we want to query two paths,
--- one for timer and one optional for wakeup
-		handler = function(ctx, val)
-			run_menu(cb, val, doublefun);
-		end
-	});
+local timer_hint = "(name:seconds)";
+
+local function timer_valid(str)
+	if (not str or string.len(str) == 0 or str == ":") then
+		return false;
+	end
+	local pos, stop = string.find(str, ":", 1);
+	if (not pos) then
+		return false;
+	end
+	local time = string.sub(str, stop + 1);
+	return tonumber(time) ~= nil;
 end
 
-local function setup_idle(name, val, p1, p2, once)
-	timer_add_idle(name, tonumber(val) * CLOCKRATE, once,
-		function()
-			launch_menu_path(active_display(),
-			grab_global_function("global_actions"), p1);
-		end,
-		p2 and
-		function()
-			launch_menu_path(active_display(),
-			grab_global_function("global_actions"), p2);
-		end or nil
-	);
+local function parse_timer(str)
+	local pos, stop = string.find(str, ":", 1);
+	local name = string.sub(str, 1, pos-1);
+	local time = string.sub(str, stop+1);
+	return tonumber(time) * CLOCKRATE, name;
 end
 
 local timer_add = {
 	{
 		name = "add_period",
 		label = "Periodic",
-		hint = "(Period, ~seconds)",
+		hint = timer_hint,
 		kind = "value",
+		interactive = true,
 		description = "Add a periodic timer that repeats after a certain amount of time",
-		validator = function(val)
-			local num = tonumber(val);
-			return num and num > 0;
-		end,
+		validator = timer_valid,
 		handler = function(ctx, val)
-			query_timer_name(
-				function(name, p1)
-					timer_add_periodic(name, tonumber(val) * CLOCKRATE, false, function()
-						launch_menu_path(active_display(),
-						grab_global_function("global_actions"), p1);
+			local period, name = parse_timer(val);
+			query_timer_name(1,
+				function(paths)
+					timer_add_periodic(name, period, false,
+					function()
+						dispatch_symbol(paths[1])
 					end);
-				end, false
-			);
+				end);
 		end
 	},
 	{
 		name = "add_once",
 		label = "Once",
-		hint = "(Delay, ~seconds)",
+		hint = timer_hint,
 		kind = "value",
 		description = "Add a one-time timer that is removed after activation",
-		validator = function(val)
-			local num = tonumber(val);
-			return num and num > 0;
-		end,
+		interactive = true,
+		validator = timer_valid,
 		handler = function(ctx, val)
-			query_timer_name(
-				function(name, p1)
-					timer_add_periodic(name, tonumber(val) * CLOCKRATE, true, function()
-						launch_menu_path(active_display(),
-						grab_global_function("global_actions"), p1);
+			local period, name = parse_timer(val);
+			query_timer_name(1,
+				function(paths)
+					timer_add_periodic(name, period, true,
+					function()
+						dispatch_symbol(paths[1]);
 					end);
-				end, false
+				end
 			);
 		end
 	},
 	{
 		name = "add_idle",
-		hint = "(Idle time, ~seconds)",
+		hint = timer_hint,
 		label = "Idle",
 		kind = "value",
-		descriptor = "Activate a path and mark you as idle after a certain amount of time",
-		validator = timerval,
+		interactive = true,
+		description = "Activate a path and mark you as idle after a certain amount of time",
+		validator = timer_valid,
 		handler = function(ctx, val)
-			query_timer_name(
-				function(name, p1, p2)
-					setup_idle(name, val, p1, p2, false);
-				end, true
-			);
+			local period, name = parse_timer(val);
+			query_timer_name(2,
+				function(paths)
+					timer_add_idle(name, period, false,
+						function() dispatch_symbol(paths[1]); end,
+						function() dispatch_symbol(paths[2]); end, false
+					);
+			end);
 		end
 	},
 	{
 		name = "add_idle_once",
-		hint = "(Idle time, ~seconds)",
+		hint = timer_hint,
 		label = "Idle-Once",
 		description = "Activate a path, mark you as idle and then remove the timer after returning",
 		kind = "value",
-		validator = timerval,
+		interactive = true,
+		validator = timer_valid,
 		handler = function(ctx, val)
-			query_timer_name(
-				function(name, p1, p2)
-					setup_idle(name, val, p1, p2, true);
-				end, true
+			local period, name = parse_timer(val);
+			query_timer_name(2,
+				function(paths)
+					print("add timer:", period, name, paths[1], paths[2]);
+					timer_add_idle(name, period, true,
+						function() dispatch_symbol(paths[1]); end,
+						function() dispatch_symbol(paths[2]); end, false
+					);
+				end
 			);
 		end
 	}

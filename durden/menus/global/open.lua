@@ -74,11 +74,12 @@ function spawn_terminal(cmd, group)
 -- fake registration so we use the same path as a normal external connection
 			extevh_default(source, {
 				kind = "registered", segkind = "terminal", title = "", guid = guid});
-			local wnd_w = wnd.max_w - wnd.pad_left - wnd.pad_right;
-			local wnd_h = wnd.max_h - wnd.pad_top - wnd.pad_bottom;
+			local wnd_w = math.clamp(
+				wnd.max_w - wnd.pad_left - wnd.pad_right, 32, MAX_SURFACEW);
+			local wnd_h = math.clamp(
+				wnd.max_h - wnd.pad_top - wnd.pad_bottom, 32, MAX_SURFACEH);
 
-			target_displayhint(source,
-				wnd_w, wnd_h, wnd.dispmask, wnd.wm.disptbl);
+			target_displayhint(source, wnd_w, wnd_h, wnd.dispmask, wnd.wm.disptbl);
 			durden_devicehint(source);
 
 -- spawn a new listening endpoint if the terminal act as a connection group
@@ -162,8 +163,8 @@ local function target_cfgmenu(str, cfgs)
 	local res = {};
 	for k,v in ipairs(cfgs) do
 		table.insert(res,{
-			name = "launch_" .. hexenc(util.hash(str))
-				.. "_" .. hexenc(util.hash(v)),
+			name = "launch_" .. string.hexenc(util.hash(str))
+				.. "_" .. string.hexenc(util.hash(v)),
 			kind = "action",
 			label = v,
 			force_completion = true,
@@ -179,7 +180,7 @@ local function target_submenu()
 	for k,v in ipairs(targets) do
 		local cfgs = target_configurations(v);
 		local nent = {
-			name = "launch_" .. hexenc(util.hash(v)),
+			name = "launch_" .. string.hexenc(util.hash(v)),
 			kind = "action",
 			label = v
 		};
@@ -197,37 +198,16 @@ local function target_submenu()
 	return res;
 end
 
-local function browse_internal()
-	local imghnd = { run = imgwnd, col = HC_PALETTE[1],
-		selcol = HC_PALETTE[1], preview = imgprev };
-	local audhnd = { run = decwnd, col = HC_PALETTE[2],
-		selcol = HC_PALETTE[2] };
-	local dechnd = { run = decwnd, col = HC_PALETTE[3],
-		selcol = HC_PALETTE[3], preview = decprev };
-
--- decode- frameserver doesn't have a way to query type and extension for
--- a specific resource, and running probes on all files in a folder with
--- 10k entries might be a little excessive
-	local ffmts = {jpg = imghnd, png = imghnd, bmp = imghnd,
-		ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
-		mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
-		flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
-		webm = dechnd
-	};
-
-	browse_file(nil, ffmts, SHARED_RESOURCE, nil, nil, {});
-end
-
-register_global("spawn_terminal", spawn_terminal);
-
 return {
 {
 	name = "browse",
 	label = "Browse",
 	kind = "action",
+	alias = function() return browse_get_last(); end,
+	interactive = true,
 	description = "Open the built-in resource browser",
-	namespace = "@/browse/",
-	handler = system_load("menus/global/browse.lua")()
+	handler = function()
+	end
 },
 {
 	name = "remote",

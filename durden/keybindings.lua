@@ -31,59 +31,66 @@ SYSTEM_KEYS = {
 -- m2_ for meta2
 -- m1_m2_ for meta1+meta2
 --
--- The output resolves to an entry in GLOBAL_FUNCTIONS (fglobal.lua) or
--- to a menu path. The GLOBAL_FUNCTIONS approach is slated for deprecation.
+-- The path match their namespace ! for global, # for target and the
+-- corresponding implementation can be found in menus/global menus/target.
+--
+-- This is for legacy reasons, /global and /target are also acceptible.
+--
+-- Multiple paths can also be bound, with $ as start symbol and linefeed
+-- as separator, for instance:
+-- $!open/terminal\nopen/terminal
+--
+-- would spawn two terminals
 --
 local tbl = {};
-tbl["m1_RETURN"] = "spawn_terminal";
-tbl["m1_d"] = "!open/target";
-tbl["m1_c"] = "!display/cycle";
-tbl["m1_g"] = "global_actions";
-tbl["m1_h"] = "target_actions";
-tbl["m1_RIGHT"] = "step_right";
-tbl["m1_UP"] = "step_up";
-tbl["m1_LEFT"] = "step_left";
-tbl["m1_DOWN"] = "step_down";
-tbl["m1_m2_d"] = "destroy";
-tbl["m1_v"] = "clipboard_paste";
-tbl["m1_m2_LEFT"] = "shrink_h";
-tbl["m1_m2_RIGHT"] = "grow_h";
-tbl["m1_m2_UP"] = "shrink_v";
-tbl["m1_m2_DOWN"] = "grow_v";
-tbl["m2_h"] = "swap_left";
-tbl["m2_j"] = "swap_up";
-tbl["m2_k"] = "swap_down";
-tbl["m2_l"] = "swap_right";
-tbl["m1_m2_TAB"] = "tiletog";
-tbl["m1_t"] = "tab";
-tbl["m1_m2_t"] = "vtab";
-tbl["m1_r"] = "fullscreen";
-tbl["m1_m2_y"] = "float";
-tbl["m1_m"] = "mergecollapse";
-tbl["m2_LEFT"] = "move_nx";
-tbl["m2_RIGHT"] = "move_px";
-tbl["m2_UP"] = "move_ny";
-tbl["m2_DOWN"] = "move_py";
-tbl["m1_1"] = "switch_ws1";
-tbl["m1_2"] = "switch_ws2";
-tbl["m1_3"] = "switch_ws3";
-tbl["m1_4"] = "switch_ws4";
-tbl["m1_5"] = "switch_ws5";
-tbl["m1_6"] = "switch_ws6";
-tbl["m1_7"] = "switch_ws7";
-tbl["m1_8"] = "switch_ws8";
-tbl["m1_9"] = "switch_ws9";
-tbl["m1_0"] = "switch_ws10";
-tbl["m1_m2_r"] = "rename_space";
-tbl["m1_m2_1"] = "assign_ws1";
-tbl["m1_m2_2"] = "assign_ws2";
-tbl["m1_m2_3"] = "assign_ws3";
-tbl["m1_m2_4"] = "assign_ws4";
-tbl["m1_m2_5"] = "assign_ws5";
-tbl["m1_m2_6"] = "assign_ws6";
-tbl["m1_m2_7"] = "assign_ws7";
-tbl["m1_m2_8"] = "assign_ws8";
-tbl["m1_m2_9"] = "assign_ws9";
-tbl["m1_m2_0"] = "assign_ws10";
+tbl["m1_RETURN"] = "/global/open/terminal";
+tbl["m1_d"] = "/global/open/target";
+tbl["m1_c"] = "/global/display/cycle";
+tbl["m1_g"] = "/global";
+tbl["m1_h"] = "/target";
+tbl["m1_RIGHT"] = "/target/window/select/right";
+tbl["m1_UP"] = "/target/window/select/up";
+tbl["m1_LEFT"] = "/target/window/select/left";
+tbl["m1_DOWN"] = "/target/window/select/down";
+tbl["m1_m2_d"] = "/target/window/destroy";
+tbl["m1_v"] = "/target/clipboard/paste";
+tbl["m1_m2_LEFT"] = "/target/window/move_resize/resize_h=-0.1";
+tbl["m1_m2_RIGHT"] = "/target/window/move_resize/resize_h=0.1";
+tbl["m1_m2_UP"] = "/target/window/move_resize/resize_v=-0.1";
+tbl["m1_m2_DOWN"] = "/target/window/move_resize/resize_v=0.1";
+tbl["m2_h"] = "/target/window/swap/left";
+tbl["m2_j"] = "/target/window/swap/up";
+tbl["m2_k"] = "/target/window/swap/down";
+tbl["m2_l"] = "/target/window/swap/right";
+tbl["m1_m2_TAB"] = "/global/workspace/layout/tile_toggle";
+tbl["m1_t"] = "/global/workspace/layout/tab";
+tbl["m1_m2_t"] = "/global/workspace/layout/vtab";
+tbl["m1_r"] = "/target/window/move_resize/fullscreen";
+tbl["m1_m"] = "/target/window/swap/merge_collapse";
+tbl["m2_LEFT"] = "/target/window/move_resize/rel_x=-16";
+tbl["m2_RIGHT"] = "/target/window/move_resize/rel_x=16";
+tbl["m2_UP"] = "/target/window/move_resize/rel_y=-16";
+tbl["m2_DOWN"] = "/target/window/move_resize/rel_y=16";
+tbl["m1_1"] = "/global/workspace/switch/switch_1";
+tbl["m1_2"] = "/global/workspace/switch/switch_2";
+tbl["m1_3"] = "/global/workspace/switch/switch_3";
+tbl["m1_4"] = "/global/workspace/switch/switch_4";
+tbl["m1_5"] = "/global/workspace/switch/switch_5";
+tbl["m1_6"] = "/global/workspace/switch/switch_6";
+tbl["m1_7"] = "/global/workspace/switch/switch_7";
+tbl["m1_8"] = "/global/workspace/switch/switch_8";
+tbl["m1_9"] = "/global/workspace/switch/switch_9";
+tbl["m1_0"] = "/global/workspace/switch/switch_10";
+tbl["m1_m2_r"] = "/global/workspace/rename";
+tbl["m1_m2_1"] = "/target/window/reassign/reassign_1";
+tbl["m1_m2_2"] = "/target/window/reassign/reassign_2";
+tbl["m1_m2_3"] = "/target/window/reassign/reassign_3";
+tbl["m1_m2_4"] = "/target/window/reassign/reassign_4";
+tbl["m1_m2_5"] = "/target/window/reassign/reassign_5";
+tbl["m1_m2_6"] = "/target/window/reassign/reassign_6";
+tbl["m1_m2_7"] = "/target/window/reassign/reassign_7";
+tbl["m1_m2_8"] = "/target/window/reassign/reassign_8";
+tbl["m1_m2_9"] = "/target/window/reassign/reassign_9";
+tbl["m1_m2_10"] = "/target/window/reassign/reassign_10";
 
 return tbl;

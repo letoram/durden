@@ -1,7 +1,9 @@
 -- Copyright: None claimed, Public Domain
+--
 -- Description: Cookbook- style functions for the normal tedium
--- (string and table manipulation, mostly plucked from the AWB
--- project)
+-- (string and table manipulation, mostly plucked from the AWB project)
+-- These should either expand the various basic tables (string, math)
+-- or namespace prefix with suppl_...
 
 -- versioning workaround
 if not (TD_HINT_MAXIMIZED) then
@@ -10,6 +12,7 @@ end
 
 function string.split(instr, delim)
 	if (not instr) then
+		print("split called without argument", debug.traceback());
 		return {};
 	end
 
@@ -51,6 +54,27 @@ function math.clamp(val, low, high)
 	end
 	return val;
 end
+
+function string.to_u8(instr)
+-- drop spaces and make sure we have %2
+	instr = string.gsub(instr, " ", "");
+	local len = string.len(instr);
+	if (len % 2 ~= 0 or len > 8) then
+		return;
+	end
+
+	local s = "";
+	for i=1,len,2 do
+		local num = tonumber(string.sub(instr, i, i+1), 16);
+		if (not num) then
+			return nil;
+		end
+		s = s .. string.char(num);
+	end
+
+	return s;
+end
+
 
 function string.utf8forward(src, ofs)
 	if (ofs <= string.len(src)) then
@@ -139,6 +163,21 @@ function string.delete_at(src, ofs)
 	end
 
 	return src;
+end
+
+local function hb(ch)
+	local th = {"0", "1", "2", "3", "4", "5",
+		"6", "7", "8", "9", "a", "b", "c", "d", "e", "f"};
+
+	local fd = math.floor(ch/16);
+	local sd = ch - fd * 16;
+	return th[fd+1] .. th[sd+1];
+end
+
+function string.hexenc(instr)
+	return string.gsub(instr, "(.)", function(ch)
+		return hb(ch:byte(1));
+	end);
 end
 
 function string.trim(s)
@@ -254,24 +293,9 @@ function table.i_subsel(table, label, field)
 	return res;
 end
 
-local function hb(ch)
-	local th = {"0", "1", "2", "3", "4", "5",
-		"6", "7", "8", "9", "a", "b", "c", "d", "e", "f"};
-
-	local fd = math.floor(ch/16);
-	local sd = ch - fd * 16;
-	return th[fd+1] .. th[sd+1];
-end
-
 function suppl_strcol_fmt(str, sel)
 	local hv = util.hash(str);
 	return HC_PALETTE[(hv % #HC_PALETTE) + 1];
-end
-
-function hexenc(instr)
-	return string.gsub(instr, "(.)", function(ch)
-		return hb(ch:byte(1));
-	end);
 end
 
 --
@@ -587,7 +611,7 @@ function drop_keys(matchstr)
 end
 
 -- reformated PD snippet
-function utf8valid(str)
+function string.utf8valid(str)
   local i, len = 1, #str
 	local find = string.find;
   while i <= len do
@@ -612,11 +636,70 @@ function utf8valid(str)
   return true;
 end
 
+function suppl_bind_u8(hook)
+	local bwt = gconfig_get("bind_waittime");
+	local tbhook = function(sym, done, sym2, iotbl)
+		if (not done) then
+			return;
+		end
+
+		local bar = active_display():lbar(
+		function(ctx, instr, done, lastv)
+			if (not done) then
+				return instr and string.len(instr) > 0 and string.to_u8(instr) ~= nil;
+			end
+
+			instr = string.to_u8(instr);
+			if (instr and string.utf8valid(instr)) then
+					hook(sym, instr, sym2, iotbl);
+			else
+				active_display():message("invalid utf-8 sequence specified");
+			end
+		end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
+		suppl_widget_path(bar, bar.text_anchor, "special:u8", bar.barh);
+	end;
+
+	tiler_bbar(active_display(),
+		string.format(LBL_BIND_COMBINATION, SYSTEM_KEYS["cancel"]),
+		"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"], tbhook);
+end
+
+function suppl_binding_helper(prefix, suffix, bind_fn)
+	local bwt = gconfig_get("bind_waittime");
+
+	local on_input = function(sym, done)
+		if (not done) then
+			return;
+		end
+
+		dispatch_symbol_bind(function(path)
+			if (not path) then
+				return;
+			end
+			bind_fn(prefix .. sym .. suffix, path);
+		end);
+	end
+
+	local bind_msg = string.format(
+		LBL_BIND_COMBINATION_REP, SYSTEM_KEYS["cancel"]);
+
+	local ctx = tiler_bbar(active_display(), bind_msg,
+		false, gconfig_get("bind_waittime"), nil,
+		SYSTEM_KEYS["cancel"],
+		on_input, gconfig_get("bind_repeat")
+	);
+
+	local lbsz = 2 * active_display().scalef * gconfig_get("lbar_sz");
+
+-- tell the widget system that we are in a special context
+	suppl_widget_path(ctx, ctx.bar, "special:custom", lbsz);
+end
+
 -- will return ctx (initialized if nil in the first call), to track state
 -- between calls iotbl matches the format from _input(iotbl) and sym should be
 -- the symbol table lookup. The redraw(ctx, caret_only) will be called when
 -- the caller should update whatever UI component this is used in
-function text_input(ctx, iotbl, sym, redraw, opts)
+function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 	ctx = ctx == nil and {
 		caretpos = 1,
 		limit = -1,
@@ -728,8 +811,12 @@ function text_input(ctx, iotbl, sym, redraw, opts)
 		redraw(ctx);
 	end
 
-	assert(utf8valid(ctx.msg) == true);
+	assert(string.utf8valid(ctx.msg) == true);
 	return ctx;
+end
+
+function gen_valid_float(lb, ub)
+	return gen_valid_num(lb, ub);
 end
 
 function merge_dispatch(m1, m2)
@@ -750,207 +837,55 @@ function merge_dispatch(m1, m2)
 	return res;
 end
 
--- add m2 to m1, overwrite on collision
-function merge_menu(m1, m2)
-	local kt = {};
-	local res = {};
-	if (m2 == nil) then
-		return m1;
+function shared_valid_str(inv)
+	return (not inv or string.len(inv) == 0);
+end
+
+function shared_valid01_float(inv)
+	if (string.len(inv) == 0) then
+		return true;
 	end
 
-	if (m1 == nil) then
-		return m2;
-	end
+	local val = tonumber(inv);
+	return val and (val >= 0.0 and val <= 1.0) or false;
+end
 
-	for k,v in ipairs(m1) do
-		kt[v.name] = k;
-		table.insert(res, v);
-	end
-
-	for k,v in ipairs(m2) do
-		if (kt[v.name]) then
-			res[kt[v.name]] = v;
-		else
-			table.insert(res, v);
+function gen_valid_num(lb, ub)
+	return function(val)
+		if (not val) then
+			warning("validator activated with missing val");
+			return false;
 		end
+
+		if (string.len(val) == 0) then
+			return true;
+		end
+		local num = tonumber(val);
+		if (num == nil) then
+			return false;
+		end
+		return not(num < lb or num > ub);
 	end
-	return res;
-end
-
-local menu_hook = nil;
-local menu_path_pop;
-
-local function lbar_props()
-	local pos = gconfig_get("lbar_position");
-	local dir = 1;
-	local wm = active_display();
-	local barh = gconfig_get("lbar_sz") * wm.scalef;
-	local yp = 0;
-
-	yp = math.floor(0.5*(wm.height-barh));
-
-	return yp, barh, dir;
-end
-
-local function hlp_add_btn(ctx, helper, lbl)
-	local yp, tileh, dir = lbar_props();
-	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
-	local current_path = {};
-	for i,v in ipairs(menu_path_current().path) do
-		current_path[i] = v;
-	end
-
-	local res = {};
-	local dsti = #helper+1;
-	res.btn = uiprim_button(active_display().order_anchor,
-		"lbar_tile", "lbar_tiletext", lbl, pad,
-		active_display().font_resfn, 0, tileh,
-		{
-			click = function()
-				local path = "", ictx;
-				for i=#helper,dsti+1,-1 do
-					path, ictx = menu_path_pop(ctx);
-				end
--- dirty little hack
-				local orst = ctx.reset;
-				ctx.reset = function() end;
-				tiler_lbar_isactive(true):destroy();
-				launch_menu_path(
-					active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
-				ctx.reset = orst;
-			end
-		}
-	);
-
--- if ofs + width, compact left and add a "grow" offset on pop
-	res.ofs = #helper > 0 and helper[#helper].ofs or 0;
-	res.yofs = (tileh + 1) * dir;
-	move_image(res.btn.bg, res.ofs, res.yofs);
-	move_image(res.btn.bg, res.ofs, yp); -- switch, lbar height
-	nudge_image(res.btn.bg, 0, res.yofs, gconfig_get("animation") * 0.5, INTERP_SINE);
-	if (#helper > 0) then
-		helper[#helper].btn:switch_state("inactive");
-	end
-	res.ofs = res.ofs + res.btn.w;
-	table.insert(helper, res);
-end
-
-local function menu_path_append(ctx, new, lbl, meta)
-	table.insert(ctx.path, new);
-	local res = table.concat(ctx.path, "/");
-	table.insert(ctx.meta, meta and meta or {});
-	hlp_add_btn(ctx, ctx.helper, lbl);
-
-	if (DEBUGLEVEL > 1) then
-		print("menu path switch:", res);
-	end
-
-	return res;
-end
-
-menu_path_pop = function(ctx)
-	local path = ctx.path;
-	local helper = ctx.helper;
-	table.remove(path, #path);
-	local meta = table.remove(ctx.meta, #ctx.meta);
-	local res = table.concat(path, "/");
-	local as = gconfig_get("animation") * 0.5;
-	local hlp = helper[#helper];
-	if (not hlp) then
-		return res;
-	end
-
-	blend_image(hlp.btn.bg, 0.0, as);
-	if (as > 0) then
-		tag_image_transform(hlp.btn.bg,
-			MASK_OPACITY, function() hlp.btn:destroy(); end);
-	else
-		hlp.btn:destroy();
-	end
-
-	table.remove(helper, #helper);
-	if (#helper > 0) then
-		helper[#helper].btn:switch_state("active");
-	end
-
-	return res, meta;
-end
-
-local function menu_path_reset(ctx, prefix)
-	for k,v in ipairs(ctx.helper) do
-		v.btn:destroy();
-	end
-	ctx.helper = {};
-	ctx.path = {};
-	ctx.meta = {};
-	iostatem_restore();
-	ctx.domain = "";
 end
 
 local widgets = {};
 
--- support script for implementing a mouse- based interpretation
--- of a menu table (with submenus etc.)
---
--- opts:
--- x, y = spawn at specific coordinate (else mouse)
--- max_x, max_y = position based on these constraints (else VRESW, VRESH)
--- bg = vid to use for background, else shader + bgcol will be set
--- bgcol = color for fill surface or 64, 64, 64
--- destroy = hook when the popup is destroyed
---
--- parent: usually called from within the popup itself to handle submenus
---         has an on_focus handler when all its children have died
---
-function suppl_popup(menu, opts, parent)
-	local lines = {
-		opts.fmt and opts.fmt or ""
-	};
-	local ents = {};
-	opts = opts and opts or {};
-
-	if (not opts.x) then
-		opts.x, opts.y = mouse_xy();
-	end
-
-	if (not opts.bg and not opts.bgcol) then
-		opts.bgcol = {64, 64, 64};
-	end
-
--- filter out valid entries
-	for k,v in ipairs(menu) do
-		if (not v.eval or v:eval()) then
-			local str = type(v.label) == "string" and v.label or v:label();
-			table.insert(lst, str);
-			table.insert(lst, "\\n\\r");
-			table.insert(ents, v);
+function suppl_scan_tools()
+	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
+	for k,v in ipairs(list) do
+		local res, msg = system_load("tools/" .. v, false);
+		if (not res) then
+			warning(string.format("couldn't parse tool: %s", v));
+		else
+			local okstate, msg = pcall(res);
+			if (not okstate) then
+				warning(string.format("runtime error loading tool: %s - %s", v, msg));
+			end
 		end
 	end
-
--- early out
-	if (#lines == 1) then
-		return;
-	end
-
-	local vid, heights, outw, outh, ascend = render_text(lines);
-	if (not valid_vid(vid)) then
-		return;
-	end
-	image_mask_set(vid, MASK_UNPICKABLE);
-	image_clip_on(vid, CLIP_SHALLOW);
-
--- build frame or use preset vid
-	local anchor;
-	if (type(opts.bg) == "number") then
-		anchor = opts.bg;
-	else
-		anchor = fill_surface(outw, outh, unpack(opts.bgcol));
-	end
-
-	show_image(anchor);
 end
 
-function suppl_widget_scan()
+function suppl_scan_widgets()
 	local res = glob_resource("widgets/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(res) do
 		local res = system_load("widgets/" .. v, false);
@@ -972,122 +907,6 @@ function suppl_widget_scan()
 	end
 end
 
--- [path] needs to be a table of {name, label} pairs
-local function menu_path_force(ctx, path)
-	ctx:reset();
-	for i,v in ipairs(path) do
-		ctx:append(v[1], v[2]);
-	end
-end
-
-function menu_path_new()
--- scan for menu widgets
-	suppl_widget_scan();
-	return {
-		domain = "",
-		helper = {}, -- for managing activated helpers etc.
-		path = {}, -- track namespace path
-		meta = {}, -- for meta-data history (input message, filter settings, pos)
-		force = menu_path_force,
-		reset = menu_path_reset,
-		pop = menu_path_pop,
-		append = menu_path_append
-	};
-end
-
-local cpath = menu_path_new();
-function menu_path_current()
-	return cpath;
-end
-
-local function menu_cancel(wm, m1_overr, dangerous)
-	local m1, m2 = dispatch_meta();
-	if ((m1 or m1_overr) and not dangerous) then
-		local path, ictx = cpath:pop();
-		launch_menu_path(active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
-	else
-		cpath:reset();
-		iostatem_restore();
-	end
-end
-
-local function seth(ctx, instr, done, lastv)
-	local m1, m2 = dispatch_meta();
-	if (not done) then
-		local dset = ctx.set;
-		if (type(ctx.set) == "function") then
-			dset = ctx.set();
-		end
-
-		return {set = table.i_subsel(dset, instr)};
-	end
-
-	if (menu_hook) then
-		local fun = menu_hook;
-		menu_hook = nil;
-		fun(table.concat(cpath.path, "/") .. "=" .. instr);
-		cpath:reset();
-	else
-		if (ctx.handler) then
-			ctx:handler(instr);
-		else
-			warning("broken menu entry");
-		end
-
-		local m1, m2 = dispatch_meta();
-		menu_cancel(active_display(), false, ctx.dangerous);
-	end
-end
-
-local function normh(ctx, instr, done, lastv)
-	if (not done) then
-		if (ctx.validator ~= nil and not ctx.validator(instr)) then
-			return false;
-		end
-
-		if (ctx.helpsel) then
-			return {set = table.i_subsel(ctx:helpsel(), instr)};
-		end
-
-		return true;
-	end
-
--- special treatment
-	if (instr == "..") then
-		menu_cancel(active_display(), true, ctx.dangerous);
-		return;
-	end
-
--- validate if necessary
-	if (ctx.validator ~= nil and not ctx.validator(instr)) then
-		menu_hook = nil;
-		cpath:reset();
-		return;
-	end
-
--- slightly more cumbersome as we need to handle all permuations of
--- hook_on/off, valid but empty string with menu item default value
-	if (not instr) then
-		cpath:reset();
-		return;
-	end
-
-	if (menu_hook) then
-		local rp = table.concat(cpath.path, "/") .. "=" .. instr;
-		local fun = menu_hook;
-		menu_hook = nil;
-		fun(rp);
-		cpath:reset();
-	else
-		ctx:handler(instr);
-		menu_cancel(active_display(), false, ctx.dangerous);
-	end
-end
-
-function suppl_access_path()
-	return cpath;
-end
-
 --
 -- used to find and activate support widgets and tie to the set [ctx]:tbl,
 -- [anchor]:vid will be used for deletion (and should be 0,0 world-space)
@@ -1097,15 +916,6 @@ end
 function suppl_widget_path(ctx, anchor, ident, barh)
 	local match = {};
 	local fi = 0;
-
-	local wident = nil;
-	local wprefix = nil;
-
-	if (string.sub(ident, 1, 1) == "#") then
-		local wnd = active_display().selected;
-		wident = wnd.ident;
-		wprefix = wnd.prefix;
-	end
 
 	local props = image_surface_resolve_properties(anchor);
 	local y1 = props.y;
@@ -1117,7 +927,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
-			if ((type(j) == "function" and j(ctx, ident, wident, wprefix))
+			if ((type(j) == "function" and j(ctx, ident))
 				or ((type(j) == "string" and j == ident))) then
 -- or query for the number of columns needed assuming a certain height
 				local nc = v.probe and v.probe(ctx, rh) or 1;
@@ -1175,443 +985,6 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 				delete_image(anch);
 			end
 
-		end
-	end
-end
-
-function suppl_run_value(ctx, mask)
-	local hintstr = string.format("%s %s %s",
-		ctx.label and ctx.label or "",
-		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
-			and tostring(ctx.initial()) or ctx.initial) .. " ] ") or "",
-		ctx.hint and ((type(ctx.hint) == "function"
-		and ctx.hint() or ctx.hint) .. ":") or ""
-	);
-
--- explicit set to chose from?
-	local res;
-	if (ctx.set) then
-		res = active_display():lbar(seth,
-			ctx, {label = hintstr, force_completion = true, prefill = ctx.prefill});
-	else
--- or a "normal" run with custom input and validator feedback
-		res = active_display():lbar(normh, ctx, {
-			password_mask = mask, label = hintstr});
-	end
-	if (not res.on_cancel) then
-		res.on_cancel = menu_cancel;
-	end
-	return res;
-end
-
-local function lbar_fun(ctx, instr, done, lastv, inp_st)
-	if (done) then
-		local tgt = nil;
-		if (instr == "..") then
-			menu_cancel(active_display(), true, ctx.dangerous);
-			return;
-		end
-
-		for k,v in ipairs(ctx.list) do
-			if (v.label and string.lower(v.label) == string.lower(instr)) then
-				tgt = v;
-			end
-		end
-		if (tgt == nil) then
-			cpath:reset();
-			return;
-		end
-
--- a little odd combination, used to manually build a path to a specific menu
--- item for shortcuts. handler_hook needs to be set and either meta+submenu or
--- just non-submenu for the hook to be called instead of the default handler
-		if (tgt.kind == "action" or not tgt.kind) then
-			inp_st.lastm = ctx.lastm;
-			cpath:append(tgt.name, tgt.label, inp_st);
-			local m1, m2 = dispatch_meta();
-			if (menu_hook and
-				(tgt.submenu and m1 or not tgt.submenu)) then
-					local hf = menu_hook;
-					menu_hook = nil;
-					hf(table.concat(cpath.path, "/"));
-					cpath:reset();
-					return;
-			elseif (tgt.submenu) then
-				ctx.list = type(tgt.handler) == "function"
-					and tgt.handler(ctx.handler) or tgt.handler;
-				local nlb = launch_menu(ctx.wm, ctx, tgt.force, tgt.hint);
-				return nlb;
-			elseif (tgt.handler) then
-				tgt.handler(ctx.handler, instr, ctx);
-				if (m1) then
-					local path, ictx = cpath:pop();
-					launch_menu_path(
-						active_display(), LAST_ACTIVE_MENU, path, true, nil, ictx);
-				else
-					cpath:reset();
-				end
-				return;
-			end
-		elseif (tgt.kind == "value") then
-			cpath:append(tgt.name, tgt.label);
-			return suppl_run_value(tgt, tgt.password_mask);
-		else
-			cpath:reset();
-			return;
-		end
-	end
-
--- generate the subset of fields from the expected range
-	local subs = table.i_subsel(ctx.list, instr, "label");
-	local res = {};
-	local mlbl = gconfig_get("lbar_menulblstr");
-	local msellbl = gconfig_get("lbar_menulblselstr");
-	ctx.lastm = {};
-
--- and filter these through the possible eval() function
-	for i=1,#subs do
-		if (subs[i].eval and type(subs[i].eval) ~= "function") then
-			active_display():message(string.format("malformed entry: %s", subs[i].name));
-			subs[i].eval = function() return true; end
-		end
-
-		if ((subs[i].eval == nil or subs[i].eval(ctx.handler, instr)) and
-			(ctx.show_invisible or not subs[i].invisible)) then
-			if (subs[i].submenu) then
-				table.insert(res, {mlbl, msellbl, subs[i].label});
-			else
-				if (subs[i].fmt and subs[i].select_fmt) then
-					table.insert(res, {subs[i].fmt, subs[i].select_fmt, subs[i].label});
-				else
-					table.insert(res, subs[i].label);
-				end
-			end
--- save a copy to the eval:ed table itself so we can show a help description
-			table.insert(ctx.lastm, subs[i]);
-		end
-	end
-
-	table.insert(res, "..");
-	return {set = res, valid = false};
-end
-
-function shared_valid01_float(inv)
-	if (string.len(inv) == 0) then
-		return true;
-	end
-
-	local val = tonumber(inv);
-	return val and (val >= 0.0 and val <= 1.0) or false;
-end
-
-function gen_valid_num(lb, ub)
-	return function(val)
-		if (not val) then
-			warning("validator activated with missing val");
-			return false;
-		end
-
-		if (string.len(val) == 0) then
-			return true;
-		end
-		local num = tonumber(val);
-		if (num == nil) then
-			return false;
-		end
-		return not(num < lb or num > ub);
-	end
-end
-
-function gen_valid_float(lb, ub)
-	return gen_valid_num(lb, ub);
-end
-
---
--- ctx is expected to contain:
---  list [# of {name, label, kind, validator, handler}]
---  + any data the handler might need
---
-function launch_menu(wm, ctx, fcomp, label, opts, last_bar)
-	if (ctx == nil or ctx.list == nil or
-		type(ctx.list) ~= "table" or #ctx.list == 0) then
-		cpath:reset();
-		return;
-	end
-
-	local found = false;
-	for i,v in ipairs(ctx.list) do
-		if (v.eval == nil or v.eval()) then
-			found = true;
-			break;
-		end
-	end
-
-	if (not found) then
-		cpath:reset();
-		return;
-	end
-
-	fcomp = fcomp == nil and true or false;
-
-	opts = opts and opts or {};
-	opts.force_completion = fcomp;
-	opts.restore = last_bar;
-	opts.label = type(label) == "function" and label() or label;
-	if (opts.domain) then
-		cpath.domain = opts.domain;
-		if (#cpath.domain > #cpath.helper and opts.tag) then
-			hlp_add_btn(cpath, cpath.helper, opts.tag);
-		end
-	end
-
--- update hint-text if one is provided
-	if (gconfig_get("menu_helper")) then
-		opts.on_step = function(lbar, i, ...)
--- use ctx.anchor
-			if (i and ctx.lastm and ctx.lastm[i] and ctx.lastm[i].description) then
-				lbar:set_helper(ctx.lastm[i].description);
-			else
-				lbar:set_helper("");
-			end
-		end
-	end
-
-	ctx.wm = wm;
--- this was initially written to be independent,
--- that turned out to be a terrible design decision.
-	local bar = wm:lbar(lbar_fun, ctx, opts);
-	if (not bar) then
-		return;
-	end
-
--- activate any path triggered widget
-	local path = table.concat(cpath.path, "/");
-	suppl_widget_path(bar, bar.text_anchor,
-		(cpath.domain and cpath.domain or "") .. path);
-
-	if (not bar.on_cancel) then
-		bar.on_cancel = menu_cancel;
-	end
-
-	return bar;
-end
-
--- set a temporary hook that will override menu navigation
--- and instead send the path to the specified function one time
-function launch_menu_hook(fun)
-	menu_hook = fun;
-	cpath:reset();
-end
-
-function get_menu_tree(menu, pref)
-	local res = {};
-
-	local recfun = function(fun, mnu, pref)
-		if (not mnu) then
-			return;
-		end
-
-		for k,v in ipairs(mnu) do
-			table.insert(res, pref .. v.name);
-			if (v.submenu and (not v.eval or v.eval())) then
-				fun(fun,
-					type(v.handler) == "function" and v.handler() or
-					v.handler, pref .. v.name .. "/"
-				);
-			end
-		end
-	end
-
-	recfun(recfun, menu, pref and pref or "/");
-	return res;
-end
-
---
--- navigate a tree of submenus to reach a specific function without performing
--- the visual / input triggers needed, used to provide the same interface for
--- keybinding as for setup. gfunc should be a menu spawning function.
---
-function launch_menu_path(wm, gfunc, pathdescr, norst, domain, selstate)
-	if (not gfunc) then
-		return;
-	end
-
-	if (DEBUGLEVEL >= 1) then
-		print("launch_menu_path: ", pathdescr);
-	end
-
-	if (not pathdescr or string.len(pathdescr) == 0) then
-		gfunc();
-		return;
-	end
-
--- just filter first character if it happens to be a separator (legacy),
--- handles /////// style typos too
-	if (string.sub(pathdescr, 1, 1) == "/") then
-		launch_menu_path(wm, gfunc, string.sub(pathdescr, 2), nil, nil, selstate);
-		return;
-	end
-
--- = is reserved to match binding value menu item kinds
-	local vt = string.split(pathdescr, "=");
-	local arg = nil;
-
--- use first splitpoint and merge together again after that
-	if (#vt > 0) then
-		arg = table.concat(vt, "=", 2);
-		pathdescr = vt[1];
-	end
-
--- finally seperate into individual elements
-	local elems = string.split(pathdescr, "/");
-	if (#elems > 0 and string.len(elems[1]) == 0) then
-		table.remove(elems, 1);
-	end
-
--- temporarily replace menu functions, and otherwise simulate
--- normal user interaction
-	local cl = nil;
-	local old_launch = launch_menu;
-	launch_menu = function(wm, ctx, fcomp, label)
-		cl = ctx;
-	end
-
-	gfunc();
-	if (cl == nil) then
-		launch_menu = old_launch;
-		return;
-	end
-
-	local pll = {};
-
-	for i,v in ipairs(elems) do
-		local found = false;
-
--- linear search for matching name as we index on number (want deterministic
--- but manually managed presentation order)
-		for m,n in ipairs(cl.list) do
-			if (n.name == v) then
-				found = n;
-				break;
-			end
-		end
-
--- something bad with the keybinding, eval() function will be handled elsewhere
-		if (not found) then
-			warning(string.format(
-				"run_menu_path(%s) failed at index %d, couldn't find %s",
-				pathdescr, i, v)
-			);
-			launch_menu = old_launch;
-			return;
-		end
-
-		if (found.eval and not found.eval(arg)) then
-			if (DEBUGLEVEL > 0) then
-				warning(string.format(
-					"run_menu_path(%s) evaluation function failed", pathdescr));
-			end
-			launch_menu = old_launch;
-			return;
-		end
-
-		if (domain) then
-			if (type(domain) ~= "string") then
-				print(debug.traceback(), "DOMAIN ERROR");
-			else
-				cpath.domain = domain;
-			end
-		end
-
--- something broken with the menu item? any such cases should be noted
-		if (found.handler == nil) then
-			warning("missing handler for: " .. found.name);
-		elseif (found.submenu) then
-			table.insert(pll, {found.name, found.label});
--- special handling if the last entry ends up as a menu, meaning it should
--- be visible in the UI, unwise to add to a timer or command_channel
-			launch_menu = i == #elems and old_launch or launch_menu;
-			local menu = type(found.handler) == "function" and
-				found.handler() or found.handler;
-			launch_menu(wm, {list=menu}, found.force, found.hint, nil, selstate);
-			if (launch_menu == old_launch and not norst) then
-				cpath:force(pll);
-			end
-		else
--- or revert and activate the handler, with arg if value- action
-			launch_menu = old_launch;
-			found.handler(cl.handler, arg);
-			return;
-		end
-	end
-
-	launch_menu = old_launch;
-end
-
--- check so that [table] match all the criteria for a valid table entry
-function suppl_menu_validate(table, prefix)
-	prefix = prefix and prefix or "";
-
-	if not type(table) == "table" then
-		return false, (prefix .. "not a table");
-	end
-
-	local typektbl = {
-		name = "string",
-		label = "string",
-		kind = "string",
-		description = "string"
-	};
-
-	for k, v in pairs(typektbl) do
-		if not table[k] then
-			return false, (prefix .. " missing field: " .. k);
-		elseif type(table[k]) ~= v then
-			return false,
-				string.format(
-					"%s wrong type on: %s, expected: %s, got: %s", prefix, k, v, type(table[k]));
-		end
-	end
-
-	if (table[kind] == "action") then
-		if (table[submenu]) then
-			if (table[handler] == "function") then
--- could probably recurse suppl_menu_validate on the returned function, but since
--- these MAY be context sensitive (i.e. selected window) this is possibly bad and
--- marginally unusable, maybe as a pcall...
-			elseif (table[handler] == "table") then
-				return suppl_menu_validate(table[handler], prefix .. "/" .. table[name]);
-			else
-				return false, (prefix .. " invalid type on submenu");
-			end
-		elseif (type(table[handler]) ~= "function") then
-			return false, (prefix .. " handler is not a function");
-		end
-	end
-
--- not much that can be done here, set, initial, validator, eval are all optional,
--- should possibly have a verbose mode that exposes all these little things that
--- 'should be' there but isn't directly a failure
-	if (table[kind] == "value") then
-		if (type(table[handler]) ~= "function") then
-			return false, (prefix .. " missing handler on value");
-		end
-	end
-
-	return true;
-end
-
-function suppl_scan_tools()
-	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
-	for k,v in ipairs(list) do
-		local res, msg = system_load("tools/" .. v, false);
-		if (not res) then
-			warning(string.format("couldn't parse tool: %s", v));
-		else
-			local okstate, msg = pcall(res);
-			if (not okstate) then
-				warning(string.format("runtime error loading tool: %s - %s", v, msg));
-			end
 		end
 	end
 end

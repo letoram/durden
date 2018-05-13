@@ -381,7 +381,7 @@ local flair_menu = {
 
 display_add_listener(display_added);
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "flair",
 	label = "Flair",
@@ -392,7 +392,7 @@ global_menu_register("tools",
 }
 );
 
-global_menu_register("settings/tools",
+menus_register("global", "settings/tools",
 {
 	name = "flair",
 	label = "Flair",

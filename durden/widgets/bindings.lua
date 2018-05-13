@@ -68,7 +68,7 @@ end
 
 return {
 	name = "bindings",
-	paths = {"special:custg"},
+	paths = {"special:custom"},
 	show = show,
 	probe = probe,
 	destroy = destroy

@@ -433,7 +433,7 @@ local function modelwnd(name)
 	return wnd;
 end
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "model",
 	label = "Model Viewer",

@@ -19,6 +19,7 @@ local function update_control(key, val)
 		return;
 	end
 
+	zap_resource("ipc/" .. val);
 	control_socket = open_nonblock("=ipc/" .. val);
 end
 
@@ -229,11 +230,8 @@ local function gen_cmdtbl(cmd)
 
 	local res = {
 	click = function(btn)
-			if (string.sub(cmd, 1, 1) == "!" or
-				string.sub(cmd, 1, 1) == "#") then
-				if (allowed_commands(cmd)) then
-					dispatch_symbol(cmd, nil, true);
-				end
+			if (string.sub(cmd, 1, 1) == "/") then
+				dispatch_symbol(cmd);
 			else
 				if (OUTPUT_CHANNEL) then
 					OUTPUT_CHANNEL:write(string.format("%s\n", cmd));
@@ -318,7 +316,7 @@ local commands = {
 						ent = v.name;
 					end
 
-					if (not v.eval or v:eval()) then
+					if (not v.block_external and (not v.eval or v:eval())) then
 						table.insert(list, ent);
 					end
 				end
@@ -383,18 +381,10 @@ local commands = {
 
 -- run a value assignment, first through the validator and then act
 	write = function(line, res, remainder)
-		if (not res.handler) then
-			return "EINVAL, broken menu entry\n";
+		if (res.kind == "value") then
+		else
+			return "EINVAL, couldn't dispatch";
 		end
-
-		if (res.validator) then
-			if (not res.validator(remainder)) then
-				return "EINVAL, validation failed\n";
-			end
-		end
-
-		res.handler({}, remainder);
-		return "OK\n";
 	end,
 
 -- only evaluate a value assignment
@@ -414,8 +404,7 @@ local commands = {
 
 -- execute no matter what
 	exec = function(line, res, remainder)
-		if (res and res.handler and not res.submenu and res.kind == "action") then
-			res.handler();
+		if (dispatch_symbol(line, res, true)) then
 			return "OK\n";
 		else
 			return "EINVAL: target path is not an executable action.\n";
@@ -432,32 +421,29 @@ local function cl_wr(cl, line, ind)
 end
 
 local function do_line(line, cl, ind)
--- Split up and determine command, the initial #, ! check is done in order
--- to not break backward compatibility. The limitation being that those
--- commands can't control the target window.
-	local ch = string.sub(line, 1, 1);
-	if (ch == "!" or ch == "#") then
-		cmd = "exec";
-	else
-		local ind = string.find(line, " ");
-		if (not ind) then
-			return;
-		end
-		cmd = string.sub(line, 1, ind-1);
-		line = string.sub(line, ind+1);
+	local ind = string.find(line, " ");
+
+	if (not ind) then
+		return;
 	end
+	cmd = string.sub(line, 1, ind-1);
+	line = string.sub(line, ind+1);
 
 	if (not commands[cmd]) then
 		cl_wr(cl, string.format("EINVAL: bad command(%s)\n", cmd), ind);
 		return;
+	end
+
+-- This will actually resolve twice, since exec/write should trigger the
+-- command, but this will go through dispatch in order for queueing etc.
+-- to work. Errors on queued commands will not be forwarded to the caller.
+
+	local res, msg, remainder = menu_resolve(line);
+	if (not res) then
+		cl_wr(cl, "EINVAL:" .. msg .. "\n", ind);
 	else
-		local res, msg, remainder = menu_resolve_path(line);
-		if (not res) then
-			cl_wr(cl, "EINVAL:" .. msg .. "\n", ind);
-		else
-			local msg = commands[cmd](line, res, remainder);
-			cl_wr(cl, msg, ind);
-		end
+		local msg = commands[cmd](line, res, remainder);
+		cl_wr(cl, msg, ind);
 	end
 end
 

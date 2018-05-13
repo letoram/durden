@@ -6,7 +6,9 @@ local function switch_ws_menu()
 			kind = "action",
 			label = tostring(i),
 			description = "Switch the active workspace to index " .. tostring(i),
-			handler = grab_global_function("switch_ws" .. tostring(i)),
+			handler = function()
+				active_display():switch_ws(i);
+			end
 		};
 	end
 
@@ -83,6 +85,22 @@ local workspace_layout_menu = {
 		end
 	},
 	{
+		name = "tile_toggle",
+		kind = "action",
+		description =
+			"Set tile mode or (in tile mode) swap horizontal/vertical insertion",
+		label = "Tile-Toggle",
+		handler = function()
+			local ws = active_display().spaces[active_display().space_ind];
+			if (ws.mode ~= "tile") then
+				ws:tile();
+			else
+				ws.insert = ws.insert == "h" and "v" or "h";
+			end
+			ws.wm:tile_update();
+		end
+	},
+	{
 		name = "tab",
 		kind = "action",
 		label = "Tabbed",
@@ -112,22 +130,11 @@ local function load_bg(fn)
 	space:set_background(fn);
 end
 
-local save_ws = {
-	{
-		name = "shallow",
-		label = "Shallow",
-		kind = "action",
-		description = "Perform a shallow save of the workspace configuration",
-		handler = grab_global_function("save_space_shallow")
-	},
-};
-
 local function set_ws_background()
-	local imgfiles = {
-	png = load_bg,
-	jpg = load_bg,
-	bmp = load_bg};
-	browse_file({}, imgfiles, SHARED_RESOURCE, nil);
+	dispatch_symbol_bind(
+	function(path)
+		load_bg(path);
+	end, "/browse/shared");
 end
 
 local function swap_ws_menu()
@@ -138,14 +145,33 @@ local function swap_ws_menu()
 			table.insert(res, {
 				name = "swap_" .. tostring(i),
 				label = tostring(i),
-				description = "Swap the current workspace with the one in slot " .. tostring(i),
+				description =
+					"Swap the current workspace with the one in slot " .. tostring(i),
 				kind = "action",
 				handler = function()
-					grab_global_function("swap_ws" .. tostring(i))();
+					active_display():swap_ws(i);
 				end
 			});
 		end
 	end
+	return res;
+end
+
+local function migrate_ws_bydsp()
+	local dsp = displays_alive(true);
+	local res = {};
+
+	for i,v in ipairs(dsp) do
+		table.insert(res, {
+			name = "migrate_" .. tostring(i),
+			label = v,
+			kind = "action",
+			handler = function()
+				display_migrate_ws(active_display(), v);
+			end
+		});
+	end
+
 	return res;
 end
 
@@ -173,9 +199,14 @@ return {
 	{
 		name = "rename",
 		label = "Rename",
-		kind = "action",
+		kind = "value",
+		eval = function()
+			return active_display().space ~= nil;
+		end,
 		description = "Assign a custom text tag to the current workspace",
-		handler = grab_global_function("rename_space")
+		handler = function(ctx, val)
+			active_display().space:set_label(val);
+		end
 	},
 	{
 		name = "swap",
@@ -192,17 +223,10 @@ return {
 		kind = "action",
 		description = "Move the workspace and all its windows to another display",
 		submenu = true,
-		handler = grab_global_function("migrate_ws_bydspname"),
+		handler = migrate_ws_bydsp,
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
 		end
-	},
-	{
-		name = "name",
-		label = "Find Workspace",
-		description = "Select a workspace based on a previously set custom tag",
-		kind = "action",
-		handler = function() grab_global_function("switch_ws_byname")(); end
 	},
 	{
 		name = "switch",
@@ -226,24 +250,13 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "Activate a UI / interaction scheme on this workspace",
-		eval = function() return #(ui_scheme_menu("workspace",
-			active_display().spaces[active_display().space_ind])) > 0; end,
-		handler = function() return ui_scheme_menu("workspace",
-			active_display().spaces[active_display().space_ind]); end
-	},
-	{
-		name = "save",
-		label = "Save",
-		kind = "action",
-		description = "Save the state of the current workspace",
-		submenu = true,
-		handler = save_ws
-	},
-	{
-		name = "wnd",
-		label = "Tagged Window",
-		kind = "action",
-		description = "Locate a window based on a custom set tag",
-		handler = function() grab_global_function("switch_wnd_bytag")(); end
-	},
+		eval = function()
+			return #(ui_scheme_menu("workspace",
+				active_display().spaces[active_display().space_ind])) > 0;
+		end,
+		handler = function()
+			return ui_scheme_menu("workspace",
+				active_display().spaces[active_display().space_ind]);
+		end
+	}
 };

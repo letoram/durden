@@ -305,7 +305,7 @@ local function display_load(display)
 		return;
 	end
 
-	local pref = "disp_" .. hexenc(display.name) .. "_";
+	local pref = "disp_" .. string.hexenc(display.name) .. "_";
 	local keys = match_keys(pref .. "%");
 	for i,v in ipairs(keys) do
 		local ind = string.find(v, "=");
@@ -340,7 +340,7 @@ end
 function display_manager_shutdown()
 	local ktbl = {};
 	for i,v in ipairs(displays) do
-		local pref = "disp_" .. hexenc(v.name) .. "_";
+		local pref = "disp_" .. string.hexenc(v.name) .. "_";
 		if (v.ppcm_override) then
 			ktbl[pref .. "ppcm"] = v.ppcm;
 		end
@@ -514,6 +514,8 @@ function display_manager_init()
 		id = 0,
 		ppcm = VPPCM
 	};
+	displays[1].tiler.status_lclick = function() dispatch_symbol("/global"); end
+	displays[1].tiler.status_rclick = function() dispatch_symbol("/target"); end
 
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
@@ -652,6 +654,8 @@ function display_add(name, width, height, ppcm, id)
 		};
 		table.insert(displays, nd);
 		nd.tiler.name = name;
+		nd.tiler.status_lclick = function() dispatch_symbol("/global"); end
+		nd.tiler.status_rclick = function() dispatch_symbol("/target"); end
 		nd.ind = #displays;
 		new = nd.tiler;
 

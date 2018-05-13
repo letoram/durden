@@ -33,6 +33,7 @@ function durden(argv)
 	system_load("lbar.lua")(); -- used to navigate menus
 	system_load("bbar.lua")(); -- input binding
 	system_load("suppl.lua")(); -- convenience functions
+	system_load("menu.lua")(); -- menu subsystem
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 	CLIPBOARD:load("clipboard_data.lua");
@@ -41,16 +42,11 @@ function durden(argv)
 
 	system_load("dispatch.lua")(); -- UI keyboard routing / management
 	system_load("tiler.lua")(); -- window management
-	system_load("browser.lua")(); -- quick file-browser
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("ledm.lua")(); -- led controllers
 	system_load("display.lua")(); -- multidisplay management
-	system_load("iopipes.lua")(); -- status and command channels
-
--- functions exposed to user through menus, binding and scripting
-	system_load("fglobal.lua")(); -- tiler- related global functions
-	system_load("menus/global/global.lua")(); -- desktop related global
-	system_load("menus/target/target.lua")(); -- shared window related global
+	system_load("ipc.lua")(); -- status and command channels
+	system_load("menus/menus.lua")(); -- root of menu virtual filesystem
 
 	system_load("extevh.lua")(); -- handlers for external events
 
@@ -74,6 +70,7 @@ function durden(argv)
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	suppl_scan_tools();
+	suppl_scan_widgets();
 
 -- this opens up the 'durden' external listening point, removing it means
 -- only user-input controlled execution through configured database and browse
@@ -128,21 +125,6 @@ function durden(argv)
 			end
 		end
 	end, true);
-end
-
-argv_cmds["dump_menus"] = function()
-	for k,v in ipairs(get_menu_tree(get_global_menu(), '!')) do
-		print(v);
-	end
-
-	local nsurf = null_surface(32, 32);
-	local wnd = active_display():add_window(nsurf);
-
-	for k,v in ipairs(get_menu_tree(get_shared_menu(), '#')) do
-		print(v);
-	end
-
-	return shutdown();
 end
 
 argv_cmds["input_lock"] = function()
@@ -402,9 +384,6 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 		delete_image(vid);
 		return;
 	end
-
--- local keybinding->utf8 overrides, we map this to SYMTABLE
-	wnd.u8_translation = {};
 
 -- window aesthetics
 	wnd:set_prefix(prefix);
@@ -687,6 +666,12 @@ function durden_normal_input(iotbl, fromim)
 		if (ok) then
 			return;
 		end
+
+-- there is a dark side here in that the idle timers are not considered for
+-- touch events that do not present a digital ('press') output, only ranges
+-- of analog. This means that gesture analysis need to feed back for these
+-- kinds of devices, particularly when their noise-floor/ceiling is moving
+-- with the environment.
 		timer_reset_idle();
 	end
 

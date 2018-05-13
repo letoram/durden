@@ -11,9 +11,6 @@
 -- active_display().selected gives you a reference handle to the current window
 --
 
--- apply the default global visual scheme
-dispatch_symbol("!settings/schemes/default");
-
 -- hack timer patched when some state need to be monitored as part of debugging,
 -- can be safely removed / ignored of course
 if (DEBUGLEVEL > 1) then
@@ -35,9 +32,8 @@ if (DEBUGLEVEL > 1) then
 		local iostate_dbg = iostatem_debug();
 
 		local new_msg = string.format(
-			"wnd: [%s],CB:%d,[SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)]",
-			wndapp, IN_CUSTOM_BIND and 1 or 0,
-			used, total, mouse_handlercount(), m1 and 1 or 0, m2 and 1 or 0,
+			"wnd: [%s] [SYS:vid-use(%d/%d),mevh(%d),meta(%d, %d),iostate(%s)]",
+			wndapp, used, total, mouse_handlercount(), m1 and 1 or 0, m2 and 1 or 0,
 			iostate_dbg and iostate_dbg or "(iostate-brk)"
 		);
 		if (new_msg ~= periodic_msg) then

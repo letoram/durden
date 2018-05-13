@@ -189,7 +189,7 @@ local function gen_migrate_menu()
 
 	for d in all_displays_iter() do
 		table.insert(res, {
-			name = "migrate_" .. hexenc(d.name),
+			name = "migrate_" .. string.hexenc(d.name),
 			label = d.name,
 			description = "Move the stack to " .. d.name,
 			kind = "action",
@@ -240,7 +240,7 @@ local overlays =
 };
 
 -- hook config, content control and the target- window
-global_menu_register("settings/tools",
+menus_register("global", "settings/tools",
 {
 	name = "overlays",
 	label = "Overlays",
@@ -250,7 +250,7 @@ global_menu_register("settings/tools",
 	handler = overlay_cfg
 });
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "overlays",
 	label = "Overlays",
@@ -261,7 +261,7 @@ global_menu_register("tools",
 	handler = overlays
 });
 
-shared_menu_register("window",
+menus_register("target", "window",
 {
 	name = "to_overlay",
 	label = "Overlay",

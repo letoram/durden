@@ -21,7 +21,22 @@ return {
 		label = "Toggle On/Off",
 		kind = "action",
 		description = "Toggle audio playback on/off for this window",
-		handler = grab_shared_function("toggle_audio")
+		handler = function()
+			local wnd = active_display().selected;
+			if (not wnd.source_audio) then
+				return;
+			end
+
+			if (wnd.save_gain) then
+				wnd.gain = wnd.save_gain;
+				audio_gain(wnd.source_audio, gconfig_get("global_gain") * wnd.gain);
+				wnd.save_gain = nil;
+			else
+				wnd.save_gain = wnd.gain;
+				wnd.gain = 0.0;
+				audio_gain(wnd.source_audio, 0.0);
+			end
+		end
 	},
 	{
 		name = "vol_p10",

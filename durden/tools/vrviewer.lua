@@ -228,7 +228,7 @@ local function vrwnd()
 	return wnd;
 end
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "vr",
 	label = "VR Viewer",

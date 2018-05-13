@@ -230,13 +230,8 @@ defhtbl["terminated"] =
 function(wnd, source, stat)
 	EVENT_SYNCH[source] = nil;
 
--- if the target menu is active on the same window that is being
--- destroyed, cancel it so we don't risk a tiny race
-	local ictx = active_display().input_ctx;
-	if (active_display().selected == wnd and ictx and ictx.destroy and
-		LAST_ACTIVE_MENU == grab_shared_function("target_actions")) then
-		ictx:destroy();
-	end
+-- FIXME: check if the terminated window is the one intended when
+-- last spawning an interactive menu, and in that case, return out
 	wnd:destroy();
 end
 
@@ -418,15 +413,8 @@ function extevh_default(source, stat)
 		return;
 	end
 
-	if (DEBUGLEVEL > 0 and active_display().debug_console) then
-		active_display().debug_console:target_event(wnd, source, stat);
-	end
-
 -- window handler has priority
 	if (wnd.dispatch[stat.kind]) then
-		if (DEBUGLEVEL > 0 and active_display().debug_console) then
-			active_display().debug_console:event_dispatch(wnd, stat.kind, stat);
-		end
 
 -- and if it absorbs the event, break the chain
 		local disp = wnd.dispatch[stat.kind];

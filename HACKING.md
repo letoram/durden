@@ -28,7 +28,7 @@ code-paths than normal operation - in both clients and durden itself.
 
 Setting up timers to activate your feature, or activating it externally
 while in some special state (like the HUD) through the menu via the IPC
-control path (echo '!some/path/to/trigger' > durden/ipc/output) is also
+control path (exec '/some/path/to/trigger' > durden/ipc/output) is also
 a good way of finding bugs.
 
 Using the system\_snapshot call to get a dump of the data model used to
@@ -45,10 +45,10 @@ applicable. If in doubt, check on the IRC channel first.
 Testing
 ------
 For any newly developed feature, figuring out what needs testing is not
-an easy task. Fuzzing can be performed by walking the menu tree, poking
-the entries at random. For other features, visual inspection is needed.
+an easy task but with some exceptions (multiple displays and in-recover
+states), merely poking a path tend to be enough.
 
-For such features, be sure to check with (when applicable):
+The larger states to consider, be sure to check with (when applicable):
 
  * fullscreen and dedicated fullscreen
  * vtab/htab (rearranges decorations)
@@ -59,25 +59,19 @@ For such features, be sure to check with (when applicable):
  * multiple slices of a window
  * "special" clients, like wayland- ones (very different ruleset) etc.
 
-There are more parameters that should be applied, and in the longer
-perspective, we should really have a tool that simply steps through
-the common corner cases - especially for asynch- related races.
-
 Big Changes
 ------
 As mentioned in the introduction, some of the code will be reworked in
 the near future. A few of the planned changes include:
 
- * Exposing the menu via a FUSE- like file-system
+ * Refactor out the use of 'active\_display().selected', the context
+   should always be provided as an arugment
  * Splitting up the larger suppl, tiler etc. script files
  * Extending menus and alerts with translations
- * Extending menus with helper descriptions
- * Rework the bbar/lbar interfaces
- * Allowing for multiple- 'tiler.lua' and enforcing better separation
+ * Allowing for multiple- 'tiler.lua' and enforcing better separation,
+   this is partially being done now with the VR- tool
  * Extending the shader interface for multi-pass work
  * Supporting multiple shader dialects
- * Refactor out the use of active\_display().selected in favor of
-   something that supports multiple cursors/simultaneous users
 
 The translations will be kept seperate and act as replacements for the
 label field in the menus and shouldn't impose much change at all as it
@@ -107,7 +101,6 @@ Each atype is expected to return a table with the following fields:
                                see the "Menu Integration" section
     props (table) - a list of window properties that will be projected
                     over the new window (see "Windows and Displays")
-
     dispatch (table of functions) - key indexed, where each key match
          the 'kind' field of an event in the event handler. This will
          override the default event handler for this kind/type.
@@ -154,18 +147,16 @@ This folder contains user-provided configuration maps for various devices,
 ranging from keyboard to touchpad to LED controllers. They are interpreted
 by iostatem.lua, symtable.lua and touchm.lua.
 
-## /ipc
-
-Named pipes created for IPC systems are created in this folder, and their
-actual setup/parsing is done through the iopipes.lua script using a timer
-for polling (the status\_control timer).
-
 ## /menus
 
 Split up into the global and per window menu. These make out the user-I/O
 exposed feature-set that can be bound to UI elements, keys, gestures, etc
 All follow a similar structure for subtyping, naming and so on and is the
 central layer for exposing features. See the 'Menu Integration' section.
+
+Most menu system management code is in the menu.lua file with interactive
+setup via dispatch.lua, external via ipc.lua and management code in suppl
+.lua
 
 ## /tools
 
@@ -191,6 +182,11 @@ normal config settings.
 Contains the output display mapping and hotplug event handling, also sets
 up and controls individual tiler instances (to be able to provide display
 tailored window managers). See the 'Windows and Displays' section.
+
+## ipc.lua
+
+The external control- layer and statusbar integration protocol are both
+implemented in ipc.lua
 
 Clipboard
 ------

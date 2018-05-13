@@ -32,7 +32,6 @@ local function query_synch()
 		return res;
 	end
 end
-register_global("query_synch", display_synch);
 
 local function query_dispmenu(ind, name)
 	local modes = video_displaymodes(ind);
@@ -314,7 +313,7 @@ local function query_displays()
 	for d in all_displays_iter() do
 		if (string.len(d.name) > 0) then
 			table.insert(res, {
-				name = "disp_" .. hexenc(d.name),
+				name = "disp_" .. string.hexenc(d.name),
 				label = d.name,
 				kind = "action",
 				submenu = true,
@@ -506,7 +505,9 @@ return {
 		kind = "action",
 		description = "Switch input focus to the next display in line",
 		eval = function() return not display_simple(); end,
-		handler = grab_global_function("display_cycle")
+		handler = function()
+			display_cycle_active();
+		end
 	},
 	{
 		name = "region",

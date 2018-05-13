@@ -32,8 +32,7 @@ end
 
 toplevel_lut["menu"] = function(wnd)
 	if (active_display().selected == wnd) then
-		local fun = grab_shared_function("target_actions");
-		fun();
+		dispatch_symbol("/target");
 	end
 end
 
