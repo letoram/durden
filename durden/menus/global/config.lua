@@ -713,6 +713,18 @@ local durden_system = {
 			gconfig_set("display_simple", val == "Simple");
 			active_display():message("Switching Displaymode, Reset Required.");
 		end
+	},
+	{
+		name = "debuglevel",
+		label = "Debug Level",
+		kind = "value",
+		validator = gen_valid_num(0, 5),
+		initial = function() return tostring(DEBUGLEVEL); end,
+		hint = "(0=off, 5=max)",
+		description = "(advanced/debug) Change the global debuglevel",
+		handler = function(ctx, val)
+			DEBUGLEVEL = tonumber(val);
+		end
 	}
 };
 
