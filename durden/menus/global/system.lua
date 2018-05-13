@@ -251,6 +251,40 @@ local debug_menu = {
 		handler = gen_displaywnd_menu
 	},
 	{
+		name = "animation_cycle",
+		label = "Animation Cycle",
+		kind = "action",
+		description = "Add an animated square that moves up and down the display",
+		handler = function()
+			if not DEBUG_ANIMATION then
+				DEBUG_ANIMATION = {};
+			end
+			local vid = color_surface(64, 64, 0, 255, 0);
+			if (not valid_vid(vid)) then
+				return;
+			end
+			show_image(vid);
+			order_image(vid, 65530);
+			move_image(vid, 0, active_display().height - 64, 200);
+			move_image(vid, 0, 0, 200);
+			image_transform_cycle(vid, true);
+			table.insert(DEBUG_ANIMATION, vid);
+		end
+	},
+	{
+		name = "stop_animation",
+		label = "Stop Animation",
+		eval = function() return DEBUG_ANIMATION and #DEBUG_ANIMATION > 0 or false; end,
+		handler = function()
+			for _,v in ipairs(DEBUG_ANIMATION) do
+				if (valid_vid(v)) then
+					delete_image(v);
+				end
+			end
+			DEBUG_ANIMATION = nil;
+		end
+	},
+	{
 		name = "alert",
 		label = "Random Alert",
 		kind = "action",
