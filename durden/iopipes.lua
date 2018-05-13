@@ -304,15 +304,6 @@ local function poll_status_channel()
 	end
 end
 
-local function run_command(line)
-	if (not allowed_commands(line)) then
-		return "EACCESS\n";
-	end
-
-	dispatch_symbol(line, nil, true);
-	return "OK\n";
-end
-
 local commands = {
 -- enumerate the contents of a path
 	ls = function(line, res, remainder)
@@ -323,8 +314,6 @@ local commands = {
 					local ent;
 					if (v.submenu) then
 						ent = v.name .. "/";
-					elseif (v.kind == "value") then
-						ent = v.name .. "=";
 					else
 						ent = v.name;
 					end
@@ -363,6 +352,7 @@ local commands = {
 			else
 				table.insert(ret, "kind: action\n");
 			end
+			table.insert(ret, "OK\n");
 			return table.concat(ret, "");
 		else
 			table.insert(ret, "kind: value\n");
@@ -380,8 +370,11 @@ local commands = {
 				table.insert(ret, "value-set: " .. table.concat(lst, ", ") .. "\n");
 			end
 			if (res.hint) then
-				table.insert(ret, "hint: " ..
-					type(res.hint) == "function" and res.hint() or res.hint .. "\n");
+				local hint = res.hint;
+				if (type(res.hint) == "function") then
+					hint = res:hint();
+				end
+				table.insert(ret, "hint: " .. hint .. "\n");
 			end
 			table.insert(ret, "OK\n");
 			return table.concat(ret, "");
