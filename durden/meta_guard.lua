@@ -42,13 +42,13 @@ function meta_guard(s1, s2)
 
 	mgc = mgc + 1;
 	if (mgc > threshold) then
-		bindcall("rebind_meta", LBL_METAGUARD_META,
+		bindcall("/global/input/bind/meta", LBL_METAGUARD_META,
 		function()
-		bindcall("rebind_basic", LBL_METAGUARD_BASIC,
+		bindcall("/global/input/bind/basic", LBL_METAGUARD_BASIC,
 		function()
-		bindcall("bind_menu", LBL_METAGUARD_MENU,
+		bindcall("/global/input/bind/menu", LBL_METAGUARD_MENU,
 		function()
-		bindcall("bind_tmenu", LBL_METAGUARD_TMENU,
+		bindcall("/global/input/bind/target_menu", LBL_METAGUARD_TMENU,
 		function()
 		end
 		)end

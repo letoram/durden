@@ -30,13 +30,20 @@
 
 Breaking:
   * statusbar visual config area changed to [px] from % point and
-	  order changed to [t l r d] to match similar functions
+	  order changed to [t l r d] to match other similar functions
 
-	* target titlebar controls moved to its own group as it started
-	  to grow large
+	* target titlebar controls moved to its own group
 
 	* control channel (ipc pipes) have switched to using a domain
 	  socket for both input and output
+
+  * entire menu/browser system refactored to have a more shared codebase,
+	  this moves all paths to be explicit /global/path/to /target/path/to
+		/browse/shared/
+
+	* multiple menu functions moved around and regrouped, all toggle
+	  options have been merged into the YES/NO paths that have been
+		extended with YES/NO/FLIP
 
 Minor:
   * activate GPU rescan on hotplug event

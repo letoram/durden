@@ -1,9 +1,88 @@
--- Copyright 2016-2017, Björn Ståhl
+-- Copyright 2016-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: First attempt of abstracting some of the primitive
 -- UI elements that were incidentally developed as part of durden.
+-- These should be reusable elsewhere (eventually), though calls to
+-- iostatem_, active_display etc. need to be removed.
 --
+-- Relevant entry points:
+-- uiprim_popup
+-- uiprim_buttonlist [used for menu navigation buttons]
+-- uiprim_bar        [used as statusbar, titlebar]
+--
+-- The other UI components worth looking at are the more complex
+-- lbar(.lua) and bbar(.lua) for the navigation and binding bars.
+--
+
+-- [uiprim_popup]
+-- support script for implementing a mouse- based interpretation
+-- of a menu table (with submenus etc.)
+--
+-- opts:
+-- x, y = spawn at specific coordinate (else mouse_xy())
+-- max_x, max_y = position based on these constraints (else VRESW, VRESH)
+-- bg = vid to use for background, else shader + bgcol will be set
+-- bgcol = color for fill surface or 64, 64, 64
+-- destroy = hook when the popup is destroyed
+--
+-- parent: usually called from within the popup itself to handle submenus
+--         has an on_focus handler when all its children have died
+--
+function uiprim_popup(menu, opts, parent)
+	local lines = {
+		opts.fmt and opts.fmt or ""
+	};
+	local ents = {};
+	opts = opts and opts or {};
+
+	if (not opts.x) then
+		opts.x, opts.y = mouse_xy();
+	end
+
+	if (not opts.bg and not opts.bgcol) then
+		opts.bgcol = {64, 64, 64};
+	end
+
+-- FIXME: need a version that takes full menu paths, /global, ... etc.
+-- and resolves them as input instead of [menu]
+
+-- filter out valid entries
+	for k,v in ipairs(menu) do
+		if (not v.eval or v:eval()) then
+			local str = type(v.label) == "string" and v.label or v:label();
+			table.insert(lst, str);
+			table.insert(lst, "\\n\\r");
+			table.insert(ents, v);
+		end
+	end
+
+-- early out
+	if (#lines == 1) then
+		return;
+	end
+
+	local vid, heights, outw, outh, ascend = render_text(lines);
+	if (not valid_vid(vid)) then
+		return;
+	end
+	image_mask_set(vid, MASK_UNPICKABLE);
+	image_clip_on(vid, CLIP_SHALLOW);
+
+-- build frame or use preset vid
+	local anchor;
+	if (type(opts.bg) == "number") then
+		anchor = opts.bg;
+	else
+		anchor = fill_surface(outw, outh, unpack(opts.bgcol));
+	end
+
+	show_image(anchor);
+
+-- FIXME:
+-- mouse handler / activation is not here
+end
+
 local function button_labelupd(btn, lbl, timeout, timeoutstr)
 	local txt, lineh, w, h, asc;
 	local fontstr, offsetf = btn.fontfn();
@@ -830,4 +909,188 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 	res:update_mh(mouseh);
 
 	return res;
+end
+
+local function lbar_props()
+	local pos = gconfig_get("lbar_position");
+	local dir = 1;
+	local wm = active_display();
+	local barh = gconfig_get("lbar_sz") * wm.scalef;
+	local yp = 0;
+
+	yp = math.floor(0.5*(wm.height-barh));
+
+	return yp, barh, dir;
+end
+
+local function hlp_add_btn(ctx, helper, lbl)
+	local yp, tileh, dir = lbar_props();
+	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
+
+	local res = {};
+	local dsti = #helper+1;
+	local path = ctx:get_path();
+
+-- click is iterate cancel the same amount of times as current count to index,
+-- use of menu_cancel here is unfortunate - we should propagate the right esc-
+-- handler for dependency management reasons.
+	res.btn =
+	uiprim_button(active_display().order_anchor,
+		"lbar_tile", "lbar_tiletext", lbl, pad,
+		active_display().font_resfn, 0, tileh,
+		{
+			click = function()
+				local nstep = #helper - dsti;
+				if (nstep > 0) then
+					for i=1,nstep do
+						ctx:on_cancel();
+					end
+				end
+			end
+		}
+	);
+
+-- if ofs + width, compact left and add a "grow" offset on pop
+	res.ofs = #helper > 0 and helper[#helper].ofs or 0;
+	res.yofs = (tileh + 1) * dir;
+	move_image(res.btn.bg, res.ofs, res.yofs);
+	move_image(res.btn.bg, res.ofs, yp); -- switch, lbar height
+	nudge_image(res.btn.bg, 0, res.yofs, gconfig_get("animation") * 0.5, INTERP_SINE);
+	if (#helper > 0) then
+		helper[#helper].btn:switch_state("inactive");
+	end
+	res.ofs = res.ofs + res.btn.w + 5;
+	table.insert(helper, res);
+end
+
+local function buttonlist_push(ctx, new, lbl, meta)
+	table.insert(ctx.path, new);
+	table.insert(ctx.meta, meta and meta or {});
+	hlp_add_btn(ctx, ctx.helper, lbl);
+	return ctx:get_path();
+end
+
+local function buttonlist_pop(ctx)
+	local path = ctx.path;
+	local helper = ctx.helper;
+	table.remove(path, #path);
+	local meta = table.remove(ctx.meta, #ctx.meta);
+	local res = ctx:get_path();
+	local as = gconfig_get("animation") * 0.5;
+	local hlp = helper[#helper];
+	if (not hlp) then
+		return res, meta;
+	end
+
+	blend_image(hlp.btn.bg, 0.0, as);
+	if (as > 0) then
+		tag_image_transform(
+			hlp.btn.bg, MASK_OPACITY,
+			function()
+				hlp.btn:destroy();
+			end
+		);
+	else
+		hlp.btn:destroy();
+	end
+
+	table.remove(helper, #helper);
+	if (#helper > 0) then
+		helper[#helper].btn:switch_state("active");
+	end
+
+	return res, meta;
+end
+
+--
+-- Switch path for the buttonlist, apply push/pop accordingly,
+-- uses query to get metadata (label, context tag)
+--
+local function buttonlist_set(ctx, path, query)
+	if (not path or path == "/" or path == "") then
+		ctx:reset();
+		return;
+	end
+
+-- support both explicit first / and implicit
+	local fch = string.sub(path, 1, 1);
+	local lst = string.split(path, "/");
+	if (fch == "/") then
+		table.remove(lst, 1);
+	end
+
+-- retain valid prefix
+	if (#lst == 0) then
+		ctx:reset();
+		return;
+	end
+
+-- check how many elements that are already in the prefix
+	local count = 0;
+	for i=1,#lst do
+		if (not ctx.path[i]) then
+			break;
+		end
+
+		if (ctx.path[i] == lst[i]) then
+			count = count + 1;
+		else
+			break;
+		end
+	end
+
+-- remove any superflous ones
+	while (#ctx.path > count) do
+		ctx:pop();
+	end
+
+-- now add buttons to match the new entries of the path
+	local prepath = "";
+
+	for i=count+1,#lst do
+		prepath = prepath .. "/" .. lst[i];
+		local name, tag;
+		if (query) then
+			name, tag = query(prepath, i, lst[i]);
+		else
+			name = lst[i];
+			tag = {};
+		end
+		ctx:push(lst[i], name, tag);
+	end
+end
+
+local function buttonlist_reset(ctx, prefix)
+	for k,v in ipairs(ctx.helper) do
+		v.btn:destroy();
+	end
+	ctx.helper = {};
+	ctx.path = {};
+	ctx.meta = {};
+	iostatem_restore();
+end
+
+-- uglier than one might think, the whole 'concat' behavior will add ugly
+-- edges for / and /node. If we prefix or suffix with '/', split operations
+-- will be wrong - if we don't, the concat path gets // polution.
+local function buttonlist_get_path(ctx, trail)
+	if (#ctx.path == 0) then
+		return "/";
+	else
+		return "/" .. table.concat(ctx.path, "/") .. (trail and "/" or "");
+	end
+end
+
+function uiprim_buttonlist()
+	return {
+		helper = {}, -- for managing activated helpers etc.
+		path = {}, -- track namespace path
+		meta = {}, -- for meta-data history (input message, filter settings, pos)
+		get_path = buttonlist_get_path,
+		reset = buttonlist_reset,
+		pop = buttonlist_pop,
+		push = buttonlist_push,
+		set_path = buttonlist_set,
+		on_cancel = function() end -- override for click to escape
+	};
 end

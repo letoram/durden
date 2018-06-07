@@ -74,22 +74,17 @@ local function destroy(wm, ictx)
 		delete_image(ictx.anchor);
 	end
 
-	if (wm.debug_console) then
-		wm.debug_console:system_event(string.format(
-			"lbar(%s) returned %s", sym, ictx.inp.msg));
-	end
-
 	wm.input_ctx = nil;
 	wm:set_input_lock();
 end
 
-local function accept_cancel(wm, accept)
+local function accept_cancel(wm, accept, nofwd)
 	local ictx = wm.input_ctx;
 	local inp = ictx.inp;
 	destroy(wm, ictx);
 
 	if (not accept) then
-		if (ictx.on_cancel) then
+		if (ictx.on_cancel and not nofwd) then
 			ictx:on_cancel();
 		end
 		return;
@@ -422,9 +417,11 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 
 	-- note, inp ulim can be used to force a sliding view window, not
 	-- useful here but still implemented.
-		ictx.inp = text_input(ictx.inp, iotbl, sym, function(inp, sym, caret)
-			lbar_ih(wm, ictx, inp, sym, caret);
-		end);
+		ictx.inp = suppl_text_input(ictx.inp, iotbl, sym,
+			function(inp, sym, caret)
+				lbar_ih(wm, ictx, inp, sym, caret);
+			end
+		);
 
 		ictx.ulim = 10;
 
@@ -568,8 +565,13 @@ function tiler_lbar_setactive(slot)
 	active_lbar = slot;
 end
 
+local function lbar_destroy(lbar, nofwd)
+	accept_cancel(lbar.wm, false, nofwd);
+end
+
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
+
 	local time = gconfig_get("transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
@@ -637,9 +639,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		set_helper = lbar_helper,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
-		destroy = function()
-			accept_cancel(wm, false);
-		end,
+		destroy = lbar_destroy,
 		cofs = 1,
 		csel = 1,
 		barh = barh,
@@ -649,6 +649,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		cleanup = opts.cleanup,
 		on_step = opts.on_step,
 		in_preview = opts.in_preview,
+		wm = wm,
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};
@@ -682,10 +683,6 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	if (opts.label) then
 		res:set_label(opts.label);
-	end
-
-	if (wm.debug_console) then
-		wm.debug_console:system_event("lbar activated");
 	end
 
 	active_lbar = res;

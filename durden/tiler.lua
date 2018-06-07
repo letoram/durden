@@ -465,19 +465,15 @@ local function tiler_statusbar_build(wm)
 				if (not sp.in_float) then
 					sp:float();
 				else
--- NOTE: this breaks the decoupling between tiler and rest of durden, and maybe
--- this mouse-handler management hook should be configurable elsewhere
-					local fun = grab_global_function("global_actions");
-					if (fun) then
-						fun();
+					if (wm.status_lclick) then
+						wm.status_lclick();
 					end
 				end
 			end,
 			rclick = function()
 				if (wm.spaces[wm.space_ind].in_float) then
-					local fun = grab_shared_function("target_actions");
-					if (fun) then
-						fun();
+					if (wm.status_rclick) then
+						wm.status_rclick();
 					end
 				end
 			end
@@ -4143,6 +4139,7 @@ local wnd_setup = function(wm, source, opts)
 -- specific event / keysym bindings
 		labels = {},
 		dispatch = {},
+		u8_translation = {},
 
 -- register:able event handlers to relate one window to another
 		handlers = {
@@ -4671,7 +4668,14 @@ local function tiler_fallthrough_input(wm, inputh)
 end
 
 local function tiler_input_lock(wm, dst)
-	wm.input_lock = dst;
+	if (dst) then
+		wm.input_lock = function(...)
+			timer_reset_idle();
+			dst(...);
+		end
+	else
+		wm.input_lock = nil;
+	end
 end
 
 local function tiler_resize(wm, neww, newh, norz)

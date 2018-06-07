@@ -2,14 +2,15 @@
 
 arcan_base=${HOME}/.arcan
 applname="$(basename $0)"
+distargs=""
 
 if [ ! -z "${XDG_DATA_HOME}" ]; then
 	arcan_base=${XDG_DATA_HOME}/arcan
-	distargs="-b \"${HOME}/.config/arcan.sqlite\""
+	distargs="-d ${HOME}/.config/arcan.sqlite"
 fi
 
 if [ ! -z "${XDG_CONFIG_HOME}" ]; then
-	distargs="-b ${XDG_CONFIG_HOME}/arcan.sqlite"
+	distargs="-d ${XDG_CONFIG_HOME}/arcan.sqlite"
 fi
 
 arcan_applbase=$arcan_base/appl
@@ -17,13 +18,13 @@ arcan_applout=$arcan_base/appl-out
 arcan_resources=$arcan_base/resources
 
 # a dev would've overridden this one
-if [ ! -d "$arcan_applbase/durden" ]; then
+if [ ! -d "$arcan_applbase/$applname" ]; then
 	mkdir -p "$arcan_applbase"
-	ln -s /usr/share/durden/durden "$arcan_applbase/durden"
+	ln -s "/usr/share/$applname/$applname" "$arcan_applbase/$applname"
 fi
 
-if [ ! -d "$arcan_applout/durden" ]; then
-	mkdir -p "$arcan_applout/durden"
+if [ ! -d "$arcan_applout/$applname" ]; then
+	mkdir -p "$arcan_applout/$applname"
 fi
 
 # read-only resource access for browser, note that the presence
@@ -89,7 +90,7 @@ fi
 # snap due to the possibility of sensitive data)
 while true; do
 	starttime=$(date +%s)
-	if arcan "${distargs}" -b $applname $applname "$@"; then
+	if arcan ${distargs} -b "$applname" "$applname" "$@"; then
 		exit
 	fi
 	stoptime=$(date +%s)

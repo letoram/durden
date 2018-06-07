@@ -813,7 +813,7 @@ local function load_space(wnd, prefix, path)
 	local dispatch = wnd.default_layouter;
 	wnd.default_layouter = function() end;
 	for i,v in ipairs(cmds) do
-		dispatch_symbol("#" .. v);
+		dispatch_symbol("/target/" .. v);
 	end
 
 	wnd.default_layouter = dispatch;

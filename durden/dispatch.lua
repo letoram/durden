@@ -106,26 +106,14 @@ function dispatch_load(locktog)
 		end
 	end
 
-	local get_kv = function(str)
-		local pos, stop = string.find(str, "=", 1);
-		local key = string.sub(str, 7, pos - 1);
-		local val = string.sub(str, stop + 1);
-		return key, val;
-	end
-
--- custom bindings, global shared
-	for i,v in ipairs(match_keys("custg_%")) do
-		local key, val = get_kv(v);
-		if (val and string.len(val) > 0) then
-			tbl[key] = "!" .. val;
-		end
-	end
-
--- custom bindings, window shared
-	for i,v in ipairs(match_keys("custs_%")) do
-		local key, val = get_kv(v);
-		if (val and string.len(val) > 0) then
-			tbl[key] = "#" .. val;
+	for _, v in ipairs(match_keys("custom_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		if (pos and stop) then
+			local key = string.sub(v, 8, pos - 1);
+			local val = string.sub(v, stop + 1);
+			if (val and string.len(val) > 0) then
+				tbl[key] = val;
+			end
 		end
 	end
 end
@@ -139,30 +127,13 @@ function dispatch_list()
 	return res;
 end
 
-function dispatch_custom(key, val, nomb, wnd, global, falling, append)
-	if (falling) then
-		if (nomb) then
-			dispatch_custom(key, val, true, wnd, global, false);
-		end
-		key = "f_" .. key;
-	end
-
-	local old = tbl[key];
-	local pref = wnd and "custs_" or "custg_";
--- go through these hoops to support unbind (nomb),
--- global/target prefix (which uses symbols not allowed as dbkey)
-	if (nomb) then
-		tbl[key] = val;
-	else
-		tbl[key] = val and ((wnd and "#" or "!") .. val) or nil;
-	end
-
-	store_key(pref .. key, val and val or "");
-	return old;
-end
-
 function dispatch_meta()
 	return mtrack.m1 ~= nil, mtrack.m2 ~= nil;
+end
+
+function dispatch_set(key, path)
+	store_key("custom_" ..key, path);
+	tbl[key] = path;
 end
 
 function dispatch_meta_reset(m1, m2)
@@ -279,6 +250,83 @@ function dispatch_repeatblock(iotbl)
 	return false;
 end
 
+-- sym contains multiple symbols embedded, with linefeed as a separator
+local function dispatch_multi(sym, arg, ext)
+	local last_i = 2;
+	local len = string.len(sym, arg, ext);
+	for i=2,len do
+		if ((string.sub(sym, i, i) == '\n' or i == len) and
+			i ~= last_i) then
+			dispatch_symbol(string.sub(sym, last_i, i), arg, ext);
+			last_i = i;
+		end
+	end
+end
+
+local dispatch_locked = nil;
+local dispatch_queue = {};
+
+-- take the list of accumulated symbols to dispatch and push them out now,
+-- note that this can trigger another dispatch_symbol_lock and so on..
+function dispatch_symbol_unlock(flush)
+	assert(dispatch_locked == true);
+	dispatch_locked = nil;
+end
+
+function dispatch_symbol_lock()
+	assert(dispatch_locked == nil);
+	dispatch_locked = true;
+	dispatch_queue = {};
+end
+
+-- Setup menu navigation (interactively) in a way that we can hook rather
+-- than activated a selected path or even path/key=value. There is a special
+-- case for a tiler where the lbar is currently active (timers) as we want
+-- to wait after the current one has been destroyed or the hook will fire
+-- erroneously.
+function dispatch_symbol_bind(callback, path)
+	local menu = menu_resolve(path and path or "/");
+	menu_hook_launch(callback);
+	menu_launch(active_display(),
+		{list = menu}, {}, "/", menu_default_lookup(menu));
+end
+
+function dispatch_symbol(sym, menu_opts)
+-- note, it's up to us to forward the argument for validator before exec
+	local menu, msg, val, enttbl = menu_resolve(sym);
+	if (DEBUGLEVEL > 1) then
+		print("dispatch_symbol", sym, msg, val, debug.traceback());
+	end
+
+-- catch all the 'value path returned', submenu returned, ...
+	if (not menu or menu.validator and not menu.validator(val)) then
+		return false;
+	end
+
+-- just queue if locked
+	if (dispatch_locked) then
+		table.insert(dispatch_queue, {menu, msg, val});
+		return true;
+	end
+
+-- shortpath the common case
+	if (menu.handler and not menu.submenu) then
+		menu:handler(val);
+		return true;
+	end
+
+-- actual menu returned, need to spawn
+	if (type(menu[1]) == "table") then
+		menu_launch(active_display(),
+			{list = menu}, menu_opts, sym, menu_default_lookup(enttbl));
+	else
+-- actually broken result
+		return false;
+	end
+
+	return true;
+end
+
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
@@ -307,8 +355,24 @@ function dispatch_translate(iotbl, nodispatch)
 		return false, nil, iotbl;
 	end
 
+-- just perform the translation?
 	if (ok or nodispatch) then
 		return true, lutsym, iotbl, tbl[lutsym];
+	end
+
+-- we can have special bindings on a per window basis
+	if (sel and sel.bindings and sel.bindings[lutsym]) then
+		if (iotbl.active) then
+			if (type(sel.bindings[lutsym]) == "function") then
+				sel.bindings[lutsym](sel);
+			else
+				dispatch_symbol(sel.bindings[lutsym]);
+			end
+		end
+
+-- don't want to run repeat for valid bindings
+		iostatem_reset_repeat();
+		return true, lutsym, iotbl;
 	end
 
 	local rlut = "f_" ..lutsym;
@@ -336,14 +400,8 @@ function dispatch_translate(iotbl, nodispatch)
 		return false, lutsym, iotbl;
 	end
 
--- we can have special bindings on a per window basis
-	if (sel.bindings and sel.bindings[lutsym]) then
-		if (iotbl.active) then
-			sel.bindings[lutsym](sel);
-		end
-		ok = true;
 -- or an input handler unique for the window
-	elseif (not iotbl.analog and sel.key_input) then
+	if (not iotbl.analog and sel.key_input) then
 		sel:key_input(outsym, iotbl);
 		ok = true;
 	else

@@ -174,7 +174,7 @@ local action_submenu = {
 }
 };
 
-global_menu_register("settings/wspaces/float",
+menus_register("global", "settings/wspaces/float",
 {
 	name = "action_regions",
 	kind = "action",

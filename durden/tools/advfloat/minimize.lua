@@ -75,7 +75,7 @@ local function hide_tgt(wnd, tgt)
 	end
 end
 
-shared_menu_register("window",
+menus_register("target", "window",
 {
 	kind = "action",
 	name = "hide",
@@ -97,7 +97,7 @@ shared_menu_register("window",
 	end
 });
 
-global_menu_register("settings/wspaces/float",
+menus_register("global", "settings/wspaces/float",
 {
 	kind = "value",
 	name = "hide_target",

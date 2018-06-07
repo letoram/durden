@@ -35,12 +35,12 @@ local function run_idle_timers()
 end
 
 function timer_tick(...)
-	idle_count = idle_count + 1;
 	tick_count = tick_count + 1;
 
 -- idle timers are more complicated in the sense that they require both
 -- a possible 'wakeup' stage and tracking so that they are not called repeatedly.
 	if (not idle_masked) then
+		idle_count = idle_count + 1;
 		run_idle_timers();
 	end
 
@@ -185,6 +185,7 @@ local function add(dst, name, delay, once, trigger, wtrigger, hidden)
 	end
 	res.hidden = hidden;
 	table.insert(dst, res);
+
 	return res;
 end
 

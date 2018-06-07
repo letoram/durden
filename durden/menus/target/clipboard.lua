@@ -57,8 +57,8 @@ local function clipboard_histgen(wnd, lst, promote)
 			name = "hist_" .. tostring(k),
 			label = string.format("%d:%s", k, string.sub(short, 1, 20)),
 			kind = "action",
-			fmt = suppl_strcol_fmt(short, false),
-			select_fmt = suppl_strcol_fmt(short, true),
+			format = suppl_strcol_fmt(short, false),
+			select_format = suppl_strcol_fmt(short, true),
 			handler = function()
 				if (promote) then
 					CLIPBOARD:set_global(v);
@@ -99,8 +99,6 @@ local function clipboard_urls()
 	end
 	return res;
 end
-
-register_shared("paste_global", clipboard_paste);
 
 return {
 	{

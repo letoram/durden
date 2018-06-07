@@ -55,77 +55,6 @@ local function build_unbindmenu()
 	return res;
 end
 
-local function build_bindmenu(wide)
-	local wnd = active_display().selected;
-	if (not wnd or not wnd.input_labels or #wnd.input_labels == 0) then
-		return;
-	end
-	local bwt = gconfig_get("bind_waittime");
-	local res = {};
-	for k,v in ipairs(wnd.input_labels) do
-		table.insert(res, {
-			name = "input_" .. v[1],
-			label = v[1],
-			description = v[1] .. ": " .. v[3],
-			kind = "action",
-			handler = function()
-				tiler_bbar(active_display(),
-					string.format("Bind: %s, hold desired combination.", v[1]),
-					"keyorcombo", bwt, nil, SYSTEM_KEYS["cancel"],
-					function(sym, done, aggsym)
-						if (done) then
-							wnd.labels[aggsym and aggsym or sym] = v[1];
-						end
-					end
-				);
-			end
-		});
-	end
-
-	return res;
-end
-
-local label_menu = {
-	{
-		name = "input",
-		label = "Input",
-		kind = "action",
-		description = "Trigger a client provided input",
-		hint = "Input Label:",
-		submenu = true,
-		handler = build_labelmenu
-	},
--- not finished yet, part of the whole "settings per target" problem
-	{
-		name = "localbind",
-		label = "Temporary-Bind",
-		kind = "action",
-		description = "Bind an input label tied to this window",
-		hint = "Action:",
-		submenu = true,
-		handler = function() return build_bindmenu(true); end
-	},
-	{
-		name = "globalbind",
-		label = "Class-Bind",
-		kind = "action",
-		description = "Bind a label globally",
-		eval = function() return false; end,
-		hint = "Action:",
-		submenu = true,
-		handler = function() return build_bindmenu(false); end
-	},
-	{
-		name = "labelunbind",
-		label = "Unbind",
-		kind = "action",
-		description = "Unbind a previously bound label",
-		hint = "Unbind",
-		submenu = true,
-		handler = function() return build_unbindmenu(); end
-	}
-};
-
 local kbd_menu = {
 	{
 		name = "utf8",
@@ -136,21 +65,13 @@ local kbd_menu = {
 			local sel = active_display().selected;
 			return (sel and sel.u8_translation) and true or false;
 		end,
-		handler = grab_shared_function("bind_utf8")
-	},
-	{
-		name = "bindcustom",
-		label = "Bind Custom",
-		kind = "action",
-		description = "Create a custom/local meta+key menu path binding",
-		handler = grab_shared_function("bind_custom"),
-	},
-	{
-		name = "unbind",
-		label = "Unbind",
-		kind = "action",
-		description = "Remove a custom/local keyboard binding",
-		handler = grab_shared_function("unbind_custom")
+		handler = function()
+			suppl_bind_u8(function(sym, str, sym2)
+				local wnd = active_display().selected;
+				wnd.u8_translation[sym2 and sym2 or sym] = str;
+				SYMTABLE:translation_overlay(wnd.u8_translation);
+			end);
+		end
 	},
 	{
 		name = "repeat",
@@ -267,7 +188,44 @@ return {
 			local sel = active_display().selected;
 			return sel and sel.input_labels and #sel.input_labels > 0;
 		end,
-		handler = label_menu
+		handler = build_labelmenu
+	},
+	{
+		name = "custom",
+		label = "Bind Custom",
+		kind = "action",
+		description = "Create a custom/local meta+key menu path binding",
+		handler = function()
+			local m1, m2 = dispatch_meta();
+			suppl_binding_helper("", "",
+			function(bind, path)
+				active_display().selected.bindings[bind] = path;
+			end);
+		end
+	},
+	{
+		name = "unbind",
+		label = "Unbind",
+		kind = "value",
+		description = "Remove a custom/local binding",
+		eval = function()
+			for k,v in pairs(active_display().selected.bindings) do
+				return true;
+			end
+			return false;
+		end,
+		set = function()
+			local wnd = active_display().selected;
+			local lst = {};
+			for k,v in pairs(active_display().selected.bindings) do
+				table.insert(lst, k);
+			end
+			table.sort(lst);
+			return lst;
+		end,
+		handler = function(ctx, val)
+			active_display().selected.bindings[val] = nil;
+		end
 	},
 	{
 		name = "keyboard",

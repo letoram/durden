@@ -74,8 +74,8 @@ Add the following fields where num match the corresponding led index:
       -- special overrides based on action, path or path-prefix
       path_colors = {
 			 ["destroy"] = {255, 0, 0},
-			 ["!open/target"] = {64, 20, 64},
-			 ["!open/*"] = {20, 64, 80}
+			 ["/global/open/target"] = {64, 20, 64},
+			 ["/global/open/*"] = {20, 64, 80}
 			}
 
       -- optional proxy function when state needs to be mixed

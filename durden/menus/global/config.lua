@@ -871,33 +871,45 @@ local config_terminal = {
 
 local allmenu = {
 	{
-		name = "all_susp",
+		name = "suspend",
 		label = "Suspend All",
-		kind = "action",
-		description = "Suspend all windows",
-		handler = grab_global_function("all_suspend")
+		kind = "value",
+		set = {"media", "game", "lwa", "all"},
+		description = "Suspend all windows of a specific type",
+		handler = function(ctx, val)
+-- the all type is no type
+			if (val == "all") then
+				val = nil;
+			end
+
+-- though clients should be able to handle it, it's better to actually track
+			for wnd in all_windows(val) do
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER)
+					and not wnd.temp_suspend) then
+					wnd.temp_suspend = true;
+					wnd:set_suspend(true);
+				end
+			end
+		end
 	},
 	{
-		name = "all_media_susp",
-		label = "Suspend Media",
-		kind = "action",
-		description = "Suspend all media windows",
-		handler = grab_global_function("all_media_suspend")
-	},
-	{
-		name = "all_susp",
+		name = "resume",
 		label = "Resume All",
-		kind = "action",
-		description = "Resume all suspended windows",
-		handler = grab_global_function("all_resume")
-	},
-	{
-		name = "all_media_resume",
-		label = "Resume Media",
-		kind = "action",
-		description = "Resume all suspended media windows",
-		handler = grab_global_function("all_media_resume")
-	},
+		kind = "value",
+		set = {"media", "game", "lwa", "all"},
+		description = "Resume all suspended windows of a specific type",
+		handler = function(ctx, val)
+			if (val == "all") then
+				val = nil;
+			end
+			for wnd in all_windows(val) do
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER) and wnd.temp_suspend) then
+					wnd.temp_suspend = nil;
+					wnd:set_suspend(false);
+				end
+			end
+		end
+	}
 };
 
 return {

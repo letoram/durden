@@ -319,7 +319,7 @@ local wayland_settings = {
 }
 };
 
-global_menu_register("settings",
+menus_register("global", "settings",
 {
 	name = "wayland",
 	label = "Wayland",

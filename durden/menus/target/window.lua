@@ -4,35 +4,50 @@ local swap_menu = {
 		label = "Up",
 		kind = "action",
 		description = "(Tiling) Swap position with window parent",
-		handler = grab_global_function("swap_up")
-	},
-	{
-		name = "merge_collapse",
-		label = "Merge/Collapse",
-		description = "(Tiling) split or absorb same-level nodes and children slots",
-		kind = "action",
-		handler = grab_shared_function("mergecollapse")
+		function()
+			active_display():swap_up();
+		end
 	},
 	{
 		name = "down",
 		label = "Down",
 		description = "(Tiling) Swap position with first window child",
 		kind = "action",
-		handler = grab_global_function("swap_down")
+		handler = function()
+			active_display():swap_down();
+		end
 	},
 	{
 		name = "left",
 		label = "Left",
 		description = "(Tiling) Swap position with parent sibling (to the left)",
 		kind = "action",
-		handler = grab_global_function("swap_left")
+		handler = function()
+			active_display():swap_left();
+		end
 	},
 	{
 		name = "right",
 		label = "Right",
 		kind = "action",
 		description = "(Tiling) Swap position with parent sibling (to the right)",
-		handler = grab_global_function("swap_right")
+		handler = function()
+			active_display():swap_right();
+		end
+	},
+	{
+		name = "merge_collapse",
+		label = "Merge/Collapse",
+		description = "(Tiling) split or absorb same-level nodes and children slots",
+		kind = "action",
+		handler = function()
+			local wnd = active_display().selected;
+			if (#wnd.children > 0) then
+				wnd:collapse();
+			else
+				wnd:merge();
+			end
+		end
 	},
 };
 
@@ -42,34 +57,42 @@ local select_menu = {
 		label = "Up",
 		kind = "action",
 		description = "Select the tiling-parent or (float) closest in negative Y",
-		handler = grab_shared_function("step_up")
+		handler = function()
+			active_display().selected:prev(1);
+		end
 	},
 	{
 		name = "down",
 		label = "Down",
 		description = "Select the first tiling-child or (float) closest in positive Y",
 		kind = "action",
-		handler = grab_shared_function("step_down")
+		handler = function()
+			active_display().selected:next(1);
+		end
 	},
 	{
 		name = "left",
 		label = "Left",
 		kind = "action",
 		description = "Select the previous sibling or (float) closest in negative X",
-		handler = grab_shared_function("step_left")
+		handler = function()
+			active_display().selected:prev();
+		end
 	},
 	{
 		name = "right",
 		label = "Right",
 		kind = "action",
 		description = "Select the next sibling or (float) closest in positive X",
-		handler = grab_shared_function("step_right")
-	},
+		handler = function()
+			active_display().selected:next();
+		end
+	}
 };
 
 local moverz_menu = {
 {
-	name = "grow_shrink_h",
+	name = "resize_h",
 	label = "Resize(H)",
 	kind = "value",
 	description = "Change the relative width with a factor of (-0.5..x..0.5)",
@@ -82,7 +105,7 @@ local moverz_menu = {
 	end
 },
 {
-	name = "grow_shrink_v",
+	name = "resize_v",
 	label = "Resize(V)",
 	kind = "value",
 	validator = gen_valid_num(-0.5, 0.5),
@@ -99,10 +122,22 @@ local moverz_menu = {
 	label = "Toggle Fullscreen",
 	kind = "action",
 	description = "Set workspace as fullscreen, with this window as its main contents",
-	handler = grab_shared_function("fullscreen")
+	handler = function()
+		local wnd = active_display().selected;
+		if (not wnd.space) then
+			return;
+		end
+
+		local mode = wnd.space.last_mode and wnd.space.last_mode or "tile";
+		if (wnd.fullscreen) then
+			wnd.space[mode](wnd.space);
+		else
+			wnd.space:fullscreen();
+		end
+	end
 },
 {
-	name = "maxtog",
+	name = "maximize",
 	label = "Toggle Maximize",
 	kind = "action",
 	description = "(Float) size the window based on workspace client area size",
@@ -114,7 +149,7 @@ local moverz_menu = {
 	end
 },
 {
-	name = "move_h",
+	name = "rel_x",
 	label = "Move(H)",
 	description = "(Float) move the window left or right",
 	eval = function()
@@ -127,7 +162,7 @@ local moverz_menu = {
 	end
 },
 {
-	name = "move_v",
+	name = "rel_y",
 	label = "Move(V)",
 	description = "(Float) move the window up or down",
 	eval = function()
@@ -140,7 +175,7 @@ local moverz_menu = {
 	end
 },
 {
-	name = "x",
+	name = "abs_x",
 	label = "Set(X)",
 	eval = function()
 		return active_display().selected.space.mode == "float";
@@ -158,7 +193,7 @@ local moverz_menu = {
 	end
 },
 {
-	name = "y",
+	name = "abs_y",
 	label = "Set(Y)",
 	description = "(Float) move the window to a specific y coordinate",
 	eval = function()
@@ -259,7 +294,7 @@ local function gen_wsmove(wnd)
 
 	for i=1,10 do
 		table.insert(res, {
-			name = "move_space_" .. tostring(k),
+			name = "reassign_" .. tostring(i),
 			label = (adsp[i] and adsp[i].label) and adsp[i].label or tostring(i),
 			description = "Reassign the window to workspace " .. tostring(i),
 			kind = "action",
@@ -353,6 +388,56 @@ local function set_impostor(wnd, px)
 	);
 end
 
+local titlebar_table = {
+	{
+		name = "swap",
+		label = "Swap",
+		kind = "action",
+		description = "Switch between server side controlled titlebar and impostor",
+		handler = function()
+			local wnd = active_display().selected;
+			wnd.titlebar:swap_impostor();
+		end
+	},
+	{
+		name = "toggle",
+		label = "Toggle",
+		kind = "action",
+		description = "Toggle the server-side decorated titlebar on/off",
+		handler = function()
+			local wnd = active_display().selected;
+			wnd:set_titlebar(not wnd.show_titlebar, true);
+		end
+	},
+	{
+		name = "impostor",
+		label = "Impostor",
+		hint = "(-1 (auto), 0 (disable), >0 (set px)",
+		kind = "value",
+		description = "Define an impostor region that will be mapped into the titlebar",
+		validator = function(val)
+			return (val and string.len(val) > 0 and tonumber(val) and tonumber(val) > -1);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			local num = tonumber(val);
+
+-- reset impostor state before adding new
+			if (wnd.titlebar.last_impostor) then
+				wnd:append_crop(-wnd.titlebar.last_impostor, 0, 0, 0);
+				wnd.titlebar:destroy_impostor();
+				wnd.titlebar.last_impostor = nil;
+				if (num == 0) then
+					return;
+				end
+			end
+
+			wnd:append_crop(num, 0, 0, 0);
+			set_impostor(wnd, num);
+		end
+	}
+};
+
 return {
 	{
 		name = "tag",
@@ -384,7 +469,7 @@ return {
 		handler = select_menu
 	},
 	{
-		name = "reassign_name",
+		name = "reassign",
 		label = "Reassign",
 		kind = "action",
 		submenu = true,
@@ -408,6 +493,14 @@ return {
 		end,
 	},
 	{
+		name = "titlebar",
+		label = "Titlebar",
+		kind = "action",
+		submenu = true,
+		description = "Titlebar behavior controls",
+		handler = titlebar_table
+	},
+	{
 		name = "canvas_to_bg",
 		label = "Workspace-Background",
 		kind = "action",
@@ -420,26 +513,6 @@ return {
 			else
 				wnd.space:set_background(wnd.canvas);
 			end
-		end
-	},
-	{
-		name = "titlebar_toggle",
-		label = "Titlebar Toggle",
-		kind = "action",
-		description = "Toggle the server-side decorated titlebar on/off",
-		handler = function()
-			local wnd = active_display().selected;
-			wnd:set_titlebar(not wnd.show_titlebar, true);
-		end
-	},
-	{
-		name = "titlebar_impswap",
-		label = "Titlebar Swap",
-		kind = "action",
-		description = "Switch between server side controlled titlebar and impostor",
-		handler = function()
-			local wnd = active_display().selected;
-			wnd.titlebar:swap_impostor();
 		end
 	},
 	{
@@ -486,7 +559,9 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "Reassign the window to a different display",
-		handler = grab_shared_function("migrate_wnd_bydspname"),
+		handler = function()
+			active_display():message("MISSING: REASSING");
+		end,
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
 		end
@@ -497,11 +572,11 @@ return {
 		kind = "action",
 		description = "Delete the selected window",
 		handler = function()
-			grab_shared_function("destroy")();
+			active_display().selected:destroy();
 		end
 	},
 	{
-		name = "moverz",
+		name = "move_resize",
 		label = "Move/Resize",
 		kind = "action",
 		description = "Controls for moving or resizing the window",
@@ -645,33 +720,6 @@ return {
 				wnd:append_crop(impv, 0, 0, 0);
 				set_impostor(wnd, impv);
 			end
-		end
-	},
-	{
-		name = "impostor",
-		label = "Impostor",
-		hint = "(-1 (auto), 0 (disable), >0 (set px)",
-		kind = "value",
-		description = "Define an impostor region that will be mapped into the titlebar",
-		validator = function(val)
-			return (val and string.len(val) > 0 and tonumber(val) and tonumber(val) > -1);
-		end,
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			local num = tonumber(val);
-
--- reset impostor state before adding new
-			if (wnd.titlebar.last_impostor) then
-				wnd:append_crop(-wnd.titlebar.last_impostor, 0, 0, 0);
-				wnd.titlebar:destroy_impostor();
-				wnd.titlebar.last_impostor = nil;
-				if (num == 0) then
-					return;
-				end
-			end
-
-			wnd:append_crop(num, 0, 0, 0);
-			set_impostor(wnd, num);
 		end
 	},
 };

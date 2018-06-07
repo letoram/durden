@@ -70,17 +70,10 @@ end
 
 -- for sub-paths, only check path activation. For the root- level,
 -- check both the program supplied id and the user- supplied optional tag
-local function ident(ctx, pathid, strid, tag)
+local function ident(ctx, pathid)
 	local strset = {};
 	if (string.len(pathid) > 1) then
 		table.insert(strset, pathid);
-	else
-		if (strid) then
-			table.insert(strset, strid);
-		end
-		if (tag) then
-			table.insert(strset, tag);
-		end
 	end
 
 	ctx.sheetset = {};

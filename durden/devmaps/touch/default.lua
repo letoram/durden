@@ -56,9 +56,9 @@ return {
 -- swipe(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 -- drag(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 	gestures = {
-		swipe3_right = '!workspace/switch/next',
-		swipe3_left = '!workspace/switch/prev',
-		drag2_up = '!input/mouse/button/4',
-		drag2_down = '!input/mouse/button/5',
+		swipe3_right = '/global/workspace/switch/next',
+		swipe3_left = '/global/workspace/switch/prev',
+		drag2_up = '/global/input/mouse/button/4',
+		drag2_down = '/global/input/mouse/button/5',
 	}
 };

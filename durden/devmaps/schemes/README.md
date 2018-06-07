@@ -9,14 +9,16 @@ activate any set of paths in sequence (security and stability risk, you are at
 your own risk here), intent is that it is used for the config/visual- paths
 though it is not enforced via some filter.
 
-Be particularly careful with target prefix actions (#) that would cause some
-destructive change, e.g. window deletion. The same goes for global action that
-would change the setup being operated on, like reassignment etc.
+Be particularly careful with target path that would cause some destructive
+change, e.g. window deletion. The same goes for global action that would change
+the setup being operated on, like reassignment etc.
 
 For normal 'my' startup actions, still use the autorun.lua mechanism.
 
 NOTES:
-The bindings, filters and on_install feature are not yet complete.
+The bindings, filters and on\_install feature are not yet complete. Schemes
+should be combinable, so that there can be preset schemes for a certain input
+or navigation setup - but another for defining the look and feel.
 
 Schemes in this folder are scanned at startup/reset time and can be found in
 global/config/schemes/name, . it is expected to return a table with the following
@@ -26,7 +28,7 @@ return {
 	name = "scheme_name",
 
 -- will be communicated to windows that support color-scheme
--- definitions (external) and for the scope it is activated
+-- definitions (external) and for the scope it is activated (optional)
 	palette = {
 		primary = {0, 255, 0},
 		secondary = {0, 127, 0},
@@ -66,8 +68,8 @@ return {
 
 -- valid
 	actions = {
-		"!action/one",
-		"!action/two"
+		"/global/action/one",
+		"/global/action/two"
 	},
 
 -- will be ran if the profile is set globally.
@@ -82,8 +84,8 @@ return {
 -- (#prefix) will be applied to all windows in the workspace by
 -- a silent select action.
 	workspace = {
-		"!action/one",
-		"!action/two"
+		"/global/action/one",
+		"/target/action/two"
 	},
 
 -- will be run if the profile is set on a window.

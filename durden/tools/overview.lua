@@ -357,7 +357,7 @@ local overview_cfg = {
 }
 };
 
-global_menu_register("settings/tools",
+menus_register("global", "settings/tools",
 {
 	name = "overview",
 	label = "Overview",
@@ -367,7 +367,7 @@ global_menu_register("settings/tools",
 	handler = overview_cfg
 });
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "overview",
 	label = "Overview",

@@ -71,7 +71,7 @@ local remap_menu = {
 			mstate.btns_remap[2] = 3;
 			mstate.btns_remap[3] = 2;
 		end
-	},
+	}
 };
 
 local mouse_menu = {
@@ -280,7 +280,7 @@ local function list_keymaps()
 end
 
 local function bind_utf8()
-	fglobal_bind_u8(function(sym, val, sym2, iotbl)
+	suppl_bind_u8(function(sym, val, sym2, iotbl)
 		SYMTABLE:update_map(iotbl, val);
 	end);
 end
@@ -444,6 +444,7 @@ local keymaps_menu = {
 		label = "Bind UTF-8",
 		kind = "action",
 		description = "Associate a keyboard key with a UTF-8 defined unicode codepoint",
+		external_block = true,
 		handler = bind_utf8,
 	},
 	{
@@ -460,6 +461,7 @@ local keymaps_menu = {
 			end
 			return res;
 		end,
+		external_block = true,
 		handler = function(ctx, val)
 			local bwt = gconfig_get("bind_waittime");
 			tiler_bbar(active_display(),
@@ -593,41 +595,194 @@ local keyb_menu = {
 	}
 };
 
+local function rebind_meta()
+	local bwt = gconfig_get("bind_waittime");
+
+-- wm, msg, key, time, 'ok', 'cancel', callback, rpress
+	tiler_bbar(active_display(),
+		string.format("Press and hold (Meta 1), %s to Abort",
+			SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
+		function(sym, done)
+			if (done) then
+				tiler_bbar(active_display(),
+					string.format("Press and hold (Meta 2), %s to Abort",
+					SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
+					function(sym2, done)
+						if (done) then
+							active_display():message(
+								string.format("Meta 1,2 set to %s, %s", sym, sym2));
+							dispatch_system("meta_1", sym);
+							dispatch_system("meta_2", sym2);
+							meta_guard_reset();
+							if (chain and type(chain) == "function") then chain(); end
+						end
+						if (sym2 == sym) then
+							return "Already bound to Meta 1";
+						end
+				end);
+			end
+		end, 5
+	);
+end
+
+local function rebind_basic()
+	local tbl = {
+		{"Accept", "accept"},
+		{"Cancel", "cancel"},
+		{"Next", "next"},
+		{"Previous", "previous"},
+		{"Home", "home"},
+		{"End", "end"},
+		{"Left", "left"},
+		{"Right", "right"},
+		{"Erase", "erase"},
+		{"Delete", "delete"}
+	};
+
+	local used = {};
+
+	local runsym = function(self)
+		local ent = table.remove(tbl, 1);
+		if (ent == nil) then
+			if (chain and type(chain) == "function") then chain(); end
+			return;
+		end
+		tiler_bbar(active_display(),
+			string.format("Bind %s, press current: %s or hold new to rebind.",
+				ent[1], SYSTEM_KEYS[ent[2]]), true, gconfig_get("bind_waittime"),
+				SYSTEM_KEYS[ent[2]], nil,
+				function(sym, done)
+					if (done) then
+						dispatch_system(ent[2], sym);
+						table.insert(used, {sym, ent[2]});
+						self(self);
+					else
+						for k,v in ipairs(used) do
+							if (v[1] == sym) then
+								return "Already bound to " .. v[2];
+							end
+						end
+					end
+				end
+		);
+	end
+
+	runsym(runsym);
+end
+
+-- reduced version of durden input that only uses dispatch_lookup to
+-- figure out of we are running a symbol that maps to input_lock_* functions
+local input_lock_toggle;
+local input_lock_on;
+local inputlock_off;
+local ign_input = function(iotbl)
+	local ok, sym, outsym, lutval = dispatch_translate(iotbl, true);
+	if (iotbl.kind == "status") then
+		durden_iostatus_handler(iotbl);
+		return;
+	end
+
+	if (iotbl.active and lutval) then
+		paths = {
+			["/global/input/toggle"] = input_lock_toggle,
+			["/global/input/on"] = input_lock_on,
+			["/global/input/off"] = input_lock_off
+		};
+		if (paths[lutval]) then
+			paths[lutval]();
+		end
+	end
+end
+
+input_lock_toggle = function()
+	if (durden_input == ign_input) then
+		input_lock_off();
+	else
+		input_lock_on();
+	end
+end
+
+local old_input;
+input_lock_on = function()
+	old_input = durden_input;
+	durden_input = ign_input;
+	dispatch_meta_reset();
+	iostatem_save();
+	iostatem_repeat(0, 0);
+	active_display():message("Ignore input enabled");
+end
+
+input_lock_off = function()
+	durden_input = old_input;
+	dispatch_meta_reset();
+	iostatem_restore(iostate);
+	dispatch_meta_reset();
+	active_display():message("Ignore input disabled");
+end
+
+-- these are all really complex as we need to both query for the binding
+-- itself, then navigate the related menus without them triggering widgets
+-- or other special menu hooks or paths
 local bind_menu = {
 	{
 		name = "custom",
 		kind = "action",
 		label = "Custom",
 		description = "Bind a menu path to a meta+keypress",
-		handler = grab_global_function("bind_custom")
+-- use m1 to determine if we bind the path or the value=
+		external_block = true,
+		handler = function()
+			suppl_binding_helper("", "", dispatch_set);
+		end
 	},
 	{
 		name = "custom_falling",
 		kind = "action",
 		label = "Custom(Release)",
 		description = "Bind a menu path to a meta+keyrelease",
-		handler = grab_global_function("bind_custom_falling")
+		external_block = true,
+		handler = function()
+			suppl_binding_helper("f_", "", dispatch_set);
+		end
 	},
 	{
 		name = "unbind",
-		kind = "action",
+		kind = "value",
 		label = "Unbind",
+		set = function()
+			local lst = match_keys("custom_%");
+			local res = {};
+			for _,str in ipairs(lst) do
+				local pos, stop = string.find(str, "=", 1);
+				local key = string.sub(str, 8, pos - 1);
+				table.insert(res, key);
+			end
+			return res;
+		end,
+		eval = function()
+			local lst = match_keys("custom_%");
+			return #lst > 0;
+		end,
 		description = "Unset a previous custom binding",
-		handler = grab_global_function("unbind_combo")
+		handler = function(ctx, val)
+			store_key("custom_" .. val, "");
+		end
 	},
 	{
 		name = "meta",
 		kind = "action",
 		label = "Meta",
 		description = "Query for new meta keys",
-		handler = grab_global_function("rebind_meta")
+		external_block = true,
+		handler = rebind_meta
 	},
 	{
 		name = "basic",
 		kind = "action",
 		label = "Basic",
 		description = "Rebind the basic navigation keys",
-		handler = grab_global_function("rebind_basic")
+		external_block = true,
+		handler = rebind_basic
 	}
 };
 
@@ -694,11 +849,29 @@ return {
 	},
 -- don't want this visible as accidental trigger would lock you out
 	{
-		name = "input_toggle",
+		name = "toggle",
 		kind = "action",
 		label = "Toggle Lock",
 		description = "Bind to toggle all input processing on/off",
-		handler = grab_global_function("input_lock_toggle"),
+		handler = input_lock_toggle,
+		invisible = true
+	},
+	{
+		name = "off",
+		kind = "action",
+		label = "Disable Input",
+		descrption = "Disable all input processing",
+		eval = function() return durden_input ~= ign_input; end,
+		handler = input_lock_on,
+		invisible = true
+	},
+	{
+		name = "on",
+		kind = "action",
+		label = "Enable Input",
+		descrption = "Enable input processing",
+		eval = function() return durden_input == ign_input; end,
+		handler = input_lock_off,
 		invisible = true
 	}
 };

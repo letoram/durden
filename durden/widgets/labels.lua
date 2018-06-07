@@ -125,6 +125,10 @@ local function show(ctx, anchor, ofs)
 -- need to re-resolve as our list is sorted
 			local wnd = active_display().selected;
 			local lbar = tiler_lbar_isactive(true);
+			if (not lbar) then
+				return;
+			end
+
 			local lbl = ctx.group_cache[ofs][lasti];
 			lbl = table.find_key_i(wnd.input_labels, 1, lbl);
 			if (lbl) then
@@ -174,7 +178,7 @@ end
 
 return {
 	name = "labels",
-	paths = {"#input"},
+	paths = {"/target/input"},
 	show = show,
 	probe = probe,
 	destroy = destroy

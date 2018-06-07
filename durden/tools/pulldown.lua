@@ -366,7 +366,7 @@ local function dterm()
 	target_displayhint(dstate.term, 0, 0, 0);
 end
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "dterm",
 	label = "Drop-down Terminal",
@@ -375,7 +375,7 @@ global_menu_register("tools",
 	handler = dterm
 });
 
-global_menu_register("settings/tools",
+menus_register("global", "settings/tools",
 {
 	name = "dterm",
 	label = "Dropdown Terminal",

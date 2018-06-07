@@ -44,7 +44,7 @@ local floatmenu = {
 }
 };
 
-global_menu_register("settings/wspaces",
+menus_register("global", "settings/wspaces",
 {
 	kind = "action",
 	name = "float",
@@ -69,7 +69,7 @@ local workspace_menu = {
 }
 };
 
-shared_menu_register("window",
+menus_register("target", "window",
 {
 	kind = "action",
 	submenu = true,
@@ -83,7 +83,7 @@ shared_menu_register("window",
 	handler = system_load("tools/advfloat/gridfit.lua")()
 });
 
-global_menu_register("workspace",
+menus_register("global", "workspace",
 {
 	kind = "action",
 	name = "float",

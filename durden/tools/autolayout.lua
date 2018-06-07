@@ -673,7 +673,7 @@ local laycfg = {
 }
 };
 
-global_menu_register("settings/tools",
+menus_register("global", "settings/tools",
 {
 	name = "autolayouts",
 	label = "Auto Layouting",
@@ -683,7 +683,7 @@ global_menu_register("settings/tools",
 	handler = laycfg
 });
 
-global_menu_register("tools",
+menus_register("global", "tools",
 {
 	name = "autolayouts",
 	label = "Auto Layouting",
@@ -693,7 +693,7 @@ global_menu_register("tools",
 	handler = layouters
 });
 
-shared_menu_register("window/swap",
+menus_register("target", "window/swap",
 {
 	name = "swap",
 	label = "Swap(Focus)",
@@ -706,7 +706,7 @@ shared_menu_register("window/swap",
 	handler = function() swap_focus(); end
 });
 
-shared_menu_register("window/swap",
+menus_register("target", "window/swap",
 {
 	name = "swap_sel",
 	label = "Swap-Select(Focus)",
