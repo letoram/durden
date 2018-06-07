@@ -8,6 +8,7 @@
 -- here for the time being, will move with internationalization
 LBL_YES = "yes";
 LBL_NO = "no";
+LBL_FLIP = "toggle";
 LBL_BIND_COMBINATION = "Press and hold the desired combination, %s to Cancel";
 LBL_BIND_KEYSYM = "Press and hold single key to bind keysym %s, %s to Cancel";
 LBL_BIND_COMBINATION_REP = "Press and hold or repeat- press, %s to Cancel";
@@ -76,13 +77,11 @@ local defaults = {
 	enc_presilence = 0,
 	enc_vbr = 0,
 
--- SECURITY: set _path to :disabled to disable these features, or enable
--- whitelist and modify whitelist.lua to set allowed commands and paths
+-- SECURITY: set _path to :disabled to disable these features
 	extcon_path = "durden",
 	status_path = "status",
 	control_path = "control",
 	output_path = "output",
-	whitelist = false,
 
 -- SECURITY: set to "full" to allow clients that request authentication tokens
 -- against the GPU to let those tokens go through. This can compromise security
@@ -319,25 +318,6 @@ if (type(val) ~= type(defaults[key])) then
 			v(key, val);
 		end
 	end
-end
-
-local allowed = system_load("whitelist.lua")();
-
--- whitelist used for control channel
-local allowed = {
-	input_lock_on = true,
-	input_lock_off = true,
-	input_lock_toggle = true
-};
-
-function allowed_commands(cmd)
-	if (cmd == nil or string.len(cmd) == 0) then
-		return false;
-	end
-
-	local rv = string.split(cmd, "=")[1];
-	return gconfig_get("whitelist") == false or
-		allowed[cmd];
 end
 
 function gconfig_get(key)

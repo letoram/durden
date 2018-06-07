@@ -870,6 +870,16 @@ end
 
 local widgets = {};
 
+function suppl_flip_handler(key)
+	return function(ctx, val)
+		if (val == LBL_FLIP) then
+			gconfig_set(key, not gconfig_get(key));
+		else
+			gconfig_set(key, val == LBL_YES);
+		end
+	end
+end
+
 function suppl_scan_tools()
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(list) do

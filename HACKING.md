@@ -42,6 +42,11 @@ tools/ drop-in system, if possible. Changes that affect behavior should
 also cover updates and pull-requests against the gh-pages branch, where
 applicable. If in doubt, check on the IRC channel first.
 
+Working with the IPC system is a decent way to explore and test things.
+To do so, build the arcan-cfgfs (src/tools/acfgfs) with FUSE so you can
+mount the control point (e.g. ~/.arcan/appl-out/durden/control). If the
+FUSE driver misbehaves, try with something like socat - unix-connect:p
+
 Testing
 ------
 For any newly developed feature, figuring out what needs testing is not

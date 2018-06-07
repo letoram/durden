@@ -119,12 +119,10 @@ local durden_bars = {
 		label = "Hide Titlebar",
 		kind = "value",
 		description = "Change the default titlebar visibility settings",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function() return
 			gconfig_get("hide_titlebar") and LBL_YES or LBL_NO end,
-		handler = function(ctx, val)
-			gconfig_set("hide_titlebar", val == LBL_YES);
-		end
+		handler = suppl_flip_handler("hide_titlebar")
 	},
 };
 
@@ -454,13 +452,11 @@ local durden_visual = {
 		name = "menu_helper",
 		label = "Menu Descriptions",
 		kind = "value",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function()
 			return gconfig_get("menu_helper") and LBL_YES or LBL_NO;
 		end,
-		handler = function(ctx, val)
-			gconfig_set("menu_helper", val == LBL_YES);
-		end
+		handler = suppl_flip_handler("menu_helper")
 	}
 };
 
@@ -469,13 +465,11 @@ local durden_workspace = {
 		name = "autodel",
 		label = "Autodelete",
 		kind = "value",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		description = "Automatically destroy workspaces that do not have any windows",
 		initial = function() return
 			gconfig_get("ws_autodestroy") and LBL_YES or LBL_NO end,
-		handler = function(ctx, val)
-			gconfig_set("ws_autodestroy", val == LBL_YES);
-		end
+		handler = suppl_flip_handler("ws_autodestroy")
 	},
 	{
 		name = "defmode",
@@ -492,13 +486,12 @@ local durden_workspace = {
 		label = "Autoadopt",
 		kind = "value",
 		description = "Let displays adopt orphaned workspaces automatically",
-		set = {LBL_YES, LBL_NO},
-		eval = function() return gconfig_get("display_simple")
-			and LBL_YES or LBL_NO; end,
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		eval = function()
+			return gconfig_get("display_simple") and LBL_YES or LBL_NO;
+		end,
 		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
-		handler = function(ctx, val)
-			gconfig_set("ws_autoadopt", val == LBL_YES);
-		end
+		handler = suppl_flip_handler("ws_autoadopt")
 	}
 };
 
@@ -586,33 +579,20 @@ local durden_system = {
 		handler = rate_menu
 	},
 	{
-		name = "ctrlpipe",
-		label = "Control Pipe",
+		name = "control",
+		label = "Control",
 		kind = "value",
 		hint = "(a..Z_)",
 		validator = strict_fname_valid,
-		description = "Set the fifo-name (ipc/XXX) for external UI control",
+		description = "Set the control socket name (ipc/XXX) for external UI control",
 		initial = function() local path = gconfig_get("control_path");
-			return path == ":disabled" and "[disabled]" or pth;
+			return path == ":disabled" and "[disabled]" or path;
 		end,
 		handler = function(ctx, val)
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			end
 			gconfig_set("control_path", val, true);
-		end
-	},
-	{
-		name = "ctrlwhitelist",
-		label = "Whitelist",
-		kind = "value",
-		initial = function() return
-			gconfig_get("whitelist") and LBL_YES or LBL_NO;
-		end,
-		description = "Toggle control-fifo command whitelisting",
-		set = {LBL_YES, LBL_NO},
-		handler = function(ctx, val)
-			gconfig_set("whitelist", val == LBL_YES);
 		end
 	},
 	{
@@ -810,10 +790,8 @@ local config_terminal_font = {
 		description = "Force the use of a built-in bitmap only font",
 		hint = "(new terminals only)",
 		initial = function() return gconfig_get("term_bitmap") and LBL_YES or LBL_NO; end,
-		set = {LBL_YES, LBL_NO},
-		handler = function(ctx, val)
-			gconfig_set("term_bitmap", val == LBL_YES);
-		end
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		handler = suppl_flip_handler("term_bitmap")
 	},
 -- should replace with some "font browser" but we don't have asynch font
 -- loading etc. and no control over cache size

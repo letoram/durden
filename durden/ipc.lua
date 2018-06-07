@@ -23,7 +23,7 @@ local function update_control(key, val)
 	control_socket = open_nonblock("=ipc/" .. val);
 end
 
-gconfig_listen("control_path", "iopipes", update_control);
+gconfig_listen("control_path", "ipc", update_control);
 update_control("", gconfig_get("control_path"));
 
 -- unsetting these values will prevent all external communication that is not
@@ -492,7 +492,6 @@ durden_shutdown = function()
 	end
 	if (gconfig_get("control_path") ~= ":disabled") then
 		zap_resource("ipc/" .. gconfig_get("control_path"));
-		zap_resource("ipc/" .. gconfig_get("control_path") .. "_out");
 	end
 	if (gconfig_get("output_path") ~= ":disabled") then
 		zap_resource("ipc/" .. gconfig_get("output_path"));

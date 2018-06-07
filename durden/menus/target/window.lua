@@ -546,11 +546,17 @@ return {
 		label = "Delete Protect",
 		kind = "value",
 		description = "Prevent the window from being accidentally deleted",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function() return active_display().selected.delete_protect and
 			LBL_YES or LBL_NO; end,
 		handler = function(ctx, val)
-			active_display().selected.delete_protect = val == LBL_YES;
+			local wnd = active_display().selected;
+			if (val == LBL_FLIP) then
+				val = not wnd.delete_protect;
+			else
+				val = val == LBL_YES;
+			end
+			wnd.delete_protect = val;
 		end
 	},
 	{
