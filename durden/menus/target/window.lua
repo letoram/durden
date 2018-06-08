@@ -4,7 +4,7 @@ local swap_menu = {
 		label = "Up",
 		kind = "action",
 		description = "(Tiling) Swap position with window parent",
-		function()
+		handler = function()
 			active_display():swap_up();
 		end
 	},
