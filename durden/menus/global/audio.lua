@@ -11,14 +11,20 @@ end
 
 return {
 	{
-		name = "toggle",
-		label = "Toggle On/Off",
-		kind = "action",
-		description = "Toggle all audio playback",
-		handler = function()
-			local new_state = not gconfig_get("global_mute");
-			allgain(new_state and 0.0 or gconfig_get("global_gain"));
-			gconfig_set("global_mute", new_state);
+		name = "enabled",
+		label = "Enabled",
+		kind = "value",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		description = "Set audio-enable state globally",
+		initial = function() return gconfig_get("global_mute"); end,
+		handler = function(ctx, val)
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("global_mute");
+			else
+				val = val == LBL_YES;
+			end
+			allgain(val and 0.0 or gconfig_get("global_gain"));
+			gconfig_set("global_mute", val);
 		end
 	},
 	{

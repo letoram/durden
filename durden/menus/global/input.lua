@@ -158,29 +158,31 @@ local mouse_menu = {
 		kind = "value",
 		label = "Remember Position",
 		description = "Track/Warp mouse position when keyboard-switching window focus",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_remember_position") and LBL_YES or LBL_NO;
 		end,
-		handler = function(ctx, val)
-			gconfig_set("mouse_remember_position", val == LBL_YES);
-			mouse_state().autohide = val == LBL_YES;
-		end
+		handler = suppl_flip_handler("mouse_remember_position")
 	},
 	{
 		name = "hide",
 		kind = "value",
 		label = "Autohide",
 		description = "Set mouse audio-hiding on inactivity behavior",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_autohide") and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			gconfig_set("mouse_autohide", val == LBL_YES);
-			mouse_state().autohide = val == LBL_YES;
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("mouse_autohide");
+			else
+				val = val == LBL_YES;
+			end
+			gconfig_set("mouse_autohide", val);
+			mouse_state().autohide = val;
 		end
 	},
 	{
@@ -188,29 +190,39 @@ local mouse_menu = {
 		kind = "value",
 		label = "Reveal/Hide",
 		description = "Control the visual effect used when mouse goes from hidden to visible",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_reveal") and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			gconfig_set("mouse_reveal", val == LBL_YES);
-			mouse_reveal_hook(val == LBL_YES);
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("mouse_reveal");
+			else
+				val = val == LBL_YES;
+			end
+			gconfig_set("mouse_reveal", val);
+			mouse_reveal_hook(val);
 		end
 	},
 	{
 		name = "lock",
 		kind = "value",
 		label = "Hard Lock",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		description = "Hard- lock/grab the mouse pointer (on supported platforms)",
 		eval = function() return not mouse_blocked(); end,
 		initial = function()
 			return gconfig_get("mouse_hardlock") and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			gconfig_set("mouse_hardlock", val == LBL_YES);
-			toggle_mouse_grab(val == LBL_YES and MOUSE_GRABON or MOUSE_GRABOFF);
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("mouse_hardlock");
+			else
+				val = val == LBL_YES;
+			end
+			gconfig_set("mouse_hardlock", val);
+			toggle_mouse_grab(val and MOUSE_GRABON or MOUSE_GRABOFF);
 		end
 	},
 	{
@@ -249,14 +261,19 @@ local mouse_menu = {
 		name = "block",
 		kind = "value",
 		label = "Block",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		description = "Block all mouse processing",
 		initial = function()
 			return gconfig_get("mouse_block") and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			gconfig_set("mouse_block", val == LBL_YES);
-			if (val == LBL_YES) then
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("mouse_block");
+			else
+				val = val == LBL_YES;
+			end
+			gconfig_set("mouse_block", val);
+			if (val) then
 				mouse_block();
 			else
 				mouse_unblock();
@@ -393,7 +410,8 @@ local function dev_menu(v)
 			label = "Always On",
 			kind = "value",
 			description = "Always process input device analog samples",
-			set = {LBL_YES, LBL_NO},
+			set = {LBL_YES, LBL_NO, LBL_FLIP},
+			eval = false; -- INCOMPLETE
 			initial = function()
 				return v.force_analog and LBL_YES or LBL_NO;
 			end,

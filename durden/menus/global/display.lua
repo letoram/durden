@@ -196,13 +196,19 @@ local function gen_disp_menu(disp)
 		label = "Force-Sync",
 		kind = "value",
 		description = "Set this display as a synch-master",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		eval = function() return not display_simple(); end,
 		initial = function()
 			return disp.primary and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			disp.primary = val == LBL_YES;
+			local opt = disp.primary;
+			if (val == LBL_FLIP) then
+				opt = not opt;
+			else
+				opt = val == LBL_YES;
+			end
+			disp.primary = opt;
 			map_video_display(disp.rt, disp.id, display_maphint(disp));
 		end
 		},

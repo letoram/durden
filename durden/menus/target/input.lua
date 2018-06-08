@@ -163,16 +163,18 @@ local mouse_menu = {
 		label = "Rate Limit",
 		description = "Limit the rate of mouse events being forwarded",
 		kind = "value",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function()
 			return active_display().selected.rate_unlimited and LBL_NO or LBL_YES;
 		end,
 		handler = function(ctx, val)
-			if (val == LBL_YES) then
-				active_display().selected.rate_unlimited = false;
+			local wnd = active_display().selected;
+			if (val == LBL_FLIP) then
+				val = not wnd.rate_unlimited;
 			else
-				active_display().selected.rate_unlimited = true;
+				val = val == LBL_YES;
 			end
+			wnd.rate_unlimited = val;
 		end
 	},
 };
@@ -249,16 +251,18 @@ return {
 		label = "Multicast",
 		kind = "value",
 		description = "Enable multicast where input is mirrored to children (tile)",
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function()
 			return active_display().selected.multicast and LBL_YES or LBL_NO;
 		end,
 		handler = function(ctx, val)
-			if (val == LBL_YES) then
-				active_display().selected.multicast = true;
+			local wnd = active_display().selected;
+			if (val == LBL_FLIP) then
+				val = not wnd.multicast;
 			else
-				active_display().selected.multicast = false;
+				val = val == LBL_YES;
 			end
+			wnd.multicast = val;
 		end
 	}
 };

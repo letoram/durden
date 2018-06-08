@@ -172,12 +172,18 @@ local advanced = {
 	label = "Block Resize Hints",
 	kind = "value",
 	description = "Control if clients should be alerted about its surface dimensions or not",
-	set = {LBL_YES, LBL_NO},
+	set = {LBL_YES, LBL_NO, LBL_FLIP},
 	initial = function()
 		return active_display().selected.block_rz_hint and LBL_YES or LBL_NO;
 	end,
 	handler = function(ctx, val)
-		active_display().selected.block_rz_hint = val == LBL_YES;
+		local wnd = active_display().selected;
+		if (val == LBL_FLIP) then
+			val = not wnd.block_rz_hint;
+		else
+			val = val == LBL_YES;
+		end
+		wnd.block_rz_hint = val;
 	end
 	},
 	{
