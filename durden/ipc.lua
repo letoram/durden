@@ -5,6 +5,7 @@ local control_socket;
 
 local function update_control(key, val)
 -- close automatically unlinks
+	print("update control", key, val);
 	if (control_socket) then
 		control_socket:close();
 		control_socket = nil;
@@ -19,6 +20,7 @@ local function update_control(key, val)
 		return;
 	end
 
+	print("create", val);
 	zap_resource("ipc/" .. val);
 	control_socket = open_nonblock("=ipc/" .. val);
 end
@@ -341,7 +343,7 @@ local commands = {
 
 		local ret = {"name: ", res.name, "\n", "label: ", res.label, "\n"};
 		if (res.description and type(res.description) == "string") then
-			table.insert(ret, res.description .. "\n");
+			table.insert(ret, "description:" .. res.description .. "\n");
 		end
 
 		if (res.kind == "action") then
@@ -412,15 +414,44 @@ local commands = {
 	end
 };
 
-local function cl_wr(cl, line, ind)
-	local i, ok = cl:write(line);
-	if (not ok) then
-		cl:close();
-		table.remove(clients, ind);
+local do_line;
+local function client_flush(cl, ind)
+	while true do
+		local line, ok = cl.connection:read();
+		if (not ok) then
+			cl.connection:close();
+			table.remove(clients, ind);
+			return;
+		end
+		if (not line) then
+			break;
+		end
+		if (string.len(line) > 0) then
+			do_line(line, cl, ind);
+		end
+	end
+
+	while #cl.buffer > 0 do
+		local line = cl.buffer[1];
+		local i, ok = cl.connection:write(line);
+		if (not ok) then
+			cl.connection:close();
+			table.remove(clients, ind);
+			return;
+		end
+		if (i == string.len(line)) then
+			table.remove(cl.buffer, 1);
+		else
+			cl.buffer[1] = string.sub(line, i+1);
+		end
 	end
 end
 
-local function do_line(line, cl, ind)
+local function client_write(cl, line, ind)
+	table.insert(cl.buffer, line);
+end
+
+do_line = function(line, cl, ind)
 	local ind = string.find(line, " ");
 
 	if (not ind) then
@@ -430,7 +461,7 @@ local function do_line(line, cl, ind)
 	line = string.sub(line, ind+1);
 
 	if (not commands[cmd]) then
-		cl_wr(cl, string.format("EINVAL: bad command(%s)\n", cmd), ind);
+		client_write(cl, string.format("EINVAL: bad command(%s)\n", cmd), ind);
 		return;
 	end
 
@@ -440,30 +471,32 @@ local function do_line(line, cl, ind)
 
 	local res, msg, remainder = menu_resolve(line);
 	if (not res) then
-		cl_wr(cl, "EINVAL:" .. msg .. "\n", ind);
+		client_write(cl, "EINVAL:" .. msg .. "\n", ind);
 	else
 		local msg = commands[cmd](line, res, remainder);
-		cl_wr(cl, msg, ind);
+		client_write(cl, msg, ind);
 	end
 end
 
+-- Alas, arcan doesn't expose a decent asynch callback mechanism tied to
+-- the socket (which should also be rate-limited and everything else like
+-- that needed so we don't stall) so we have to make do with the normal
+-- buffering for now, when it is added there we should only need to add
+-- a function argument to the open_nonblock and to the write call
+-- (table + callback, release when finished)
 local function poll_control_channel()
--- still lack a trigger mechanism in arcan to get notified on a connection
 	local nc = control_socket:accept();
+
 	if (nc) then
-		table.insert(clients, nc);
+		local client = {
+			connection = nc,
+			buffer = {}
+		};
+		table.insert(clients, client);
 	end
 
 	for i=#clients,1,-1 do
-		local line, ok = clients[i]:read();
-		if (not ok) then
-			clients[i]:close();
-			table.remove(clients, i);
-		end
-
-		if (line and string.len(line) > 0) then
-			do_line(line, clients[i], i);
-		end
+		client_flush(clients[i], i);
 	end
 end
 

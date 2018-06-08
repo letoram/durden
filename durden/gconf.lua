@@ -79,9 +79,9 @@ local defaults = {
 
 -- SECURITY: set _path to :disabled to disable these features
 	extcon_path = "durden",
-	status_path = "status",
-	control_path = "control",
-	output_path = "output",
+	status_path = ":disabled",
+	control_path = ":disabled",
+	output_path = ":disabled",
 
 -- SECURITY: set to "full" to allow clients that request authentication tokens
 -- against the GPU to let those tokens go through. This can compromise security

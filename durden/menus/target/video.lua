@@ -191,9 +191,11 @@ local advanced = {
 	label = "Fallback",
 	kind = "value",
 	description = "Tell the client where to connect in the event of a server crash",
-	eval = function(ctx, val)
-		return string.len(val) > 0 and string.len(val) < 31 and
-			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	eval = function()
+		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	end,
+	validator = function(ctx, val)
+		return (string.len(val) > 0 and string.len(val) < 32);
 	end,
 	handler = function(ctx, val)
 		target_devicehint(active_display().selected.external, val, false);
@@ -204,7 +206,7 @@ local advanced = {
 	label = "Debug Window",
 	kind = "action",
 	description = "Send a debug- window to the client",
-	eval = function(ctx, val)
+	eval = function()
 		return valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER);
 	end,
@@ -224,9 +226,11 @@ local advanced = {
 	label = "Migrate",
 	kind = "value",
 	description = "Request that the client connects to a different display server",
-	eval = function(ctx, val)
-		return string.len(val) > 0 and string.len(val) < 31 and
-			valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	eval = function()
+		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	end,
+	validator = function(ctx, val)
+		return string.len(val) > 0 and string.len(val) < 31;
 	end,
 	handler = function(ctx, val)
 		target_devicehint(active_display().selected.external, val, true);
