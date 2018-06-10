@@ -40,6 +40,10 @@ end
 
 local active_lbar = nil;
 local function destroy(wm, ictx)
+	if (ictx.on_destroy) then
+		ictx:on_destroy();
+	end
+
 	for i,v in ipairs(pending) do
 		mouse_droplistener(v);
 	end
@@ -119,6 +123,7 @@ local function update_completion_set(wm, ctx, set)
 	if (not set) then
 		return;
 	end
+	ctx.ucount = ctx.ucount + 1;
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	if (ctx.canchor) then
 		delete_image(ctx.canchor);
@@ -138,6 +143,8 @@ local function update_completion_set(wm, ctx, set)
 	ctx.inp.set = set;
 
 	local on_step = wm.input_ctx.on_step;
+	local on_item = wm.input_ctx.on_item;
+
 -- clamp and account for paging
 	if (ctx.inp.clastc ~= nil and ctx.inp.csel < ctx.inp.cofs) then
 		local ocofs = ctx.inp.cofs;
@@ -189,17 +196,19 @@ local function update_completion_set(wm, ctx, set)
 		return update_completion_set(wm, ctx, set);
 	end
 
+	local sel_fmt = wm.font_delta .. gconfig_get("lbar_seltextstr");
+	local txt_fmt = wm.font_delta .. gconfig_get("lbar_textstr");
+
 	for i=ctx.inp.cofs,#set do
-		local msgs = {};
-		local str;
+-- figure out the format string and the message based on selection status
+-- and if the provided entry has a custom override or we should use def.
+		local selected = i == ctx.inp.csel;
+		local msgs;
+
 		if (type(set[i]) == "table") then
-			table.insert(msgs, wm.font_delta ..
-				(i == ctx.sel and set[i][2] or set[i][1]));
-			table.insert(msgs, set[i][3]);
+			msgs = {set[i][selected and 2 or 1], set[i][3]};
 		else
-			table.insert(msgs, wm.font_delta .. (i == ctx.sel
-				and gconfig_get("lbar_seltextstr") or gconfig_get("lbar_textstr")));
-			table.insert(msgs, set[i]);
+			msgs = {selected and sel_fmt or txt_fmt, set[i]};
 		end
 
 		local w, h = text_dimensions(msgs);
@@ -218,7 +227,7 @@ local function update_completion_set(wm, ctx, set)
 -- use a better symbol for this, but there's no way of querying whether a
 -- a glyph is available or not.
 		if (i ~= ctx.inp.cofs and ofs + w > ctxw - 10) then
-			str = "->"; -- string.char(0xe2, 0x86, 0x92);
+			msgs = {txt_fmt, "->"};
 			exit = true;
 
 			if (i == ctx.inp.csel) then
@@ -226,8 +235,8 @@ local function update_completion_set(wm, ctx, set)
 			end
 		end
 
-		local txt, lines, txt_w, txt_h, asc = render_text(
-			str and str or (#msgs > 0 and msgs or ""));
+-- render, attach, position, order
+		local txt, lines, txt_w, txt_h, asc = render_text(msgs);
 
 		image_tracetag(txt, "lbar_text" ..tostring(i));
 		link_image(ctx.canchor, ctx.text_anchor);
@@ -242,7 +251,7 @@ local function update_completion_set(wm, ctx, set)
 
 -- try to avoid very long items from overflowing their slot,
 -- should "pop up" a copy when selected instead where the full
--- name is shown
+-- name is shown as part of the description helper
 		if (crop) then
 			crop_image(txt, w, h);
 		end
@@ -283,12 +292,22 @@ local function update_completion_set(wm, ctx, set)
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
-		if (i == ctx.inp.csel) then
+-- update cursor for the selected item, and optionally forward to a
+-- caller provided hook (from context setup)
+		if (selected) then
 			move_image(ctx.ccursor, ofs, 0);
 			resize_image(ctx.ccursor, w, lbarsz);
 			if (on_step) then
-				on_step(ctx, i, set, ctx.text_anchor, ofs + step, w, mh);
+				on_step(ctx, i, msgs[2], ctx.text_anchor, ofs + step, w, mh);
 			end
+		end
+
+-- forward setup so that content relative helpers can be pruned / updated
+		if (on_item) then
+			on_item(
+				ctx, i, msgs[2], selected, ctx.text_anchor, ofs + step, w,
+				exit or i == #set
+			);
 		end
 
 		move_image(txt, ofs, pad);
@@ -422,7 +441,7 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 				lbar_ih(wm, ictx, inp, sym, caret);
 			end
 		);
-
+		ictx.ucount = 0;
 		ictx.ulim = 10;
 
 	-- unfortunately the haphazard lbar design makes filtering / forced reverting
@@ -642,12 +661,15 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		destroy = lbar_destroy,
 		cofs = 1,
 		csel = 1,
+		ucount = 0,
 		barh = barh,
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
 		cleanup = opts.cleanup,
 		on_step = opts.on_step,
+		on_destroy = opts.on_destroy,
+		on_item = opts.on_item,
 		in_preview = opts.in_preview,
 		wm = wm,
 -- if not set, default to true

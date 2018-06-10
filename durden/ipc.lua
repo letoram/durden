@@ -5,7 +5,6 @@ local control_socket;
 
 local function update_control(key, val)
 -- close automatically unlinks
-	print("update control", key, val);
 	if (control_socket) then
 		control_socket:close();
 		control_socket = nil;
@@ -20,7 +19,6 @@ local function update_control(key, val)
 		return;
 	end
 
-	print("create", val);
 	zap_resource("ipc/" .. val);
 	control_socket = open_nonblock("=ipc/" .. val);
 end
@@ -304,112 +302,128 @@ local function poll_status_channel()
 	end
 end
 
-local commands = {
--- enumerate the contents of a path
-	ls = function(line, res, remainder)
-		if (type(res) == "table") then
-			local list = {};
-			for k,v in ipairs(res) do
-				if (v.name and v.label) then
-					local ent;
-					if (v.submenu) then
-						ent = v.name .. "/";
-					else
-						ent = v.name;
-					end
-
-					if (not v.block_external and (not v.eval or v:eval())) then
-						table.insert(list, ent);
-					end
-				end
+local function list_path(res, noappend)
+	local list = {};
+	for k,v in ipairs(res) do
+		if (v.name and v.label) then
+			local ent;
+			if (v.submenu) then
+				ent = v.name .. (noappend and "" or "/");
+			else
+				ent = v.name;
 			end
 
-			table.sort(list);
-			local msg = table.concat(list, "\n");
-			return msg .. "\nOK\n";
+			if (not v.block_external and (not v.eval or v:eval())) then
+				table.insert(list, ent);
+			end
 		end
-		return "";
+	end
+	table.sort(list);
+	return list;
+end
+
+local function ent_to_table(res, ret)
+	table.insert(ret, "name: " .. res.name);
+	table.insert(ret, "label: " .. res.label);
+
+	if (res.description and type(res.description) == "string") then
+		table.insert(ret, "description: " .. res.description);
+	end
+
+	if (res.kind == "action") then
+		table.insert(ret, res.submenu and "kind: directory" or "kind:action");
+	else
+		table.insert(ret, "kind: value");
+		if (res.initial) then
+			local val = tostring(type(res.initial) ==
+				"function" and res.initial() or res.initial);
+			table.insert(ret, "initial: " .. val);
+		end
+		if (res.set) then
+			local lst = res.set;
+			if (type(lst) == "function") then
+				lst = lst();
+			end
+			table.sort(lst);
+			table.insert(ret, "value-set: " .. table.concat(lst, " "));
+		end
+		if (res.hint) then
+			local hint = res.hint;
+			if (type(res.hint) == "function") then
+				hint = res:hint();
+			end
+			table.insert(ret, "hint: " .. hint);
+		end
+	end
+end
+
+local commands;
+commands = {
+-- enumerate the contents of a path
+	ls = function(line, res, remainder)
+		local tbl = list_path(res);
+		table.insert(tbl, "OK");
+		return tbl;
+	end,
+
+-- list and read all the entries in one directory
+	readdir = function(line, res, remainder)
+		if (type(res[1]) ~= "table") then
+			return {"EINVAL, readdir argument is not a directory"};
+		end
+		local ret = {};
+		for _,v in ipairs(res) do
+			if (type(v) == "table") then
+				ent_to_table(v, ret);
+			end
+		end
+		table.insert(ret, "OK");
+		return ret;
 	end,
 
 -- present more detailed information about a single target
 	read = function(line, res, remainder)
-		if (not type(res) == "table") then
-			return "EINVAL, broken entry\n";
-		end
-
-		if (not res.name or not res.label) then
-			return "kind: directory\nOK\n";
-		end
-
-		local ret = {"name: ", res.name, "\n", "label: ", res.label, "\n"};
-		if (res.description and type(res.description) == "string") then
-			table.insert(ret, "description:" .. res.description .. "\n");
-		end
-
-		if (res.kind == "action") then
-			if (res.submenu) then
-				table.insert(ret, "kind: directory\n");
-			else
-				table.insert(ret, "kind: action\n");
-			end
-			table.insert(ret, "OK\n");
-			return table.concat(ret, "");
-		else
-			table.insert(ret, "kind: value\n");
-			if (res.initial) then
-				local val = tostring(type(res.initial) ==
-					"function" and res.initial() or res.initial);
-				table.insert(ret, "initial: " .. val .. "\n");
-			end
-			if (res.set) then
-				local lst = res.set;
-				if (type(lst) == "function") then
-					lst = lst();
-				end
-				table.sort(lst);
-				table.insert(ret, "value-set: " .. table.concat(lst, ", ") .. "\n");
-			end
-			if (res.hint) then
-				local hint = res.hint;
-				if (type(res.hint) == "function") then
-					hint = res:hint();
-				end
-				table.insert(ret, "hint: " .. hint .. "\n");
-			end
-			table.insert(ret, "OK\n");
-			return table.concat(ret, "");
-		end
+		local tbl = {};
+		ent_to_table(res, tbl);
+		table.insert(tbl, "OK");
+		return tbl;
 	end,
 
 -- run a value assignment, first through the validator and then act
 	write = function(line, res, remainder)
 		if (res.kind == "value") then
+			if (not res.validator or res.validator(remainder)) then
+				res:handler(remainder);
+				return {"OK"};
+			else
+				return {"EINVAL, value rejected by validator"};
+			end
 		else
-			return "EINVAL, couldn't dispatch";
+			return {"EINVAL, couldn't dispatch"};
 		end
 	end,
 
 -- only evaluate a value assignment
 	eval = function(line, res, remainder)
 		if (not res.handler) then
-			return "EINVAL, broken menu entry\n";
+			return {"EINVAL, broken menu entry\n"};
 		end
 
 		if (res.validator) then
 			if (not res.validator(remainder)) then
-				return "EINVAL, validation failed\n";
+				return {"EINVAL, validation failed\n"};
 			end
 		end
 
-		return "OK\n";
+		return {"OK\n"};
 	end,
 
 -- execute no matter what
 	exec = function(line, res, remainder)
 		if (dispatch_symbol(line, res, true)) then
-			return "OK\n";
+			return {"OK\n"};
 		else
-			return "EINVAL: target path is not an executable action.\n";
+			return {"EINVAL: target path is not an executable action.\n"};
 		end
 	end
 };
@@ -447,10 +461,6 @@ local function client_flush(cl, ind)
 	end
 end
 
-local function client_write(cl, line, ind)
-	table.insert(cl.buffer, line);
-end
-
 do_line = function(line, cl, ind)
 	local ind = string.find(line, " ");
 
@@ -461,7 +471,8 @@ do_line = function(line, cl, ind)
 	line = string.sub(line, ind+1);
 
 	if (not commands[cmd]) then
-		client_write(cl, string.format("EINVAL: bad command(%s)\n", cmd), ind);
+		table.insert(cl.buffer,
+			string.format("EINVAL: bad command(%s)\n", cmd));
 		return;
 	end
 
@@ -470,11 +481,13 @@ do_line = function(line, cl, ind)
 -- to work. Errors on queued commands will not be forwarded to the caller.
 
 	local res, msg, remainder = menu_resolve(line);
-	if (not res) then
-		client_write(cl, "EINVAL:" .. msg .. "\n", ind);
+	if (not res or type(res) ~= "table") then
+		table.insert(cl.buffer, string.format("EINVAL: %s\n", msg));
 	else
-		local msg = commands[cmd](line, res, remainder);
-		client_write(cl, msg, ind);
+
+		for _,v in ipairs(commands[cmd](line, res, remainder)) do
+			table.insert(cl.buffer, v .. "\n");
+		end
 	end
 end
 

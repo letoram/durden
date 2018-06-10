@@ -64,6 +64,7 @@ local function setup_preview(state, dst)
 	local sel = state.selected;
 	local old_vid = state.vid;
 	if (not valid_vid(old_vid)) then
+		delete_image(dst);
 		return;
 	end
 
@@ -88,6 +89,10 @@ local function setup_preview(state, dst)
 	resize_image(dst, w, 0, time);
 	blend_image(dst, opa, time);
 	nudge_image(dst, -w * 0.5, -props.height, time);
+
+	if (valid_vid(dst, TYPE_FRAMESERVER) and not sel) then
+		suspend_target(dst);
+	end
 end
 
 -- slight defect here is that if the decode source actually
@@ -131,8 +136,14 @@ local function update_preview(state, active, xofs, width)
 			delete_image(state.vid);
 		end
 		return;
+	end
 
-	elseif (active == false) then
+	if (valid_vid(state.vid)) then
+		instant_image_transform(state.vid);
+		move_image(state.vid, xofs, -image_surface_properties(state.vid).height);
+	end
+
+	if (active == false) then
 		if (valid_vid(state.vid) and not state.in_asynch) then
 			blend_image(state.vid, 0.3, gconfig_get("animation"));
 			if (valid_vid(state.vid, TYPE_FRAMESERVER)) then
