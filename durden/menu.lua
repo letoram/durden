@@ -257,7 +257,6 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	local subs = ctx.list;
 	local mlbl = gconfig_get("lbar_menulblstr");
 	local msellbl = gconfig_get("lbar_menulblselstr");
-	ctx.lastm = {};
 
 -- all the conditions that determine visibility based on context (binding, ...)
 -- it is written against the ideal of 'interactive user' but that isn't right
@@ -277,6 +276,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	end
 
 -- and filter these through the possible eval() function
+	ctx.lastm = {};
 	for _,v in ipairs(subs) do
 		if (filter(v)) then
 			if (v.submenu) then
@@ -296,7 +296,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	if (type(sort_mode) ~= "string") then
 		table.sort(res, sort_mode);
 	else
-		if (type(sort_mode) == "random") then
+		if (sort_mode == "random") then
 			local sz = #res;
 			for i=sz,1,-1 do
 				local rand = math.random(sz);
@@ -505,7 +505,7 @@ end
 --
 -- Take a menu path and a context destination and return what it would
 -- actually give you. This does not activate the path or set any value
--- itself, to do that, invoke the handler or run through menu_launch
+-- itself, to do that, invoke the handler or run through menu_launch.
 --
 function menu_resolve(line, wnd)
 	local ns = string.sub(line, 1, 1);
@@ -610,6 +610,16 @@ function menu_bind(path, block_interactive, callback)
 	);
 end
 
+local function in_set(set, key)
+	for _, v in ipairs(set) do
+		local sk = type(v) == "table" and v[3] or v;
+		if (sk and sk == key) then
+			return true;
+		end
+	end
+	return false;
+end
+
 -- [wm] should result to a valid tiler, like active_display() for the UI
 -- [ctx] is the menu- specific UI behavior
 -- [lbar_opts] is a table of other UI behavior controls that will be passed
@@ -638,48 +648,79 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 		return;
 	end
 
--- the 'on step' callback from lbar is used to update and invalidate the
--- set of item previews (if provided) and the current helper description
--- it will provide a full [index] on a normal step and -1 index on full-
--- stepping/page invalidation.
 	local menu_helper = gconfig_get("menu_helper");
 	local active_phs = {};
 	local last_i;
 
-	lbar_opts.on_step =
-	function(lbar, i, set, anchor, ofs, width)
-		local lm = ctx.lastm;
+	local function flush_phs(lbar, active_phs)
+		local torem = {};
 
-		if (i == -1 or not i) then
-			for _, v in pairs(active_phs) do
-				v:update(nil);
-			end
-			active_phs = {};
-		end
-
--- allocate on first activation
--- (so to pre-cache all, just run through the entire active set)
-		if (last_i and active_phs[last_i] and last_i ~= i) then
-			active_phs[last_i]:update(false);
-		end
-
-		if (lm and lm[i] and lm[i].preview) then
-			if (not active_phs[i]) then
-				active_phs[i] = lm[i]:preview(anchor);
-			end
-
-			if (active_phs[i]) then
-				active_phs[i]:update(true, ofs, width);
+		for k,v in pairs(active_phs) do
+			if (v.clock < lbar.ucount) then
+				table.insert(torem, k);
 			end
 		end
-		last_i = i;
+		for _,v in ipairs(torem) do
+			active_phs[v]:update(nil);
+			active_phs[v] = nil;
+		end
+	end
 
-		if (menu_helper) then
-			if (lm and lm[i] and lm[i].description) then
-				lbar:set_helper(lm[i].description);
-			else
-				lbar:set_helper("");
+-- on_item is used to update selection state (could also be used to
+-- preview everything immediately rather than on selection)
+	lbar_opts.on_item =
+	function(lbar, i, key, selected, anchor, ofs, width, last)
+		if (not ctx.lastm) then
+			return;
+		end
+
+		local ent = table.find_key_i(ctx.lastm, "label", key);
+		if (ent) then
+			ent = ctx.lastm[ent];
+		else
+			if (last) then
+				flush_phs(lbar, active_phs);
 			end
+			return;
+		end
+		local phk = active_phs[key];
+
+-- if there's no preview on the item and it's selected, build it
+-- this could be altereted to spawn previews on everything
+-- immediately
+		if (not phk) then
+			if (selected and ent.preview) then
+				phk = ent:preview(anchor);
+				active_phs[key] = phk;
+			end
+		end
+
+-- update selection status and track when it was last seen so that
+-- we can delete outdated items even when jumping between lbars
+		if (phk) then
+			phk.clock = lbar.ucount;
+			phk:update(selected, ofs, width);
+		end
+
+		if (last) then
+			flush_phs(lbar, active_phs);
+		end
+	end
+
+	lbar_opts.on_step = function(lbar, i, key, anchor, ofs, w, mh)
+		if (i == -1 or not i or not ctx.lastm) then
+			return;
+		end
+
+		local ent = table.find_key_i(ctx.lastm, "label", key);
+		if (ent) then
+			ent = ctx.lastm[ent];
+		end
+
+		if (menu_helper and ent and ent.description) then
+			lbar:set_helper(ent.description);
+		else
+			lbar:set_helper("");
 		end
 	end
 
