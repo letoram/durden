@@ -103,8 +103,11 @@ end
 -- resizes during runtime after the first time, it won't be
 -- reflected in the aspect ratio
 local function asynch_decode(state, self)
-	launch_decode(self.preview_path,
-		"pos=0.2:noaudio:loop",
+	local cmd = string.format(
+		"pos=%f:noaudio:loop", gconfig_get("browser_position") * 0.01);
+	cmd = string.gsub(cmd, ",", ".");
+
+	launch_decode(self.preview_path, cmd,
 		function(source, status)
 			if (status.kind == "resized" and state.in_asynch) then
 				setup_preview(state, source);
