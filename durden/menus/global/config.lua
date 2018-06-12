@@ -308,6 +308,17 @@ local config_browser = {
 		handler = function(ctx, val)
 			gconfig_set("browser_timer", tonumber(val));
 		end
+	},
+	{
+		name = "preview_trigger",
+		label = "Trigger",
+		description = "The event that should trigger the preview to activate",
+		kind = "value",
+		set = {"selection", "visibility"},
+		initial = function() return gconfig_get("browser_trigger"); end,
+		handler = function(ctx, val)
+			gconfig_set("browser_trigger", val);
+		end
 	}
 };
 

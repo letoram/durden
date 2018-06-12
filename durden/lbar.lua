@@ -1,4 +1,4 @@
--- Copyright: 2015-2017, Björn Ståhl
+-- Copyright: 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: lbar- is an input dialog- style bar intended for durden that
@@ -12,6 +12,15 @@
 -- call create again) etc. It worked OK when we didn't consider
 -- launch-for-binding, tooltip hints and meta up/down navigation
 -- but is now just ugly.
+--
+-- the worst 'sin' is all the mixed/nested contexts, rough estimate:
+-- ictx (mapped to wm.input_ctx, wm matching active_display that should have
+--       an active_lbar for the chaining)
+-- ictx.inp (input state management for the text input)
+-- ictx.cb_ctx = comp_ctx which is actually provided for the input callbacks
+--
+-- where ictx.get_cb is the more important one here as it triggers the menu
+-- update but also when something has been input and selected correctly
 --
 
 local function inp_str(ictx, valid)
@@ -85,6 +94,10 @@ end
 local function accept_cancel(wm, accept, nofwd)
 	local ictx = wm.input_ctx;
 	local inp = ictx.inp;
+	if (ictx.on_accept) then
+		ictx:on_accept(accept);
+	end
+
 	destroy(wm, ictx);
 
 	if (not accept) then
@@ -666,16 +679,23 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
-		cleanup = opts.cleanup,
 		on_step = opts.on_step,
 		on_destroy = opts.on_destroy,
 		on_item = opts.on_item,
 		in_preview = opts.in_preview,
+		on_accept = opts.on_accept,
+		on_create = opts.on_create,
 		wm = wm,
 -- if not set, default to true
 		force_completion = opts.force_completion == false and false or true
 	};
 	wm.input_ctx = res;
+
+	if (opts.overlay) then
+		for k,v in pairs(opts.overlay) do
+			res[k] = v;
+		end
+	end
 
 -- restore from previous population / selection
 	if (opts.restore and opts.restore.msg) then
@@ -687,6 +707,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 			res.inp = opts.restore;
 			res.invalid = true;
 		end
+	end
+
+	if (res.on_create) then
+		res:on_create(opts.restore);
 	end
 
 	lbar_input(wm, "", {active = true,
