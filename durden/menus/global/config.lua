@@ -304,9 +304,21 @@ local config_browser = {
 		kind = "value",
 		hint = "1..100",
 		validator = gen_valid_num(1, 100),
-		inital = function() return tostring(gconfig_get("browser_timer")); end,
+		initial = function() return tostring(gconfig_get("browser_timer")); end,
 		handler = function(ctx, val)
 			gconfig_set("browser_timer", tonumber(val));
+		end
+	},
+	{
+		name = "preview_position",
+		label = "Position",
+		kind = "value",
+		hint = "(0..100)",
+		description = "Relative preview starting position for media clips (%)",
+		validator = gen_valid_num(0, 100),
+		initial = function() return tostring(gconfig_get("browser_position")); end,
+		handler = function(ctx, val)
+			gconfig_set("browser_position", tonumber(val));
 		end
 	},
 	{

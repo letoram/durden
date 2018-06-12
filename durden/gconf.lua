@@ -43,6 +43,7 @@ local defaults = {
 -- right now, the options are 'none', 'image', 'full'
 	browser_preview = "full",
 	browser_timer = 5,
+	browser_position = 20,
 	browser_trigger = "selection", -- or visibility
 
 -- for the first run, enable more helpers
