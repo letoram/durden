@@ -291,7 +291,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	end
 
 -- and filter these through the possible eval() function
-	ctx.lastm = {};
+	inp_st.lastm = {};
 	for _,v in ipairs(subs) do
 		if (filter(v)) then
 			if (v.submenu) then
@@ -304,7 +304,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 				end
 			end
 -- save a copy to the eval:ed table itself so we can show a help description
-			table.insert(ctx.lastm, v);
+			table.insert(inp_st.lastm, v);
 		end
 	end
 
@@ -450,7 +450,6 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 
 -- actually run the menu path, to fix the whole mess with active_display()
 -- needed in target menus, here is the point to instrument
-	inp_st.lastm = ctx.lastm;
 	if (menu_hook) then
 		cpath:push(tgt.name, tgt.label, inp_st);
 		run_hook(cpath:get_path());
@@ -691,13 +690,13 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 -- preview everything immediately rather than on selection)
 	lbar_opts.on_item =
 	function(lbar, i, key, selected, anchor, ofs, width, last)
-		if (not ctx.lastm) then
+		if (not lbar.inp.lastm) then
 			return;
 		end
 
-		local ent = table.find_key_i(ctx.lastm, "label", key);
+		local ent = table.find_key_i(lbar.inp.lastm, "label", key);
 		if (ent) then
-			ent = ctx.lastm[ent];
+			ent = lbar.inp.lastm[ent];
 		else
 			if (last) then
 				flush_phs(lbar, lbar.active_phs);
@@ -749,13 +748,13 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 	end
 
 	lbar_opts.on_step = function(lbar, i, key, anchor, ofs, w, mh)
-		if (i == -1 or not i or not ctx.lastm) then
+		if (i == -1 or not i or not lbar.inp.lastm) then
 			return;
 		end
 
-		local ent = table.find_key_i(ctx.lastm, "label", key);
+		local ent = table.find_key_i(lbar.inp.lastm, "label", key);
 		if (ent) then
-			ent = ctx.lastm[ent];
+			ent = lbar.inp.lastm[ent];
 		end
 
 		if (menu_helper and ent and ent.description) then
