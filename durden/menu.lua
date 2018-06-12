@@ -98,6 +98,21 @@ local function run_hook(path)
 	end
 end
 
+-- preview handler cleanup function
+local function flush_phs(lbar, active_phs)
+	local torem = {};
+
+	for k,v in pairs(active_phs) do
+		if (v.clock ~= lbar.ucount) then
+			table.insert(torem, k);
+		end
+	end
+	for _,v in ipairs(torem) do
+		active_phs[v]:update(nil);
+		active_phs[v] = nil;
+	end
+end
+
 --
 -- multiple reasons that will put us here:
 -- normal menu -> escape
@@ -314,6 +329,23 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	};
 end
 
+-- event handler hook to deal with 'meta-launch' destroying and rebuilding/
+-- resuming the menu with preview handlers intact edge case
+local function lbar_create(lbar, old_state)
+	if (not old_state or not old_state.active_phs) then
+		return;
+	end
+
+-- just set the state and relink, after on_create an input/refresh will
+-- trigger which will verify against the existing state and prune
+	lbar.active_phs = old_state.active_phs;
+	for k,v in pairs(old_state.active_phs) do
+		if (valid_vid(v.vid)) then
+			link_image(v.vid, lbar.text_anchor);
+		end
+	end
+end
+
 --
 -- This is the main input handler for the 'launch bar' used for mixing
 -- CLI style input with menu selection.
@@ -430,7 +462,11 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 -- With m1 held, we just relaunch the same path we were at before the
 -- action was activated.
 	if (m1) then
-		dispatch_symbol(cpath:get_path(), {restore = inp_st});
+		dispatch_symbol(cpath:get_path(), {
+			restore = inp_st,
+			on_create = lbar_create
+		});
+
 		return;
 	end
 
@@ -649,22 +685,7 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 	end
 
 	local menu_helper = gconfig_get("menu_helper");
-	local active_phs = {};
 	local last_i;
-
-	local function flush_phs(lbar, active_phs)
-		local torem = {};
-
-		for k,v in pairs(active_phs) do
-			if (v.clock < lbar.ucount) then
-				table.insert(torem, k);
-			end
-		end
-		for _,v in ipairs(torem) do
-			active_phs[v]:update(nil);
-			active_phs[v] = nil;
-		end
-	end
 
 -- on_item is used to update selection state (could also be used to
 -- preview everything immediately rather than on selection)
@@ -679,19 +700,20 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 			ent = ctx.lastm[ent];
 		else
 			if (last) then
-				flush_phs(lbar, active_phs);
+				flush_phs(lbar, lbar.active_phs);
 			end
 			return;
 		end
-		local phk = active_phs[key];
+		local phk = lbar.active_phs[key];
 
 -- if there's no preview on the item and it's selected, build it
 -- this could be altereted to spawn previews on everything
 -- immediately
 		if (not phk) then
-			if (selected and ent.preview) then
-				phk = ent:preview(anchor);
-				active_phs[key] = phk;
+			if ((selected or gconfig_get("browser_trigger") ==
+				"visibility") and ent.preview) then
+				phk = ent:preview(anchor, ofs, width);
+				lbar.active_phs[key] = phk;
 			end
 		end
 
@@ -703,7 +725,26 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 		end
 
 		if (last) then
-			flush_phs(lbar, active_phs);
+			flush_phs(lbar, lbar.active_phs);
+		end
+	end
+
+-- needed to do this due to the legacy of on_cancel and the done
+-- part to input callback, rougly speaking, due to all the paths
+-- and the problems of "input done" -> internal destroy -> input
+-- done callback -> spawning new lbars meaning that all anchored
+-- previews would be dead from internal destroy yet we'd want to
+-- use them if dispatch_meta is held on an non-menu action.
+	lbar_opts.on_accept = function(lbar, accept)
+		local m1, m2 = dispatch_meta();
+		if (m1 and accept) then
+			for k,v in pairs(lbar.active_phs) do
+				if (valid_vid(v.vid)) then
+					link_image(v.vid, v.vid);
+				end
+			end
+			lbar.inp.active_phs = lbar.active_phs;
+			lbar.active_phs = {};
 		end
 	end
 
@@ -723,6 +764,10 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 			lbar:set_helper("");
 		end
 	end
+
+	lbar_opts.overlay = {
+		active_phs = {}
+	}
 
 	ctx.wm = wm;
 

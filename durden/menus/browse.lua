@@ -63,6 +63,7 @@ local function setup_preview(state, dst)
 	local ofs = state.last_ofs;
 	local sel = state.selected;
 	local old_vid = state.vid;
+
 	if (not valid_vid(old_vid)) then
 		delete_image(dst);
 		return;
@@ -72,7 +73,10 @@ local function setup_preview(state, dst)
 
 -- relink and take over the role of the intermediate vid
 	local parent, attachment = image_parent(old_vid);
-	link_image(dst, parent);
+	if (valid_vid(parent)) then
+		link_image(dst, parent);
+	end
+
 	image_inherit_order(dst, true);
 	delete_image(old_vid);
 
@@ -167,12 +171,12 @@ local function update_preview(state, active, xofs, width)
 	state.last_ofs = xofs;
 end
 
-local function prepare_preview(callback, self, anchor)
+local function prepare_preview(callback, self, anchor, ofs, width)
 -- states we need to track as upvalues from the returned function
 	local state = {
 		in_asynch = true,
-		last_ofs = 0,
-		last_w = 0,
+		last_ofs = ofs,
+		last_w = width,
 		selected = true,
 		menu = self,
 		vid = null_surface(1, 1)
@@ -189,7 +193,7 @@ local function prepare_preview(callback, self, anchor)
 	local cnt = gconfig_get("browser_timer");
 	if (cnt > 0) then
 		timer_add_periodic(
-			"_preview_" .. tostring(preview),
+			"_preview_" .. tostring(ofs),
 			cnt, true, function() callback(state, self); end, true
 		);
 	else
