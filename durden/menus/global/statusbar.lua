@@ -41,6 +41,21 @@ return {
 		end
 	},
 	{
+		name = "ws_buttons",
+		label = "Workspace Buttons",
+		kind = "value",
+		description = "Control the presence of workspace indicator buttons",
+		initial = function()
+			return gconfig_get("sbar_wsbuttons") and LBL_YES or LBL_NO; end,
+		set = {LBL_YES, LBL_NO},
+		handler = function(ctx, val)
+			gconfig_set("sbar_wsbuttons", val == LBL_YES);
+			for tiler in all_tilers_iter() do
+				tiler:tile_update();
+			end
+		end
+	},
+	{
 		name = "force_prefix",
 		label = "Number Prefix Buttons",
 		kind = "value",

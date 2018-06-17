@@ -262,7 +262,8 @@ local defaults = {
 	sbar_rspace = 0,
 	sbar_pos = "top",
 	sbar_hud = false, -- show only on HUD (global/target menu)
-	sbar_modebutton = true,
+	sbar_modebutton = true, -- show the dynamic workspace mode button
+	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
 	sbar_numberprefix = true,
 
 -- titlebar

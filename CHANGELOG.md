@@ -28,6 +28,11 @@
   * browser:
 	   add controls for preview-launch delay, and allow video previews
 
+  * statusbar/titlebar:
+     added controls to hide dynamic workspace buttons
+     added per-window controls to override titlebar pattern
+     added per-window controls to modify titlebar buttons
+
 Breaking:
   * statusbar visual config area changed to [px] from % point and
 	  order changed to [t l r d] to match other similar functions
