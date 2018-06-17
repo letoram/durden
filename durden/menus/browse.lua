@@ -93,10 +93,6 @@ local function setup_preview(state, dst)
 	resize_image(dst, w, 0, time);
 	blend_image(dst, opa, time);
 	nudge_image(dst, -w * 0.5, -props.height, time);
-
-	if (valid_vid(dst, TYPE_FRAMESERVER) and not sel) then
-		suspend_target(dst);
-	end
 end
 
 -- slight defect here is that if the decode source actually
@@ -153,9 +149,6 @@ local function update_preview(state, active, xofs, width)
 	if (active == false) then
 		if (valid_vid(state.vid) and not state.in_asynch) then
 			blend_image(state.vid, 0.3, gconfig_get("animation"));
-			if (valid_vid(state.vid, TYPE_FRAMESERVER)) then
-				suspend_target(state.vid);
-			end
 		end
 
 		state.selected = false;
@@ -163,9 +156,6 @@ local function update_preview(state, active, xofs, width)
 	end
 
 	if (valid_vid(state.vid) and not state.in_asynch) then
-		if (valid_vid(state.vid, TYPE_FRAMESERVER)) then
-			resume_target(state.vid);
-		end
 		blend_image(state.vid, 1.0, gconfig_get("animation"));
 	end
 
