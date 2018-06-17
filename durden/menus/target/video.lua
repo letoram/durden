@@ -194,7 +194,7 @@ local advanced = {
 	eval = function()
 		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
 	end,
-	validator = function(ctx, val)
+	validator = function(val)
 		return (string.len(val) > 0 and string.len(val) < 32);
 	end,
 	handler = function(ctx, val)
@@ -229,7 +229,7 @@ local advanced = {
 	eval = function()
 		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
 	end,
-	validator = function(ctx, val)
+	validator = function(val)
 		return string.len(val) > 0 and string.len(val) < 31;
 	end,
 	handler = function(ctx, val)
