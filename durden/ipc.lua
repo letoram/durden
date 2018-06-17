@@ -330,6 +330,12 @@ local function ent_to_table(res, ret)
 		table.insert(ret, "description: " .. res.description);
 	end
 
+	if (res.alias) then
+		local ap = type(res.alias) == "function" and res.alias() or res.alias;
+		table.insert(ret, "alias: " .. ap);
+		return;
+	end
+
 	if (res.kind == "action") then
 		table.insert(ret, res.submenu and "kind: directory" or "kind:action");
 	else
@@ -384,7 +390,12 @@ commands = {
 -- present more detailed information about a single target
 	read = function(line, res, remainder)
 		local tbl = {};
-		ent_to_table(res, tbl);
+		if (type(res[1]) == "table") then
+			table.insert(tbl, "kind: directory");
+			table.insert(tbl, "size: " .. tostring(#res));
+		else
+			ent_to_table(res, tbl);
+		end
 		table.insert(tbl, "OK");
 		return tbl;
 	end,
