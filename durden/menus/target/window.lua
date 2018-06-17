@@ -288,6 +288,142 @@ local function gen_altsw(wnd)
 	return res;
 end
 
+-- remove is a bit complicated due to the presence of groups and
+-- the _default group and that we need to remove both from the active
+-- group (if that hits the chosen item) and from the current set
+local function remove_button(wnd, dir, lbl)
+	local res = {};
+
+	for group,list in pairs(wnd.titlebar.groups) do
+		for i,v in ipairs(list) do
+			if (v.align == dir) then
+				table.insert(res, {
+					name = tostring(k),
+					label = group .. "_" .. tostring(i),
+					description = "Button Label: " .. v.lbl,
+					kind = "action",
+					handler = function()
+						table.remove(list, i);
+						wnd.titlebar.group = "_inval";
+						wnd.titlebar:switch_group(group);
+					end
+				});
+			end
+		end
+
+	end
+	return res;
+end
+
+local function button_query_path(wnd, vsym, dir, group)
+	dispatch_symbol_bind(function(path)
+		local wm = active_display();
+		local new_wnd = wm.selected;
+		if (not path) then
+			return;
+		end
+-- can actually change during interaction time so verify
+		if (wnd ~= new_wnd) then
+			return;
+		end
+		wnd.titlebar:add_button(dir, "titlebar_iconbg",
+			"titlebar_icon", vsym, gconfig_get("sbar_tpad") * wm.scalef,
+			wm.font_resfn, nil, nil, suppl_button_default_mh(wnd, path),
+			{group = group});
+	end);
+end
+
+local function titlebar_buttons(dir, lbl)
+	local wnd = active_display().selected;
+	local hintstr = "(0x:byte seq | icon:ref | string)";
+	return
+	{
+		{
+		label = "Remove",
+		name = "remove",
+		kind = "action",
+		submenu = true,
+		description = "Remove a button",
+		eval = function()
+			for k,v in pairs(wnd.titlebar.groups) do
+				for i,j in ipairs(v) do
+					if (j.align == dir) then
+						return true;
+					end
+				end
+			end
+		end,
+		handler = function()
+			return remove_button(wnd, dir, lbl);
+		end
+		},
+		{
+		label = "Add",
+		name = "add",
+		kind = "value",
+		hint = hintstr,
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		description = "Add a new button used in all layout modes",
+		handler = function(ctx, val)
+			button_query_path(active_display().selected, val, dir);
+		end
+		},
+		{
+		label = "Add (Tile)",
+		name = "add_tile",
+		kind = "value",
+		hint = hintstr,
+		description = "Add a new button for tiled layout modes",
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			button_query_path(active_display().selected, val, dir, "tile");
+		end
+		},
+		{
+		label = "Add (Float)",
+		name = "add_float",
+		kind = "value",
+		hint = hintstr,
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		description = "Add a new button for floating layout mode",
+		handler = function(ctx, val)
+			button_query_path(active_display().selected, val, dir, "float");
+		end
+		}
+	}
+end
+
+local titlebar_buttons = {
+	{
+		name = "left",
+		kind = "action",
+		label = "Left",
+		description = "Modify buttons in the left group",
+		submenu = true,
+		handler = function()
+			return titlebar_buttons("left", "Left");
+		end
+	},
+	{
+		name = "right",
+		kind = "action",
+		submenu = true,
+		label = "Right",
+		description = "Modify buttons in the right group",
+		submenu = true,
+		handler = function()
+			return titlebar_buttons("right", "Right");
+		end
+	}
+};
+
 local function gen_wsmove(wnd)
 	local res = {};
 	local adsp = active_display().spaces;
@@ -408,6 +544,14 @@ local titlebar_table = {
 			local wnd = active_display().selected;
 			wnd:set_titlebar(not wnd.show_titlebar, true);
 		end
+	},
+	{
+		name = "buttons",
+		label = "Buttons",
+		kind = "action",
+		description = "Alter titlebar button bindings",
+		submenu = true,
+		handler = titlebar_buttons
 	},
 	{
 		name = "impostor",

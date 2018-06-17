@@ -1,4 +1,4 @@
--- Copyright: 2015-2017, Björn Ståhl
+-- Copyright: 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main setup for the Arcan/Durden desktop environment
@@ -303,25 +303,8 @@ wnd_create_handler = function(wm, wnd)
 	for k,v in ipairs(tbar_btns) do
 		wnd.titlebar:add_button(v.dir, "titlebar_iconbg",
 			"titlebar_icon", v.lbl, gconfig_get("sbar_tpad") * wm.scalef,
-			wm.font_resfn, nil, nil, {
--- many complications hidden here as tons of properties can be changed between
--- dispatch_symbol and "restore old state"
-				click = function(btn)
-					local old_sel = wm.selected;
-					wnd:select();
-					dispatch_symbol(v.cmd);
-					if (old_sel and old_sel.select) then
-						old_sel:select();
-					end
-				end,
-				over = function(btn)
-					btn:switch_state("alert");
-				end,
-				out = function(btn)
-					btn:switch_state(wm.selected == wnd and "active" or "inactive");
-				end
-			},
-			{ group = v.group }
+			wm.font_resfn, nil, nil, suppl_button_default_mh(wnd, v.cmd),
+			{group = v.group}
 		);
 	end
 end

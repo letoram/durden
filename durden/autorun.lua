@@ -42,7 +42,3 @@ if (DEBUGLEVEL > 1) then
 		end
 	end);
 end
-
--- example: add destroy button, as the UI code for mapping / setup is not finished yet
---	durden_tbar_buttons("right", "#/window/destroy",
---		string.char(0xe2) .. string.char(0x9c) .. string.char(0x96), "float");
