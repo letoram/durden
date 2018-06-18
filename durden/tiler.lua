@@ -418,8 +418,10 @@ local function tiler_statusbar_update(wm)
 		wm.sbar_ws["left"]:hide();
 	end
 
+-- same tactic to hiding the ws buttons
+	local hide_ws = not gconfig_get("sbar_wsbuttons");
 	for i=1,10 do
-		if (wm.spaces[i] ~= nil) then
+		if (wm.spaces[i] ~= nil and not hide_ws) then
 			wm.sbar_ws[i]:show();
 			local lbltbl = {gconfig_get("pretiletext_color"), tostring(i)};
 			local lbl = wm.spaces[i].label;
@@ -2663,7 +2665,8 @@ local function wnd_title(wnd, title)
 
 -- based on new title/ font, apply pattern and set to fill region
 	local dsttbl = {gconfig_get("tbar_textstr")};
-	wnd.title_text = suppl_ptn_expand(dsttbl, gconfig_get("titlebar_ptn"), wnd);
+	local ptn = wnd.titlebar_ptn and wnd.titlebar_ptn or gconfig_get("titlebar_ptn");
+	wnd.title_text = suppl_ptn_expand(dsttbl, ptn, wnd);
 	wnd.titlebar:update("center", 1, dsttbl);
 end
 

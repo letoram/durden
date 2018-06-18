@@ -554,6 +554,26 @@ local titlebar_table = {
 		handler = titlebar_buttons
 	},
 	{
+		name = "text",
+		label = "Text",
+		kind = "value",
+		description = "Change the format string used to populate the titlebar text",
+		initial = function()
+			local wnd = active_display().selected;
+			return
+				wnd.titlebar_ptn and wnd.titlebar_ptn or gconfig_get("titlebar_ptn");
+		end,
+		hint = "%p (tag) %t (title.) %i (ident.)",
+		validator = function(str)
+			return string.len(str) > 0 and not string.find(str, "%%", 1, true);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd.titlebar_ptn = val;
+			wnd:set_title();
+		end
+	},
+	{
 		name = "impostor",
 		label = "Impostor",
 		hint = "(-1 (auto), 0 (disable), >0 (set px)",
