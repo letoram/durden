@@ -421,6 +421,49 @@ function suppl_unpack_typestr(typestr, val, lowv, highv)
 	return rtbl;
 end
 
+-- icon symbol reference or valid utf-8 codepoint
+function suppl_valid_vsymbol(val)
+	if (not val) then
+		return false;
+	end
+
+	if (string.len(val) == 0) then
+		return false;
+	end
+
+	if (string.sub(val, 1, 3) == "0x:") then
+		if (not val or not string.to_u8(string.sub(val, 4))) then
+			return false;
+		end
+	end
+
+	if (string.sub(val, 1, 5) == "icon:") then
+		print("fixme: global icon lookup not yet supported");
+		return false;
+	end
+
+	return true;
+end
+
+function suppl_button_default_mh(wnd, cmd)
+	return {
+		click = function(btn)
+			local old_sel = wnd.wm.selected;
+			wnd:select();
+			dispatch_symbol(cmd);
+			if (old_sel and old_sel.select) then
+				old_sel:select();
+			end
+		end,
+		over = function(btn)
+			btn:switch_state("alert");
+		end,
+		out = function(btn)
+			btn:switch_state(wnd.wm.selected == wnd and "active" or "inactive");
+		end
+	};
+end
+
 function suppl_valid_typestr(utype, lowv, highv, defaultv)
 	return function(val)
 		local tbl = suppl_unpack_typestr(utype, val, lowv, highv);
