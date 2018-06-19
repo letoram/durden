@@ -291,6 +291,13 @@ function dispatch_symbol_bind(callback, path)
 		{list = menu}, {}, "/", menu_default_lookup(menu));
 end
 
+-- placeholder, just to annotate code, only works with the global due to
+-- problems with the menu system design, active_display()
+function dispatch_symbol_wnd(sym, wnd)
+-- cheat-set selection status on the active display, things to consider:
+	dispatch_symbol(sym);
+end
+
 function dispatch_symbol(sym, menu_opts)
 -- note, it's up to us to forward the argument for validator before exec
 	local menu, msg, val, enttbl = menu_resolve(sym);

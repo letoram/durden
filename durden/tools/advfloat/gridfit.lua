@@ -43,7 +43,7 @@ local function grid_cell_ent(dir, lbl, x1, y1, x2, y2)
 			end
 
 			local xp = 0;
-			local yp = wm.yoffset;
+			local yp = 0; -- wm.yoffset;
 			local w = wm.effective_width;
 			local h = wm.effective_height;
 
@@ -70,11 +70,23 @@ local function grid_cell_ent(dir, lbl, x1, y1, x2, y2)
 				h = h
 			});
 
-			wnd:resize(w, h);
+			wnd:resize(w, h, true);
 			wnd:move(xp, yp, false, true);
 		end
 	};
 end
+
+local function dcmd(wnd, cmd)
+	return function(alt)
+		dispatch_symbol_wnd(cmd, wnd);
+		wnd:drop_popup();
+	end
+end
+
+local tp = "/target/window/gridalign/";
+local oc = {0.2, 0.2, 0.2};
+local ec = {0.3, 0.3, 0.3};
+local hc = {0.5, 0.5, 0.5};
 
 return {
 	grid_cell_ent("sw", "South-West", 0.00, 0.5, 0.5, 1.00),
@@ -86,6 +98,32 @@ return {
 	grid_cell_ent("nw", "North-West", 0.00, 0.00, 0.5, 0.5),
 	grid_cell_ent("n", "North", 0.0, 0.00, 1.0, 0.5),
 	grid_cell_ent("ne", "North-East", 0.5, 0.00, 1.00, 0.5),
+	{
+		name = "popup",
+		label = "Popup",
+		description = "Show a navigation popup",
+		kind = "action",
+		handler = function(ctx, val)
+-- attach as popup to window via a clipping null-surface but position
+-- at cursor to reduce movement
+			local num = tonumber(val);
+			local wnd = active_display().selected;
+			local grid = uiprim_buttongrid(3, 3, 64, 64, 0, 0, {
+				{cmd = dcmd(wnd, tp .. "nw"), color = ec, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "n"), color = oc, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "ne"), color = ec, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "w"), color = oc, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "c"), color = ec, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "e"), color = oc, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "sw"), color = ec, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "s"), color = oc, color_hi = hc},
+				{cmd = dcmd(wnd, tp .. "se"), color = ec, color_hi = hc},
+			}, {});
+			link_image(grid.anchor, wnd.anchor);
+			order_image(grid.anchor, 5);
+			wnd:add_popup(grid.anchor, false, function() grid:destroy(); end);
+		end,
+	},
 	{
 		name = "back",
 		label = "Back",

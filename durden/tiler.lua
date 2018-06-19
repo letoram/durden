@@ -1334,7 +1334,9 @@ local function workspace_set(space, mode)
 	end
 
 	space:resize();
-	tiler_statusbar_update(space.wm);
+	if (space.wm.spaces[space.wm.space_ind]) then
+		tiler_statusbar_update(space.wm);
+	end
 end
 
 local function workspace_resize(space, external)
@@ -2390,7 +2392,8 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 
 -- alias canvas to anchor so that it looks like a window
 	local res = {
-		anchor = null_surface(1, 1)
+		anchor = null_surface(1, 1),
+		on_destroy = destroy_cb
 	};
 	res.canvas = res.anchor;
 
