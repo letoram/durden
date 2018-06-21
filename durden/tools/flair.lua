@@ -370,7 +370,7 @@ local flair_menu = {
 },
 {
 	name = "background",
-	laabel = "Background Effect",
+	label = "Background Effect",
 	kind = "action",
 	submenu = true,
 	description = "Set an effect that applies to the active workspace background",
