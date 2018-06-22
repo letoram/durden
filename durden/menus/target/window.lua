@@ -3,7 +3,7 @@ local swap_menu = {
 		name = "up",
 		label = "Up",
 		kind = "action",
-		description = "(Tiling) Swap position with window parent",
+		description = "Swap position with window parent",
 		handler = function()
 			active_display():swap_up();
 		end
@@ -11,7 +11,7 @@ local swap_menu = {
 	{
 		name = "down",
 		label = "Down",
-		description = "(Tiling) Swap position with first window child",
+		description = "Swap position with first window child",
 		kind = "action",
 		handler = function()
 			active_display():swap_down();
@@ -20,7 +20,7 @@ local swap_menu = {
 	{
 		name = "left",
 		label = "Left",
-		description = "(Tiling) Swap position with parent sibling (to the left)",
+		description = "Swap position with parent sibling (to the left)",
 		kind = "action",
 		handler = function()
 			active_display():swap_left();
@@ -30,9 +30,35 @@ local swap_menu = {
 		name = "right",
 		label = "Right",
 		kind = "action",
-		description = "(Tiling) Swap position with parent sibling (to the right)",
+		description = "Swap position with parent sibling (to the right)",
 		handler = function()
 			active_display():swap_right();
+		end
+	},
+	{
+		name = "join_left",
+		label = "Merge Left",
+		kind = "value",
+		description = "Join with n windows to the left",
+		validator = function(val)
+			return val and tonumber(val) ~= nil;
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd:merge(true, tonumber(val));
+		end
+	},
+	{
+		name = "join_right",
+		label = "Join Right",
+		kind = "value",
+		description = "Join with n windows to the right",
+		validator = function(val)
+			return val and tonumber(val) ~= nil;
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd:merge(false, tonumber(val));
 		end
 	},
 	{
@@ -621,6 +647,7 @@ return {
 		label = "Swap",
 		kind = "action",
 		submenu = true,
+		eval = function() return active_display().selected.space.mode == "tile"; end,
 		description = "Swap controls for swapping places with another window",
 		handler = swap_menu
 	},

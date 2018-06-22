@@ -20,11 +20,6 @@ local function gen_load_menu()
 	return res;
 end
 
-local function find_sibling(wnd)
--- enumerate all windows, if stateinf exist and stateids match
--- and we are not ourself, then we have a sibling...
-end
-
 return {
 	{
 		name = "suspend",
@@ -47,7 +42,6 @@ return {
 	{
 		name = "toggle",
 		label = "Toggle",
-		invisible = true,
 		kind = "action",
 		description = "Toggle between suspend and resume state",
 		handler = function()

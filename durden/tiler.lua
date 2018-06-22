@@ -1599,12 +1599,13 @@ create_workspace = function(wm, anim)
 	return res;
 end
 
-local function wnd_merge(wnd)
+local function wnd_merge(wnd, left, count)
 	if (not wnd.space or
 		(wnd.space.layouter and wnd.space.layouter.block_merge)) then
 		return;
 	end
 
+-- find index in parent
 	local i = 1;
 	while (i ~= #wnd.parent.children) do
 		if (wnd.parent.children[i] == wnd) then
@@ -1613,13 +1614,40 @@ local function wnd_merge(wnd)
 		i = i + 1;
 	end
 
-	if (i < #wnd.parent.children) then
-		for j=i+1,#wnd.parent.children do
+-- limit number of merges?
+	local limit = count and count or #wnd.parent.children;
+
+	if (left) then
+		if (i == 1) then
+			return;
+		end
+
+		for j=i-1,1,-1 do
 			table.insert(wnd.children, wnd.parent.children[j]);
 			wnd.parent.children[j].parent = wnd;
-		end
-		for j=#wnd.parent.children,i+1,-1 do
 			table.remove(wnd.parent.children, j);
+			limit = limit - 1;
+			if (limit == 0) then
+				break;
+			end
+		end
+
+-- otherwise right
+	else
+		if (i >= #wnd.parent.children) then
+			return;
+		end
+
+-- slice out and then add in reverse order
+		local limit_i = math.clamp(i + limit, 1, #wnd.parent.children);
+		local tmp = {};
+		for j=limit_i,i+1,-1 do
+			table.insert(tmp, wnd.parent.children[j]);
+			table.remove(wnd.parent.children, j);
+		end
+		for i=#tmp,1,-1 do
+			table.insert(wnd.children, tmp[i]);
+			tmp[i].parent = wnd;
 		end
 	end
 
