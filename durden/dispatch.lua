@@ -288,7 +288,7 @@ function dispatch_symbol_bind(callback, path)
 	local menu = menu_resolve(path and path or "/");
 	menu_hook_launch(callback);
 	menu_launch(active_display(),
-		{list = menu}, {}, "/", menu_default_lookup(menu));
+		{list = menu, show_invisible = true}, {}, "/", menu_default_lookup(menu));
 end
 
 -- placeholder, just to annotate code, only works with the global due to

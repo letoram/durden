@@ -68,6 +68,9 @@ Minor:
 	* system shutdown gets a silent option that doesn't tell clients
 	  to shut down, but rather to reconnect or migrate
 
+	* add menu options to join 'n' windows to the left or right in
+	  tile mode as children of the selected window
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.
