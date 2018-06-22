@@ -972,7 +972,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 -- normal visual tracking options, the scale-factor used comes
 -- from the display we are attached to, a tiler- scale invokes
 -- rebuild
-		anchor = fill_surface(width, height, 255, 0, 0),
+		anchor = color_surface(width, height, 255, 0, 0),
 		shader = shdrtgt,
 		width = width,
 		height = height,
