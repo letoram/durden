@@ -4087,6 +4087,20 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 		dm = bit.bor(dm, TD_HINT_MAXIMIZED);
 	end
 
+-- so many important details to this that it's better to have a
+-- mode where we track it and allow runtime inspection of it
+	if (DEBUGLEVEL > 0) then
+		if (not wnd.hint_history) then
+			wnd.hint_history = {};
+		end
+		table.insert(wnd.hint_history, string.format(
+			"(%d) %d * %d => %d * %d : %d",
+			wnd.effective_w, wnd.effective_h, CLOCK, hw, hh, dm)
+		);
+		if (#wnd.hint_history > 10) then
+			table.remove(wnd.hint_history, 1);
+		end
+	end
 	target_displayhint(wnd.external, hw, hh, dm, ...);
 end
 
@@ -4126,7 +4140,7 @@ local wnd_setup = function(wm, source, opts)
 		wm = wm,
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
-		border = fill_surface(1, 1, 255, 255, 255),
+		border = color_surface(1, 1, 255, 255, 255),
 		canvas = source,
 		external = extvid,
 		gain = 1.0 * gconfig_get("global_gain"),
