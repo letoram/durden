@@ -776,6 +776,9 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		if (space.background) then show_image(space.background); end
 	end
 
+	local lst = linearize(space);
+	for _,v in ipairs(lst) do v:show(); end
+
 	local tgt = space.selected and space.selected or space.children[1];
 end
 
@@ -3720,7 +3723,6 @@ local function wnd_ws_attach(res, from_hook)
 			return wm:attach_hook(res);
 	end
 
-	res:show();
 	res.ws_attach = nil;
 	res.attach_time = CLOCK;
 
@@ -3728,7 +3730,9 @@ local function wnd_ws_attach(res, from_hook)
 		wm.spaces[dstindex] = create_workspace(wm);
 	end
 
--- actual dimensions depend on the state of the workspace we'll attach to
+-- actual dimensions depend on the state of the workspace we'll attach,
+-- which in turn can have complicated layouting etc. rules so first
+-- attach.
 	local space = wm.spaces[dstindex];
 	res.space_ind = dstindex;
 	res.space = space;
@@ -3851,6 +3855,73 @@ local function get_window_name(wnd, optname)
 	wnd_names[wnd.name] = true;
 end
 
+local function recover_restore(wnd)
+	local str = image_tracetag(wnd.external);
+	if (string.sub(str, 1, 6) ~= "durden") then
+		return;
+	end
+
+	local entries = string.split(str, "\n\r");
+	local res = {};
+	for k,v in ipairs(entries) do
+		local i = string.find(v, "=");
+		if (i and i > 1) then
+			res[string.sub(v, 1, i-1)] = string.sub(v, i+1);
+		end
+	end
+
+	if (res["name"]) then
+		get_window_name(wnd, res["name"]);
+	end
+	if (res["show_titlebar"]) then
+		wnd.show_titlebar = true;
+	end
+	if (res["show_border"]) then
+		wnd.show_border = true;
+	end
+	if (res["title"]) then
+		wnd.title = res["title"];
+	end
+	if (res["prefix"]) then
+		wnd.prefix = res["title"];
+	end
+	if (res["geom"]) then
+		local vl = string.split(res["geom"], ":");
+		if (#vl == 4) then
+			wnd.attach_temp = {
+				tonumber(vl[1]), tonumber(vl[2]),
+				tonumber(vl[3]), tonumber(vl[4])
+			};
+		end
+	end
+
+	wnd.desired_parent = res["parent"];
+	wnd:set_title();
+
+-- now create the workspace (if known) and move there
+	if (res["ws_ind"] and tonumber(res["ws_ind"])) then
+		local dw = math.clamp(tonumber(res["ws_ind"]), 1, 10);
+		wnd.default_workspace = dw;
+
+		if (not wnd.wm.spaces[dw]) then
+			wnd.wm.spaces[dw] = create_workspace(wnd.wm, false);
+		end
+
+-- only restore mode if we are the first in a workspace
+		local lst = linearize(wnd.wm.spaces[dw]);
+		if (#lst == 0) then
+			if (res["ws_mode"]) then
+				wnd.wm.spaces[dw].mode = res["ws_mode"];
+			end
+			if (res["ws_label"]) then
+				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
+			end
+		end
+	end
+
+	tiler_statusbar_update(wnd.wm);
+end
+
 -- Use the image_tracetag option to pack a string that can be used
 -- to reassign the window to the correct position, weight, workspace,
 -- layout mode and so on. The same tag can then be saved / stored with
@@ -3861,61 +3932,7 @@ local function wnd_recovertag(wnd, restore)
 	end
 
 	if (restore) then
--- protect against leftovers from other WMs
-		local str = image_tracetag(wnd.external);
-		if (string.sub(str, 1, 6) ~= "durden") then
-			return;
-		end
-
-		local entries = string.split(str, "\n\r");
-		local res = {};
-		for k,v in ipairs(entries) do
-			local i = string.find(v, "=");
-			if (i and i > 1) then
-				res[string.sub(v, 1, i-1)] = string.sub(v, i+1);
-			end
-		end
-
-		if (res["ws_ind"] and tonumber(res["ws_ind"])) then
-			local dw = math.clamp(tonumber(res["ws_ind"]), 1, 10);
-			wnd.default_workspace = dw;
-			if (not wnd.wm.spaces[dw]) then
-				wnd.wm.spaces[dw] = create_workspace(wnd.wm, false);
-			end
-			if (res["ws_mode"]) then
-				wnd.wm.spaces[dw].mode = res["ws_mode"];
-			end
-			if (res["ws_label"]) then
-				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
-			end
-		end
-		if (res["name"]) then
-			get_window_name(wnd, res["name"]);
-		end
-		if (res["show_titlebar"]) then
-			wnd.show_titlebar = true;
-		end
-		if (res["show_border"]) then
-			wnd.show_border = true;
-		end
-		if (res["title"]) then
-			wnd.title = res["title"];
-		end
-		if (res["prefix"]) then
-			wnd.prefix = res["title"];
-		end
-		if (res["geom"]) then
-			local vl = string.split(res["geom"], ":");
-			if (#vl == 4) then
-				wnd.attach_temp = {
-					tonumber(vl[1]), tonumber(vl[2]),
-					tonumber(vl[3]), tonumber(vl[4])
-				};
-			end
-		end
-		wnd.desired_parent = res["parent"];
-		wnd:set_title();
-		tiler_statusbar_update(wnd.wm);
+		recover_restore(wnd);
 		return;
 	end
 
