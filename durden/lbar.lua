@@ -281,7 +281,7 @@ local function update_completion_set(wm, ctx, set)
 					return;
 				end
 				if (on_step) then
-					on_step(ctx, i, set, ctx.text_anchor,
+					on_step(ctx, i, msgs[2], ctx.text_anchor,
 						mctx.mofs + mctx.mstep, mctx.mwidth, mctx);
 				end
 				ctx.inp.csel = i;
