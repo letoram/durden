@@ -51,6 +51,7 @@ local function show(ctx, anchor, ofs)
 end
 
 local function destroy(ctx)
+	ctx.group_cache = nil;
 end
 
 return {

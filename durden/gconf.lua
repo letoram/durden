@@ -268,11 +268,14 @@ local defaults = {
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
-	tbar_tpad = 2,
+	tbar_tpad = 4,
 	tbar_bpad = 2,
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
 	pretiletext_color = "\\#ffffff ",
+
+-- notification system
+	notifications_enable = true,
 
 -- LWA specific settings, only really useful for development / debugging
 	lwa_autores = true

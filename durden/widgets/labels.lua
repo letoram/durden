@@ -174,6 +174,7 @@ local function destroy(ctx)
 	if (valid_vid(ctx.cursor)) then
 		delete_image(ctx.cursor);
 	end
+	ctx.group_cache = nil;
 end
 
 return {

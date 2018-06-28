@@ -30,6 +30,19 @@ function string.split(instr, delim)
 	return res;
 end
 
+-- can shorten further by dropping vowels and characters
+-- in beginning and end as we match more on those
+function string.shorten(s, len)
+	if (s == nil or string.len(s) == 0) then
+		return "";
+	end
+
+	local r = string.gsub(
+		string.gsub(s, " ", ""), "\n", ""
+	);
+	return string.sub(r and r or "", 1, len);
+end
+
 function string.utf8back(src, ofs)
 	if (ofs > 1 and string.len(src)+1 >= ofs) then
 		ofs = ofs - 1;
@@ -736,6 +749,24 @@ function suppl_binding_helper(prefix, suffix, bind_fn)
 
 -- tell the widget system that we are in a special context
 	suppl_widget_path(ctx, ctx.bar, "special:custom", lbsz);
+	return ctx;
+end
+
+--
+-- used for the ugly case with the meta-guard where we want to chain multiple
+-- binding query paths if one binding in the chain succeeds
+--
+function suppl_binding_queue(arg)
+	if (type(arg) == "function") then
+		table.insert(binding_queue, arg);
+	elseif (arg) then
+		binding_queue = {};
+	else
+		local ent = table.remove(binding_queue, 1);
+		if (ent) then
+			dispatch_symbol(ent);
+		end
+	end
 end
 
 -- will return ctx (initialized if nil in the first call), to track state
@@ -938,6 +969,19 @@ function suppl_scan_tools()
 	end
 end
 
+function suppl_chain_callback(tbl, field, new)
+	local old = tbl[field];
+	tbl[field] = function(...)
+		if (new) then
+			new(...);
+		end
+		if (old) then
+			tbl[field] = old;
+			old(...);
+		end
+	end
+end
+
 function suppl_scan_widgets()
 	local res = glob_resource("widgets/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(res) do
@@ -966,9 +1010,15 @@ end
 -- [ident]:str matches path/special:function to match against widget
 -- paths and [reserved]:num is the number of center- used pixels to avoid.
 --
+local widget_destr = {};
 function suppl_widget_path(ctx, anchor, ident, barh)
 	local match = {};
 	local fi = 0;
+
+	for k,v in pairs(widget_destr) do
+		k:destroy();
+	end
+	widget_destr = {};
 
 	local props = image_surface_resolve_properties(anchor);
 	local y1 = props.y;
@@ -983,11 +1033,13 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 			if ((type(j) == "function" and j(ctx, ident))
 				or ((type(j) == "string" and j == ident))) then
 -- or query for the number of columns needed assuming a certain height
-				local nc = v.probe and v.probe(ctx, rh) or 1;
-				for n=1,nc do
-					table.insert(match, {v, n});
+				local nc = v.probe and v:probe(rh) or 1;
+				if (nc > 0) then
+					widget_destr[v] = true;
+					for n=1,nc do
+						table.insert(match, {v, n});
+					end
 				end
-
 			end
 		end
 	end
@@ -1000,7 +1052,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 	local pad = 20;
 
 -- create anchors linked to background for automatic deletion, as they
--- are used for clipping, distribute in a fair away between top and bottom
+-- are used for clipping, distribute in a fair way between top and bottom
 -- but with special treatment for floating widgets
 	local start = fi+1;
 	local ctr = 0;
@@ -1023,7 +1075,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
-			local w, h = match[start][1].show(ctx, anch, match[start][2]);
+			local w, h = match[start][1]:show(anch, match[start][2], rh);
 			start = start + 1;
 
 -- position and slide only if we get a hint on dimensions consumed

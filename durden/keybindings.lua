@@ -31,14 +31,9 @@ SYSTEM_KEYS = {
 -- m2_ for meta2
 -- m1_m2_ for meta1+meta2
 --
--- The path match their namespace ! for global, # for target and the
--- corresponding implementation can be found in menus/global menus/target.
---
--- This is for legacy reasons, /global and /target are also acceptible.
---
 -- Multiple paths can also be bound, with $ as start symbol and linefeed
 -- as separator, for instance:
--- $!open/terminal\nopen/terminal
+-- $/global/open/terminal\n/global/open/terminal
 --
 -- would spawn two terminals
 --
