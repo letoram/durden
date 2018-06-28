@@ -791,9 +791,7 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 
 -- there might be another 'on cancel' handler for specialized purposes,
 -- but otherwise provide the default behavior
-	if (not bar.on_cancel) then
-		bar.on_cancel = menu_cancel;
-	end
+	suppl_chain_callback(bar, "on_cancel", menu_cancel);
 
 	return bar;
 end

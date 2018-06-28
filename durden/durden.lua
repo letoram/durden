@@ -35,6 +35,8 @@ function durden(argv)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("menu.lua")(); -- menu subsystem
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
+	system_load("notification.lua")(); -- queue of message+descriptions
+
 	CLIPBOARD = system_load("clipboard.lua")(); -- clipboard filtering / mgmt
 	CLIPBOARD:load("clipboard_data.lua");
 
@@ -125,6 +127,11 @@ function durden(argv)
 			end
 		end
 	end, true);
+
+	if (CRASH_SOURCE and string.len(CRASH_SOURCE) > 0) then
+		notification_add(
+			"Durden", nil, "Crash", CRASH_SOURCE, true);
+	end
 end
 
 argv_cmds["input_lock"] = function()

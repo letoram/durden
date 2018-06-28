@@ -201,11 +201,11 @@ return {
 		label = "Rename",
 		kind = "value",
 		eval = function()
-			return active_display().space ~= nil;
+			return active_display().spaces[active_display().space_ind] ~= nil;
 		end,
 		description = "Assign a custom text tag to the current workspace",
 		handler = function(ctx, val)
-			active_display().space:set_label(val);
+			active_display().spaces[active_display().space_ind]:set_label(val);
 		end
 	},
 	{

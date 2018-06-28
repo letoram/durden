@@ -939,6 +939,14 @@ return {
 		handler = system_load("menus/global/timer.lua")()
 	},
 	{
+		name = "notification",
+		label = "Notification",
+		kind = "action",
+		submenu = true,
+		description = "Control Notification Behavior",
+		handler = system_load("menus/global/notification.lua")()
+	},
+	{
 		name = "led",
 		label = "LEDs",
 		kind = "action",
