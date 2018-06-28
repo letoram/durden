@@ -36,26 +36,13 @@ local function clipboard_paste_local()
 	pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 end
 
--- can shorten further by dropping vowels and characters
--- in beginning and end as we match more on those
-local function shorten(s)
-	if (s == nil or string.len(s) == 0) then
-		return "";
-	end
-
-	local r = string.gsub(
-		string.gsub(s, " ", ""), "\n", ""
-	);
-	return r and r or "";
-end
-
 local function clipboard_histgen(wnd, lst, promote)
 	local res = {};
 	for k, v in ipairs(lst) do
-		local short = shorten(v);
 		table.insert(res, {
 			name = "hist_" .. tostring(k),
-			label = string.format("%d:%s", k, string.sub(short, 1, 20)),
+			description = v,
+			label = string.format("%d:%s", k, string.shorten(v, 20)),
 			kind = "action",
 			format = suppl_strcol_fmt(short, false),
 			select_format = suppl_strcol_fmt(short, true),
@@ -84,10 +71,10 @@ end
 local function clipboard_urls()
 	local res = {};
 	for k,v in ipairs(CLIPBOARD.urls) do
-		local short = shorten(v);
 		table.insert(res, {
 			name = "url_" .. tostring(k),
-			label = short,
+			label = string.shorten(url, 20),
+			description = url,
 			fmt = suppl_strcol_fmt(short, false),
 			select_fmt = suppl_strcol_fmt(short, true),
 			kind = "action",
