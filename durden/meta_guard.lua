@@ -33,30 +33,35 @@ function meta_guard(s1, s2)
 		return true;
 	end
 
-	local bindcall = function(sym, lbl, nc)
+	local bindcall = function(sym, lbl)
 		tiler_tbar(active_display(), lbl, gconfig_get("tbar_timeout"),
-		function()
-			dispatch_symbol(sym, nc);
+			function()
+			dispatch_symbol(sym);
 		end, SYSTEM_KEYS["cancel"]);
 	end
 
 	mgc = mgc + 1;
 	if (mgc > threshold) then
-		bindcall("/global/input/bind/meta", LBL_METAGUARD_META,
-		function()
-		bindcall("/global/input/bind/basic", LBL_METAGUARD_BASIC,
-		function()
-		bindcall("/global/input/bind/menu", LBL_METAGUARD_MENU,
-		function()
-		bindcall("/global/input/bind/target_menu", LBL_METAGUARD_TMENU,
-		function()
-		end
-		)end
-		)end
-		)end);
+		suppl_binding_queue(function()
+			bindcall("/global/input/bind/meta", LBL_METAGUARD_META);
+		end);
+
+		suppl_binding_queue(function()
+			bindcall("/global/input/bind/basic", LBL_METAGUARD_BASIC);
+		end);
+
+		suppl_binding_queue(function()
+			bindcall("/global/input/bind/menu", LBL_METAGUARD_MENU);
+		end);
+
+		suppl_binding_queue(function()
+			bindcall("/global/input/bind/target_menu", LBL_METAGUARD_TMENU);
+		end);
 
 		mgc = 0;
 		active_display():message();
+		suppl_binding_queue(false);
+
 		return false;
 	else
 		active_display():message(string.format(LBL_METAGUARD, threshold - mgc), -1);
