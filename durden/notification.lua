@@ -23,6 +23,10 @@ end
 -- urgency [1 = normal, 1 = important, 2 = urgent, 4 = critical]
 --
 function notification_add(source, symref, short, long, urgency)
+	if (not gconfig_get("notifications_enable")) then
+		return;
+	end
+
 	urgency = math.clamp(urgency, 1, 4);
 
 -- decent place to introduce some rate-limiting here

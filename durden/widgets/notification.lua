@@ -238,7 +238,7 @@ local function destroy(ctx)
 end
 
 local function ident(ctx, pathid)
-	return #queue > 0;
+	return gconfig_get("notifications_enable") and #queue > 0;
 end
 
 return {
