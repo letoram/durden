@@ -130,7 +130,7 @@ function durden(argv)
 
 	if (CRASH_SOURCE and string.len(CRASH_SOURCE) > 0) then
 		notification_add(
-			"Durden", nil, "Crash", CRASH_SOURCE, true);
+			"Durden", nil, "Crash", CRASH_SOURCE, 4);
 	end
 end
 
