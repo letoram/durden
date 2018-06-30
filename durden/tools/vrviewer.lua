@@ -89,7 +89,6 @@ local function vrwnd()
 	end
 
 -- no default symbol bindings
-	wnd.bindings = {};
 	wnd.clipboard_block = true;
 	wnd:set_title(string.format("VR/Panoramic - unmapped"));
 
