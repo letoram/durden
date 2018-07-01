@@ -8,7 +8,7 @@
 -- when this began.
 
 PENDING_FADE = nil;
-local function drop_bbar(wm)
+local function drop_bbar(wm, accept)
 	_G[APPLID .. "_clock_pulse"] = wm.input_ctx.clock_fwd;
 	wm:set_input_lock();
 	iostatem_lock(false);
@@ -28,25 +28,29 @@ local function drop_bbar(wm)
 		delete_image(bar);
 		delete_image(anchor);
 	end
-	if (wm.input_ctx.on_cancel) then
+	if (not accept and wm.input_ctx.on_cancel) then
 		wm.input_ctx:on_cancel();
 	end
 	iostatem_restore(wm.input_ctx.iostate);
 	if (not wm.hidden_sb) then
 		wm.statusbar:show();
 	end
+	local on_accept = wm.input_ctx.on_accept;
 	wm.input_ctx = nil;
+	if (accept and on_accept) then
+		on_accept();
+	end
 end
 
 local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 	local ctx = wm.input_ctx;
 
 	if (ctx.cancel and sym == ctx.cancel) then
-		return drop_bbar(wm);
+		return drop_bbar(wm, false);
 	end
 
 	if (ctx.ok and sym == ctx.ok and ctx.psym) then
-		drop_bbar(wm);
+		drop_bbar(wm, true);
 		ctx.cb(ctx.psym, true, lutsym2, iotbl);
 		return;
 	end
@@ -76,7 +80,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 		if (cdiff < 10 and ctx.rpress and ctx.psym and ctx.psym == sym) then
 			ctx.rpress_c = ctx.rpress_c - 1;
 			if (ctx.rpress_c == 0) then
-				drop_bbar(wm);
+				drop_bbar(wm, true);
 				ctx.cb(ctx.psym, true, lutsym2, iotbl);
 			else
 				ctx:set_progress((ctx.rpress - ctx.rpress_c) / ctx.rpress);
@@ -238,7 +242,7 @@ function tiler_bbar(wm, msg, key, time, ok, cancel, cb, rpress)
 			ctx.clock = ctx.clock - 1;
 			set_progress(ctx, 1.0 - ctx.clock / ctx.clock_start);
 			if (ctx.clock == 0) then
-				drop_bbar(wm);
+				drop_bbar(wm, true);
 				ctx.cb(ctx.psym, true, ctx.psym2, ctx.iotbl);
 			end
 		end
@@ -279,7 +283,7 @@ function tiler_tbar(wm, msg, timeout, action, cancel)
 		ctx.clock_fwd(a, b);
 		ctx.timeout = ctx.timeout - 1;
 		if (ctx.timeout == 0) then
-			drop_bbar(wm);
+			drop_bbar(wm, false);
 			action();
 		else
 			ctx:set_progress(1.0 - ctx.timeout / timeout);
@@ -289,7 +293,7 @@ function tiler_tbar(wm, msg, timeout, action, cancel)
 
 	wm:set_input_lock(function(wm, sym)
 		if (sym == cancel) then
-			drop_bbar(wm);
+			drop_bbar(wm, false);
 		end
 	end);
 

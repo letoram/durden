@@ -277,6 +277,14 @@ local function update_menu(ctx, instr, lastv, inp_st)
 -- it is written against the ideal of 'interactive user' but that isn't right
 -- when binding to keys vs. timers vs..
 	local filter = function(a)
+		if (not a.label) then
+			warning(
+				"missing label entry in menu, last: ("
+				.. tostring(dispatch_last_symbol()) .. ")"
+			);
+			return false;
+		end
+
 		if (not flt_fun(a.label, instr)) then
 			return false;
 		end

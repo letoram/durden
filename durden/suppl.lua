@@ -756,6 +756,7 @@ end
 -- used for the ugly case with the meta-guard where we want to chain multiple
 -- binding query paths if one binding in the chain succeeds
 --
+local binding_queue = {};
 function suppl_binding_queue(arg)
 	if (type(arg) == "function") then
 		table.insert(binding_queue, arg);
@@ -764,7 +765,7 @@ function suppl_binding_queue(arg)
 	else
 		local ent = table.remove(binding_queue, 1);
 		if (ent) then
-			dispatch_symbol(ent);
+			ent();
 		end
 	end
 end

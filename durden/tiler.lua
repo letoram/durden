@@ -4203,6 +4203,7 @@ local wnd_setup = function(wm, source, opts)
 
 -- specific event / keysym bindings
 		labels = {},
+		bindings = {},
 		dispatch = {},
 		u8_translation = {},
 
@@ -4969,7 +4970,8 @@ function tiler_create(width, height, opts)
 	show_image({res.anchor, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
 
-	mouse_addlistener(background_mh, {"button", "motion", "click", "dblclick"});
+	mouse_addlistener(background_mh,
+		{"button", "motion", "click", "dblclick"});
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);

@@ -298,9 +298,11 @@ function dispatch_symbol_wnd(sym, wnd)
 	dispatch_symbol(sym);
 end
 
+local last_symbol = "/";
 function dispatch_symbol(sym, menu_opts)
 -- note, it's up to us to forward the argument for validator before exec
 	local menu, msg, val, enttbl = menu_resolve(sym);
+	last_symbol = sym;
 	if (DEBUGLEVEL > 1) then
 		print("dispatch_symbol", sym, msg, val, debug.traceback());
 	end
@@ -332,6 +334,10 @@ function dispatch_symbol(sym, menu_opts)
 	end
 
 	return true;
+end
+
+function dispatch_last_symbol()
+	return last_symbol;
 end
 
 function dispatch_translate(iotbl, nodispatch)

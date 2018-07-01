@@ -482,7 +482,7 @@ local keymaps_menu = {
 		external_block = true,
 		handler = function(ctx, val)
 			local bwt = gconfig_get("bind_waittime");
-			tiler_bbar(active_display(),
+			local bb = tiler_bbar(active_display(),
 				string.format(LBL_BIND_KEYSYM, val, SYSTEM_KEYS["cancel"]),
 				true, bwt, nil, SYSTEM_KEYS["cancel"],
 				function(sym, done, sym2, iotbl)
@@ -617,12 +617,12 @@ local function rebind_meta()
 	local bwt = gconfig_get("bind_waittime");
 
 -- wm, msg, key, time, 'ok', 'cancel', callback, rpress
-	tiler_bbar(active_display(),
+	local bb = tiler_bbar(active_display(),
 		string.format("Press and hold (Meta 1), %s to Abort",
 			SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 		function(sym, done)
 			if (done) then
-				tiler_bbar(active_display(),
+				local bb2 = tiler_bbar(active_display(),
 					string.format("Press and hold (Meta 2), %s to Abort",
 					SYSTEM_KEYS["cancel"]), true, bwt, nil, SYSTEM_KEYS["cancel"],
 					function(sym2, done)
@@ -632,17 +632,24 @@ local function rebind_meta()
 							dispatch_system("meta_1", sym);
 							dispatch_system("meta_2", sym2);
 							meta_guard_reset();
-							if (chain and type(chain) == "function") then chain(); end
+							suppl_binding_queue(false);
 						end
 						if (sym2 == sym) then
 							return "Already bound to Meta 1";
 						end
 				end);
+				bb2.on_cancel = function() suppl_binding_queue(true); end
 			end
 		end, 5
 	);
+
+	bb.on_cancel = function() suppl_binding_queue(true); end
 end
 
+--
+-- quite complicated, chain a binding bar one after the other until we run
+-- out of entries - when that happens, request the next in the binding queue.
+--
 local function rebind_basic()
 	local tbl = {
 		{"Accept", "accept"},
@@ -662,10 +669,10 @@ local function rebind_basic()
 	local runsym = function(self)
 		local ent = table.remove(tbl, 1);
 		if (ent == nil) then
-			if (chain and type(chain) == "function") then chain(); end
+			suppl_binding_queue(false);
 			return;
 		end
-		tiler_bbar(active_display(),
+		local bb = tiler_bbar(active_display(),
 			string.format("Bind %s, press current: %s or hold new to rebind.",
 				ent[1], SYSTEM_KEYS[ent[2]]), true, gconfig_get("bind_waittime"),
 				SYSTEM_KEYS[ent[2]], nil,
@@ -683,9 +690,35 @@ local function rebind_basic()
 					end
 				end
 		);
+		bb.on_cancel = function() suppl_binding_queue(true); end
 	end
 
 	runsym(runsym);
+end
+
+local function bind_path(path, msg)
+	return function()
+		local bh = function(sym, helper)
+			dispatch_set(sym, path);
+			suppl_binding_queue(false);
+		end
+
+		local ctx =
+			suppl_binding_helper("", "", function() end);
+
+-- need to reset the queue on cancel
+		ctx.on_cancel = function()
+			suppl_binding_queue(true);
+		end
+
+-- override the callback so the dispatch_symbol_bind function won't trigger
+		ctx.cb = function(sym, done)
+			if (not done) then
+				return;
+			end
+			bh(sym);
+		end
+	end
 end
 
 -- reduced version of durden input that only uses dispatch_lookup to
@@ -746,7 +779,7 @@ local bind_menu = {
 		name = "custom",
 		kind = "action",
 		label = "Custom",
-		description = "Bind a menu path to a meta+keypress",
+		description = "Bind a menu path to a meta+button press combination",
 -- use m1 to determine if we bind the path or the value=
 		external_block = true,
 		handler = function()
@@ -757,7 +790,7 @@ local bind_menu = {
 		name = "custom_falling",
 		kind = "action",
 		label = "Custom(Release)",
-		description = "Bind a menu path to a meta+keyrelease",
+		description = "Bind a menu path to a meta+button release combination",
 		external_block = true,
 		handler = function()
 			suppl_binding_helper("f_", "", dispatch_set);
@@ -801,6 +834,22 @@ local bind_menu = {
 		description = "Rebind the basic navigation keys",
 		external_block = true,
 		handler = rebind_basic
+	},
+	{
+		name = "menu",
+		kind = "action",
+		label = "Menu",
+		external_block = true,
+		description = "Query for the global menu keybinding",
+		handler = bind_path("/global")
+	},
+	{
+		name = "target_menu",
+		kind = "action",
+		label = "Target Menu",
+		external_block = true,
+		description = "Query for the global menu keybinding",
+		handler = bind_path("/target")
 	}
 };
 
