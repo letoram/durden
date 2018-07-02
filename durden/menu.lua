@@ -218,12 +218,19 @@ function menu_hook_launch(fun)
 end
 
 local function query_value(ctx, mask)
-	local hintstr = string.format("%s %s %s",
-		ctx.label and ctx.label or "",
+	local helper = {
+		active_display().font_delta .. gconfig_get("lbar_helperstr"),
+		(ctx.description and ctx.description .. " ") or ""
+	};
+	if (ctx.hint) then
+		local hint = type(ctx.hint) == "function" and ctx.hint() or ctx.hint;
+		table.insert(helper, HC_PALETTE[1]);
+		table.insert(helper, hint);
+	end
+
+	local hintstr = string.format("%s",
 		ctx.initial and ("[ " .. (type(ctx.initial) == "function"
-			and tostring(ctx.initial()) or ctx.initial) .. " ] ") or "",
-		ctx.hint and ((type(ctx.hint) == "function"
-		and ctx.hint() or ctx.hint) .. ":") or ""
+			and tostring(ctx.initial()) or ctx.initial) .. " ] ") or ""
 	);
 
 -- explicit set to chose from?
@@ -236,8 +243,11 @@ local function query_value(ctx, mask)
 		res = active_display():lbar(
 			value_entry_input, ctx, {password_mask = mask, label = hintstr});
 	end
-	if (not res.on_cancel) then
-		res.on_cancel = menu_cancel;
+	if (res) then
+		if (not res.on_cancel) then
+			res.on_cancel = menu_cancel;
+		end
+		res:set_helper(helper);
 	end
 	return res;
 end

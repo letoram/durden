@@ -473,14 +473,18 @@ end
 local function lbar_helper(lbar, lbl)
 	local wm = active_display();
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
-	local dst = type(lbl) == "table" and lbl or
-		{wm.font_delta .. gconfig_get("lbar_helperstr"), lbl};
 
-	if (not lbl or string.len(lbl) == 0) then
-		if (valid_vid(lbar.helper_bg)) then
-			hide_image(lbar.helper_bg);
+	local dst;
+	if (type(lbl) == "table") then
+		dst = lbl;
+	else
+		if (not lbl or string.len(lbl) == 0) then
+			if (valid_vid(lbar.helper_bg)) then
+				hide_image(lbar.helper_bg);
+			end
+			return;
 		end
-		return;
+		dst = {wm.font_delta .. gconfig_get("lbar_helperstr"), lbl};
 	end
 
 -- don't repeat ourselves
