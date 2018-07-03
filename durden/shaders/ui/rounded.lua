@@ -61,7 +61,7 @@ float rounded_box_shadow(vec2 lower, vec2 upper, vec2 point, float sigma, float 
 void main()
 {
 	float a = rounded_box_shadow(
-		vec2(0.0, 0.0), obj_output_sz, obj_output_sz * texco, sigma, radius) - 0.5;
+		vec2(0.0, 0.0), obj_output_sz, obj_output_sz * texco, sigma, radius);
 	gl_FragColor = vec4(obj_col, a * obj_opacity);
 }
 

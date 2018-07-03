@@ -155,8 +155,27 @@ end
 
 defhtbl["alert"] =
 function(wnd, source, stat)
--- FIXME: need multipart concatenation of message, and forwarding
--- to a notification listener (if any)
+	local msg;
+
+	if (wnd.alert_multipart) then
+		wnd.alert_multipart.message = wnd.alert_multipart.message .. stat.message;
+		wnd.alert_multipart.count = wnd.alert_multipart.count + 1;
+		if (wnd.alert_multipart.count > 3 or not stat.multipart) then
+			msg = wnd.alert_multipart.message;
+			wnd.alert_multipart = nil;
+		end
+	elseif (stat.multipart) then
+		wnd.alert_multipart = {
+			message = stat.message,
+			count = 1
+		};
+	else
+		msg = stat.message;
+	end
+
+	if (msg) then
+		wnd:set_message(msg);
+	end
 end
 
 defhtbl["cursorhint"] =
@@ -217,8 +236,7 @@ end
 
 defhtbl["message"] =
 function(wnd, source, stat)
--- FIXME: no multipart concatenation
-	wnd:set_message(stat.message, gconfig_get("msg_timeout"));
+-- only archetype specific messaegs permitted here so far
 end
 
 defhtbl["ident"] =
@@ -232,7 +250,7 @@ function(wnd, source, stat)
 
 -- FIXME: check if the terminated window is the one intended when
 -- last spawning an interactive menu, and in that case, return out
-	wnd:destroy();
+	wnd:destroy(stat.last_words);
 end
 
 function extevh_apply_atype(wnd, atype, source, stat)
@@ -252,7 +270,6 @@ function extevh_apply_atype(wnd, atype, source, stat)
 
 -- note that this can be emitted multiple times, it is just the
 -- segment kind that can't / wont change
-	wnd:set_title(stat.title);
 	if (wnd.registered) then
 		return;
 	end
@@ -302,6 +319,7 @@ function(wnd, source, stat)
 	extevh_apply_atype(wnd, stat.segkind, source, stat);
 -- can either be table [tgt, cfg] or [guid], ignore the 0- value
 -- as that is an obvious failure
+	wnd:set_title(stat.title);
 	wnd:set_guid(stat.guid);
 end
 

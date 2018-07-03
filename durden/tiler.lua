@@ -132,10 +132,14 @@ local function moveup_children(wnd)
 	table.remove(wnd.parent.children, ind);
 end
 
-local function wnd_destroy(wnd)
+local function wnd_destroy(wnd, message)
 	local wm = wnd.wm;
 	if (wnd.delete_protect) then
 		return;
+	end
+
+	if (message and type(message) == "string") then
+		notification_add(wnd.title, wnd.icon, "Client died", message, 1);
 	end
 
 	if (wm.deactivated and wm.deactivated.wnd == wnd) then
@@ -283,12 +287,26 @@ local function wnd_message(wnd, message, timeout)
 	end
 
 	local short =
-		string.len(message) < 20 and message or string.sub(message, 1, 20);
-	if (string.len(message) > 20) then
+		string.len(message) < 40 and message or string.sub(message, 1, 40);
+	if (string.len(message) > 40) then
 		long = message;
 	end
 
-	notification_add(wnd.ident, wnd.icon, short, long, 1);
+-- only use a client icon if one is present, going with external here is
+-- too expensive as the notification rendering (render_text) will scale-
+-- blit on CPU.
+	local storage;
+	if (valid_vid(wnd.icon)) then
+		storage = null_surface(32, 32);
+		if (valid_vid(storage)) then
+			image_sharestorage(wnd.icon, storage);
+		end
+	end
+
+	notification_add(
+		string.sub(string.format("%s : %s", wnd.title, wnd.ident), 1, 20),
+		storage, short, long, 1
+	);
 end
 
 local function wnd_deselect(wnd, nopick)
