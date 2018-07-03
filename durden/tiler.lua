@@ -277,7 +277,18 @@ local function wnd_destroy(wnd)
 end
 
 local function wnd_message(wnd, message, timeout)
---	print("wnd_message", message);
+	local long;
+	if (not message or string.len(message) == 0) then
+		return;
+	end
+
+	local short =
+		string.len(message) < 20 and message or string.sub(message, 1, 20);
+	if (string.len(message) > 20) then
+		long = message;
+	end
+
+	notification_add(wnd.ident, wnd.icon, short, long, 1);
 end
 
 local function wnd_deselect(wnd, nopick)

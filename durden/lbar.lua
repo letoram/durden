@@ -57,6 +57,7 @@ local function destroy(wm, ictx)
 		mouse_droplistener(v);
 	end
 	pending = {};
+	mouse_droplistener(ictx.bg_mh);
 	active_lbar = nil;
 
 	if (gconfig_get("sbar_hud")) then
@@ -422,8 +423,8 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			return;
 		end
 
-	-- special handling, if the user hasn't typed anything, map caret manipulation
-	-- to completion navigation as well)
+-- special handling, if the user hasn't typed anything, map caret
+-- manipulation to completion navigation as well)
 		if (ictx.inp and ictx.inp.csel) then
 			local upd = false;
 			if (ictx.invalid) then
@@ -607,7 +608,6 @@ end
 
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
-
 	local time = gconfig_get("transition");
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
@@ -619,21 +619,12 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		active_lbar:destroy();
 	end
 
-	local bg = fill_surface(wm.width, wm.height, 255, 0, 0);
+	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
 	image_tracetag(bg, "lbar_bg");
 	shader_setup(bg, "ui", "lbarbg");
-	local ph = {
-		name = "bg_cancel",
-		own = function(ctx, vid) return vid == bg; end,
-		click = function()
-			accept_cancel(wm, false);
-		end
-	}
-	mouse_addlistener(ph, {"click", "rclick"});
-	table.insert(pending, ph);
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
-	local bar = fill_surface(wm.width, barh, 255, 0, 0);
+	local bar = color_surface(wm.width, barh, 255, 0, 0);
 	shader_setup(bar, "ui", "lbar");
 
 	link_image(bg, wm.order_anchor);
@@ -694,6 +685,29 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		force_completion = opts.force_completion == false and false or true
 	};
 	wm.input_ctx = res;
+
+	local bg_mh = {
+		name = "bg_cancel",
+		own = function(ctx, vid) return vid == bg; end,
+		click = function()
+			accept_cancel(wm, true);
+		end,
+		rclick = function()
+			accept_cancel(wm, false);
+		end,
+		button = function(ctx, vid, ind, act)
+			if (not act or ind > MOUSE_WHEELNX or ind < MOUSE_WHEELPY) then
+				return;
+			end
+			local d = (ind == MOUSE_WHEELNX or ind == MOUSE_WHEELNY) and 1 or -1;
+			if (res.inp and res.inp.csel) then
+				res.inp.csel = res.inp.csel + d;
+				update_completion_set(wm, res, res.inp.set);
+			end
+		end
+	}
+	mouse_addlistener(bg_mh, {"click", "rclick", "button"});
+	res.bg_mh = bg_mh;
 
 	if (opts.overlay) then
 		for k,v in pairs(opts.overlay) do

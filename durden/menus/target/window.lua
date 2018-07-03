@@ -1,3 +1,7 @@
+local function cursortag_handler(a, b, c)
+	print(a, b, c, "cursortag_handler");
+end
+
 local swap_menu = {
 	{
 		name = "up",
@@ -37,9 +41,9 @@ local swap_menu = {
 	},
 	{
 		name = "join_left",
-		label = "Merge Left",
+		label = "Join Left",
 		kind = "value",
-		description = "Join with n windows to the left",
+		description = "Join n windows to the left as children",
 		validator = function(val)
 			return val and tonumber(val) ~= nil;
 		end,
@@ -52,7 +56,7 @@ local swap_menu = {
 		name = "join_right",
 		label = "Join Right",
 		kind = "value",
-		description = "Join with n windows to the right",
+		description = "Join n windows to the right as children",
 		validator = function(val)
 			return val and tonumber(val) ~= nil;
 		end,
@@ -757,7 +761,22 @@ return {
 		submenu = true,
 		description = "Reassign the window to a different display",
 		handler = function()
-			active_display():message("MISSING: REASSING");
+			local res = {};
+			local wnd = active_display().selected;
+			local cur = active_display(false, true).name;
+			for d in all_displays_iter() do
+				if (cur ~= d.name) then
+					table.insert(res, {
+						name = "migrate_" .. hexenc(d.name),
+						label = d.name,
+						kind = "action",
+						handler = function()
+							display_migrate_wnd(wnd, d.name);
+						end
+					});
+				end
+			end
+			return res;
 		end,
 		eval = function()
 			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
@@ -792,6 +811,22 @@ return {
 		handler = function()
 			return ui_scheme_menu("window", active_display().selected);
 		end
+	},
+	{
+		name = "cursortag",
+		label = "Cursor Tag",
+		description = "Set the current window as the 'drag' mouse state",
+		kind = "action",
+		external_block = true,
+		handler = function()
+			local wnd = active_display().selected;
+			local icon = null_surface(64, 64);
+			if (valid_vid(icon)) then
+				image_sharestorage(wnd.canvas, icon);
+				show_image(icon);
+				mouse_cursortag(wnd, "window", cursortag_handler, icon);
+			end
+		end,
 	},
 	{
 		name = "slice_clone",
