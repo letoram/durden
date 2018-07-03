@@ -3,73 +3,86 @@
      window-to-background will now receive input when no window is
      selected.
 
-	* tools/advfloat:
-	   autolayout now recurses when one pass didn't position all windows
+  * tools/advfloat:
+     autolayout now recurses when one pass didn't position all windows
      autolayout also got a hide/reveal mode
 
-	 tools/vrviewer
-	   added 'vrviewer', an integrated 3D/VR tool that acts as a
-		 3D desktop-within-the-desktop.
+   tools/vrviewer
+     added 'vrviewer', an integrated 3D/VR tool that acts as a
+     3D desktop-within-the-desktop.
 
   * distr/durden:
-	   launcher- script for reasonable defaults for linux/BSDs with
-		 arcan on egl-dri (native) platform.
+     launcher- script for reasonable defaults for linux/BSDs with
+     arcan on egl-dri (native) platform.
 
   * widgets/input:
      new widget (target/input activated) that presents client provided
      input labels as clickable options
 
-	* custom-crop:
-	   support cropping [t l d r] px from the canvas area
+  * widgets/notification:
+     new widget (activated on any path) that flushes the currently
+     queued set of notifications on HUD activation
 
-	* impostors:
-	   crop t- px and bind to a toggle-able titlebar
+  * custom-crop:
+     support cropping [t l d r] px from the canvas area
+
+  * impostors:
+     crop t- px and bind to a toggle-able titlebar
 
   * browser:
-	   add controls for preview-launch delay, and allow video previews
+     add controls for preview-launch delay, and allow video previews
 
   * statusbar/titlebar:
      added controls to hide dynamic workspace buttons
      added per-window controls to override titlebar pattern
      added per-window controls to modify titlebar buttons
 
+  * cursortagging:
+     added (target/window/cursortag) as an option
+
 Breaking:
   * statusbar visual config area changed to [px] from % point and
-	  order changed to [t l r d] to match other similar functions
+    order changed to [t l r d] to match other similar functions
 
-	* target titlebar controls moved to its own group
+  * target titlebar controls moved to its own group
 
-	* control channel (ipc pipes) have switched to using a domain
-	  socket for both input and output
+  * control channel (ipc pipes) have switched to using a domain
+    socket for both input and output
 
   * entire menu/browser system refactored to have a more shared codebase,
-	  this moves all paths to be explicit /global/path/to /target/path/to
-		/browse/shared/
+    this moves all paths to be explicit /global/path/to /target/path/to
+    /browse/shared/
 
-	* multiple menu functions moved around and regrouped, all toggle
-	  options have been merged into the YES/NO paths that have been
-		extended with YES/NO/FLIP
+  * multiple menu functions moved around and regrouped, all toggle
+    options have been merged into the YES/NO paths that have been
+    extended with YES/NO/FLIP
 
 Minor:
   * activate GPU rescan on hotplug event
 
+  * mouse should now work better with the HUD menu, particularly
+	  mouse-wheel, navigation button clicks and right-click to exit.
+
   * regression in hotplugging causing nil table member dereference
-	  on remove event with active listeners
+    on remove event with active listeners
 
   * input focus can be changed by explicit display path / name
 
   * reworked most sizing / positioning code to be less strict on
-	  client- driven resizing
+    client- driven resizing
 
   * expose target menu binding in recovery binding handler
 
   * expose input caret manipulation as part of basic bindings
 
-	* system shutdown gets a silent option that doesn't tell clients
-	  to shut down, but rather to reconnect or migrate
+  * system shutdown gets a silent option that doesn't tell clients
+    to shut down, but rather to reconnect or migrate
 
-	* add menu options to join 'n' windows to the left or right in
-	  tile mode as children of the selected window
+  * add menu options to join 'n' windows to the left or right in
+    tile mode as children of the selected window
+
+  * added global/config/commit to make sure the current setings get
+	  saved immediately
 
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
@@ -91,8 +104,8 @@ Minor:
 
   * tools/overview - added a HUD- like workspace switcher
 
-	* tools/flair - added a visual effects layers and some initial
-	  effects, e.g. clothy windows, the natural successor to wobbly
+  * tools/flair - added a visual effects layers and some initial
+    effects, e.g. clothy windows, the natural successor to wobbly
     windows.
 
   * terminal-group spawn-mode added, allows a connection primitive
@@ -100,8 +113,8 @@ Minor:
     group share the same logical window tree slot.
 
   * Tui/terminal clients are now allowed to spawn additional tui
-	  subsegments. This match the new support in afsrv_terminal that
-		allows the window to be cloned into a copy-window.
+    subsegments. This match the new support in afsrv_terminal that
+    allows the window to be cloned into a copy-window.
 
   * File browser now expose wild-card matching (asterisk), Lua
     patterns (%%) and sort-order modification (typing % lists options).
@@ -204,40 +217,40 @@ Minor:
     scheme of fonts and other configuration presets.
 
 Minor:
-	* (arcan > 0.5.2) allow GPU- authentication controls
-	* Split mouse cursors into sets.
-	* more consistent font/font-size switching when migrating across displays
-	* default-off display profiles for vive/psvr
+  * (arcan > 0.5.2) allow GPU- authentication controls
+  * Split mouse cursors into sets.
+  * more consistent font/font-size switching when migrating across displays
+  * default-off display profiles for vive/psvr
   * per window font override controls
-	* defer window attachment to reduce resize operations
-	* menu options for appl- switching (global/system/reset/...)
-	* hidden bind path for suspend-state toggle (target/state/...)
-	* menu path to reset workspace background (global/workspace/...)
-	* menu path for global/workspace/switch/last
-	* option to force bitmap font path for terminal
-	* a shader for luma (monochrome) - only mode
-	* atype- profile for wayland clients
-	* option to disable/block mouse (global/input/mouse/block)
-	* target menu path for set-x, set-y in float mode
-	* mouse button debounce timer support (global/inpput/mouse/debounce)
-	* expose backlight controls per display (global/display/displays/...)
+  * defer window attachment to reduce resize operations
+  * menu options for appl- switching (global/system/reset/...)
+  * hidden bind path for suspend-state toggle (target/state/...)
+  * menu path to reset workspace background (global/workspace/...)
+  * menu path for global/workspace/switch/last
+  * option to force bitmap font path for terminal
+  * a shader for luma (monochrome) - only mode
+  * atype- profile for wayland clients
+  * option to disable/block mouse (global/input/mouse/block)
+  * target menu path for set-x, set-y in float mode
+  * mouse button debounce timer support (global/inpput/mouse/debounce)
+  * expose backlight controls per display (global/display/displays/...)
   * path for setting workspace background to a solid color
-	* Tools/pulldown: can now set a shadow/colored border
+  * Tools/pulldown: can now set a shadow/colored border
 
 # 0.2.0 - New features
 
   * Tool: Added autolayouter
 
-	* Tool: Added 3d-modelviewer, can remap contents of other
-	        windows unto a 3d-model.
+  * Tool: Added 3d-modelviewer, can remap contents of other
+          windows unto a 3d-model.
 
   * Feature: OCR to Clipboard, access through global/display/region
-	           Requires tesseract- support in arcan encode frameserver
+             Requires tesseract- support in arcan encode frameserver
 
   * Cheatsheet Widget: Added path activation
 
   * Security/Safety: Added connection rate limiting
 
-	* Performance: Added dedicated fullscreen mode
+  * Performance: Added dedicated fullscreen mode
 
 # 0.1.0 - Initial Release

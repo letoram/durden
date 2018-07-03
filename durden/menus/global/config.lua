@@ -1024,5 +1024,15 @@ return {
 		submenu = true,
 		description = "Change Task/Statusbar look and feel",
 		handler = system_load("menus/global/statusbar.lua")(),
+	},
+	{
+		name = "commit",
+		label = "Commit",
+		kind = "action",
+		description = "Store all pending configuration changes",
+		handler = function()
+			SYMTABLE:store_translation();
+			gconfig_shutdown();
+		end
 	}
 };
