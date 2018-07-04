@@ -4,9 +4,9 @@
 --  clickable references
 --
 
-local bgc_def = {64, 64, 64};
-local bgc_act = {32, 32, 32};
-local bgc_hi = {92, 92, 92};
+local bgc_def = {32, 32, 32};
+local bgc_act = {16, 16, 16};
+local bgc_hi = {64, 64, 64};
 
 local tsupp = system_load("widgets/support/text.lua")();
 local queue = {};
