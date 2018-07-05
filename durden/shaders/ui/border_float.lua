@@ -8,7 +8,7 @@
 -- The weight is used as color blend weight against the object color
 --
 return {
-	label = "Border",
+	label = "Border(Float)",
 	version = 1,
 	frag =
 [[
@@ -47,7 +47,7 @@ return {
 			label = 'Area Width',
 			utype = 'f',
 			ignore = true,
-			default = gconfig_get("borderw"),
+			default = gconfig_get("borderw_float"),
 			low = 0.1,
 			high = 40.0
 		},
@@ -55,7 +55,7 @@ return {
 			label = 'Thickness',
 			utype = 'f',
 			ignore = true,
-			default = (gconfig_get("borderw") - gconfig_get("bordert")),
+			default = (gconfig_get("borderw_float") - gconfig_get("bordert_float")),
 			low = 0.1,
 			high = 20.0
 		},

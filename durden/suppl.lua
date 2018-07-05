@@ -410,6 +410,51 @@ local function build_rt_reg(drt, x1, y1, w, h, srate)
 	return dst, {cont};
 end
 
+-- lifted from the label definitions and order in shmif, the values are
+-- offset by 2 as shown in arcan_tuisym.h
+local color_labels =
+{
+	{"primary", "Dominant foreground"},
+	{"secondary", "Dominant alternative foreground"},
+	{"background", "Default background"},
+	{"text", "Default text"},
+	{"cursor", "Default caret or mouse cursor"},
+	{"altcursor", "Default alternative-state caret or mouse cursor"},
+	{"highlight", "Default marked / selection state"},
+	{"label", "Text labels and content annotations"},
+	{"warning", "Labels and text that require additional consideration"},
+	{"error", "Indicate wrong input or other erroneous state"},
+	{"alert", "Areas that require immediate attention"},
+	{"inactive", "Labels where the related content is currently inaccessible"},
+	{"reference", "Actions that reference external contents or trigger navigation"}
+};
+
+-- Generate menu entries for defining colors, where the output will be
+-- sent to cb. This is here in order to reuse the same tables and code
+-- path for both per-window overrides and some global option
+function suppl_color_menu(cb, lookup)
+	local res = {};
+	for k,v in ipairs(color_labels) do
+		table.insert(res, {
+			name = v[1],
+			label =
+				string.upper(string.sub(v[1], 1, 1)) .. string.upper(string.sub(v[1], 2)),
+			kind = "value",
+			hint = "(r g b)(0..255)",
+			validator = suppl_valid_typestr("fff", 0, 255, 0),
+			initial = function()
+				local r, g, b = lookup(v[1]);
+				return string.format("%.0f %.0f %.0f", r, g, b);
+			end,
+			handler = function(ctx, val)
+				local col = suppl_unpack_typestr("fff", val, 0, 255);
+				cb(val, col[1], col[2], col[3]);
+			end
+		});
+	end
+	return res;
+end
+
 -- all the boiler plate needed to figure out the types a uniform has,
 -- generate the corresponding menu entry and with validators for type
 -- and range, taking locale and separators into accoutn.

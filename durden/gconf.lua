@@ -37,8 +37,14 @@ local defaults = {
 	font_str = "",
 	text_color = "\\#aaaaaa",
 	label_color = "\\#ffff00",
+
+-- decoration settings
 	borderw = 1,
 	bordert = 1,
+	bordert_float = 1,
+	borderw_float = 4,
+	border_color = {60, 104, 135},
+	titlebar_color = {60, 104, 135},
 
 -- right now, the options are 'none', 'image', 'full'
 	browser_preview = "full",
@@ -244,7 +250,6 @@ local defaults = {
 	lbar_seltextstr = "\\#ffffff ",
 	lbar_seltextbg = {0x44, 0x66, 0x88},
 	lbar_itemspace = 10,
-	lbar_textsz = 12,
 
 -- binding bar
 	bind_waittime = 30,
@@ -336,11 +341,30 @@ local function gconfig_setup()
 		if (v) then
 			if (type(vl) == "number") then
 				defaults[k] = tonumber(v);
--- no packing format for tables, ignore for now, since its a trusted context,
--- we can use concat / split without much issue, although store_key should
--- really support deep table serialization
+-- naive packing for tables (only used with colors currently), just
+-- use : as delimiter and split/concat to manage - just sanity check/
+-- ignore on count and assume same type.
 			elseif (type(vl) == "table") then
-				defaults[k] = defaults[k];
+				local lst = string.split(v, ':');
+				local ok = true;
+				for i=1,#lst do
+					if (not vl[i]) then
+						ok = false;
+						break;
+					end
+					if (type(vl[i]) == "number") then
+						lst[i] = tonumber(lst[i]);
+						if (not lst[i]) then
+							ok = false;
+							break;
+						end
+					elseif (type(vl[i]) == "boolean") then
+						lst[i] = lst[i] == "true";
+					end
+				end
+				if (ok) then
+					defaults[k] = lst;
+				end
 			elseif (type(vl) == "boolean") then
 				defaults[k] = v == "true";
 			else
@@ -367,6 +391,8 @@ function gconfig_shutdown()
 	for k,v in pairs(defaults) do
 		if (type(v) ~= "table") then
 			ktbl[k] = tostring(v);
+		else
+			ktbl[k] = table.concat(v, ':');
 		end
 	end
 

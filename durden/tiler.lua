@@ -132,6 +132,17 @@ local function moveup_children(wnd)
 	table.remove(wnd.parent.children, ind);
 end
 
+local function wnd_border_width(wnd)
+	if (not wnd.show_border) then
+		return 0;
+	end
+	if (wnd.space.mode == "float") then
+		return gconfig_get("borderw_float");
+	else
+		return gconfig_get("borderw");
+	end
+end
+
 local function wnd_destroy(wnd, message)
 	local wm = wnd.wm;
 	if (wnd.delete_protect) then
@@ -339,7 +350,8 @@ local function wnd_deselect(wnd, nopick)
 	end
 
 	local state = wnd.suspended and "suspended" or "inactive";
-	shader_setup(wnd.border, "ui", "border", state);
+	shader_setup(wnd.border, "ui",
+		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
 
 -- save scaled coordinates so we can handle a resize
@@ -616,7 +628,8 @@ local function wnd_select(wnd, source, mouse)
 	end
 
 	local state = wnd.suspended and "suspended" or "active";
-	shader_setup(wnd.border, "ui", "border", state);
+	shader_setup(wnd.border, "ui",
+		wnd.space.mode == "float" and "border_float" or "border", state);
 
 -- we don't want to mess with cursor/selected when it's a hidden wnd
 
@@ -1033,7 +1046,7 @@ local function drop_tab(space)
 -- relink the titlebars so that they anchor their respective windows rather
 -- than the client window itself.
 	for k,v in ipairs(res) do
-		local bw = v.show_border and v.border_w or 0;
+		local bw = v:border_width();
 		v.titlebar:reanchor(v.anchor, 2, bw, bw);
 		if (v.show_border) then
 			show_image(v.border);
@@ -1055,6 +1068,7 @@ local function drop_float(space)
 	local lst = linearize(space);
 	for i,v in ipairs(lst) do
 		local pos = image_surface_properties(v.anchor);
+		shader_setup(v.border, "ui", "border", v.titlebar.state);
 		v.last_float = {
 			width = v.width / space.wm.effective_width,
 			height = v.height / space.wm.effective_height,
@@ -1065,14 +1079,14 @@ local function drop_float(space)
 end
 
 local function reassign_vtab(space, wnd)
-	local bw = wnd.show_border and wnd.border_w or 0;
+	local bw = wnd:border_width();
 	wnd.titlebar:reanchor(wnd.anchor, 2, 0, 0);
 	show_image(wnd.anchor);
 	show_image(wnd.border, wnd.show_border and 1 or 0);
 end
 
 local function reassign_tab(space, wnd)
-	local bw = wnd.show_border and wnd.border_w or 0;
+	local bw = wnd:border_width();
 	wnd.titlebar:reanchor(wnd.anchor, 2, wnd.border_w);
 	show_image(wnd.anchor);
 	show_image(wnd.border, wnd.show_border and 1 or 0);
@@ -1891,7 +1905,7 @@ end
 
 local function wnd_size_decor(wnd, w, h, animate)
 -- redraw / update the decorations
-	local bw = wnd.show_border and wnd.border_w or 0;
+	local bw = wnd:border_width();
 	local tbh = tbar_geth(wnd);
 	local interp = nil;
 	local at = 0;
@@ -1926,6 +1940,8 @@ local function wnd_size_decor(wnd, w, h, animate)
 		hide_image(wnd.border);
 	end
 
+	shader_setup(wnd.border, "ui",
+		wnd.space.mode == "float" and "border_float" or "border", wnd.titlebar.state);
 	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top, at, av);
 end
 
@@ -3051,7 +3067,8 @@ local function wnd_alert(wnd)
 	end
 
 	wnd.titlebar:switch_state("alert", true);
-	shader_setup(wnd.border, "ui", "border", "alert");
+	shader_setup(wnd.border, "ui",
+		wnd.space.mode == "float" and "border_float" or "border", "alert");
 end
 
 local function wnd_prefix(wnd, prefix)
@@ -3235,7 +3252,8 @@ local function wnd_setsuspend(wnd, susp)
 	if (susp) then
 		suspend_target(wnd.external);
 		wnd.suspended = true;
-		shader_setup(wnd.border, "ui", "border", "suspended");
+		shader_setup(wnd.border, "ui",
+			wnd.space.mode == "float" and "border_float" or "border", "suspended");
 		wnd.titlebar:switch_state("suspended", true);
 	else
 		resume_target(wnd.external);
@@ -3298,7 +3316,7 @@ local function wnd_titlebar(wnd, visible)
 end
 
 local function wnd_border(wnd, visible, user_force, bw)
-	bw = (bw and bw > 0) and bw or wnd.border_w;
+	bw = wnd:border_width();
 
 -- early out no-ops
 	if (wnd.show_border == visible) then
@@ -3310,13 +3328,12 @@ local function wnd_border(wnd, visible, user_force, bw)
 -- change border size or visibility?
 	local bdiff;
 	if (visible == wnd.show_border) then
-		bdiff = math.abs(wnd.border_w - bw);
+		bdiff = math.abs(wnd:border_width() - bw);
 	else
-		bdiff = (visible and 1 or -1) * bw;
+		bdiff = (visible and 1 or -1) * wnd:border_width();
 	end
 
 -- apply difference to pad region while respecting possibly custom padding
-	wnd.border_w = bw;
 	wnd.show_border = visible;
 
 -- with float, we can simply grow/shrink and redraw the decor
@@ -3821,7 +3838,8 @@ local function wnd_ws_attach(res, from_hook)
 		end
 		space:resize();
 	else
-		shader_setup(res.border, "ui", "border", "inactive");
+		shader_setup(res.border, "ui",
+			res.space.mode == "float" and "border_float" or "border", "suspended");
 	end
 
 -- trigger the resize cascade now that we know the layout..
@@ -4214,7 +4232,7 @@ local wnd_setup = function(wm, source, opts)
 		wm = wm,
 		anchor = null_surface(1, 1),
 -- we use fill surfaces rather than color surfaces to get texture coordinates
-		border = color_surface(1, 1, 255, 255, 255),
+		border = color_surface(1, 1, unpack(gconfig_get("border_color"))),
 		canvas = source,
 		external = extvid,
 		gain = 1.0 * gconfig_get("global_gain"),
@@ -4264,7 +4282,6 @@ local wnd_setup = function(wm, source, opts)
 -- during migration and display setup.
 
 -- properties that change visual behavior
-		border_w = gconfig_get("borderw"),
 		dispmask = 0,
 
 -- though the active values are defined by the anchor and canvas, these
@@ -4291,6 +4308,7 @@ local wnd_setup = function(wm, source, opts)
 		show_titlebar = not gconfig_get("hide_titlebar"),
 		show_border = true,
 		indirect_parent = nil,
+		border_width = wnd_border_width,
 
 -- visual attribute- functions
 		alert = wnd_alert,
@@ -4410,6 +4428,8 @@ local wnd_setup = function(wm, source, opts)
 	end
 
 -- order canvas so that it comes on top of the border for mouse events
+-- this is pending a rewrite of the border management that splits it out
+-- into separate surfaces instead
 	order_image(res.canvas, 2);
 
 -- default is active, but should be inactive here
@@ -4701,6 +4721,10 @@ local function tiler_rebuild_border(tiler)
 	local s = {"active", "inactive", "alert", "default"};
 	shader_update_uniform("border", "ui", "border", bw, s, "tiler-rebuild");
 	shader_update_uniform("border", "ui", "thickness", tw, s, "tiler-rebuild");
+	shader_update_uniform("border_float",
+		"ui", "border", gconfig_get("borderw_float"), s, "tiler-rebuild");
+	shader_update_uniform("border_float", "ui", "thickness",
+		gconfig_get("borderw_float") - gconfig_get("bordert_float"), s, "tiler-rebuild");
 
 	for i,v in ipairs(tiler.windows) do
 		wnd_size_decor(v, v.width, v.height, false);
