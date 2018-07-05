@@ -327,6 +327,18 @@ local font_override = {
 	}
 };
 
+local function color_cb(ind, r, g, b)
+	local wnd = active_display().selected;
+	wnd.color_table[ind] = {r, g, b};
+	target_graphmode(wnd.external, ind, r, g, b);
+	target_graphmode(wnd.external, 0);
+end
+
+local function color_lookup(ind)
+	local ct = active_display().selected.color_table[ind];
+	return ct[1], ct[2], ct[3];
+end
+
 return {
 	{
 		name = "scaling",
@@ -487,6 +499,15 @@ return {
 		eval = function() return active_display().selected.last_font ~= nil; end,
 		submenu = true,
 		handler = font_override,
+	},
+	{
+		name = "colors",
+		label = "Colors",
+		kind = "action",
+		submenu = true,
+		eval = function() return active_display().selected.color_table ~= nil; end,
+		description = "Color control for clients that support server- defined colors",
+		suppl_color_menu(color_cb, color_lookup)
 	},
 	{
 		label = "Advanced",

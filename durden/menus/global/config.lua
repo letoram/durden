@@ -68,64 +68,6 @@ local durden_font = {
 	}
 };
 
-local durden_bars = {
-	{
-		name = "sb_top",
-		label = "Pad Top",
-		kind = "value",
-		description = "Insert extra vertical spacing above the bar text",
-		initial = function() return gconfig_get("sbar_tpad"); end,
-		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
-		handler = function(ctx, val)
-			gconfig_set("sbar_tpad", tonumber(val));
-			gconfig_set("tbar_tpad", tonumber(val));
-			gconfig_set("lbar_tpad", tonumber(val));
-		end
-	},
-	{
-		name = "sb_bottom",
-		label = "Pad Bottom",
-		kind = "value",
-		description = "Insert extra vertical spacing below the bar- text",
-		initial = function() return gconfig_get("sbar_bpad"); end,
-		validator = function() return gen_valid_num(0, gconfig_get("sbar_sz")); end,
-		handler = function(ctx, val)
-			gconfig_set("sbar_bpad", tonumber(val));
-			gconfig_set("tbar_bpad", tonumber(val));
-			gconfig_set("lbar_bpad", tonumber(val));
-		end
-	},
-	{
-		name = "tb_pattern",
-		label = "Titlebar(Pattern)",
-		kind = "value",
-		description = "Change the format string used to populate the titlebar text",
-		initial = function() return gconfig_get("titlebar_ptn"); end,
-		hint = "%p (tag) %t (title.) %i (ident.)",
-		validator = function(str)
-			return string.len(str) > 0 and not string.find(str, "%%", 1, true);
-		end,
-		handler = function(ctx, val)
-			gconfig_set("titlebar_ptn", val);
-			for tiler in all_tilers_iter() do
-				for i, v in ipairs(tiler.windows) do
-					v:set_title();
-				end
-			end
-		end
-	},
-	{
-		name = "tb_hide",
-		label = "Hide Titlebar",
-		kind = "value",
-		description = "Change the default titlebar visibility settings",
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		initial = function() return
-			gconfig_get("hide_titlebar") and LBL_YES or LBL_NO end,
-		handler = suppl_flip_handler("hide_titlebar")
-	},
-};
-
 local function tryload_scheme(v)
 	local res = system_load(v, 0);
 	if (not res) then
@@ -351,47 +293,15 @@ local durden_visual = {
 		kind = "action",
 		submenu = true,
 		description = "Controls/Settings for titlebars and the statusbar",
-		handler = durden_bars
+		handler = system_load("menus/global/bars.lua")
 	},
 	{
-		name = "border_vsz",
-		label = "Border Thickness",
-		kind = "value",
-		description = "Grow/Shrink the visible border size",
-		hint = function() return
-			string.format("(0..%d)", gconfig_get("borderw")) end,
-		validator = function(val)
-			return gen_valid_num(0, gconfig_get("borderw"))(val);
-		end,
-		initial = function() return tostring(gconfig_get("bordert")); end,
-		handler = function(ctx, val)
-			local num = tonumber(val);
-			gconfig_set("bordert", tonumber(val));
-			active_display():rebuild_border();
-			for k,v in pairs(active_display().spaces) do
-				v:resize();
-			end
-		end
-	},
-	{
-		name = "border_area",
-		label = "Border Area",
-		kind = "value",
-		hint = "(0..40)",
-		inital = function() return tostring(gconfig_get("borderw")); end,
-		validator = gen_valid_num(0, 40),
-		description = "Grow/Shrink the area reserved for the window border",
-		handler = function(ctx, val)
-			gconfig_set("borderw", tonumber(val));
-			active_display():rebuild_border();
-			for wnd in all_windows(nil, true) do
-				wnd.border_w = tonumber(val);
-				wnd:resize(wnd.width, wnd.height);
-			end
-			for k,v in pairs(active_display().spaces) do
-				v:resize();
-			end
-		end
+		name = "border",
+		label = "Border",
+		kind = "action",
+		submenu = true,
+		description = "Global window border style and settings",
+		handler = system_load("menus/global/border.lua")
 	},
 	{
 		name = "shaders",
@@ -870,49 +780,6 @@ local config_terminal = {
 	}
 };
 
-local allmenu = {
-	{
-		name = "suspend",
-		label = "Suspend All",
-		kind = "value",
-		set = {"media", "game", "lwa", "all"},
-		description = "Suspend all windows of a specific type",
-		handler = function(ctx, val)
--- the all type is no type
-			if (val == "all") then
-				val = nil;
-			end
-
--- though clients should be able to handle it, it's better to actually track
-			for wnd in all_windows(val) do
-				if (valid_vid(wnd.external, TYPE_FRAMESERVER)
-					and not wnd.temp_suspend) then
-					wnd.temp_suspend = true;
-					wnd:set_suspend(true);
-				end
-			end
-		end
-	},
-	{
-		name = "resume",
-		label = "Resume All",
-		kind = "value",
-		set = {"media", "game", "lwa", "all"},
-		description = "Resume all suspended windows of a specific type",
-		handler = function(ctx, val)
-			if (val == "all") then
-				val = nil;
-			end
-			for wnd in all_windows(val) do
-				if (valid_vid(wnd.external, TYPE_FRAMESERVER) and wnd.temp_suspend) then
-					wnd.temp_suspend = nil;
-					wnd:set_suspend(false);
-				end
-			end
-		end
-	}
-};
-
 return {
 	{
 		name = "visual",
@@ -974,14 +841,6 @@ return {
 		handler = recmenu
 	},
 	{
-		name = "allwnd",
-		label = "All-Windows",
-		kind = "action",
-		description = "State controls that affect all windows",
-		submenu = true,
-		handler = allmenu,
-	},
-	{
 		name = "terminal",
 		label = "Terminal",
 		kind = "action",
@@ -1024,6 +883,14 @@ return {
 		submenu = true,
 		description = "Change Task/Statusbar look and feel",
 		handler = system_load("menus/global/statusbar.lua")(),
+	},
+	{
+		name = "hud",
+		label = "HUD",
+		kind = "action",
+		submenu = true,
+		description = "Change HUD look and feel",
+		handler = system_load("menus/global/hud.lua")(),
 	},
 	{
 		name = "commit",

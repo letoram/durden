@@ -28,7 +28,7 @@ code-paths than normal operation - in both clients and durden itself.
 
 Setting up timers to activate your feature, or activating it externally
 while in some special state (like the HUD) through the menu via the IPC
-control path (exec '/some/path/to/trigger' > durden/ipc/output) is also
+control path (exec '/some/path/to/trigger'> durden/ipc/control) is also
 a good way of finding bugs.
 
 Using the system\_snapshot call to get a dump of the data model used to
@@ -99,7 +99,7 @@ Each atype is expected to return a table with the following fields:
 
     atype (string) - matching type of the segment, shouldn't collide
                      with what other files in this folder defines, so
-                   a handler for an atype can be added only once
+                    a handler for an atype can be added only once
     default_shader (group, name) -
     action (table of tables) - custom menu entries that should be
                                added to the target menu for this type,
@@ -262,7 +262,7 @@ The database can be externally manipulated via the arcan\_db tool.
 
 There are five main functions for dealing with the gconfig- system:
 
-    gconfig_register(key, val) - dynamically register a key-value pair
+        gconfig_register(key, val) - dynamically register a key-value pair
         gconfig_set(key, val, force) - update an existing key, types must match
         gconfig_listen(key, id, fun) - invoke [fun] when [key] has been changed
         gconfig_get(key) -> val - retrieve the current value for a key

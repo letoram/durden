@@ -27,12 +27,12 @@ end
 
 function durden(argv)
 	system_load("mouse.lua")(); -- mouse gestures
+	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("uiprim.lua")(); -- ui primitives (buttons!)
 	system_load("lbar.lua")(); -- used to navigate menus
 	system_load("bbar.lua")(); -- input binding
-	system_load("suppl.lua")(); -- convenience functions
 	system_load("menu.lua")(); -- menu subsystem
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
 	system_load("notification.lua")(); -- queue of message+descriptions

@@ -32,10 +32,11 @@
   * browser:
      add controls for preview-launch delay, and allow video previews
 
-  * statusbar/titlebar:
+  * decorations:
      added controls to hide dynamic workspace buttons
      added per-window controls to override titlebar pattern
      added per-window controls to modify titlebar buttons
+		 added paths for border/titlebar primary colors
 
   * cursortagging:
      added (target/window/cursortag) as an option
@@ -45,6 +46,8 @@ Breaking:
     order changed to [t l r d] to match other similar functions
 
   * target titlebar controls moved to its own group
+
+	* border settings moved to its own group (/global/settings/border)
 
   * control channel (ipc pipes) have switched to using a domain
     socket for both input and output
@@ -70,6 +73,10 @@ Minor:
 
   * reworked most sizing / positioning code to be less strict on
     client- driven resizing
+
+  * per- target default decoration color overrides
+
+	* split border controls into float and other modes
 
   * expose target menu binding in recovery binding handler
 

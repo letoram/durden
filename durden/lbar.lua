@@ -187,7 +187,7 @@ local function update_completion_set(wm, ctx, set)
 	local ctxw = 2 * step;
 	local textw = valid_vid(ctx.text) and (
 		image_surface_properties(ctx.text).width) or ctxw;
-	local lbarsz = gconfig_get("lbar_sz") * wm.scalef;
+	local lbarsz = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 
 	ctx.canchor = null_surface(wm.width, lbarsz);
 	image_tracetag(ctx.canchor, "lbar_anchor");
@@ -624,7 +624,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	shader_setup(bg, "ui", "lbarbg");
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
-	local bar = color_surface(wm.width, barh, 255, 0, 0);
+	local bar = color_surface(wm.width, barh, unpack(gconfig_get("lbar_bg")));
 	shader_setup(bar, "ui", "lbar");
 
 	link_image(bg, wm.order_anchor);
