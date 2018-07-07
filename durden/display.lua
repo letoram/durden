@@ -938,6 +938,7 @@ function display_reorient(name, hint)
 	run_display_action(disp, function()
 		map_video_display(disp.rt, disp.id, display_maphint(disp));
 		disp.tiler:resize(neww, newh);
+		print(disp, tiler, "update scale");
 		disp.tiler:update_scalef(disp.tiler.scalef);
 	end);
 

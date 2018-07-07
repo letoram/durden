@@ -60,7 +60,7 @@ local function destroy(wm, ictx)
 	mouse_droplistener(ictx.bg_mh);
 	active_lbar = nil;
 
-	if (gconfig_get("sbar_hud")) then
+	if (gconfig_get("sbar_visible") == "hud") then
 		wm.statusbar:reanchor(wm.order_anchor, 2, wm.width, wm.statusbar.height);
 		wm.statusbar:hide();
 	elseif (wm.hidden_sb) then
@@ -737,7 +737,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 -- don't want this one running here as there might be actions bound that
 -- alter bar state, breaking synch between data model and user
-	if (gconfig_get("sbar_hud")) then
+	if (gconfig_get("sbar_visible") == "hud") then
 		wm.statusbar:show();
 		move_image(wm.statusbar.anchor, 0, gconfig_get("sbar_pos") == "top"
 			and 0 or wm.height - image_surface_resolve(wm.statusbar.anchor).height);

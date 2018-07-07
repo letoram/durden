@@ -107,7 +107,7 @@ local function toggle_ws(cb)
 -- will be used when/if a workspace gets activated.
 	tiler_lbar_setactive({
 		destroy = function()
-			if (not gconfig_get("sbar_hud")) then
+			if (gconfig_get("sbar_visible") == "desktop") then
 				wm.statusbar:show();
 			end
 
