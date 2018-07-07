@@ -767,7 +767,7 @@ return {
 			for d in all_displays_iter() do
 				if (cur ~= d.name) then
 					table.insert(res, {
-						name = "migrate_" .. hexenc(d.name),
+						name = "migrate_" .. string.hexenc(d.name),
 						label = d.name,
 						kind = "action",
 						handler = function()

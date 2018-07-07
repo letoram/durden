@@ -71,7 +71,7 @@ return {
 		end
 	},
 	{
-		name = "Position",
+		name = "position",
 		label = "Position",
 		kind = "value",
 		description = "Change the statusbar vertical position",
@@ -85,19 +85,17 @@ return {
 		end
 	},
 	{
-		name = "hud",
-		label = "HUD mode",
+		name = "visibility",
+		label = "Visibility",
 		kind = "value",
-		description = "Show the statusbar exclusively on the HUD",
-		set = {LBL_YES, LBL_NO},
-		initial = function()
-			return gconfig_get("sbar_hud") and LBL_YES or LBL_NO;
-		end,
+		description = "Control where/if the statusbar should be visible",
+		set = {"desktop", "hud", "hidden"},
+		initial = function() return gconfig_get("sbar_visible"); end,
 		handler = function(ctx, val)
-			gconfig_set("sbar_hud", val == LBL_YES);
-			active_display():tile_update();
-			for k,v in pairs(active_display().spaces) do
-				v:resize();
+			gconfig_set("sbar_visible", val);
+			for tiler in all_tilers_iter() do
+				tiler:tile_update();
+				tiler:resize();
 			end
 		end
 	}

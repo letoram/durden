@@ -5,14 +5,8 @@
 -- These should either expand the various basic tables (string, math)
 -- or namespace prefix with suppl_...
 
--- versioning workaround
-if not (TD_HINT_MAXIMIZED) then
-	TD_HINT_MAXIMIZED = 8;
-end
-
 function string.split(instr, delim)
 	if (not instr) then
-		print("split called without argument", debug.traceback());
 		return {};
 	end
 
@@ -241,7 +235,6 @@ function string.dump(msg)
 		local ch = string.byte(msg, i);
 		bt[i] = ch;
 	end
-	print(table.concat(bt, ','));
 end
 
 function table.remove_vmatch(tbl, match)

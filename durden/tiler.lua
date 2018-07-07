@@ -86,7 +86,8 @@ local function sbar_geth(wm, ign)
 	if (ign) then
 		return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
 	else
-		if gconfig_get("sbar_hud") or
+
+		if gconfig_get("sbar_visible") ~= "desktop" or
 			((wm.spaces[wm.space_ind] and
 				wm.spaces[wm.space_ind].mode == "fullscreen")) then
 					wm.statusbar:hide();
@@ -98,17 +99,13 @@ local function sbar_geth(wm, ign)
 end
 
 local function sbar_hide(wm)
-		if (not gconfig_get("sbar_hud")) then
-		wm.statusbar:hide();
-		wm.hidden_sb = true;
-	end
+	wm.statusbar:hide();
+	wm.hidden_sb = true;
 end
 
 local function sbar_show(wm)
-	if (not gconfig_get("sbar_hud")) then
-		wm.statusbar:show();
-		wm.hidden_sb = false;
-	end
+	wm.statusbar:show();
+	wm.hidden_sb = false;
 end
 
 local function run_event(wnd, event, ...)
@@ -415,6 +412,7 @@ local function tiler_statusbar_update(wm)
 	local ytop = 0;
 	local ybottom = 0;
 
+	assert(wm.width);
 	if (statush > 0) then
 		local pl = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
 		local pr = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
@@ -424,7 +422,7 @@ local function tiler_statusbar_update(wm)
 		wm.statusbar:resize(wm.width - pl - pr, statush);
 	end
 
--- modify this for vertical sidebars
+-- modify this to implement vertical sidebars
 	wm.effective_width = wm.width;
 	wm.effective_height = wm.height - ytop - ybottom - statush;
 
@@ -447,9 +445,12 @@ local function tiler_statusbar_update(wm)
 	local space = wm:active_space();
 
 -- consider visibility (fullscreen, or HUD mode affects it)
-	local invisible = space.mode == "fullscreen" or
-		(gconfig_get("sbar_hud") and not tiler_lbar_isactive());
-
+	local invisible = space.mode == "fullscreen";
+	if (gconfig_get("sbar_visible") == "hud") then
+		invisible = not tiler_lbar_isactive();
+	elseif (gconfig_get("sbar_visible") == "hidden") then
+		invisible = true;
+	end
 	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
 -- we just hide the layout button, it's always present even if not wanted
@@ -1287,7 +1288,7 @@ end
 
 local function set_tile(space, repos)
 	local wm = space.wm;
-	if (not gconfig_get("sbar_hud")) then
+	if (gconfig_get("sbar_visible") == "desktop") then
 		wm.statusbar:show();
 		wm.statusbar.hidden_sb = false;
 	end
@@ -4805,8 +4806,15 @@ local function tiler_resize(wm, neww, newh, norz)
 		end
 	end
 
+-- empty resize call is just an invalidation, so map back the old size
+	if (not neww or not newh) then
+		neww = wm.width;
+		newh = wm.height;
+	end
+
 	wm.width = neww;
 	wm.height = newh;
+
 	tiler_statusbar_update(wm);
 
 	if (valid_vid(wm.rtgt_id)) then
