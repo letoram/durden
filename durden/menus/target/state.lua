@@ -54,7 +54,9 @@ return {
 		kind = "action",
 		dangerous = true,
 		description = "Request that the client soft-resets to an initial state",
-		handler = shared_reset
+		handler = function()
+			shared_reset(active_display().selected);
+		end
 	},
 	{
 		name = "load",
