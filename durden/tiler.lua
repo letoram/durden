@@ -3873,6 +3873,20 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
+-- add buttons to the titlebar
+	for k,v in pairs(wm.buttons) do
+		local dst_group = (k ~= "all" and k);
+		for _,v in ipairs(v) do
+			res.titlebar:add_button(v.direction,
+				"titlebar_iconbg", "titlebar_icon", v.label,
+				gconfig_get("sbar_tpad") * wm.scalef,
+				wm.font_resfn, nil, nil,
+				suppl_button_default_mh(res, v.command),
+				{group = dst_group}
+			);
+		end
+	end
+
 	for k,v in ipairs(wm.on_wnd_create) do
 		v(wm, res, space, space == wm:active_space());
 	end
@@ -4968,8 +4982,12 @@ function tiler_create(width, height, opts)
 		windows = {},
 		space_ind = 1,
 
--- kept per/tiler in order to allow custom modes as well
-		scalemodes = {"normal", "stretch", "aspect", "client"},
+-- added to the titlebar ui-prim on window creation
+		buttons = {
+			all = {},
+			float = {},
+			tile = {}
+		},
 
 -- public functions
 		set_background = tiler_switchbg,

@@ -743,7 +743,6 @@ local function bar_button(bar, align,
 		if (group ~= bar.group) then
 			return;
 		end
--- add to the _default group
 	else
 		table.insert(bar.groups["_default"], gtbl);
 	end

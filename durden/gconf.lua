@@ -335,6 +335,66 @@ function gconfig_get(key)
 	return defaults[key];
 end
 
+--
+-- these need special consideration, packing and unpacking so treat
+-- them separately
+--
+
+gconfig_buttons = {
+	all = {},
+	float = {
+	},
+	tile = {
+	}
+};
+
+function gconfig_buttons_rebuild(nosynch)
+	local keys = {};
+
+-- delete the keys, then rebuild buttons so we use the same code for both
+-- update dynamically and for initial load
+	if (not nosynch) then
+		drop_keys("tbar_btn_all_%");
+		drop_keys("tbar_btn_float_%");
+		drop_keys("tbar_btn_tile_%");
+
+		local keys_out = {};
+		for _, group in ipairs({"all", "float", "tile"}) do
+			for i,v in ipairs(gconfig_buttons[group]) do
+				keys_out["tbar_btn_" .. group .. "_" .. tostring(i)] =
+					string.format("%s:%s:%s", v.direction, v.label, v.command);
+			end
+		end
+		store_key(keys_out);
+	end
+
+-- reload the keys
+	gconfig_buttons = {
+		all = {},
+		float = {},
+		tile = {}
+	};
+
+-- for the sake of convenience, : is blocked from being a valid vsym as
+-- it is used as a separator elsewhere (suppl_valid_vsymbol)
+	for _, group in ipairs({"all", "float", "tile"}) do
+		for _,v in ipairs(match_keys("tbar_btn_" .. group .. "_%")) do
+			local ign, rest = string.split_first(v, "=");
+			local dir, rest = string.split_first(rest, ":");
+			local key, rest = string.split_first(rest, ":");
+			local cmd = string.split_first(rest, ":");
+
+			if (#dir > 0 and #rest > 0 and #key > 0) then
+				table.insert(gconfig_buttons[group], {
+					label = key,
+					command = cmd,
+					direction = dir
+				});
+			end
+		end
+	end
+end
+
 local function gconfig_setup()
 	for k,vl in pairs(defaults) do
 		local v = get_key(k);
@@ -373,6 +433,7 @@ local function gconfig_setup()
 		end
 	end
 
+-- separate handling for mouse and buttons
 	local ms = mouse_state();
 	mouse_acceleration(defaults.mouse_factor, defaults.mouse_factor);
 	ms.autohide = defaults.mouse_autohide;
@@ -382,6 +443,8 @@ local function gconfig_setup()
 	for i=1,8 do
 		ms.btns_bounce[i] = defaults["mouse_debounce_" .. tostring(i)];
 	end
+
+	gconfig_buttons_rebuild(true);
 end
 
 -- shouldn't store all of default overrides in database, just from a
