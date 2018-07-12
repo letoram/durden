@@ -813,7 +813,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 		else
 			run_display_action(disp, function()
 				if (video_displaymodes(source, w, h)) then
-					map_video_display(disp.rt, WORLDID, disp.maphint);
+					map_video_display(disp.rt, 0, disp.maphint);
 					resize_video_canvas(w, h);
 					image_set_txcos_default(disp.rt);
 					disp.tiler:resize(w, h);
@@ -938,7 +938,6 @@ function display_reorient(name, hint)
 	run_display_action(disp, function()
 		map_video_display(disp.rt, disp.id, display_maphint(disp));
 		disp.tiler:resize(neww, newh);
-		print(disp, tiler, "update scale");
 		disp.tiler:update_scalef(disp.tiler.scalef);
 	end);
 

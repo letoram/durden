@@ -24,6 +24,28 @@ function string.split(instr, delim)
 	return res;
 end
 
+--
+--  Similar to split but only returns 'first' and 'rest'.
+--
+--  The edge cases of the delim being at first or last part of the
+--  string, empty strings will be returned instead of nil.
+--
+function string.split_first(instr, delim)
+	if (not instr) then
+		return;
+	end
+	local delim_pos, delim_stp = string.find(instr, delim, 1);
+	if (delim_pos) then
+		local first = string.sub(instr, 1, delim_pos - 1);
+		local rest = string.sub(instr, delim_stp + 1);
+		first = first and first or "";
+		rest = rest and rest or "";
+		return first, rest;
+	else
+		return instr, "";
+	end
+end
+
 -- can shorten further by dropping vowels and characters
 -- in beginning and end as we match more on those
 function string.shorten(s, len)
@@ -490,6 +512,10 @@ function suppl_valid_vsymbol(val)
 
 	if (string.sub(val, 1, 5) == "icon:") then
 		print("fixme: global icon lookup not yet supported");
+		return false;
+	end
+
+	if (string.find(val, ":")) then
 		return false;
 	end
 

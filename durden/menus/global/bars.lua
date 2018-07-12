@@ -1,7 +1,134 @@
+local function remove_button(group, dir, lbl)
+	local res = {};
+
+	for group,list in pairs(gconfig_buttons) do
+		for i,v in ipairs(list) do
+			if (v.align == dir) then
+				table.insert(res, {
+					name = tostring(k),
+					label = group .. "_" .. tostring(i),
+					description = "Button Label: " .. v.lbl,
+					kind = "action",
+					handler = function()
+						table.remove(gconfig_buttons[group], i);
+						gconfig_buttons_rebuild();
+					end
+				});
+			end
+		end
+
+	end
+	return res;
+end
+
+local function button_query_path(wnd, vsym, dir, group)
+	dispatch_symbol_bind(function(path)
+		local wm = active_display();
+-- can actually change during interaction time so verify
+		table.insert(gconfig_buttons[group], {
+			label = vsym,
+			direction = dir,
+			command = path
+		});
+		gconfig_buttons_rebuild();
+	end);
+end
+
+local function titlebar_buttons(dir, lbl)
+	local wnd = active_display().selected;
+	local hintstr = "(0x:byte seq | icon:ref | string)";
+	return
+	{
+		{
+		label = "Remove",
+		name = "remove",
+		kind = "action",
+		submenu = true,
+		description = "Remove a button",
+		eval = function()
+			for k,v in pairs(gconfig_buttons) do
+				for i,j in ipairs(v) do
+					if (j.align == dir) then
+						return true;
+					end
+				end
+			end
+		end,
+		handler = function()
+			return remove_button(dir, lbl);
+		end
+		},
+		{
+		label = "Add",
+		name = "add",
+		kind = "value",
+		hint = hintstr,
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		description = "Add a new button used in all layout modes",
+		handler = function(ctx, val)
+			button_query_path(active_display().selected, val, dir, "all");
+		end
+		},
+		{
+		label = "Add (Tile)",
+		name = "add_tile",
+		kind = "value",
+		hint = hintstr,
+		description = "Add a new button for tiled layout modes",
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			button_query_path(active_display().selected, val, dir, "tile");
+		end
+		},
+		{
+		label = "Add (Float)",
+		name = "add_float",
+		kind = "value",
+		hint = hintstr,
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		description = "Add a new button for floating layout mode",
+		handler = function(ctx, val)
+			button_query_path(active_display().selected, val, dir, "float");
+		end
+		}
+	}
+end
+
+local titlebar_buttons = {
+	{
+		name = "left",
+		kind = "action",
+		label = "Left",
+		description = "Modify buttons in the left group",
+		submenu = true,
+		handler = function()
+			return titlebar_buttons("left", "Left");
+		end
+	},
+	{
+		name = "right",
+		kind = "action",
+		submenu = true,
+		label = "Right",
+		description = "Modify buttons in the right group",
+		submenu = true,
+		handler = function()
+			return titlebar_buttons("right", "Right");
+		end
+	}
+};
+
 return
 {
 	{
-		name = "sb_top",
+		name = "pad_top",
 		label = "Pad Top",
 		kind = "value",
 		description = "Insert extra vertical spacing above the bar text",
@@ -14,7 +141,7 @@ return
 		end
 	},
 	{
-		name = "sb_bottom",
+		name = "pad_bottom",
 		label = "Pad Bottom",
 		kind = "value",
 		description = "Insert extra vertical spacing below the bar- text",
@@ -27,7 +154,7 @@ return
 		end
 	},
 	{
-		name = "tb_color",
+		name = "title_color",
 		label = "Titlebar Color",
 		kind = "value",
 		hint = "(r g b)[0..255]",
@@ -46,7 +173,7 @@ return
 		end,
 	},
 	{
-		name = "tb_pattern",
+		name = "title_pattern",
 		label = "Titlebar(Pattern)",
 		kind = "value",
 		description = "Change the format string used to populate the titlebar text",
@@ -65,7 +192,7 @@ return
 		end
 	},
 	{
-		name = "tb_hide",
+		name = "title_hide",
 		label = "Hide Titlebar",
 		kind = "value",
 		description = "Change the default titlebar visibility settings",
@@ -73,5 +200,13 @@ return
 		initial = function() return
 			gconfig_get("hide_titlebar") and LBL_YES or LBL_NO end,
 		handler = suppl_flip_handler("hide_titlebar")
+	},
+	{
+		name = "title_buttons",
+		label = "Titlebar Buttons",
+		kind = "action",
+		submenu = true,
+		description = "Titlebar Buttons",
+		handler = titlebar_buttons
 	},
 };

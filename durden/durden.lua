@@ -7,7 +7,7 @@
 -- tick for rate-limit and timing purposes
 EVENT_SYNCH = {};
 
-local wnd_create_handler, update_default_font, update_connection_path;
+local update_default_font, update_connection_path;
 local eval_respawn, load_configure_mouse;
 
 local argv_cmds = {};
@@ -67,8 +67,10 @@ function durden(argv)
 
 	load_configure_mouse();
 
+-- this creates our first tiler, and switch out its default titlebar buttons
+-- with the set that is loaded / stored in gconf.lua
 	local nt = display_manager_init();
-	table.insert(nt.on_wnd_create, wnd_create_handler);
+	nt.buttons = gconfig_buttons;
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	suppl_scan_tools();
@@ -294,25 +296,6 @@ local function tile_changed(wnd, neww, newh, efw, efh)
 
 -- cache what we actually send
 		wnd:displayhint(efw+wnd.dh_pad_w, efh+wnd.dh_pad_h, wnd.dispmask);
-	end
-end
-
-local tbar_btns = {};
-function durden_tbar_buttons(dir, cmd, lbl, group)
-	if (dir) then
-		table.insert(tbar_btns, { dir = dir, cmd = cmd, lbl = lbl, group = group });
-	end
-end
-
--- tiler does not automatically add any buttons to the statusbar, or take
--- other tracking actions based on window creation so we do that here
-wnd_create_handler = function(wm, wnd)
-	for k,v in ipairs(tbar_btns) do
-		wnd.titlebar:add_button(v.dir, "titlebar_iconbg",
-			"titlebar_icon", v.lbl, gconfig_get("sbar_tpad") * wm.scalef,
-			wm.font_resfn, nil, nil, suppl_button_default_mh(wnd, v.cmd),
-			{group = v.group}
-		);
 	end
 end
 

@@ -108,6 +108,8 @@ local function asynch_decode(state, self)
 			if (status.kind == "resized" and state.in_asynch) then
 				setup_preview(state, source);
 				state.in_asynch = false;
+
+-- not likely to happen as we run with :loop
 			elseif (status.kind == "terminated") then
 				delete_image(source);
 			end
