@@ -3,6 +3,22 @@
 local clients = {};
 local control_socket;
 
+-- debug monitoring is loud and costly and requires multiple hooks
+-- there's a number of subsystems we need to hook in order to get a
+-- reasonable debug/monitor view:
+--
+-- NOTIFICATION: [notifications] -
+-- DISPLAY: [displays] - added/removed/rediscovered/reset/...
+-- WM: [tilers] - window state changes
+-- CONNECTION: [external connections] - rate limiting etc.
+-- INPUT: [input / iostatem] - device arriving, ...
+-- DISPATCH: [dispatch] - menu paths getting activated
+-- WAYLAND: [special] - wayland clients
+-- IPC: [ipc] - clients connecting
+-- TIMERS: [timers] - when fired
+--
+local debug_count = 0;
+
 local function update_control(key, val)
 -- close automatically unlinks
 	if (control_socket) then
@@ -366,7 +382,7 @@ end
 local commands;
 commands = {
 -- enumerate the contents of a path
-	ls = function(line, res, remainder)
+	ls = function(client, line, res, remainder)
 		local tbl = list_path(res);
 		table.insert(tbl, "OK");
 		return tbl;
@@ -388,7 +404,7 @@ commands = {
 	end,
 
 -- present more detailed information about a single target
-	read = function(line, res, remainder)
+	read = function(client, line, res, remainder)
 		local tbl = {};
 		if (type(res[1]) == "table") then
 			table.insert(tbl, "kind: directory");
@@ -401,7 +417,7 @@ commands = {
 	end,
 
 -- run a value assignment, first through the validator and then act
-	write = function(line, res, remainder)
+	write = function(client, line, res, remainder)
 		if (res.kind == "value") then
 			if (not res.validator or res.validator(remainder)) then
 				res:handler(remainder);
@@ -415,7 +431,7 @@ commands = {
 	end,
 
 -- only evaluate a value assignment
-	eval = function(line, res, remainder)
+	eval = function(client, line, res, remainder)
 		if (not res.handler) then
 			return {"EINVAL, broken menu entry\n"};
 		end
@@ -429,8 +445,22 @@ commands = {
 		return {"OK\n"};
 	end,
 
+-- enable periodic output of event categories, see list at the top
+	monitor = function(client, line, res, remainder)
+		if (client.categories) then
+			if (#client.categories > 0) then
+				debug_count = debug_count - 1;
+			end
+		end
+
+		client.categories = {res.split(" ")};
+		if (#client.categories > 0) then
+			debug_count = debug_count + 1;
+		end
+	end,
+
 -- execute no matter what
-	exec = function(line, res, remainder)
+	exec = function(client, line, res, remainder)
 		if (dispatch_symbol(line, res, true)) then
 			return {"OK\n"};
 		else
@@ -439,13 +469,21 @@ commands = {
 	end
 };
 
+local function remove_client(ind)
+	local cl = clients[ind];
+	if (cl.categories and #cl.categories > 0) then
+		debug_count = debug_count - 1;
+	end
+	cl.connection:close();
+	table.remove(clients, ind);
+end
+
 local do_line;
 local function client_flush(cl, ind)
 	while true do
 		local line, ok = cl.connection:read();
 		if (not ok) then
-			cl.connection:close();
-			table.remove(clients, ind);
+			remove_client(ind);
 			return;
 		end
 		if (not line) then
@@ -460,8 +498,7 @@ local function client_flush(cl, ind)
 		local line = cl.buffer[1];
 		local i, ok = cl.connection:write(line);
 		if (not ok) then
-			cl.connection:close();
-			table.remove(clients, ind);
+			remove_client(ind);
 			return;
 		end
 		if (i == string.len(line)) then
@@ -496,7 +533,7 @@ do_line = function(line, cl, ind)
 		table.insert(cl.buffer, string.format("EINVAL: %s\n", msg));
 	else
 
-		for _,v in ipairs(commands[cmd](line, res, remainder)) do
+		for _,v in ipairs(commands[cmd](client, line, res, remainder)) do
 			table.insert(cl.buffer, v .. "\n");
 		end
 	end
