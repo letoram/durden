@@ -146,7 +146,7 @@ local function wnd_destroy(wnd, message)
 		return;
 	end
 
-	if (message and type(message) == "string") then
+	if (message and type(message) == "string" and #message > 0) then
 		notification_add(wnd.title, wnd.icon, "Client died", message, 1);
 	end
 
