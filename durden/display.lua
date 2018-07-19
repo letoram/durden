@@ -1,4 +1,4 @@
--- Copyright: 2015, Björn Ståhl
+-- Copyright: 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 --
@@ -13,20 +13,32 @@ local displays = {};
 local profiles = {};
 local ignored = {};
 local display_listeners = {};
+local event_log = {};
 
---uncomment to log display events to a separate file, there are so many
---hw/os/... related issues for plug /unplug edge behaviors that this is
---needed.
---zap_resource("display.log");
---local dbgoutp = open_nonblock("display.log", true);
-local function display_debug(msg)
-	if (dbgoutp and type(msg) == "string") then
-		if (displays.main and
-			displays[displays.main] and displays[displays.main].tiler) then
-			active_display():message(msg);
-		end
-		dbgoutp:write(msg .. "\n");
+local function queue_log(msg)
+	table.insert(event_log, CLOCK .. ":" .. msg);
+	if (#event_log > 20) then
+		table.remove(event_log, 1);
 	end
+end
+
+local display_debug = queue_log;
+
+function display_debug_listener(handler)
+	if (handler and type(handler) == "function") then
+		display_debug =
+		function(msg)
+			queue_log(msg);
+			handler(msg);
+		end
+-- reset to default
+	else
+		display_debug = queue_log;
+	end
+
+	local oeq = event_log;
+	event_log = {};
+	return oeq;
 end
 
 local function get_disp(name)
@@ -133,8 +145,8 @@ local function autohome_spaces(ndisp)
 					tiler.spaces[i].home == ndisp.name) then
 					tiler.spaces[i]:migrate(ndisp.tiler);
 					migrated = true;
-					display_debug(string.format("migrated %s:%d to %s",
-						tiler.name, i, ndisp.name));
+					display_debug(
+						string.format("autohome:%s:%d:%s", tiler.name, i, ndisp.name));
 				end
 			end
 		end
@@ -368,8 +380,6 @@ local function get_name(id)
 	local model, serial = display_data(id);
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial;
-		display_debug(string.format(
-			"monitor %d resolved to %s, serial %s", id, model, serial));
 	end
 	return name;
 end
@@ -393,14 +403,81 @@ function display_set_backlight(name, ctrl, ind)
 	led_intensity(ctrl, ind, 255.0 * disp.backlight);
 end
 
+local function display_added(id)
+	local modes = video_displaymodes(id);
+
+-- "safe" defaults
+	local dw = VRESW;
+	local dh = VRESH;
+	local ppcm = VPPCM;
+	local subpx = "RGB";
+
+-- map resolved display modes, assume [1] is the preferred one
+	if (modes and modes[1].width > 0) then
+		dw = modes[1].width;
+		dh = modes[1].height;
+		local wmm = modes[1].phy_width_mm;
+		local hmm = modes[1].phy_height_mm;
+
+		subpx = modes[1].subpixel_layout;
+		subpx = subpx == "unknown" and "RGB" or subpx;
+
+		if (wmm > 0 and hmm > 0) then
+			ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
+		end
+	end
+
+-- special handling for id '0', the primary display.
+	local ddisp;
+	if (id == 0) then
+		ddisp = displays[1];
+		ddisp.id = 0;
+		ddisp.name = get_name(0);
+		ddisp.primary = true;
+		map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
+		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
+
+-- otherwise go down the complicated route, look for a display map that
+-- indicates what kind of display it is (VR etc.) and setup the matching
+-- profile.
+	else
+		ddisp, newh = display_add(get_name(id), dw, dh, ppcm, id);
+		if (not ddisp) then
+			return;
+		end
+
+		ddisp.id = id;
+		map_video_display(ddisp.rt, id, display_maphint(ddisp));
+	end
+
+	display_load(ddisp);
+
+-- load possible overrides since before, note that this is slightly
+-- inefficient as it will force rebuild of underlying rendertargets
+-- etc. but it beats have to cover a number of corner cases / races
+	ddisp.ppcm = ppcm;
+	ddisp.subpx = subpx;
+
+-- get the current state of the color ramps and attach to the disp-
+-- table, for both internal and external 'gamma' correction.
+	if (not ddisp.ramps) then
+		ddisp.ramps = video_displaygamma(ddisp.id);
+		ddisp.active_ramps = ddisp.ramps;
+	end
+
+	for k,v in ipairs(display_listeners) do
+		v("added", name, ddisp.tiler, id);
+	end
+end
+
 local last_rescan = CLOCK;
 function display_event_handler(action, id)
-	local ddisp, newh;
 	if (displays.simple) then
 		return;
 	end
 
-	display_debug(string.format("id: %d, action: %s",
+	print(action, id)
+	display_debug(string.format("id:%d:event:%s",
 		id and id or -1, action and action or ""));
 
 -- display subsystem and input subsystem are connected when it comes
@@ -413,57 +490,7 @@ function display_event_handler(action, id)
 	end
 
 	if (action == "added") then
-		local modes = video_displaymodes(id);
-		local dw = VRESW;
-		local dh = VRESH;
-		local ppcm = VPPCM;
-		local subpx = "RGB";
-
-		if (modes and modes[1].width > 0) then
-			dw = modes[1].width;
-			dh = modes[1].height;
-
-			local wmm = modes[1].phy_width_mm;
-			local hmm = modes[1].phy_height_mm;
-			subpx = modes[1].subpixel_layout;
-			subpx = subpx == "unknown" and "RGB" or subpx;
-
-			if (wmm > 0 and hmm > 0) then
-				ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
-			end
-		end
-
-		if (id == 0) then
-			ddisp = displays[1];
-			ddisp.id = 0;
-			ddisp.name = get_name(0);
-			ddisp.primary = true;
-			map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
-			shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
-		else
-			ddisp, newh = display_add(get_name(id), dw, dh, ppcm, id);
-			if (not ddisp) then
-				return;
-			end
-
-			ddisp.id = id;
-			map_video_display(ddisp.rt, id, display_maphint(ddisp));
-		end
-		display_load(ddisp);
-
--- load possible overrides since before, note that this is slightly
--- inefficient as it will force rebuild of underlying rendertargets
--- etc. but it beats have to cover a number of corner cases / races
-		ddisp.ppcm = ppcm;
-		ddisp.subpx = subpx;
-		if (not ddisp.ramps) then
-			ddisp.ramps = video_displaygamma(ddisp.id);
-			ddisp.active_ramps = ddisp.ramps;
-		end
-
-		for k,v in ipairs(display_listeners) do
-			v("added", name, ddisp.tiler, id);
-		end
+		display_added(id);
 
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
@@ -479,8 +506,6 @@ function display_event_handler(action, id)
 		active_display():message("rescanning GPUs on hotlug");
 		video_displaymodes();
 	end
-
-	return newh;
 end
 
 --
@@ -584,6 +609,7 @@ end
 function display_add(name, width, height, ppcm, id)
 	local found = get_disp(name);
 	local new = nil;
+	name = string.gsub(name, ":", "/");
 
 	width = math.clamp(width, width, MAX_SURFACEW);
 	height = math.clamp(height, height, MAX_SURFACEH);
