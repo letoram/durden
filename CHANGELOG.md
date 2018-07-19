@@ -91,6 +91,9 @@ Minor:
   * added global/config/commit to make sure the current setings get
 	  saved immediately
 
+	* mouse/keyboard scripts are now switched to use the distribution
+	  default from arcan
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.
