@@ -26,7 +26,8 @@ function assert(...)
 end
 
 function durden(argv)
-	system_load("mouse.lua")(); -- mouse gestures
+	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
+
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
@@ -61,7 +62,7 @@ function durden(argv)
 		return shutdown("", EXIT_FAILURE);
 	end
 
-	SYMTABLE = system_load("symtable.lua")();
+	SYMTABLE = system_load("builtin/keyboard.lua")();
 	SYMTABLE:load_translation();
 	SYMTABLE:load_keymap("default.lua");
 
