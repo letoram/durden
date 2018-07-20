@@ -32,6 +32,33 @@ local function wnd_animation_time(wnd, source, decor, position)
 	return 0;
 end
 
+local function queue_log(msg)
+	table.insert(event_log, CLOCK .. ":" .. msg);
+	if (#event_log > 20) then
+		table.remove(event_log, 1);
+	end
+end
+
+local tiler_debug = queue_log;
+
+function tiler_debug_listener(handler)
+	if (handler and type(handler) == "function") then
+		tiler_debug =
+		function(msg)
+			queue_log(msg);
+			handler(msg);
+		end
+-- reset to default
+	else
+		tiler_debug = queue_log;
+	end
+
+	local oeq = event_log;
+	event_log = {};
+	return oeq;
+end
+
+
 local function linearize(wnd)
 	local res = {};
 	local dive = function(wnd, df)

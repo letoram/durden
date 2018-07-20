@@ -25,6 +25,8 @@ end
 local display_debug = queue_log;
 
 function display_debug_listener(handler)
+	print("Set display listener", handler);
+
 	if (handler and type(handler) == "function") then
 		display_debug =
 		function(msg)
@@ -822,7 +824,7 @@ end
 -- parent. We treat that as a 'normal' resolution switch.
 function VRES_AUTORES(w, h, vppcm, flags, source)
 	local disp = displays[1];
-	display_debug(string.format("autores(%f, %f, %f, %d, %d)",
+	display_debug(string.format("0:autores:%d:%d:%f:%d:%d",
 		w, h, vppcm, flags, source));
 
 	for k,v in ipairs(displays) do

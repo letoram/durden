@@ -18,6 +18,61 @@ local control_socket;
 -- TIMERS: [timers] - when fired
 --
 local debug_count = 0;
+local all_categories = {
+	"NOTIFICATION",
+	"DISPLAY",
+	"WM",
+	"CONNECTION",
+	"INPUT",
+	"DISPATCH",
+	"WAYLAND",
+	"IPC",
+	"TIMERS"
+};
+
+local monitor_state = false;
+local function toggle_monitoring(on)
+	if (on and monitor_state or off and not monitor_state) then
+		return;
+	end
+
+-- still missing: IPC, dispatch, wayland, connection. input, timers
+-- display and tiler events maintain a log queue for debug purposes,
+-- so those already come with the CLOCK tagged.
+	if (on) then
+		display_debug_listener(function(msg)
+			for _,v in ipairs(clients) do
+				if (v.category_map and v.category_map["DISPLAY"]) then
+					table.insert(v.buffer, "DISPLAY:" .. msg);
+				end
+			end
+		end);
+
+		tiler_debug_listener(function(msg)
+			for _,v in ipairs(clients) do
+				if (v.category_map and v.category_map["WM"]) then
+					table.insert(v.buffer, string.format("WM:%s", msg));
+				end
+			end
+		end);
+
+		notification_register("ipc-monitor",
+		function(src, sym, short, long, urgency)
+			for _,v in ipairs(clients) do
+				if (v.category_map and v.category_map["NOTIFICATION"]) then
+					table.insert(v.buffer,
+						string.format("NOTIFICATION:%d:%d:%s:%s:%s",
+							CLOCK, urgency, src, short, long and long or ""));
+				end
+			end
+		end);
+	else
+		display_debug_listener();
+		tiler_debug_listener();
+		notification_deregister("ipc-monitor");
+	end
+	monitor_state = on;
+end
 
 local function update_control(key, val)
 -- close automatically unlinks
@@ -383,16 +438,25 @@ local commands;
 commands = {
 -- enumerate the contents of a path
 	ls = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		local tbl = list_path(res);
 		table.insert(tbl, "OK");
 		return tbl;
 	end,
 
 -- list and read all the entries in one directory
-	readdir = function(line, res, remainder)
+	readdir = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		if (type(res[1]) ~= "table") then
 			return {"EINVAL, readdir argument is not a directory"};
 		end
+
 		local ret = {};
 		for _,v in ipairs(res) do
 			if (type(v) == "table") then
@@ -405,6 +469,10 @@ commands = {
 
 -- present more detailed information about a single target
 	read = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		local tbl = {};
 		if (type(res[1]) == "table") then
 			table.insert(tbl, "kind: directory");
@@ -413,11 +481,16 @@ commands = {
 			ent_to_table(res, tbl);
 		end
 		table.insert(tbl, "OK");
+
 		return tbl;
 	end,
 
 -- run a value assignment, first through the validator and then act
 	write = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		if (res.kind == "value") then
 			if (not res.validator or res.validator(remainder)) then
 				res:handler(remainder);
@@ -432,6 +505,10 @@ commands = {
 
 -- only evaluate a value assignment
 	eval = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		if (not res.handler) then
 			return {"EINVAL, broken menu entry\n"};
 		end
@@ -446,21 +523,40 @@ commands = {
 	end,
 
 -- enable periodic output of event categories, see list at the top
-	monitor = function(client, line, res, remainder)
-		if (client.categories) then
-			if (#client.categories > 0) then
-				debug_count = debug_count - 1;
-			end
+	monitor = function(client, line)
+		line = line and line or "";
+
+		if (clients.in_monitor) then
+			debug_count = debug_count - 1;
 		end
 
-		client.categories = {res.split(" ")};
-		if (#client.categories > 0) then
+		local categories = string.split(line, " ");
+		clients.in_monitor = #categories > 0;
+
+		if (clients.in_monitor) then
 			debug_count = debug_count + 1;
+			client.category_map = {};
+			if (string.upper(categories[1]) == "all") then
+				categories = all_categories;
+			end
+			for i,v in ipairs(categories) do
+				client.category_map[string.upper(v)] = true;
+			end
+		else
+			client.category_map = nil;
 		end
+
+		toggle_monitoring(debug_count > 0);
+
+		return {"OK\n"};
 	end,
 
 -- execute no matter what
 	exec = function(client, line, res, remainder)
+		if (client.in_monitor) then
+			return {"EINVAL: in monitor: only monitor <group1> <group2> ... allowed"};
+		end
+
 		if (dispatch_symbol(line, res, true)) then
 			return {"OK\n"};
 		else
@@ -509,8 +605,18 @@ local function client_flush(cl, ind)
 	end
 end
 
+-- splint into "cmd argument", resolve argument as a menu path and forward
+-- to the relevant entry in commands, special / ugly handling for monitor
+-- which takes both forms.
 do_line = function(line, cl, ind)
 	local ind = string.find(line, " ");
+
+	if (string.sub(line, 1, 7) == "monitor") then
+		for _,v in ipairs(commands.monitor(cl, string.sub(line, 8))) do
+			table.insert(cl.buffer, v .. "\n");
+		end
+		return;
+	end
 
 	if (not ind) then
 		return;
@@ -527,13 +633,12 @@ do_line = function(line, cl, ind)
 -- This will actually resolve twice, since exec/write should trigger the
 -- command, but this will go through dispatch in order for queueing etc.
 -- to work. Errors on queued commands will not be forwarded to the caller.
-
 	local res, msg, remainder = menu_resolve(line);
+
 	if (not res or type(res) ~= "table") then
 		table.insert(cl.buffer, string.format("EINVAL: %s\n", msg));
 	else
-
-		for _,v in ipairs(commands[cmd](client, line, res, remainder)) do
+		for _,v in ipairs(commands[cmd](cl, line, res, remainder)) do
 			table.insert(cl.buffer, v .. "\n");
 		end
 	end
