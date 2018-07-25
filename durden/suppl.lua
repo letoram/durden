@@ -997,7 +997,7 @@ function gen_valid_num(lb, ub)
 		end
 
 		if (string.len(val) == 0) then
-			return true;
+			return false;
 		end
 		local num = tonumber(val);
 		if (num == nil) then

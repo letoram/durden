@@ -524,11 +524,8 @@ function durden_new_connection(source, status, norespawn)
 			);
 		end
 		wnd.external_connection = true;
-
-		target_displayhint(source,
-			wnd.max_w - wnd.pad_left - wnd.pad_right,
-			wnd.max_h - wnd.pad_top - wnd.pad_bottom,
-			wnd.dispmask, wnd.wm.disptbl);
+		local neww, newh = wnd.wm:suggest_size();
+		wnd:displayhint(neww, newh, wnd.dispmask, wnd.wm.disptbl);
 	end
 end
 

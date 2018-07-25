@@ -36,22 +36,33 @@ local function toggle_monitoring(on)
 		return;
 	end
 
--- still missing: IPC, dispatch, wayland, connection. input, timers
+-- still missing: IPC, dispatch, connection. input, timers
 -- display and tiler events maintain a log queue for debug purposes,
 -- so those already come with the CLOCK tagged.
 	if (on) then
 		display_debug_listener(function(msg)
 			for _,v in ipairs(clients) do
 				if (v.category_map and v.category_map["DISPLAY"]) then
-					table.insert(v.buffer, "DISPLAY:" .. msg);
+					table.insert(v.buffer, string.format("DISPLAY:%s\n", msg));
 				end
 			end
 		end);
 
+		if (wayland_debug_listener) then
+			wayland_debug_listener(function(msg)
+				if (not msg) then print(debug.traceback()); end
+				for _,v in ipairs(clients) do
+					if (v.category_map and v.category_map["WAYLAND"]) then
+						table.insert(v.buffer, string.format("WAYLAND:%s\n", msg));
+					end
+				end
+			end);
+		end
+
 		tiler_debug_listener(function(msg)
 			for _,v in ipairs(clients) do
 				if (v.category_map and v.category_map["WM"]) then
-					table.insert(v.buffer, string.format("WM:%s", msg));
+					table.insert(v.buffer, string.format("WM:%s\n", msg));
 				end
 			end
 		end);
@@ -61,7 +72,7 @@ local function toggle_monitoring(on)
 			for _,v in ipairs(clients) do
 				if (v.category_map and v.category_map["NOTIFICATION"]) then
 					table.insert(v.buffer,
-						string.format("NOTIFICATION:%d:%d:%s:%s:%s",
+						string.format("NOTIFICATION:%d:%d:%s:%s:%s\n",
 							CLOCK, urgency, src, short, long and long or ""));
 				end
 			end
@@ -69,6 +80,9 @@ local function toggle_monitoring(on)
 	else
 		display_debug_listener();
 		tiler_debug_listener();
+		if (wayland_debug_listener) then
+			wayland_debug_listener();
+		end
 		notification_deregister("ipc-monitor");
 	end
 	monitor_state = on;
@@ -536,9 +550,10 @@ commands = {
 		if (clients.in_monitor) then
 			debug_count = debug_count + 1;
 			client.category_map = {};
-			if (string.upper(categories[1]) == "all") then
+			if (string.upper(categories[1]) == "ALL") then
 				categories = all_categories;
 			end
+
 			for i,v in ipairs(categories) do
 				client.category_map[string.upper(v)] = true;
 			end
@@ -586,6 +601,14 @@ local function client_flush(cl, ind)
 			break;
 		end
 		if (string.len(line) > 0) then
+			if (monitor_state) then
+				for _,v in ipairs(clients) do
+					if (v.category_map and v.category_map["IPC"]) then
+						table.insert(v.buffer, string.format(
+							"IPC:client=%d:command=%s\n", v.seqn, msg));
+					end
+				end
+			end
 			do_line(line, cl, ind);
 		end
 	end
@@ -612,7 +635,7 @@ do_line = function(line, cl, ind)
 	local ind = string.find(line, " ");
 
 	if (string.sub(line, 1, 7) == "monitor") then
-		for _,v in ipairs(commands.monitor(cl, string.sub(line, 8))) do
+		for _,v in ipairs(commands.monitor(cl, string.sub(line, 9))) do
 			table.insert(cl.buffer, v .. "\n");
 		end
 		return;
@@ -650,14 +673,17 @@ end
 -- buffering for now, when it is added there we should only need to add
 -- a function argument to the open_nonblock and to the write call
 -- (table + callback, release when finished)
+local seqn = 1;
 local function poll_control_channel()
 	local nc = control_socket:accept();
 
 	if (nc) then
 		local client = {
 			connection = nc,
-			buffer = {}
+			buffer = {},
+			seqn = seqn
 		};
+		seqn = seqn + 1;
 		table.insert(clients, client);
 	end
 

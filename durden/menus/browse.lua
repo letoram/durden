@@ -322,8 +322,18 @@ return function()
 		label = "Shared",
 		kind = "action",
 		submenu = true,
+		description = "The shared resources namespace",
 		handler = function()
 			return gen_menu_for_path("", "/browse/shared", SHARED_RESOURCE);
+		end
+	},
+	{
+		name = "durden",
+		label = "Durden",
+		kind = "action",
+		description = "Durden generated output",
+		submenu = function()
+			return gen_menu_for_path("output", "/browse/durden", APPL_TEMP_RESOURCE);
 		end
 	},
 	{
