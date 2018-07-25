@@ -32,8 +32,14 @@ local function wnd_animation_time(wnd, source, decor, position)
 	return 0;
 end
 
-local function queue_log(msg)
-	table.insert(event_log, CLOCK .. ":" .. msg);
+--
+-- should this ever become a measurable cost, just check DEBUGLEVEL
+-- and replace with an empty function and move the string.format calls
+-- to this queue function itself.
+--
+local event_log = {};
+local function queue_log(wm, msg)
+	table.insert(event_log, msg);
 	if (#event_log > 20) then
 		table.remove(event_log, 1);
 	end
@@ -44,9 +50,11 @@ local tiler_debug = queue_log;
 function tiler_debug_listener(handler)
 	if (handler and type(handler) == "function") then
 		tiler_debug =
-		function(msg)
-			queue_log(msg);
-			handler(msg);
+		function(wm, msg)
+			if (not wm) then print(debug.traceback()); end
+			local dmsg = string.format("%d:%s:%s", CLOCK, wm.name, msg);
+			queue_log(wm, dmsg);
+			handler(dmsg);
 		end
 -- reset to default
 	else
@@ -259,6 +267,7 @@ local function wnd_destroy(wnd, message)
 
 -- now we can run destroy hooks
 	run_event(wnd, "destroy", was_selected);
+	tiler_debug(wm, "destroy:name=" .. wnd.name);
 
 	wnd:drop_popup(true);
 
@@ -390,6 +399,7 @@ local function wnd_deselect(wnd, nopick)
 		end
 	end
 
+	tiler_debug(wnd.wm, "deselect:name=" .. wnd.name);
 	run_event(wnd, "deselect");
 end
 
@@ -429,6 +439,7 @@ local function wm_update_mode(wm)
 	if (modestr == "tile") then
 		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
 	end
+	tiler_debug(wm, string.format("mode:space=%d:mode=%s", wm.space_ind, modestr));
 	wm.sbar_ws["left"]:update(modestr);
 end
 
@@ -601,6 +612,7 @@ end
 local function canvas_mouse_activate(wnd)
 -- reset hidden state without running a reveal animation
 	local hidden = mouse_state().hidden;
+	local wm = wnd.wm;
 
 	mouse_hidemask(true);
 	mouse_show();
@@ -629,13 +641,14 @@ local function canvas_mouse_activate(wnd)
 end
 
 local function wnd_select(wnd, source, mouse)
-	if (wnd.wm.deactivated or not wnd.space or wnd.select_block) then
+	local wm = wnd.wm;
+	if (wm.deactivated or not wnd.space or wnd.select_block) then
 		return;
 	end
 
 -- may be used to reactivate locking after a lbar or similar action
 -- has been performed.
-	if (wnd.wm.selected == wnd) then
+	if (wm.selected == wnd) then
 		if (wnd.mouse_lock) then
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
@@ -646,8 +659,8 @@ local function wnd_select(wnd, source, mouse)
 	wnd:set_dispmask(bit.band(wnd.dispmask,
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
-	if (wnd.wm.selected and wnd.wm.selected.deselect) then
-		wnd.wm.selected:deselect();
+	if (wm.selected and wm.selected.deselect) then
+		wm.selected:deselect();
 	end
 
 	local mwm = wnd.space.mode;
@@ -664,10 +677,11 @@ local function wnd_select(wnd, source, mouse)
 	wnd.titlebar:switch_state(state, true);
 
 	wnd.space.previous = wnd.space.selected;
-	if (wnd.wm:active_space() == wnd.space) then
-		wnd.wm.selected = wnd;
+	if (wm:active_space() == wnd.space) then
+		wm.selected = wnd;
 	end
 	wnd.space.selected = wnd;
+	tiler_debug(wm, "select:name=" .. wnd.name);
 	run_event(wnd, "select", mouse);
 
 -- activate all "on-trigger" mouse events, like warping and locking
@@ -1753,8 +1767,11 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 	local outw = 1;
 	local outh = 1;
 
-	if ((wnd.scalemode == "normal" or
-		wnd.scalemode == "client") and not force) then
+	if (wnd.scalemode == "client") then
+		outw = math.clamp(props.width, 1, maxw);
+		outh = math.clamp(props.height, 1, maxh);
+
+	elseif (wnd.scalemode == "normal" and not force) then
 
 		if (props.width > 0 and props.height > 0) then
 			outw = props.width < maxw and props.width or maxw;
@@ -2060,11 +2077,23 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	if (wnd.space.layouter and wnd.space.layouter.block_rzevent) then
 		wnd.space.layouter.resize(wnd.space, nil, true, wnd,
 			function(neww, newh, effw, effh)
+				tiler_debug(wnd.wm,
+					string.format("resize:name=%s:scale=%s:w=%d:h=%d:ew=%d:eh=%d",
+						wnd.name, wnd.scalemode, neww, newh, effw, effh)
+				);
 				run_event(wnd, "resize", neww, newh, effw, effh);
 			end
 		);
+
 	elseif (not maskev) then
+		tiler_debug(wnd.wm,
+			string.format("resize:name=%s:scale=%s:w=%d:h=%d:ew=%d:eh=%d", wnd.name,
+				wnd.scalemode, wnd.width, wnd.height, wnd.effective_w, wnd.effective_h));
 		run_event(wnd, "resize", neww, newh, wnd.effective_w, wnd.effective_h);
+	else
+		tiler_debug(wnd.wm,
+			string.format("resize_masked:name=%s:scale=%s:w=%d:h=%d:ew=%d:eh=%d", wnd.name,
+				wnd.scalemode, wnd.width, wnd.height, wnd.effective_w, wnd.effective_h));
 	end
 
 -- overlay surfaces that are attached to the window canvases also need to
@@ -2514,12 +2543,15 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 
 -- destroying an earlier popup should cascade down the chain
 	res.destroy = function(pop)
+		tiler_debug(wnd.wm,
+			string.format("popup_destroyed:name=%s:index=%d", wnd.name, res.index));
+
 		delete_image(vid);
 		mouse_droplistener(pop);
 		for i=#wnd.popups, pop.index, -1 do
 			if (wnd.input_focus) then
 				table.remove_match(wnd.input_focus, wnd.popups[i]);
-				if (wnd.input_focus == 0) then
+				if (#wnd.input_focus == 0) then
 					wnd.input_focus = nil;
 				end
 			end
@@ -2612,6 +2644,8 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 	mouse_addlistener(res,
 		valid_vid(vid, TYPE_FRAMESERVER) and {"button", "motion"} or {});
 
+	tiler_debug(wnd.wm, string.format(
+		"popup_added:name=%s:index=%d", wnd.name, res.index));
 	return res;
 end
 
@@ -3214,6 +3248,9 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		return;
 	end
 
+	tiler_debug(wnd.wm, string.format(
+		"migrate:name=%s:to=%s", wnd.name, wnd.wm.name, tiler.name));
+
 	local oldsp = wnd.space;
 	table.remove_match(wnd.wm.windows, wnd);
 	wnd.wm = tiler;
@@ -3278,12 +3315,14 @@ local function wnd_setsuspend(wnd, susp)
 	local sel = (wnd.wm.selected == wnd);
 
 	if (susp) then
+		tiler_debug(wnd.wm, string.format("suspend:name=%s:state=true", wnd.name));
 		suspend_target(wnd.external);
 		wnd.suspended = true;
 		shader_setup(wnd.border, "ui",
 			wnd.space.mode == "float" and "border_float" or "border", "suspended");
 		wnd.titlebar:switch_state("suspended", true);
 	else
+		tiler_debug(wnd.wm, string.format("suspend:name=%s:state=false", wnd.name));
 		resume_target(wnd.external);
 		wnd.suspended = nil;
 		shader_setup(wnd.border, "ui", "border", sel and "active" or "inactive");
@@ -3918,6 +3957,7 @@ local function wnd_ws_attach(res, from_hook)
 		v(wm, res, space, space == wm:active_space());
 	end
 
+	tiler_debug(wm, "attach:name=" .. res.name);
 	for k,v in pairs(space.listeners) do
 		v(space, k, "attach", wnd);
 	end
@@ -4176,6 +4216,10 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		mh = opts.mouse_handler
 	};
 
+	tiler_debug(wnd.wm, string.format(
+		"overlay_added:name=%s:key=%s:x=%.0f:y=%0.f:w=%0.f:h=%0.f",
+		wnd.name, key, overent.xofs, overent.yofs, overent.wofs, overent.hofs));
+
 	wnd.overlays[key] = overent;
 	wnd:synch_overlays();
 end
@@ -4235,6 +4279,11 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 			table.remove(wnd.hint_history, 1);
 		end
 	end
+
+	tiler_debug(wnd.wm, string.format(
+		"display_hint:name=%s:vid=%d:hint_w=%d:hint_h=%d:flags=%d",
+		wnd.name, wnd.external, hw, hh, dm)
+	);
 	target_displayhint(wnd.external, hw, hh, dm, ...);
 end
 
@@ -4246,6 +4295,9 @@ local function wnd_drop_overlay(wnd, key)
 	if (wnd.overlays[key].mh) then
 		mouse_droplistener(wnd.overlays[key].mh);
 	end
+	tiler_debug(wnd.wm,
+		string.format("overlay_destroyed:name=%s:key=%s", wnd.name, key));
+
 	blend_image(wnd.overlays[key].vid, 0.0, gconfig_get("wnd_animation"));
 	expire_image(wnd.overlays[key].vid, gconfig_get("wnd_animation"));
 	wnd.overlays[key] = nil;
@@ -4508,6 +4560,8 @@ local wnd_setup = function(wm, source, opts)
 	res.ws_attach = wnd_ws_attach;
 -- load / override settings with whatever is in tag-memory
 	res:recovertag(true);
+	tiler_debug(wm, string.format(
+		"create:name=%s:=w%d:h=%d", res.name, res.width, res.height));
 
 	return res;
 end
@@ -4839,6 +4893,11 @@ local function tiler_input_lock(wm, dst)
 	end
 end
 
+-- based on the current mode, present a client size that would make sense
+local function tiler_suggest_size(wm)
+	return 300, 300;
+end
+
 local function tiler_resize(wm, neww, newh, norz)
 -- special treatment for workspaces with float, we "fake" drop/set float
 	for i=1,10 do
@@ -4934,7 +4993,11 @@ local function tiler_scalef(wm, newf, disptbl)
 		for k,v in pairs(disptbl) do
 			wm.disptbl[k] = v;
 		end
+		tiler_debug(wm, "scale:new=%f:ppcm=%f", newf, disptbl.ppcm and disptbl.ppcm or VPPCM);
+	else
+		tiler_debug(wm, "scale:new=%f", newf)
 	end
+
 	recalc_fsz(wm);
 	wm:rebuild_border();
 
@@ -4985,12 +5048,15 @@ local function tiler_switchbg(wm, newbg, mh)
 	end
 end
 
+local counter = 0;
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
+	counter = counter + 1;
 
 	local res = {
 -- null surfaces for clipping / moving / drawing
-		name = opts.name and opts.name or "default",
+		name = opts.name and opts.name or tostring(counter),
 		anchor = null_surface(1, 1),
 		order_anchor = null_surface(1, 1),
 		empty_space = workspace_empty,
@@ -5019,6 +5085,7 @@ function tiler_create(width, height, opts)
 -- public functions
 		set_background = tiler_switchbg,
 		step_ws = tiler_stepws,
+		suggest_size = tiler_suggest_size,
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
 		swap_up = tiler_swapup,

@@ -16,7 +16,7 @@ local display_listeners = {};
 local event_log = {};
 
 local function queue_log(msg)
-	table.insert(event_log, CLOCK .. ":" .. msg);
+	table.insert(event_log, msg);
 	if (#event_log > 20) then
 		table.remove(event_log, 1);
 	end
@@ -25,13 +25,12 @@ end
 local display_debug = queue_log;
 
 function display_debug_listener(handler)
-	print("Set display listener", handler);
-
 	if (handler and type(handler) == "function") then
 		display_debug =
 		function(msg)
-			queue_log(msg);
-			handler(msg);
+			local dmsg = CLOCK .. ":" .. msg;
+			queue_log(dmsg);
+			handler(dmsg);
 		end
 -- reset to default
 	else
@@ -415,7 +414,7 @@ local function display_added(id)
 	local subpx = "RGB";
 
 -- map resolved display modes, assume [1] is the preferred one
-	if (modes and modes[1].width > 0) then
+	if (modes and #modes > 0 and modes[1].width > 0) then
 		dw = modes[1].width;
 		dh = modes[1].height;
 		local wmm = modes[1].phy_width_mm;
@@ -478,9 +477,8 @@ function display_event_handler(action, id)
 		return;
 	end
 
-	print(action, id)
-	display_debug(string.format("id:%d:event:%s",
-		id and id or -1, action and action or ""));
+	display_debug(
+		string.format("id=%d:event=%s", id and id or -1, action and action or ""));
 
 -- display subsystem and input subsystem are connected when it comes
 -- to platform specific actions e.g. virtual terminal switching, assume
@@ -619,8 +617,7 @@ function display_add(name, width, height, ppcm, id)
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
 	if (found) then
-		display_debug(string.format(
-			"adding display matched known orphan: %s", found.name));
+		display_debug(string.format("add_match:name=%s", found.name));
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
 		display_load(found);
@@ -635,12 +632,11 @@ function display_add(name, width, height, ppcm, id)
 		end
 
 		if (prof) then
-			display_debug(string.format(
-				"found existing profile for %s", name));
+			display_debug(string.format("add_profile:name=%s", name));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
 				if (prof.tag) then
-					display_debug("display marked as ignored, adding with tag: " .. prof.tag);
+					display_debug("ignore_tag=" .. prof.tag);
 				end
 
 				table.insert(ignored, {
@@ -744,16 +740,16 @@ function display_bytag(tag, yield)
 end
 
 function display_lease(name)
-	display_debug("attempt lease on " .. tostring(name));
+	display_debug("lease:name=" .. tostring(name));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (not v.leased) then
-				display_debug("marking display as leased");
+				display_debug("leased:name=" .. tostring(name));
 				v.leased = true;
 				return v;
 			else
-				display_debug("attempt to lease already leased display");
+				display_debug("lease_error:name=" .. tostring(name));
 			end
 		end
 	end
@@ -761,16 +757,16 @@ function display_lease(name)
 end
 
 function display_release(name)
-	display_debug("attempting release on " .. tostring(name));
+	display_debug("release:name=" .. tostring(name));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (v.leased) then
-				display_debug("released display " .. tostring(name));
+				display_debug("released:name=" .. tostring(name));
 				v.leased = false;
 				return;
 			else
-				display_debug("attempt to release non-leased display");
+				display_debug("release_error:name=" .. tostring(name));
 			end
 		end
 	end
@@ -824,8 +820,10 @@ end
 -- parent. We treat that as a 'normal' resolution switch.
 function VRES_AUTORES(w, h, vppcm, flags, source)
 	local disp = displays[1];
-	display_debug(string.format("0:autores:%d:%d:%f:%d:%d",
-		w, h, vppcm, flags, source));
+	display_debug(string.format(
+		"autores:id=0:w=%d:h=%d:ppcm=%f:flags=%d:source=%d",
+		w, h, vppcm, flags, source)
+	);
 
 	for k,v in ipairs(displays) do
 		if (v.id == source) then

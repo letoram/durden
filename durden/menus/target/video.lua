@@ -51,24 +51,28 @@ local scalemodes = {
 		name = "normal",
 		label = "Normal",
 		kind = "action",
+		description = "Backing store size will be used if it fits within cell",
 		handler = function() set_scalef("normal"); end
 	},
 	{
 		name = "stretch",
 		label = "Stretch",
 		kind = "action",
+		description = "Window will be stretched to fill cell",
 		handler = function() set_scalef("stretch"); end
 	},
 	{
 		name = "aspect",
 		label = "Aspect",
 		kind = "action",
+		description = "Window will be stretched to fit, maintaing aspect ratio",
 		handler = function() set_scalef("aspect"); end
 	},
 	{
 		name = "client",
 		label = "Client",
 		kind = "action",
+		description = "Window will only be changed when backing store changes",
 		handler = function() set_scalef("client"); end
 	}
 };

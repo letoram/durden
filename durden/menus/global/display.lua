@@ -78,13 +78,18 @@ local function gen_disp_menu(disp)
 		{
 		name = "state",
 		eval = function() return disp.id ~= nil; end,
-		label = "Toggle On/Off",
-		kind = "action",
-		description = "Toggle the display DPMS state on/off",
-		handler = function()
-			local mode = video_display_state(disp.id);
-			video_display_state(disp.id,
-				mode ~= DISPLAY_ON and DISPLAY_ON or DISPLAY_OFF);
+		label = "Power State",
+		kind = "value",
+		set = {"On", "Off", "Suspend", "Standby"},
+		description = "Set the Display Power Management State (DPMS)",
+		handler = function(ctx, val)
+			local set = {
+				["On"] = DISPLAY_ON,
+				["Off"] = DISPLAY_OFF,
+				["Suspend"] = DISPLAY_SUSPEND,
+				["Standby"] = DISPLAY_STANDBY
+			};
+			video_display_state(disp.id, set[val]);
 		end
 		},
 		{
