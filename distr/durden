@@ -78,7 +78,7 @@ export ARCAN_RESOURCEPATH=${1:-$arcan_resources}
 # local writable custom / saved scripts that should shadow the builtin ones
 overlay=$ARCAN_APPLSTOREPATH/$applname
 if [ ! -d "$overlay/output" ]; then
-	overrides="output ipc devmaps/display devmaps/keyboard devmaps/game devmaps/led devmaps/schemes devmaps/touch tools widgets"
+	overrides="output ipc debug devmaps/display devmaps/keyboard devmaps/game devmaps/led devmaps/schemes devmaps/touch tools widgets"
 	for i in $overrides; do
 		mkdir -p "$overlay/$i"
 	done
