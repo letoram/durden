@@ -39,10 +39,11 @@ end
 local function clipboard_histgen(wnd, lst, promote)
 	local res = {};
 	for k, v in ipairs(lst) do
+		local short = string.shorten(v, 20);
 		table.insert(res, {
 			name = "hist_" .. tostring(k),
 			description = v,
-			label = string.format("%d:%s", k, string.shorten(v, 20)),
+			label = string.format("%d:%s", k, short),
 			kind = "action",
 			format = suppl_strcol_fmt(short, false),
 			select_format = suppl_strcol_fmt(short, true),

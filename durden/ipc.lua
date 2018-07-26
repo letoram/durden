@@ -422,7 +422,7 @@ local function ent_to_table(res, ret)
 	end
 
 	if (res.kind == "action") then
-		table.insert(ret, res.submenu and "kind: directory" or "kind:action");
+		table.insert(ret, res.submenu and "kind: directory" or "kind: action");
 	else
 		table.insert(ret, "kind: value");
 		if (res.initial) then
@@ -605,7 +605,7 @@ local function client_flush(cl, ind)
 				for _,v in ipairs(clients) do
 					if (v.category_map and v.category_map["IPC"]) then
 						table.insert(v.buffer, string.format(
-							"IPC:client=%d:command=%s\n", v.seqn, msg));
+							"IPC:client=%d:command=%s\n", v.seqn, line));
 					end
 				end
 			end
