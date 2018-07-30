@@ -47,7 +47,7 @@ local toplevel = {
 		kind = "action",
 		submenu = true,
 		description = "Persistent configuration tuning",
-		handler = system_load("menus/global/config.lua")()
+		handler = system_load("menus/global/settings.lua")()
 	},
 	{
 		name = "audio",

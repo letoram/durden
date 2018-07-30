@@ -1,9 +1,5 @@
 local function gain_stepv(gainv, abs)
 	local wnd = active_display().selected;
-	if (not wnd or not wnd.source_audio) then
-		return;
-	end
-
 	if (not abs) then
 		gainv = gainv + (wnd.gain and wnd.gain or 1.0);
 	end
@@ -23,10 +19,6 @@ return {
 		description = "Toggle audio playback on/off for this window",
 		handler = function()
 			local wnd = active_display().selected;
-			if (not wnd.source_audio) then
-				return;
-			end
-
 			if (wnd.save_gain) then
 				wnd.gain = wnd.save_gain;
 				audio_gain(wnd.source_audio, gconfig_get("global_gain") * wnd.gain);
