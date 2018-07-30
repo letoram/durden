@@ -6,10 +6,32 @@ local wlwnds = {}; -- vid->window allocation tracking
 local wlsurf = {}; -- segment cookie->vid tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
-function wayland_trace(msg, ...)
-	if (DEBUGLEVEL > 0) then
-		print("WAYLAND", msg, ...);
+local event_log = {};
+local function queue_log(msg)
+	table.insert(event_log, msg);
+	if (#event_log > 20) then
+		table.remove(event_log, 1);
 	end
+end
+
+-- also used in xdg- ... so global scope
+wayland_debug = queue_log;
+
+function wayland_debug_listener(handler)
+	if (handler and type(handler) == "function") then
+		wayland_debug = function(msg)
+			local dmsg = string.format("%d:%s", CLOCK, msg);
+			queue_log(dmsg);
+			handler(dmsg);
+		end
+-- reset to default
+	else
+		wayland_debug = queue_log;
+	end
+
+	local oeq = event_log;
+	event_log = {};
+	return oeq;
 end
 
 function wayland_wndcookie(id)
@@ -17,23 +39,24 @@ function wayland_wndcookie(id)
 end
 
 function wayland_lostwnd(source)
-	wayland_trace("dropped", source);
+	wayland_debug("dropped:source=" .. tostring(source));
 	wlwnds[source] = nil;
 end
 
 function wayland_gotwnd(source)
-	wayland_trace("added", source);
+	wayland_debug("added:source=" .. tostring(source));
 	wlwnds[source] = nil;
 end
 
 local function subsurf_handler(cl, source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
-		wayland_trace("subsurface:resize:",status.width, status.height);
+		wayland_debug(
+			string.format("subsurface:resize:w=%.0f:h=%.0f", status.width, status.height));
 
 	elseif (status.kind == "viewport") then
 -- all subsurfaces need to specify a parent
-		wayland_trace(string.format("viewport(%d,%d+%d)<-%d",
+		wayland_debug(string.format("viewport:x=%.0f:y=%.0f:z=%.0f:parent=%d",
 			status.rel_x, status.rel_y, status.rel_order, status.parent));
 		if (status.parent == 0) then
 			return;
@@ -54,7 +77,7 @@ local function subsurf_handler(cl, source, status)
 
 -- can't reparent to invalid surface
 		if (not valid_vid(pvid)) then
-			wayland_trace("broken viewport request from subsurface");
+			wayland_debug("viewport_error:invalid_parent");
 			delete_image(source);
 			return;
 		end
@@ -68,7 +91,7 @@ local function subsurf_handler(cl, source, status)
 		order_image(source, status.rel_order);
 
 	elseif (status.kind == "terminated") then
-		wayland_trace("subsurface:died");
+		wayland_debug("subsurface:terminated");
 		delete_image(source);
 		wlsubsurf[source] = nil;
 	end
@@ -77,7 +100,8 @@ end
 local function popup_handler(cl, source, status)
 -- account for popup being able to resize itself
 	if (status.kind == "resized") then
-		wayland_trace("popup resize to", status.width, status.height);
+		wayland_debug(
+			string.format("popup:resize:w=%.0f:h=%.0f", status.width, status.height));
 		resize_image(source, status.width, status.height);
 		local wnd = wlwnds[source];
 		if (not wnd) then
@@ -94,15 +118,23 @@ local function popup_handler(cl, source, status)
 	elseif (status.kind == "viewport") then
 		local pid = wlsurf[status.parent];
 		if (not pid or not wlwnds[pid]) then
-			wayland_trace("broken viewport request on popup, missing parent", status.parent);
+			wayland_debug("popup:viewport_error=no_parent");
 			wlwnds[source] = nil;
 			delete_image(source);
 			return;
 		end
-		wayland_trace("popup viewported to (invis, rx, ry, w, h, edge, focus)",
-			status.invisible,
-			status.rel_x, status.rel_y, status.anchor_w, status.anchor_h,
-			status.edge, status.focus
+
+-- border attribute isn't used, wayland has geometry for this instead
+		wayland_debug(
+			string.format("popup:viewport:visible=%s:x=%.0f:y=%.0f:z=%f:w=%.0f:h=%.0f:" ..
+				"edge=%d:anchor_edge=%s:anchor_pos=%s:focus=%s",
+				status.invisible and "yes" or "no",
+				status.rel_x, status.rel_y, status.rel_order,
+				status.anchor_w, status.anchor_h, status.edge,
+				status.anchor_edge and "yes" or "no",
+				status.anchor_pos and "yes" or "no",
+				status.focus and "yes" or "no"
+			)
 		);
 
 -- a popup shares a window container with others
@@ -151,7 +183,7 @@ local function popup_handler(cl, source, status)
 -- note: additional popups are not created on a popup itself, but rather
 -- derived from the main client connection
 	elseif (status.kind == "terminated") then
-		wayland_trace("destroy popup");
+		wayland_debug(string.format("popup:source=%d:destroy", source));
 		if (wlwnds[source]) then
 			wlwnds[source]:destroy();
 		else
@@ -181,7 +213,7 @@ local function cursor_handler(cl, source, status)
 		end
 -- if active window is part of wlwnds and has this cursor...
 	elseif (status.kind == "message") then
-		wayland_trace("hotspot: ", status.message);
+		wayland_debug(string.format("cursor:hotspot=%s", status.message));
 	elseif (status.kind == "terminated") then
 		delete_image(source);
 		wlwnds[source] = nil;
@@ -191,18 +223,18 @@ end
 local seglut = {};
 seglut["application"] = function(wnd, source, stat)
 -- need to wait with assigning a handler since we want to forward a new window
-	local id, aid, cookie = accept_target();
+	local ad = active_display();
+	local neww, newh = ad:suggest_size();
+	local id, aid, cookie = accept_target(neww, newh);
 
 	if (not valid_vid(id)) then
 		return false;
 	end
 
-	local ad = active_display();
-
 -- We need to track these so that reparenting is possible, viewport events
 -- carry the cookie of the window they're targeting.
 	if (cookie > 0) then
-		wayland_trace("register cookie", id);
+		wayland_debug(string.format("register:cookie=%d", id));
 		wlsurf[cookie] = id;
 	end
 
@@ -227,7 +259,9 @@ seglut["application"] = function(wnd, source, stat)
 		end
 	);
 
--- note, this will not yield the REGISTER event
+-- since the 'registered' event won't get routed past the extevh, we need
+-- to manually apply the atype for the toplevel here - this does not attach/
+-- cascade a resize though
 	extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
 	newwnd.source_audio = aid;
 	wlwnds[id] = newwnd;
@@ -242,7 +276,7 @@ end
 -- a singleton.
 seglut["cursor"] = function(wnd, source, stat)
 	if (wnd.seat_cursor) then
-		wayland_trace("already got cursor on bridge client");
+		wayland_debug("cursor:error=multiple cursors on seat");
 		return;
 	end
 
@@ -285,20 +319,20 @@ seglut["multimedia"] = function(wnd, source, stat)
 end
 
 seglut["clipboard"] = function(wnd, source, stat)
-	wayland_trace("data device mapping incomplete");
+	wayland_debug("clipboard:error=not implemented");
 end
 
 local function wayland_buildwnd(wnd, source, stat)
 -- register a new window, but we want control over the window setup so we just
 -- use the 'launch' function to create and register the window then install our
 -- own handler
-	wayland_trace("request: " .. stat.segkind);
+	wayland_debug(string.format("request:kind=%s", stat.segkind));
 
 	if (seglut[stat.segkind]) then
 		seglut[stat.segkind](wnd, source, stat);
 
 	else
-		wayland_trace("unknown", stat.segkind);
+		wayland_debug(string.format("request:error=unknown kind %s", stat.segkind));
 		wnd:destroy();
 	end
 

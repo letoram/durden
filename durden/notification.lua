@@ -20,13 +20,16 @@ end
 -- symref  [=nil, recpt. pick] - icon or emoji ref, nil
 -- short   [short description],
 -- long    [longer description, if present],
--- urgency [1 = normal, 1 = important, 2 = urgent, 4 = critical]
+-- urgency [1 = normal, 2 = important, 3 = urgent, 4 = critical]
 --
 function notification_add(source, symref, short, long, urgency)
 	if (not gconfig_get("notifications_enable")) then
 		return;
 	end
 
+	if (not type(urgency) == "number") then
+		notification_add_invalid_argument();
+	end
 	urgency = math.clamp(urgency, 1, 4);
 
 -- decent place to introduce some rate-limiting here
