@@ -220,7 +220,7 @@ local function update_completion_set(wm, ctx, set)
 		local msgs;
 
 		if (type(set[i]) == "table") then
-			msgs = {set[i][selected and 2 or 1], set[i][3]};
+			msgs = {wm.font_delta .. (set[i][selected and 2 or 1]), set[i][3]};
 		else
 			msgs = {selected and sel_fmt or txt_fmt, set[i]};
 		end
