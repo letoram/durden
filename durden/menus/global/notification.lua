@@ -42,5 +42,17 @@ return {
 			local sev = tonumber(lst[1]);
 			notification_add(lst[2], nil, lst[3], lst[4], sev);
 		end
+	},
+	{
+		name = "device_events",
+		label = "Device Notifications",
+		hint = "(-1 off, >= 0 ticks from start)",
+		description = "Send notifications on device plug/unplug actions",
+		initial = function() return tostring(gconfig_get("device_notification")); end,
+		kind = "input",
+		validator = gen_valid_num(-1, 1000),
+		handler = function(ctx, val)
+			gconfig_set("device_notification", tonumber(val));
+		end
 	}
 };

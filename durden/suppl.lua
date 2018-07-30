@@ -24,6 +24,10 @@ function string.split(instr, delim)
 	return res;
 end
 
+function string.starts_with(instr, prefix)
+	return string.sub(instr, #prefix) == prefix;
+end
+
 --
 --  Similar to split but only returns 'first' and 'rest'.
 --
