@@ -1,142 +1,19 @@
-hint_lut = {
+-- font hint translation tables
+local hint_lut = {
 	none = 0,
 	mono = 1,
 	light = 2,
 	normal = 3,
 	subpixel = 4 -- need to specify +1 in the case of rotated display
 };
-
-TERM_HINT_RLUT = {};
-for k,v in pairs(hint_lut) do TERM_HINT_RLUT[v] = k; end
+local hint_rlut = {};
+for k,v in pairs(hint_lut) do
+	hint_rlut[v] = k;
+end
 
 -- populated on tool loading
 local tools_conf = {
 };
-
-local durden_font = {
-	{
-		name = "size",
-		label = "Size",
-		kind = "value",
-		description = "Change the default UI font pt size",
-		validator = gen_valid_num(1, 100),
-		initial = function() return tostring(gconfig_get("font_sz")); end,
-		handler = function(ctx, val)
-			gconfig_set("font_sz", tonumber(val));
-		end
-	},
-	{
-		name = "hinting",
-		label = "Hinting",
-		kind = "value",
-		description = "Change anti-aliasing hinting algorithm",
-		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return TERM_HINT_RLUT[gconfig_get("font_hint")]; end,
-		handler = function(ctx, val)
-			gconfig_set("font_hint", hint_lut[val]);
-		end
-	},
-	{
-		name = "name",
-		label = "Font",
-		kind = "value",
-		description = "Set the default font used for UI elements",
-		set = function()
-			local set = glob_resource("*", SYS_FONT_RESOURCE);
-			set = set ~= nil and set or {};
-			return set;
-		end,
-		initial = function() return gconfig_get("font_def"); end,
-		handler = function(ctx, val)
-			gconfig_set("font_def", val);
-		end
-	},
-	{
-		name = "fbfont",
-		label = "Fallback",
-		kind = "value",
-		description = "Set the fallback font used for missing glyphs (emoji, symbols)",
-		set = function()
-			local set = glob_resource("*", SYS_FONT_RESOURCE);
-			set = set ~= nil and set or {};
-			return set;
-		end,
-		initial = function() return gconfig_get("font_fb"); end,
-		handler = function(ctx, val)
-			gconfig_set("font_fb", val);
-		end
-	}
-};
-
-local function tryload_scheme(v)
-	local res = system_load(v, 0);
-	if (not res) then
-		warning(string.format("devmaps/schemes, system_load on %s failed", v));
-		return;
-	end
-
-	local okstate, tbl = pcall(res);
-	if (not okstate) then
-		warning(string.format("devmaps/schemes, couldn't parse/extract %s", v));
-		return;
-	end
-
--- FIXME: [a_Z,0-9 on name]
-	if (type(tbl) ~= "table" or not tbl.name or not tbl.label) then
-		warning(string.format("devmaps/schemes, no name/label field for %s", v));
-		return;
-	end
-
--- pretty much all fields are optional as it stands
-	return tbl;
-end
-
-local schemes;
-local function scan_schemes()
-	schemes = {};
-	local list = glob_resource("devmaps/schemes/*.lua", APPL_RESOURCE);
-	for i,v in ipairs(list) do
-		local res = tryload_scheme("devmaps/schemes/" .. v);
-		if (res) then
-			table.insert(schemes, res);
-		end
-	end
-end
-
--- (1 is used for alpha, the k/v mapping comes from tui
-local function key_to_graphmode(k)
-	local tbl = {
-		primary = 2,
-		secondary = 3,
-		background = 4,
-		text = 5,
-		cursor = 6,
-		altcursor = 7,
-		highlight = 8,
-		label = 9,
-		warning = 10,
-		error = 11,
-		alert = 12,
-		inactive = 13
-	};
-	return tbl[k];
-end
-
-local function apply_scheme(palette, wnd)
-	if (palette and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
--- used to convey alpha, color scheme, etc. primarily for TUIs
-		for k,v in ipairs(palette) do
-			local ind = key_to_graphmode(k);
-			if (ind and type(v) == "table" and #v == 3) then
-				target_graphmode(wnd.external, ind, v[1], v[2], v[3]);
-			else
-				warning("apply_scheme(), broken key " .. k);
-			end
-		end
--- commit
-		target_graphmode(wnd.external, 0);
-	end
-end
 
 local function run_group(group, ch, wnd)
 	local ad = active_display();
@@ -273,123 +150,6 @@ local config_browser = {
 		handler = function(ctx, val)
 			gconfig_set("browser_trigger", val);
 		end
-	}
-};
-
-local durden_visual = {
--- thickness is dependent on area, make sure the labels and
--- constraints update dynamically
-	{
-		name = "font",
-		label = "Font",
-		kind = "action",
-		submenu = true,
-		description = "Generic UI font settings",
-		handler = durden_font
-	},
-	{
-		name = "bars",
-		label = "Bars",
-		kind = "action",
-		submenu = true,
-		description = "Controls/Settings for titlebars and the statusbar",
-		handler = system_load("menus/global/bars.lua")
-	},
-	{
-		name = "border",
-		label = "Border",
-		kind = "action",
-		submenu = true,
-		description = "Global window border style and settings",
-		handler = system_load("menus/global/border.lua")
-	},
-	{
-		name = "shaders",
-		label = "Shaders",
-		kind = "action",
-		submenu = true,
-		description = "Control/Tune GPU- accelerated UI and display effects",
-		handler = system_load("menus/global/shaders.lua")();
-	},
-	{
-		name = "mouse_scale",
-		label = "Mouse Scale",
-		kind = "value",
-		hint = "(0.1 .. 10.0)",
-		description = "Change the base scale factor used for the mouse cursor",
-		initial = function() return tostring(gconfig_get("mouse_scalef")); end,
-		handler = function(ctx, val)
-			gconfig_set("mouse_scalef", tonumber(val));
-			display_cycle_active(true);
-		end
-	},
-	{
-		name = "anim_speed",
-		label = "Animation Speed",
-		kind = "value",
-		hint = "(1..100)",
-		description = "Change the animation speed used for UI elements",
-		validator = gen_valid_num(1, 100),
-		initial = function() return tostring(gconfig_get("animation")); end,
-		handler = function(ctx, val)
-			gconfig_set("animation", tonumber(val));
-		end
-	},
-	{
-		name = "trans_speed",
-		label = "Transition Speed",
-		kind = "value",
-		hint = "(1..100)",
-		description = "Change the animation speed used in state transitions",
-		validator = gen_valid_num(1, 100),
-		initial = function() return tostring(gconfig_get("transition")); end,
-		handler = function(ctx, val)
-			gconfig_set("transition", tonumber(val));
-		end
-	},
-	{
-		name = "wnd_speed",
-		label = "Window Animation Speed",
-		kind = "value",
-		hint = "(0..50)",
-		description = "Change the animation speed used with window position/size",
-		validator = gen_valid_num(0, 50),
-		initial = function() return tostring(gconfig_get("wnd_animation")); end,
-		handler = function(ctx, val)
-			gconfig_set("wnd_animation", tonumber(val));
-		end
-	},
-	{
-		name = "anim_in",
-		label = "Transition-In",
-		kind = "value",
-		description = "Change the effect used when moving a workspace on-screen",
-		set = {"none", "fade", "move-h", "move-v"},
-		initial = function() return tostring(gconfig_get("ws_transition_in")); end,
-		handler = function(ctx, val)
-			gconfig_set("ws_transition_in", val);
-		end
-	},
-	{
-		name = "anim_out",
-		label = "Transition-Out",
-		kind = "value",
-		description = "Change the effect used when moving a workspace off-screen",
-		set = {"none", "fade", "move-h", "move-v"},
-		initial = function() return tostring(gconfig_get("ws_transition_out")); end,
-		handler = function(ctx, val)
-			gconfig_set("ws_transition_out", val);
-		end
-	},
-	{
-		name = "menu_helper",
-		label = "Menu Descriptions",
-		kind = "value",
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		initial = function()
-			return gconfig_get("menu_helper") and LBL_YES or LBL_NO;
-		end,
-		handler = suppl_flip_handler("menu_helper")
 	}
 };
 
@@ -787,7 +547,7 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "UI elements, colors and effects",
-		handler = durden_visual
+		handler = system_load("menus/global/visual.lua")()
 	},
 	{
 		name = "wspaces",
