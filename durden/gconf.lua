@@ -1,8 +1,10 @@
 -- Copyright 2015-2017, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: Global / Persistent configuration management copied from
--- senseye, tracks default font, border, layout and other settings.
+-- Description: Global / Persistent configuration management. These shouldn't
+-- need to be modified manually - the values are cached and accessed dynamically
+-- via the menu system or via the arcan_db tool. The values provided here are
+-- merely the defaults
 --
 
 -- here for the time being, will move with internationalization
@@ -215,6 +217,10 @@ local defaults = {
 	meta_lock = "m2",
 	meta_stick_time = 0,
 	meta_dbltime = 10,
+
+-- minimum amount of ticks from epoch (-1 disables entirely)
+-- before device- event notifications appears
+	device_notification = 500,
 
 -- built-in terminal defaults
 	term_autosz = true, -- will ignore cellw / cellh and use font testrender

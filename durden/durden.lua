@@ -478,6 +478,8 @@ end
 
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status, norespawn)
+	print("new connection", source, status);
+
 	if (not status or status.kind ~= "connected") then
 -- misplaced event, should really happen
 		return;
@@ -559,22 +561,30 @@ eval_respawn = function(manual, path)
 	end
 end
 
--- shared between the other input forms (normal, locked, ...)
+--
+-- This will likely burst device events in the beginning that we
+-- don't really care to show, so wait a few hundred ticks before
+-- adding notifications
+--
 function durden_iostatus_handler(iotbl)
-	if (iotbl.label and string.len(iotbl.label) > 0) then
-		active_display():message(string.format("%s: %s",
-			iotbl.action, iotbl.label));
-	else
-		active_display():message(string.format("%s %d",
-			iotbl.action, iotbl.devid));
-	end
+	local cutoff = gconfig_get("device_notification");
+	local dev = iotbl.devkind and iotbl.devkind or "unknown";
+	local label = iotbl.label and iotbl.label or "unknown";
 
 	if (iotbl.action == "added") then
-		if (iotbl.devkind == "led") then
+		if cutoff >= 0 and CLOCK > cutoff then
+			notification_add("Device", nil, "Added", iotbl.label, 1);
+		end
+
+		if (dev == "led") then
 			ledm_added(iotbl);
 		else
 		end
 	elseif (iotbl.action == "removed") then
+		if cutoff >= 0 and CLOCK > cutoff then
+			notification_add("Device", nil, "Removed", iotbl.label, 1);
+		end
+
 		if (iotbl.devkind == "led") then
 			ledm_added(iotbl);
 		else
