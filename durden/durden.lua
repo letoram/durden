@@ -81,7 +81,7 @@ function durden(argv)
 -- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
-		eval_respawn(true, cp);
+		eval_respawn(true);
 	end
 
 -- add hooks for changes to all default font properties
@@ -478,8 +478,6 @@ end
 
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status, norespawn)
-	print("new connection", source, status);
-
 	if (not status or status.kind ~= "connected") then
 -- misplaced event, should really happen
 		return;
@@ -490,9 +488,9 @@ function durden_new_connection(source, status, norespawn)
 		gconfig_get("extcon_startdelay")) then
 		timer_add_periodic("extcon_activation",
 			gconfig_get("extcon_rlimit"), true,
-			function() eval_respawn(false, status.key); end, true);
+			function() eval_respawn(false); end, true);
 	else
-		eval_respawn(true, gconfig_get("extcon_path"));
+		eval_respawn(true);
 	end
 
 -- invocation from config change, anything after this isn't relevant
@@ -531,10 +529,15 @@ function durden_new_connection(source, status, norespawn)
 	end
 end
 
-eval_respawn = function(manual, path)
+eval_respawn = function(manual)
 	local lim = gconfig_get("extcon_wndlimit");
 	local period = gconfig_get("extcon_rlimit");
+	local path = gconfig_get("extcon_path");
 	local count = 0;
+
+	if (path == ":disabled") then
+		return;
+	end
 
 	for disp in all_tilers_iter() do
 		count = count + #disp.windows;
@@ -544,7 +547,7 @@ eval_respawn = function(manual, path)
 -- one-fire timer that re-runs this function
 	if ((lim > 0 and count > lim) and not manual) then
 		timer_add_periodic("extcon_activation", period, true,
-			function() eval_respawn(false, path); end, true);
+			function() eval_respawn(false); end, true);
 		return;
 	end
 
@@ -557,7 +560,7 @@ eval_respawn = function(manual, path)
 		end
 	else
 		timer_add_periodic("excon_reset", 100, true,
-			function() eval_respawn(true, path); end, true);
+			function() eval_respawn(true); end, true);
 	end
 end
 
