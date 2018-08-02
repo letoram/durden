@@ -99,11 +99,15 @@ end
 -- resizes during runtime after the first time, it won't be
 -- reflected in the aspect ratio
 local function asynch_decode(state, self)
+	if (not valid_vid(state.vid)) then
+		return;
+	end
+
 	local cmd = string.format(
 		"pos=%f:noaudio:loop", gconfig_get("browser_position") * 0.01);
 	cmd = string.gsub(cmd, ",", ".");
 
-	launch_decode(self.preview_path, cmd,
+	local vid = launch_decode(self.preview_path, cmd,
 		function(source, status)
 			if (status.kind == "resized" and state.in_asynch) then
 				setup_preview(state, source);
@@ -115,6 +119,12 @@ local function asynch_decode(state, self)
 			end
 		end
 	);
+
+-- since we don't know how long time the resize- etc. will take, link
+-- to the anchor now so we will be autodeleted if we get out of scope
+	if (valid_vid(vid)) then
+		link_image(vid, state.vid);
+	end
 end
 
 local function asynch_image(state, self)

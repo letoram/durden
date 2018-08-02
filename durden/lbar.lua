@@ -622,10 +622,12 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
 	image_tracetag(bg, "lbar_bg");
 	shader_setup(bg, "ui", "lbarbg");
+	image_tracetag(bg, "lbar_bg");
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 	local bar = color_surface(wm.width, barh, unpack(gconfig_get("lbar_bg")));
 	shader_setup(bar, "ui", "lbar");
+	image_tracetag(bar, "lbar_text");
 
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
