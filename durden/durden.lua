@@ -828,3 +828,14 @@ function durden_clock_pulse(n, nt)
 -- this should only be for tracking, so order-independent
 	dispatch_tick();
 end
+
+-- open question is if we should burn this hook to store state and
+-- changes to keybinding etc. for better recovery, downside is that
+-- there is the possiblity we save a 'guaranteed broken' state.
+function durden_fatal(msg)
+	local msg = string.format(
+		"error: %s\nlast path: %s\ntrace:\n%s",
+		dispatch_last_symbol(), debug.traceback()
+	);
+	return msg;
+end
