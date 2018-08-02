@@ -638,12 +638,27 @@ return {
 		label = "Tag",
 		description = "Assign a custom text-tag",
 		kind = "value",
-		validator = function() return true; end,
+		validator = function(val)
+			return true;
+		end,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			if (wnd) then
 				wnd:set_prefix(string.gsub(val, "\\", "\\\\"));
 			end
+		end
+	},
+	{
+		name = "group_tag",
+		label = "Group Tag",
+		description = "Assign the window to an action group",
+		kind = "value",
+		validator = function()
+			return true;
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			wnd:set_tag(val);
 		end
 	},
 	{
