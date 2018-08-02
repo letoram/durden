@@ -927,7 +927,7 @@ local function bar_impostor(tbar, vid, rz_fun, mh_tbl)
 	link_image(vid, tbar.anchor, ANCHOR_LL);
 	move_image(vid, 0, -(image_surface_properties(vid).height));
 	image_inherit_order(vid, true);
-	order_image(vid, 3);
+	order_image(vid, 5);
 	tbar.impostor_active = true;
 end
 
