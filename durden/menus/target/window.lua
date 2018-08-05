@@ -653,9 +653,12 @@ return {
 		label = "Group Tag",
 		description = "Assign the window to an action group",
 		kind = "value",
-		validator = function()
-			return true;
+		initial = function()
+			local wnd = active_display().selected;
+			return wnd.group_tag and wnd.group_tag or "(none)";
 		end,
+		hint = "(a-Z 0-9)",
+		validator = suppl_valid_name,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			wnd:set_tag(val);

@@ -27,8 +27,8 @@ function notification_add(source, symref, short, long, urgency)
 		return;
 	end
 
-	if (not type(urgency) == "number") then
-		notification_add_invalid_argument();
+	if (type(urgency) ~= "number") then
+		urgency = 1;
 	end
 	urgency = math.clamp(urgency, 1, 4);
 
