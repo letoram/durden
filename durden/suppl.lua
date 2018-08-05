@@ -498,6 +498,15 @@ function suppl_unpack_typestr(typestr, val, lowv, highv)
 	return rtbl;
 end
 
+-- allows empty string in order to 'unset'
+function suppl_valid_name(val)
+	if string.match(val, "%W") then
+		return false;
+	end
+
+	return true;
+end
+
 -- icon symbol reference or valid utf-8 codepoint
 function suppl_valid_vsymbol(val)
 	if (not val) then

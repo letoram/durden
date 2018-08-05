@@ -3138,6 +3138,14 @@ local function wnd_prefix(wnd, prefix)
 	wnd:set_title();
 end
 
+local function wnd_tag(wnd, tag)
+	if (not tag or #tag == 0) then
+		wnd.group_tag = nil;
+	else
+		wnd.group_tag = tag;
+	end
+end
+
 local function wnd_ident(wnd, ident)
 	wnd.ident = ident and ident or "";
 	wnd:set_title();
@@ -4008,6 +4016,9 @@ local function recover_restore(wnd)
 	if (res["show_border"]) then
 		wnd.show_border = true;
 	end
+	if (res["group_tag"]) then
+		wnd.group_tag = res["group_tag"];
+	end
 	if (res["title"]) then
 		wnd.title = res["title"];
 	end
@@ -4098,6 +4109,10 @@ local function wnd_recovertag(wnd, restore)
 		local w = wnd.width / wnd.wm.effective_width;
 		local h = wnd.height / wnd.wm.effective_height;
 		table.insert(recoverlst, string.format("geom=%f:%f:%f:%f", x, y, w, h));
+	end
+
+	if (wnd.group_tag) then
+		table.insert(recoverlst, string.format("group_tag=%s", wnd.group_tag));
 	end
 
 -- custom overrides / dynamic settings
@@ -4412,6 +4427,7 @@ local wnd_setup = function(wm, source, opts)
 		set_guid = wnd_guid,
 		set_title = wnd_title,
 		set_prefix = wnd_prefix,
+		set_tag = wnd_tag,
 		set_ident = wnd_ident,
 		set_titlebar = wnd_titlebar,
 		set_border = wnd_border,
