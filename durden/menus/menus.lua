@@ -1,6 +1,7 @@
 local global = system_load("menus/global/global.lua")();
 local target = system_load("menus/target/target.lua")();
 local browse = system_load("menus/browse.lua")();
+local window = system_load("menus/window.lua")();
 
 -- add m2 to m1, overwrite on collision
 local function merge_menu(m1, m2)
@@ -92,6 +93,14 @@ return {
 	eval = function() return active_display().selected; end,
 	handler = get_target_menu,
 	description = "Actions that target the currently selected window"
+},
+{
+	name = "windows",
+	label = "Windows",
+	submenu = true,
+	kind = "action",
+	description = "Target actions projected over a set of windows",
+	handler = window
 },
 {
 	name = "browse",
