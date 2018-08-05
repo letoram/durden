@@ -341,39 +341,13 @@ end
 local function gen_bmenu(v, pref)
 	local res = {
 		{
-			label = "Global Action",
-			name = pref .. "_global",
-			kind = "action",
-			handler = function()
--- launch filtered bind that resolves to dig_id_subid
-			end
-		},
-		{
-			label = "Target Action",
-			name = pref .. "_target",
-			kind = "action",
-			handler = function()
--- launch filtered bind that resolves to dig_id_subid
-			end
-		},
-		{
-			label = "",
+			label = "UTF-8",
 			name = pref .. "UTF-8",
 			kind = "action",
 			handler = function()
 -- launch filtered bind, set iostatem_ translate emit
 			end
-		},
-		{
-			label = "",
-			name = pref .. "Label",
-			kind = "value",
-			initial = "BUTTON1",
-			validator = strict_fname_valid,
-			handler = function(ctx, val)
--- launch filtered bind, set iostatem_ label
-			end
-		},
+		}
 	};
 	return res;
 end
