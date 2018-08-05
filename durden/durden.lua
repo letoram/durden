@@ -835,7 +835,7 @@ end
 function durden_fatal(msg)
 	local msg = string.format(
 		"error: %s\nlast path: %s\ntrace:\n%s",
-		dispatch_last_symbol(), debug.traceback()
+		msg, dispatch_last_symbol(), debug.traceback()
 	);
 	return msg;
 end
