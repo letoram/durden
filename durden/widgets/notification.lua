@@ -112,7 +112,7 @@ local function build_entry(anchor, ent, max_w)
 	local fmt = {
 		fd .. HC_PALETTE[ent.urgency],
 		string.format("%s %s%s", ent.source,
-		ent. short,
+		ent.short,
 		ent.long and " ... " or ""),
 		"\\r\\n\\r\\n\\#ffffff"
 	};
@@ -143,7 +143,7 @@ local function build_entry(anchor, ent, max_w)
 				wc = wc + 1;
 			else
 -- new line or we need to repeat and chop up the word?
-				if (wc > 1) then
+				if (wc > 1 or string.find(cstr, "\n")) then
 					table.insert(fmt, string.trim(cstr));
 					table.insert(fmt, "\\n\\r");
 					cstr = "";
