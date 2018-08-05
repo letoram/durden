@@ -374,16 +374,10 @@ function gconfig_buttons_rebuild(nosynch)
 		store_key(keys_out);
 	end
 
--- reload the keys
-	gconfig_buttons = {
-		all = {},
-		float = {},
-		tile = {}
-	};
-
 -- for the sake of convenience, : is blocked from being a valid vsym as
 -- it is used as a separator elsewhere (suppl_valid_vsymbol)
 	for _, group in ipairs({"all", "float", "tile"}) do
+		gconfig_buttons[group] = {};
 		for _,v in ipairs(match_keys("tbar_btn_" .. group .. "_%")) do
 			local ign, rest = string.split_first(v, "=");
 			local dir, rest = string.split_first(rest, ":");

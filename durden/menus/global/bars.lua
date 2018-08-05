@@ -1,13 +1,13 @@
-local function remove_button(group, dir, lbl)
+local function remove_button(dir)
 	local res = {};
 
-	for group,list in pairs(gconfig_buttons) do
+	for group, list in pairs(gconfig_buttons) do
 		for i,v in ipairs(list) do
-			if (v.align == dir) then
+			if (not dir or v.direction == string.lower(dir)) then
 				table.insert(res, {
-					name = tostring(k),
+					name = tostring(i),
 					label = group .. "_" .. tostring(i),
-					description = "Button Label: " .. v.lbl,
+					description = "Button Label: " .. v.label,
 					kind = "action",
 					handler = function()
 						table.remove(gconfig_buttons[group], i);
@@ -45,17 +45,9 @@ local function titlebar_buttons(dir, lbl)
 		kind = "action",
 		submenu = true,
 		description = "Remove a button",
-		eval = function()
-			for k,v in pairs(gconfig_buttons) do
-				for i,j in ipairs(v) do
-					if (j.align == dir) then
-						return true;
-					end
-				end
-			end
-		end,
+		eval = function() return #remove_button(dir) > 0; end,
 		handler = function()
-			return remove_button(dir, lbl);
+			return remove_button(dir);
 		end
 		},
 		{
