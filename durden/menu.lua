@@ -561,6 +561,11 @@ end
 -- itself, to do that, invoke the handler or run through menu_launch.
 --
 function menu_resolve(line, wnd)
+	local ds = active_display().selected;
+	if (wnd) then
+		active_display().selected = wnd;
+	end
+
 	local ns = string.sub(line, 1, 1);
 	if (ns ~= "/") then
 		warning("ignoring unknown path: " .. line);
@@ -630,6 +635,8 @@ function menu_resolve(line, wnd)
 			table.remove(items, 1);
 		end
 	end
+
+	active_display().selected = ds;
 	return menu, "", val, restbl;
 end
 
