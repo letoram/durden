@@ -93,11 +93,7 @@ function iostatem_input(iotbl)
 -- add a placeholder device so that we will at least 'work' normally
 	if (not dev) then
 		local lbl = "unkn_bad_" .. badseq;
-		badseq = badseq + 1;
-		local oldlbl = iotbl.label;
-		iotbl.label = lbl;
 		dev = iostatem_added(iotbl);
-		iotbl.label = oldlbl;
 	end
 
 -- currently mouse state management is handled elsewhere (durden+tiler.lua)
@@ -275,10 +271,10 @@ end
 
 function iostatem_added(iotbl)
 	local dev = devices[iotbl.devid];
+
 	if (not dev) then
 -- locate last saved device settings:
 -- axis state, analog force, special bindings
-
 		devices[iotbl.devid] = {
 			devid = iotbl.devid,
 			label = iotbl.label,
@@ -289,11 +285,25 @@ function iostatem_added(iotbl)
 			keyboard = (iotbl.keyboard and true or false)
 		};
 		dev = devices[iotbl.devid];
+
+-- resolve a better label (normal has 16-char cutoff)
+		local cutoff = gconfig_get("device_notification");
+		local devtbl = inputanalog_query(iotbl.devid);
+		if (devtbl and devtbl.label and #devtbl.label > 0) then
+			devices[iotbl.devid].label = devtbl.label;
+		end
+
+-- notification may need an initial cutoff due to the startup storm
+		if cutoff >= 0 and CLOCK > cutoff then
+			notification_add("Device", nil, "Discovered", iotbl.label, 1);
+		end
+
 		if (label_lookup[iotbl.label]) then
 			assign_slot(dev);
 		else
 			dev.slot = 0;
 		end
+
 		touch_register_device(iotbl, true);
 	else
 -- keeping this around for devices and platforms that generate a new
@@ -315,13 +325,16 @@ end
 
 function iostatem_removed(iotbl)
 	local dev = devices[iotbl.devid];
+
 	if (dev) then
+		notification_add("Device", nil, "Lost", dev.label, 1);
 		dev.lost = true;
 -- protection against keyboard behaving differently when lost/found
 		if (iotbl.devkind == "keyboard") then
 			meta_guard_reset();
 		end
 	else
+		notification_add("Device", nil, "Removed", "unknown device (bug)", 1);
 		warning("remove unknown device, likely platform bug.");
 	end
 end
