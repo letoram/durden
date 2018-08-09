@@ -291,11 +291,17 @@ function dispatch_symbol_bind(callback, path)
 		{list = menu, show_invisible = true}, {}, "/", menu_default_lookup(menu));
 end
 
--- placeholder, just to annotate code, only works with the global due to
--- problems with the menu system design, active_display()
+-- Due to the (current) ugly of lots of active_display() calls being used,
+-- we need to do some rather unorthodox things for this to work until all
+-- those calls have been factored out.
 function dispatch_symbol_wnd(sym, wnd)
--- cheat-set selection status on the active display, things to consider:
-	dispatch_symbol(sym);
+	if (not wnd or not wnd.wm) then
+		return;
+	end
+
+	run_display_action(wnd.wm, function()
+		dispatch_symbol(sym);
+	end)
 end
 
 local last_symbol = "/";
