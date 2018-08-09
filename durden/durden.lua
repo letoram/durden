@@ -570,30 +570,23 @@ end
 -- adding notifications
 --
 function durden_iostatus_handler(iotbl)
-	local cutoff = gconfig_get("device_notification");
 	local dev = iotbl.devkind and iotbl.devkind or "unknown";
-	local label = iotbl.label and iotbl.label or "unknown";
 
 	if (iotbl.action == "added") then
-		if cutoff >= 0 and CLOCK > cutoff then
-			notification_add("Device", nil, "Added", iotbl.label, 1);
-		end
-
 		if (dev == "led") then
 			ledm_added(iotbl);
 		else
-		end
-	elseif (iotbl.action == "removed") then
-		if cutoff >= 0 and CLOCK > cutoff then
-			notification_add("Device", nil, "Removed", iotbl.label, 1);
+			iostatem_added(iotbl);
 		end
 
+	elseif (iotbl.action == "removed") then
 		if (iotbl.devkind == "led") then
 			ledm_added(iotbl);
 		else
 			iostatem_removed(iotbl);
 		end
 	end
+
 end
 
 function durden_display_state(action, id, state)
