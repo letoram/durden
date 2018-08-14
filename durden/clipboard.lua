@@ -6,7 +6,12 @@
 -- little stopping us from using more advanced input and output formats.
 --
 
+clipboard_debug = suppl_add_logfn("clipboard")();
+
 local function clipboard_add(ctx, source, msg, multipart)
+	clipboard_debug(string.format(
+		"add:multipart=%d:message=%s", multipart and 1 or 0, msg));
+
 	if (multipart) then
 		if (ctx.mpt[source] == nil) then
 			ctx.mpt[source] = {};
@@ -60,6 +65,8 @@ end
 
 local function clipboard_setglobal(ctx, msg, src)
 	table.insert_unique_i(ctx.globals, 1, msg);
+	clipboard_debug(string.format("global:message=%s", msg));
+
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
 	end
@@ -71,6 +78,7 @@ end
 
 -- by default, we don't retain history that is connected to a dead window
 local function clipboard_lost(ctx, source)
+	clipboard_debug(string.format("lost:source=%d", source));
 	ctx.mpt[source] = nil;
 	ctx.locals[source] = nil;
 end

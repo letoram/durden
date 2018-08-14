@@ -15,6 +15,9 @@ local mtrack = {
 	mlock = "none"
 };
 
+-- same as with every subsystem, should really just consolidate these in suppl
+local dispatch_debug = suppl_add_logfn("dispatch")();
+
 local function update_meta(m1, m2)
 	mtrack.m1 = m1;
 	mtrack.m2 = m2;
@@ -299,9 +302,22 @@ function dispatch_symbol_wnd(sym, wnd)
 		return;
 	end
 
-	run_display_action(wnd.wm, function()
+	dispatch_debug("wnd_context:%s", wnd.name);
+
+-- fake "selecting" the window
+	local old_sel = wnd.wm;
+	wnd.wm.selected = wnd;
+
+-- need to run in the context of the display as any object creation gets
+-- tied to the output rendertarget
+	display_action(wnd.wm, function()
 		dispatch_symbol(sym);
 	end)
+
+-- might have been removed while running
+	if (old_sel.destroy) then
+		wnd.wm.selected = old_sel;
+	end
 end
 
 local last_symbol = "/";
@@ -309,9 +325,7 @@ function dispatch_symbol(sym, menu_opts)
 -- note, it's up to us to forward the argument for validator before exec
 	local menu, msg, val, enttbl = menu_resolve(sym);
 	last_symbol = sym;
-	if (DEBUGLEVEL > 1) then
-		print("dispatch_symbol", sym, msg, val, debug.traceback());
-	end
+	dispatch_debug("run:" .. sym);
 
 -- catch all the 'value path returned', submenu returned, ...
 	if (not menu or menu.validator and not menu.validator(val)) then

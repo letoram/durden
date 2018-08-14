@@ -21,10 +21,11 @@ local function get_path_for_set(set, path)
 -- copy, but switch out handlers based on type.
 		local newtbl = {};
 		for i,j in pairs(v) do newtbl[i] = j; end
+		local fullpath = path .. "/" .. newtbl.name;
+
 			if (newtbl.kind == "value") then
 				newtbl.handler = function(ctx, val)
-					notification_add("test", nil, string.format("s=%s", newtbl.name, val));
-					print("handle value");
+					dispatch_symbol_wnd(wnd, string.format("%s=%s", fullpath, val));
 				end
 			else
 				if (newtbl.submenu == true) then
@@ -33,7 +34,7 @@ local function get_path_for_set(set, path)
 					end
 				else
 					newtbl.handler = function()
-						notification_add("test", nil, "action");
+						dispatch_symbol_wnd(wnd, fullpath);
 					end
 				end
 			end
@@ -51,6 +52,14 @@ local function gen_menu_for_group(k)
 		end
 	end
 
+	return get_path_for_set(set, "/target");
+end
+
+local function gen_all_menu(subtype)
+	local set = {};
+	for wnd in all_windows(subtype, false) do
+		table.insert(set, wnd);
+	end
 	return get_path_for_set(set, "/target");
 end
 
@@ -83,7 +92,7 @@ return {
 	{
 		name = "group",
 		label = "Group",
-		description = "Target action applied to a group",
+		description = "Target action applied on group tag",
 		kind = "action",
 		submenu = true,
 		eval = function() return #gen_group_menu() > 0; end,
@@ -91,4 +100,45 @@ return {
 			return gen_group_menu();
 		end
 	},
+	{
+		name = "all",
+		label = "All",
+		description = "Target action applied to all windows",
+		kind = "action",
+		submenu = true,
+		handler = function()
+			return gen_all_menu();
+		end
+	},
+	{
+		name = "type",
+		label = "Type",
+		description = "Target action applied to all windows by archetype",
+		kind = "action",
+		submenu = true,
+		handler = function()
+			local res = {};
+			for _, v in ipairs({
+				{"Terminal", "terminal"},
+				{"TUI", "tui"},
+				{"Wayland-Toplevel", "wayland-toplevel"},
+				{"X", "bridge-x11"},
+				{"Decode", "decode"},
+				{"Game", "game"},
+				{"Arcan", "lightweight arcan"},
+				{"Remoting", "remoting"}
+			}) do
+				table.insert(res, {
+					label = v[1],
+					name = v[2],
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return gen_all_menu(v[2]);
+					end
+				});
+			end
+			return res;
+		end
+	}
 };

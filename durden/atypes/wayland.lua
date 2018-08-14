@@ -6,33 +6,8 @@ local wlwnds = {}; -- vid->window allocation tracking
 local wlsurf = {}; -- segment cookie->vid tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
-local event_log = {};
-local function queue_log(msg)
-	table.insert(event_log, msg);
-	if (#event_log > 20) then
-		table.remove(event_log, 1);
-	end
-end
-
 -- also used in xdg- ... so global scope
-wayland_debug = queue_log;
-
-function wayland_debug_listener(handler)
-	if (handler and type(handler) == "function") then
-		wayland_debug = function(msg)
-			local dmsg = string.format("%d:%s", CLOCK, msg);
-			queue_log(dmsg);
-			handler(dmsg);
-		end
--- reset to default
-	else
-		wayland_debug = queue_log;
-	end
-
-	local oeq = event_log;
-	event_log = {};
-	return oeq;
-end
+wayland_debug = suppl_add_logfn("wayland")();
 
 function wayland_wndcookie(id)
 	return wlsurf[id] and wlwnds[wlsurf[id]];
