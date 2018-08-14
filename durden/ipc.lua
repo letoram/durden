@@ -27,7 +27,9 @@ local all_categories = {
 	"DISPATCH",
 	"WAYLAND",
 	"IPC",
-	"TIMERS"
+	"TIMERS",
+	"CLIPBOARD",
+	"CLIENTS"
 };
 
 local monitor_state = false;
@@ -36,55 +38,36 @@ local function toggle_monitoring(on)
 		return;
 	end
 
--- still missing: IPC, dispatch, connection. input, timers
--- display and tiler events maintain a log queue for debug purposes,
--- so those already come with the CLOCK tagged.
-	if (on) then
-		display_debug_listener(function(msg)
-			for _,v in ipairs(clients) do
-				if (v.category_map and v.category_map["DISPLAY"]) then
-					table.insert(v.buffer, string.format("DISPLAY:%s\n", msg));
-				end
-			end
-		end);
+	local domains = {
+		display = "DISPLAY:",
+		wayland = "WAYLAND:",
+		dispatch = "DISPATCH:",
+		wm = "WM:",
+		input = "INPUT:",
+		timers = "TIMERS:",
+		notification = "NOTIFICATION:",
+		extconn = "CLIENT:",
+		clipboard = "CLIPBOARD:"
+	};
 
-		if (wayland_debug_listener) then
-			wayland_debug_listener(function(msg)
-				if (not msg) then print(debug.traceback()); end
-				for _,v in ipairs(clients) do
-					if (v.category_map and v.category_map["WAYLAND"]) then
-						table.insert(v.buffer, string.format("WAYLAND:%s\n", msg));
+-- see suppl_add_logfn for the function that constructs the logger,
+-- each subsystem references that to get the message log function that
+-- will queue or forward to a set listener (that we define here)
+	for k,v in pairs(domains) do
+		local regfn = _G[k .. "_debug_listener"];
+		if (regfn) then
+			regfn( on and
+				function(msg)
+					for _, cl in ipairs(clients) do
+						if (cl.category_map and cl.category_map[string.upper(k)]) then
+							table.insert(cl.buffer, v .. msg);
+						end
 					end
-				end
-			end);
+				end or nil
+			);
 		end
-
-		tiler_debug_listener(function(msg)
-			for _,v in ipairs(clients) do
-				if (v.category_map and v.category_map["WM"]) then
-					table.insert(v.buffer, string.format("WM:%s\n", msg));
-				end
-			end
-		end);
-
-		notification_register("ipc-monitor",
-		function(src, sym, short, long, urgency)
-			for _,v in ipairs(clients) do
-				if (v.category_map and v.category_map["NOTIFICATION"]) then
-					table.insert(v.buffer,
-						string.format("NOTIFICATION:%d:%d:%s:%s:%s\n",
-							CLOCK, urgency, src, short, long and long or ""));
-				end
-			end
-		end);
-	else
-		display_debug_listener();
-		tiler_debug_listener();
-		if (wayland_debug_listener) then
-			wayland_debug_listener();
-		end
-		notification_deregister("ipc-monitor");
 	end
+
 	monitor_state = on;
 end
 
@@ -540,29 +523,40 @@ commands = {
 	monitor = function(client, line)
 		line = line and line or "";
 
-		if (clients.in_monitor) then
-			debug_count = debug_count - 1;
+		local categories = string.split(line, " ");
+		for i=#categories,1,-1 do
+			categories[i] = string.trim(categories[i]);
+			if (#categories[i] == 0) then
+				table.remove(categories, i);
+			end
+		end
+		if (#categories == 0) then
+			return {"EINVAL: missing categories: NONE, ALL or space separated list from " ..
+				table.concat(all_categories, " ") .. "\n"};
 		end
 
-		local categories = string.split(line, " ");
-		clients.in_monitor = #categories > 0;
+		client.category_map = {};
+		if (string.upper(categories[1]) == "ALL") then
+			categories = all_categories;
 
-		if (clients.in_monitor) then
-			debug_count = debug_count + 1;
-			client.category_map = {};
-			if (string.upper(categories[1]) == "ALL") then
-				categories = all_categories;
+		elseif (string.upper(categories[1]) == "NONE") then
+			clients.in_monitor = false;
+			clients.category_map = nil;
+			if (client.in_monitor) then
+				client.in_monitor = false;
+				debug_count = debug_count - 1;
 			end
+			return {"OK\n"};
+		end
 
-			for i,v in ipairs(categories) do
-				client.category_map[string.upper(v)] = true;
-			end
-		else
-			client.category_map = nil;
+		client.in_monitor = true;
+		debug_count = debug_count + 1;
+
+		for i,v in ipairs(categories) do
+			client.category_map[string.upper(v)] = true;
 		end
 
 		toggle_monitoring(debug_count > 0);
-
 		return {"OK\n"};
 	end,
 

@@ -8,38 +8,31 @@
 -- between window managers and their corresponding display.
 --
 
+
+-- rather ugly check here, but some devices provide an unworkable high
+-- default PPCM, particularly some capture devices that tamper with EDID.
+if VPPCM > 240 then
+	VPPCM = 32
+end
+
 local SIZE_UNIT = 38.4;
 local displays = {};
 local profiles = {};
 local ignored = {};
 local display_listeners = {};
-local event_log = {};
+local wm_alloc_function = function() end
 
-local function queue_log(msg)
-	table.insert(event_log, msg);
-	if (#event_log > 20) then
-		table.remove(event_log, 1);
-	end
-end
+local display_debug = suppl_add_logfn("display")();
 
-local display_debug = queue_log;
-
-function display_debug_listener(handler)
-	if (handler and type(handler) == "function") then
-		display_debug =
-		function(msg)
-			local dmsg = CLOCK .. ":" .. msg;
-			queue_log(dmsg);
-			handler(dmsg);
-		end
--- reset to default
+-- always return a valid string, for debug log tagging
+local function get_disp_name(name)
+	if (type(name) == "string") then
+		return name;
+	elseif (type(name) == "number") then
+		return tostring(number);
 	else
-		display_debug = queue_log;
+		return "invalid";
 	end
-
-	local oeq = event_log;
-	event_log = {};
-	return oeq;
 end
 
 local function get_disp(name)
@@ -160,6 +153,9 @@ local function set_mouse_scalef()
 		sf * displays[displays.main].tiler.scalef);
 end
 
+-- execute [cb] in the attachment context of [tiler], needed with
+-- rendertargets as images created has a default attachment unless
+-- one is explicitly set
 function display_tiler_action(tiler, cb)
 	for i,v in ipairs(displays) do
 		if (v.tiler == tiler) then
@@ -172,7 +168,8 @@ function display_tiler_action(tiler, cb)
 	end
 end
 
-local function run_display_action(disp, cb)
+-- same as for display_tiler_action, just a different lookup function
+function display_action(disp, cb)
 	local save = displays.main;
 
 	if (type(disp) == "number") then
@@ -194,12 +191,105 @@ local function switch_active_display(ind)
 	displays.main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
+	display_debug(string.format("active_display:%d", ind));
 	set_mouse_scalef();
 end
 
-local function set_best_mode(disp, w, h)
+local function set_best_mode(disp)
+-- fixme, enumerate list of modes and pick one that has a fitting
+-- resolution and refresh
 end
 
+local function get_ppcm(pw_cm, ph_cm, dw, dh)
+	return (math.sqrt(dw * dw + dh * dh) /
+		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
+end
+
+function display_count()
+	return #displays;
+end
+
+-- "hard" fullscreen- mode where the window canvas is mapped directly to
+-- the display without going through the detour of a rendertarget. Note that
+-- this is not as close as we can go yet, but requires more platform support
+-- and loses the ability to apply a shader.
+--
+-- The 'real' version would require not only a mode-switch but:
+--
+--  * track producer state and mark that we need a scanout capable buffer
+--    (which depend on the buffer format and so on) handle and wrap- shmif
+--    vbuf-only drawing into such a buffer. This can already
+--
+--  * for kms-, have arcan directly wrap the shmif- part into a DMAbuf and
+--    send that as the scanout for cases.
+--
+--  * use more native post-processing for ICC-/ gamma correction
+--
+function display_fullscreen(name, vid, modesw, mapv)
+	local disp = get_disp(name);
+	if (not disp) then
+		return;
+	end
+
+-- invalid vid == switch back, do so by reactivating rendertarget
+-- updates and possible switch back to the last known mode
+	if not valid_vid(vid) then
+		display_debug("fullscreen:off");
+
+		for i, j in ipairs(displays) do
+			if (valid_vid(j.rt)) then
+				rendertarget_forceupdate(j.rt, -1);
+			end
+		end
+
+		map_video_display(disp.rt, disp.id, display_maphint(disp));
+		if (disp.last_m and disp.fs_modesw) then
+			video_displaymodes(disp.id, disp.last_m.modeid);
+		end
+
+		disp.monitor_vid = nil;
+		disp.monitor_sprops = nil;
+
+		if (disp.fs_mode) then
+			local ws = disp.tiler.spaces[disp.tiler.space_ind];
+			if (type(ws[disp.fs_mode]) == "function") then
+				ws[disp.fs_mode](ws);
+			end
+			disp.fs_mode = nil;
+		end
+
+-- otherwise enter fullscreen, switch each rendertarget to a configurable
+-- 'in background' refresh rate to permit other effects etc. to be running
+-- but at a lower rate than the focused vid
+	else
+		display_debug(string.format("fullscreen:%d", disp.id));
+		for i,j in ipairs(displays) do
+			if (valid_vid(j.rt)) then
+				rendertarget_forceupdate(j.rt, gconfig_get("display_fs_rtrate"));
+			end
+		end
+
+		disp.monitor_vid = vid;
+		local ws = disp.tiler.spaces[disp.tiler.space_ind];
+		disp.fs_mode = ws.mode;
+		map_video_display(vid, disp.id, display_maphint(disp));
+	end
+
+-- will be applied in tick as we don't know what render state we are called from
+	disp.fs_modesw = modesw;
+end
+
+local function find_profile(name)
+	for k,v in ipairs(profiles) do
+		if (string.match(name, v.ident)) then
+			return v;
+		end
+	end
+end
+
+-- parse and decode display information from the edid block, possible that
+-- we should allow an edid override here as well - though linux etc. provide
+-- that at a lower level
 local function display_data(id)
 	local data, hash = video_displaydescr(id);
 	local model = "unknown";
@@ -240,86 +330,33 @@ local function display_data(id)
 	return strip(model), strip(serial);
 end
 
-local function get_ppcm(pw_cm, ph_cm, dw, dh)
-	return (math.sqrt(dw * dw + dh * dh) /
-		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
+local function get_name(id)
+-- first mapping nonsense has previously made it easier (?!)
+-- getting a valid EDID in some cases
+	local name = id == 0 and "default" or "unkn_" .. tostring(id);
+	map_video_display(WORLDID, id, HINT_NONE);
+	local model, serial = display_data(id);
+	if (model) then
+		name = string.split(model, '\r')[1] .. "/" .. serial;
+	end
+	return name;
 end
 
-function display_count()
-	return #displays;
-end
+local function display_byname(name, id)
+	local res = {
+		w = VRESW,
+		h = VRESH,
+		ppcm = VPPCM,
+		id = id,
+		name = get_name(id),
+		shader = gconfig_get("display_shader"),
+		maphint = HINT_NONE,
+		refresh = 60,
+	};
 
--- "hard" fullscreen- mode where the window canvas is mapped directly to
--- the display without going through the detour of a rendertarget. Note that
--- this is not as close as we can go yet, but requires more platform support
--- and loses the ability to apply a shader.
---
--- The 'real' version would require not only a mode-switch but:
---
---  * track producer state and mark that we need a scanout capable buffer
---    (which depend on the buffer format and so on) handle and wrap- shmif
---    vbuf-only drawing into such a buffer. This can already
---
---  * for kms-, have arcan directly wrap the shmif- part into a DMAbuf and
---    send that as the scanout for cases.
---
---  * use more native post-processing for ICC-/ gamma correction
---
-function display_fullscreen(name, vid, modesw, mapv)
-	local disp = get_disp(name);
-	if (not disp) then
-		return;
-	end
-
-	if  not valid_vid(vid) then
-		for i, j in ipairs(displays) do
-			if (valid_vid(j.rt)) then
-				rendertarget_forceupdate(j.rt, -1);
-			end
-		end
-
--- tell the connected tiler to restore old mode so target_hints,
--- locking etc. propagate correctly, it's implemented here rather than in
--- tiler to support different WMs.
-		map_video_display(disp.rt, disp.id, display_maphint(disp));
-		if (disp.last_m and disp.fs_modesw) then
-			video_displaymodes(disp.id, disp.last_m.modeid);
-		end
-		disp.monitor_vid = nil;
-		disp.monitor_sprops = nil;
-		if (disp.fs_mode) then
-			local ws = disp.tiler.spaces[disp.tiler.space_ind];
-			if (type(ws[disp.fs_mode]) == "function") then
-				ws[disp.fs_mode](ws);
-			end
-			disp.fs_mode = nil;
-		end
-	else
-
-		for i,j in ipairs(displays) do
-			if (valid_vid(j.rt)) then
-				rendertarget_forceupdate(j.rt, gconfig_get("display_fs_rtrate"));
-			end
-		end
-
-		disp.monitor_vid = vid;
-		local ws = disp.tiler.spaces[disp.tiler.space_ind];
-		disp.fs_mode = ws.mode;
-		map_video_display(vid, disp.id, display_maphint(disp));
-	end
-
--- will be applied in tick
-	disp.fs_modesw = modesw;
-end
-
-local function display_load(display)
-	if (not display or not display.name) then
-		warning("load called on broken display");
-		return;
-	end
-
-	local pref = "disp_" .. string.hexenc(display.name) .. "_";
+	local pref = "disp_" .. string.hexenc(res.name) .. "_";
 	local keys = match_keys(pref .. "%");
+
 	for i,v in ipairs(keys) do
 		local ind = string.find(v, "=");
 		if (ind) then
@@ -327,26 +364,51 @@ local function display_load(display)
 			local val = string.sub(v, ind+1);
 			if (key == "ppcm") then
 				if (tonumber(val)) then
-					display_override_density(display.name, tonumber(val));
+					res.ppcm = tonumber(val);
 				end
 			elseif (key == "map") then
 				if (tonumber(val)) then
-					display_reorient(display.name, tonumber(val));
+					res.maphint = tonumber(val);
 				end
 			elseif (key == "shader") then
-				display_shader(display.name, val);
+				res.shader = val;
 			elseif (key == "bg") then
-				display.tiler:set_background(val);
+				res.bg = val;
 			elseif (key == "primary") then
-				display.primary = tonumber(val) == 1;
+				res.primary = tonumber(val) == 1;
 			else
 				warning("unknown stored display setting with key " .. key);
 			end
 		end
 	end
 
-	if (not display.shader) then
-		display_shader(display.name, gconfig_get("display_shader"));
+-- profile takes precedence over cached database key
+	local prof = find_profile(name);
+	if (prof) then
+		if (prof.width) then
+			res.w = prof.width;
+		end
+		if (prof.height) then
+			res.h = prof.height;
+		end
+		if (prof.ppcm) then
+			res.ppcm = prof.ppcm;
+			res.ppcm_override = prof.ppcm;
+		end
+	end
+
+	return res;
+end
+
+-- assume that we somehow lost state and have a valid display, rebuild it
+-- with the contents of the provided table
+local function display_apply(display)
+	display_override_density(display.name, display.ppcm);
+	display_reorient(display.name, display.maphint);
+	display_shader(display.name, display.shader);
+
+	if (display.bg and display.tiler) then
+		display.tiler:set_background(bg);
 	end
 end
 
@@ -371,18 +433,6 @@ function display_manager_shutdown()
 	end
 -- MISSING: mode settings
 	store_key(ktbl);
-end
-
-local function get_name(id)
--- first mapping nonsense has previously made it easier (?!)
--- getting a valid EDID in some cases
-	local name = id == 0 and "default" or "unkn_" .. tostring(id);
-	map_video_display(WORLDID, id, HINT_NONE);
-	local model, serial = display_data(id);
-	if (model) then
-		name = string.split(model, '\r')[1] .. "/" .. serial;
-	end
-	return name;
 end
 
 function display_set_backlight(name, ctrl, ind)
@@ -451,8 +501,6 @@ local function display_added(id)
 		map_video_display(ddisp.rt, id, display_maphint(ddisp));
 	end
 
-	display_load(ddisp);
-
 -- load possible overrides since before, note that this is slightly
 -- inefficient as it will force rebuild of underlying rendertargets
 -- etc. but it beats have to cover a number of corner cases / races
@@ -509,7 +557,8 @@ function display_event_handler(action, id)
 end
 
 --
--- a facility to monitor when a display is added or lost
+-- a facility to monitor when a display is added or lost as some
+-- global effects need to know about this in order to build fbos etc.
 --
 function display_add_listener(fcon)
 	table.insert(display_listeners, fcon);
@@ -524,42 +573,45 @@ function display_all_mode(mode)
 	end
 end
 
-function display_manager_init()
+function display_manager_init(alloc_fn)
+	wm_alloc_function = alloc_fn;
 	local defdisp = {
 		ppcm = VPPCM,
 		width = VRESW,
 		height = VRESH
 	};
-	displays[1] = {
-		tiler = tiler_create(VRESW, VRESH,
-			{scalef = VPPCM / SIZE_UNIT, ppcm = VPPCM, disptbl = defdisp});
-		w = VRESW,
-		h = VRESH,
-		name = get_name(0),
-		id = 0,
-		ppcm = VPPCM
-	};
-	displays[1].tiler.status_lclick = function() dispatch_symbol("/global"); end
-	displays[1].tiler.status_rclick = function() dispatch_symbol("/target"); end
+
+-- Since we won't get an 'added / removed' event for this display, the defaults
+-- and possible profile override needs to be activated manually. This should
+-- really be reworked to have the same path for everything, the problem lies
+-- with how the platform is setup in Arcan, which in turn ties back to openGL
+-- setup without a working display.
+	local name = get_name(0);
+	local ddisp = display_byname(name, 0);
+
+-- this might come from a preset profile, so sweep the available display maps
+-- and pick the one with the best fit
+	set_best_mode(disp);
+
+	ddisp.tiler = wm_alloc_function(ddisp);
+	displays[1] = ddisp;
 
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
-	local ddisp = displays[1];
 	ddisp.tiler.name = "default";
 
--- simple mode does not permit us to do much of the fun stuff, like different
--- color etc. correction shaders or rotate/fit/...
+-- simple mode does not permit us to do much of the fun stuff, like
+-- different color etc. correction shaders or rotate/fit/.. it's
+-- essentially just for low powered nested use
+
 	if (not displays.simple) then
 		rendertarget_forceupdate(WORLDID, 0);
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
-		ddisp.maphint = HINT_NONE;
-		ddisp.shader = gconfig_get("display_shader");
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
-		display_load(displays[1]);
 	end
 
-	return displays[1].tiler;
+	return ddisp.tiler;
 end
 
 function display_attachment()
@@ -577,7 +629,7 @@ function display_override_density(name, ppcm)
 	end
 
 -- it might be that the selected display is not currently the main one
-	run_display_action(disp, function()
+	display_action(disp, function()
 		disp.ppcm = ppcm;
 		disp.ppcm_override = ppcm;
 		disp.tiler:update_scalef(ppcm / SIZE_UNIT, {ppcm = ppcm});
@@ -620,19 +672,13 @@ function display_add(name, width, height, ppcm, id)
 		display_debug(string.format("add_match:name=%s", found.name));
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
-		display_load(found);
+		display_apply(found);
 
 	else
-		local prof;
-		for k,v in ipairs(profiles) do
-			if (string.match(name, v.ident)) then
-				prof = v;
-				break;
-			end
-		end
+		local prof = find_profile(name);
 
 		if (prof) then
-			display_debug(string.format("add_profile:name=%s", name));
+			display_debug(string.format("add_profile:name=%s", get_disp_name(name)));
 -- facility for supporting more window management styles in the future
 			if (prof.wm == "ignore") then
 				if (prof.tag) then
@@ -658,34 +704,24 @@ function display_add(name, width, height, ppcm, id)
 			end
 		end
 
+-- make sure all resources are created in the global scope
 		set_context_attachment(WORLDID);
-		local disptbl = {
-			ppcm = ppcm,
-			width = width,
-			height = height
-		};
+
 		local nd = {
-			tiler = tiler_create(width, height, {
-				name=name,
-				scalef=ppcm/SIZE_UNIT,
-				disptbl = disptbl
-			}),
 			w = width,
 			h = height,
 			name = name,
 			primary = false,
 			maphint = HINT_NONE
 		};
+		nd.tiler = wm_alloc_function(nd);
 		table.insert(displays, nd);
-		nd.tiler.name = name;
-		nd.tiler.status_lclick = function() dispatch_symbol("/global"); end
-		nd.tiler.status_rclick = function() dispatch_symbol("/target"); end
 		nd.ind = #displays;
 		new = nd.tiler;
 
 -- this will rebuild tiler with all its little things attached to rt
--- we hide it as we explicitly map to a display and do not want it visible
--- in the WORLDID domain, eating fillrate.
+-- we hide it as we explicitly map to a display and do not want it
+-- visible in the WORLDID domain, eating fillrate.
 		nd.rt = nd.tiler:set_rendertarget(true);
 		hide_image(nd.rt);
 
@@ -723,9 +759,23 @@ local function autoadopt_display(disp)
 	for i=1,10 do
 		if (not disp.tiler:empty_space(i)) then
 			local ddisp = find_free_display(disp);
+
+-- chances are all displays are lost
+			if (not ddisp) then
+				return;
+			end
+
 			local space = disp.tiler.spaces[i];
-			space:migrate(ddisp.tiler);
-			space.home = disp.name;
+			if (not space) then
+				ddisp.tiler:switch_ws(i);
+				space = ddisp.tiler.spaces[i];
+			end
+
+-- couldn't find a space to home into, keep pending and wait
+			if (space) then
+				space:migrate(ddisp.tiler);
+				space.home = disp.name;
+			end
 		end
 	end
 end
@@ -740,16 +790,16 @@ function display_bytag(tag, yield)
 end
 
 function display_lease(name)
-	display_debug("lease:name=" .. tostring(name));
+	display_debug("lease:name=" .. get_disp_name(name));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (not v.leased) then
-				display_debug("leased:name=" .. tostring(name));
+				display_debug("leased:name=" .. get_disp_name(name));
 				v.leased = true;
 				return v;
 			else
-				display_debug("lease_error:name=" .. tostring(name));
+				display_debug("lease_error:name=" .. get_disp_name(name));
 			end
 		end
 	end
@@ -757,16 +807,16 @@ function display_lease(name)
 end
 
 function display_release(name)
-	display_debug("release:name=" .. tostring(name));
+	display_debug("release:name=" .. get_disp_name(name));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (v.leased) then
-				display_debug("released:name=" .. tostring(name));
+				display_debug("released:name=" .. get_disp_name(name));
 				v.leased = false;
 				return;
 			else
-				display_debug("release_error:name=" .. tostring(name));
+				display_debug("release_error:name=" .. get_disp_name(name));
 			end
 		end
 	end
@@ -795,24 +845,31 @@ function display_remove(name, id)
 					end
 					table.remove(ignored,i);
 					return;
+
 				end
 			end
-			warning("attempted to remove unknown display: " .. name);
+			display_debug("remove:error:unknown=" .. get_disp_name(name));
 			return;
 		end
 	end
 
+-- mark as orphan and reduce memory footprint by resizing the rendertarget
+	display_debug("orphan:name=" .. get_disp_name(name));
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
 	hide_image(found.rt);
 
+-- try and have another display adopt
 	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
 		found.orphan = false;
 	end
 
+-- if it was the main display we lost, cycle to the next one so that gets
+-- set as main
 	if (foundi == displays.main) then
 		display_cycle_active(ws);
 	end
+
 	return found;
 end
 
@@ -837,7 +894,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			resize_video_canvas(w, h);
 			disp.tiler:resize(w, h, true);
 		else
-			run_display_action(disp, function()
+			display_action(disp, function()
 				if (video_displaymodes(source, w, h)) then
 					map_video_display(disp.rt, 0, disp.maphint);
 					resize_video_canvas(w, h);
@@ -861,10 +918,13 @@ function display_ressw(name, mode)
 
 -- track this so we can recover if the display is lost, readded and homed to def
 	disp.last_m = mode;
-	disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
-		0.1 * mode.phy_height_mm, mode.width, mode.height);
 
-	run_display_action(disp, function()
+	if (not disp.ppcm_override) then
+		disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
+			0.1 * mode.phy_height_mm, mode.width, mode.height);
+	end
+
+	display_action(disp, function()
 		disp.w = mode.width;
 		disp.h = mode.height;
 		video_displaymodes(disp.id, mode.modeid);
@@ -961,7 +1021,7 @@ function display_reorient(name, hint)
 		newh = disp.w;
 	end
 
-	run_display_action(disp, function()
+	display_action(disp, function()
 		map_video_display(disp.rt, disp.id, display_maphint(disp));
 		disp.tiler:resize(neww, newh);
 		disp.tiler:update_scalef(disp.tiler.scalef);
@@ -1008,7 +1068,13 @@ end
 function active_display(rt, raw)
 	if (raw) then
 		return displays[displays.main];
-	elseif (rt) then
+	end
+
+	if (not displays[displays.main]) then
+		return;
+	end
+
+	if (rt) then
 		return displays[displays.main].rt;
 	else
 		return displays[displays.main].tiler;

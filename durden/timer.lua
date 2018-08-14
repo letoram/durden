@@ -4,7 +4,6 @@
 -- Description: Timer functionality for durden, useful for fire-once
 -- or repeated timers, both idle (resetable) and monotonic
 --
-
 local idle_timers = {};
 local timers = {};
 local wakeups = {};
@@ -15,21 +14,35 @@ local idle_count = 0;
 local tick_count = 0;
 local idle_masked = false;
 
+local leave_fmtstr = "type=idle:state=leave:once=%d:name=%s";
+local enter_fmtstr = "type=idle:state=enter:once=%d:name=%s";
+local timer_debug = suppl_add_logfn("timers")();
+
 local function run_idle_timers()
 	for i=#idle_timers,1,-1 do
-		if (idle_count >= idle_timers[i].delay and not idle_timers[i].passive
-			and not idle_timers[i].suspended) then
-			local func = idle_timers[i].trigger;
+		local timer = idle_timers[i];
+
+-- idle timers are special as the have both an enter and an optional leave
+-- stage, perhaps this should be generalized into an event triggers framework
+-- so we can define more refined behaviors (and the rising/falling structure
+-- could be reused)
+		if (idle_count >= timer.delay and
+			not timer.passive and not timer.suspended) then
+
 -- add to front of wakeup queue so we get last-in-first-out
-			if (idle_timers[i].wakeup) then
-				table.insert(wakeups, 1, idle_timers[i].wakeup);
+			if (timer.wakeup) then
+				table.insert(wakeups, 1, {timer.wakeup, timer.name});
 			end
+
+-- remove or mask so that it won't fire again until we've "left" idle state
 			if (idle_timers[i].once) then
 				table.remove(idle_timers, i);
 			else
-				idle_timers[i].passive = true;
+				timer.passive = true;
 			end
-			func();
+
+			timer_debug(string.format(enter_fmtstr, timer.once and 1 or 0, timer.name));
+			timer.func();
 		end
 	end
 end
@@ -49,6 +62,10 @@ function timer_tick(...)
 			timers[i].count = timers[i].count - 1;
 			if (timers[i].count == 0) then
 				local hfunc = timers[i].trigger;
+				timer_debug(
+					string.format("type=normal:once=%d:name=%s",
+					timers[i].once and 1 or 0, timers[i].name)
+				);
 				if (timers[i].once) then
 					table.remove(timers, i);
 				else
@@ -102,11 +119,17 @@ end
 
 function timer_reset_idle()
 	idle_count = 0;
+
 	for i,v in ipairs(wakeups) do
-		v();
+		timer_debug(string.format(leave_fmtstr, timer.once and 1 or 0, v[2]));
+		v[1]();
 	end
 	local wakeup = {};
 
+-- make sure that all idle timers are in a passive state even if their enter
+-- didn't fire, e.g. if they were added while we already were in a passive
+-- state (as 'active' is defined from user-interaction, not via other IPC
+-- means)
 	for i,v in ipairs(idle_timers) do
 		if (v.passive) then
 			v.passive = nil;

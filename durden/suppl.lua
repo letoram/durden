@@ -1171,3 +1171,40 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 		end
 	end
 end
+
+-- register a prefix_debug_listener function to attach/define a
+-- new debug listener, and return a local queue function to append
+-- to the log without exposing the table, used by most subsystems
+-- and exposed via the ipc.
+function suppl_add_logfn(prefix)
+	return function()
+		local queue = {};
+		local handler = nil;
+
+		local res = function(msg)
+			local exp_msg = CLOCK .. ":" .. msg .. "\n";
+			if (handler) then
+				handler(exp_msg);
+			else
+				table.insert(queue, exp_msg);
+				if (#queue > 20) then
+					table.remove(queue, 1);
+				end
+			end
+		end
+
+		_G[prefix .. "_debug_listener"] = function(newh)
+			if (newh and type(newh) == "function") then
+				handler = newh;
+				for i,v in ipairs(queue) do
+					newh(v);
+				end
+			else
+				handler = nil;
+			end
+			queue = {};
+		end
+
+		return res;
+	end
+end

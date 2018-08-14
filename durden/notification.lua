@@ -5,6 +5,7 @@
 --
 
 local listeners = {};
+local note_debug = suppl_add_logfn("notification")();
 
 function notification_register(key, handler)
 	listeners[key] = handler;
@@ -12,6 +13,10 @@ end
 
 function notification_deregister(key)
 	listeners[key] = nil;
+end
+
+function notification_debug(msg, long)
+	notification_add("debug", msg, long, 1);
 end
 
 --
@@ -26,6 +31,11 @@ function notification_add(source, symref, short, long, urgency)
 	if (not gconfig_get("notifications_enable")) then
 		return;
 	end
+
+	note_debug(string.format(
+		"source=%s:urgency=%d:msg=%s %s",
+		source, urgency, short, long and long or "")
+	);
 
 	if (type(urgency) ~= "number") then
 		urgency = 1;

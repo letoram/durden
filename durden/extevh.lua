@@ -13,6 +13,14 @@ local archetypes = {};
 -- source-id-to-window-mapping
 local swm = {};
 
+-- notice that logging server to client commands are done elsewhere as
+-- the hook is quite costly and we only want to enable it when in an IPC
+-- monitor.
+
+function extevh_lookup(source)
+	return swm[source];
+end
+
 local function load_archetypes()
 -- load custom special subwindow handlers
 	local res = glob_resource("atypes/*.lua", APPL_RESOURCE);

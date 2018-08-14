@@ -295,7 +295,7 @@ function iostatem_added(iotbl)
 
 -- notification may need an initial cutoff due to the startup storm
 		if cutoff >= 0 and CLOCK > cutoff then
-			notification_add("Device", nil, "Discovered", iotbl.label, 1);
+			notification_add("Device", nil, "Discovered", devices[iotbl.devid].label, 1);
 		end
 
 		if (label_lookup[iotbl.label]) then

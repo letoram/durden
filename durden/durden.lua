@@ -68,9 +68,34 @@ function durden(argv)
 
 	load_configure_mouse();
 
--- this creates our first tiler, and switch out its default titlebar buttons
--- with the set that is loaded / stored in gconf.lua
-	local nt = display_manager_init();
+-- display manager will invoke the callback (tiler_create from tiler.lua)
+-- expected methods in the returned structure:
+--  set_rendertarget(on or off)
+--  activate(), deactivate()
+--  tick()
+--  resize(w, h, force)
+--
+-- (currently expected but to be refactored)
+--  empty_space(ind)
+--  update_scalef(factor, disptbl)
+--  set_background()
+--
+	local nt = display_manager_init(function(ddisp)
+		local res = tiler_create(ddisp.w, ddisp.h,
+			{
+				scalef = ddisp.ppcm / 38.4,
+				disptbl = {ppcm = ddisp.pccm, width = ddisp.w, h = ddisp.h}
+			}
+		);
+
+-- default click actions
+		res.name = ddisp.name;
+		res.status_lclick = function() dispatch_symbol("/global"); end
+		res.status_rclick = function() dispatch_symbol("/target"); end
+		return res;
+	end);
+
+-- buttons with the set that is loaded / stored in gconf.lua
 	nt.buttons = gconfig_buttons;
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer

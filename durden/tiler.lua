@@ -32,40 +32,10 @@ local function wnd_animation_time(wnd, source, decor, position)
 	return 0;
 end
 
---
--- should this ever become a measurable cost, just check DEBUGLEVEL
--- and replace with an empty function and move the string.format calls
--- to this queue function itself.
---
-local event_log = {};
-local function queue_log(wm, msg)
-	table.insert(event_log, msg);
-	if (#event_log > 20) then
-		table.remove(event_log, 1);
-	end
+local tiler_logfun = suppl_add_logfn("wm")();
+local function tiler_debug(wm, msg)
+	tiler_logfun(wm.name .. ":" .. msg);
 end
-
-local tiler_debug = queue_log;
-
-function tiler_debug_listener(handler)
-	if (handler and type(handler) == "function") then
-		tiler_debug =
-		function(wm, msg)
-			if (not wm) then print(debug.traceback()); end
-			local dmsg = string.format("%d:%s:%s", CLOCK, wm.name, msg);
-			queue_log(wm, dmsg);
-			handler(dmsg);
-		end
--- reset to default
-	else
-		tiler_debug = queue_log;
-	end
-
-	local oeq = event_log;
-	event_log = {};
-	return oeq;
-end
-
 
 local function linearize(wnd)
 	local res = {};
@@ -2598,6 +2568,8 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		local props = image_surface_resolve(res.anchor);
 		local vprops = image_surface_resolve(vid);
 
+-- account for overflow, the rules here aren't really as good as they could be
+-- since there is a region of influence that could be taken into account
 		local ox = wnd.wm.width - (props.x + vprops.width);
 		if (ox < 0) then
 			nudge_image(res.anchor, ox, 0);
@@ -2606,6 +2578,11 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		if (oy < 0) then
 			nudge_image(res.anchor, 0, oy);
 		end
+		tiler_debug(wnd.wm,
+			string.format(
+				"popup_reposition:name=%s:index=%d:x1=%d:y1=%d:x2=%d:y2=%d:ox=%d:oy=%d",
+				wnd.name, res.index, x1, y1, x2, y2, ox, oy)
+		);
 	end
 
 	link_image(res.anchor, dst.canvas);
