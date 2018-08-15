@@ -5009,6 +5009,11 @@ local function tiler_scalef(wm, newf, disptbl)
 -- this broke custom buttons and buttons from other origins
 	wm.statusbar:invalidate();
 
+-- mouse locking coordinates depend on active rt
+	if (active_display() == wm) then
+		mouse_querytarget(wm.rt);
+	end
+
 --	tiler_statusbar_build(wm);
 	wm:tile_update();
 end
