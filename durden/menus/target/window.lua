@@ -328,7 +328,7 @@ local function remove_button(wnd, dir, lbl)
 		for i,v in ipairs(list) do
 			if (v.align == dir) then
 				table.insert(res, {
-					name = tostring(k),
+					name = tostring(i),
 					label = group .. "_" .. tostring(i),
 					description = "Button Label: " .. v.lbl,
 					kind = "action",
@@ -554,6 +554,22 @@ local function set_impostor(wnd, px)
 	);
 end
 
+local border_table = {
+	{
+		name = "color",
+		label = "Color"
+	}
+};
+
+-- these have a common factroy as we really want to provide a more advanced
+-- picking widget later that can take both various common swatches and cubes,
+-- but also grab from clients and quantized versions of clients
+suppl_append_color_menu(gconfig_get("border_color"), border_table[1],
+function(fmt, r, g, b)
+	image_color(active_display().selected.border, r, g, b);
+end
+);
+
 local titlebar_table = {
 	{
 		name = "swap",
@@ -630,6 +646,26 @@ local titlebar_table = {
 			set_impostor(wnd, num);
 		end
 	}
+};
+
+local border_menu = {
+{
+	name = "border_toggle",
+	label = "Border Toggle",
+	kind = "value",
+	description = "Toggle the server-side decorated window border on/off",
+	set = {LBL_YES, LBL_NO, LBL_FLIP},
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		if (val == LBL_FLIP) then
+			wnd:set_border(not wnd.show_border, true);
+		elseif (val == LBL_YES) then
+			wnd:set_border(false);
+		else
+			wnd:set_border(true);
+		end
+	end
+},
 };
 
 return {
@@ -710,8 +746,16 @@ return {
 		label = "Titlebar",
 		kind = "action",
 		submenu = true,
-		description = "Titlebar behavior controls",
+		description = "Titlebar look and feel",
 		handler = titlebar_table
+	},
+	{
+		name = "border",
+		label = "Border",
+		kind = "action",
+		submenu = true,
+		description = "Border look and feel",
+		handler = border_table
 	},
 	{
 		name = "canvas_to_bg",
@@ -726,16 +770,6 @@ return {
 			else
 				wnd.space:set_background(wnd.canvas);
 			end
-		end
-	},
-	{
-		name = "border_toggle",
-		label = "Border Toggle",
-		kind = "action",
-		description = "Toggle the server-side decorated window border on/off",
-		handler = function()
-			local wnd = active_display().selected;
-			wnd:set_border(not wnd.show_border, true);
 		end
 	},
 	{

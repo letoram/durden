@@ -2,9 +2,8 @@
 local function get_path_for_set(set, path)
 	local nents = {};
 
-	for i,v in ipairs(set) do
-		local os = active_display().selected;
-		local menu, _, val, restbl = menu_resolve(path, v);
+	for i,wnd in ipairs(set) do
+		local menu, _, val, restbl = menu_resolve(path, wnd);
 		if (menu) then
 -- switch out the handlers to correspond to the same get_path_for..
 -- it will always result in a menu path
@@ -23,9 +22,16 @@ local function get_path_for_set(set, path)
 		for i,j in pairs(v) do newtbl[i] = j; end
 		local fullpath = path .. "/" .. newtbl.name;
 
+-- the set might mutate while the UI is being queried, so verify that
+-- the table we are referencing still has the relevant functions.
 			if (newtbl.kind == "value") then
 				newtbl.handler = function(ctx, val)
-					dispatch_symbol_wnd(wnd, string.format("%s=%s", fullpath, val));
+					local cmd = string.format("%s=%s", fullpath, val);
+					for _,wnd in ipairs(set) do
+						if (wnd.wm) then
+							dispatch_symbol_wnd(wnd, cmd);
+						end
+					end
 				end
 			else
 				if (newtbl.submenu == true) then
@@ -34,7 +40,11 @@ local function get_path_for_set(set, path)
 					end
 				else
 					newtbl.handler = function()
-						dispatch_symbol_wnd(wnd, fullpath);
+						for _,wnd in ipairs(set) do
+							if (wnd.wm) then
+								dispatch_symbol_wnd(wnd, fullpath);
+							end
+						end
 					end
 				end
 			end

@@ -258,8 +258,7 @@ local function dispatch_multi(sym, arg, ext)
 	local last_i = 2;
 	local len = string.len(sym, arg, ext);
 	for i=2,len do
-		if ((string.sub(sym, i, i) == '\n' or i == len) and
-			i ~= last_i) then
+		if ((string.sub(sym, i, i) == '\n' or i == len) and i ~= last_i) then
 			dispatch_symbol(string.sub(sym, last_i, i), arg, ext);
 			last_i = i;
 		end
@@ -297,7 +296,7 @@ end
 -- Due to the (current) ugly of lots of active_display() calls being used,
 -- we need to do some rather unorthodox things for this to work until all
 -- those calls have been factored out.
-function dispatch_symbol_wnd(sym, wnd)
+function dispatch_symbol_wnd(wnd, sym)
 	if (not wnd or not wnd.wm) then
 		return;
 	end
