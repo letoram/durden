@@ -535,6 +535,33 @@ function suppl_valid_vsymbol(val)
 	return true;
 end
 
+local function append_color_menu(r, g, b, tbl, update_fun)
+	tbl.kind = "value";
+	tbl.hint = "(r g b)(0..255)";
+	tbl.initial = string.format("%.0f %.0f %.0f", r, g, b);
+	tbl.validator = suppl_valid_typestr("fff", 0, 255, 0);
+	tbl.handler = function(ctx, val)
+		local tbl = suppl_unpack_typestr("fff", val, 0, 255);
+		if (not tbl) then
+			return;
+		end
+		update_fun(
+			string.format("\\#%02x%02x%02x", tbl[1], tbl[2], tbl[3]),
+			tbl[1], tbl[2], tbl[3]);
+	end
+end
+
+function suppl_append_color_menu(v, tbl, update_fun)
+	if (type(v) == "table") then
+		append_color_menu(v[1], v[2], v[3], tbl, update_fun);
+	else
+		local r = tonumber(string.sub(v, 3, 4), 16);
+		local g = tonumber(string.sub(v, 5, 6), 16);
+		local b = tonumber(string.sub(v, 7, 8), 16);
+		append_color_menu(r, g, b, tbl, update_fun);
+	end
+end
+
 function suppl_button_default_mh(wnd, cmd)
 	return {
 		click = function(btn)

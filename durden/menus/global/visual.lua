@@ -210,23 +210,6 @@ local function key_to_graphmode(k)
 	return tbl[k];
 end
 
-local function append_color_menu(v, tbl, update_fun)
-	local r = tonumber(string.sub(v, 3, 4), 16);
-	local g = tonumber(string.sub(v, 5, 6), 16);
-	local b = tonumber(string.sub(v, 7, 8), 16);
-	tbl.kind = "value";
-	tbl.hint = "(r g b)(0..255)";
-	tbl.initial = string.format("%.0f %.0f %.0f", r, g, b);
-	tbl.validator = suppl_valid_typestr("fff", 0, 255, 0);
-	tbl.handler = function(ctx, val)
-		local tbl = suppl_unpack_typestr("fff", val, 0, 255);
-		if (not tbl) then
-			return;
-		end
-		update_fun(string.format("\\#%02x%02x%02x", tbl[1], tbl[2], tbl[3]));
-	end
-end
-
 local function gen_palette_menu()
 	local list = {};
 	for i,v in ipairs(HC_PALETTE) do
@@ -235,7 +218,7 @@ local function gen_palette_menu()
 			format = HC_PALETTE[i],
 			label = "COLOR_" .. tostring(i)
 		};
-		append_color_menu(v, tbl, function(new)
+		suppl_append_color_menu(v, tbl, function(new)
 			HC_PALETTE[i] = new;
 		end);
 		table.insert(list, tbl);
