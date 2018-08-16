@@ -93,7 +93,7 @@ local function tryload(v)
 	end
 
 	if (type(map.height) == "number" and map.height > 0) then
-		rv.height = map.width;
+		rv.height = map.height;
 	end
 
 	return rv;
@@ -195,9 +195,44 @@ local function switch_active_display(ind)
 	set_mouse_scalef();
 end
 
-local function set_best_mode(disp)
+local function set_best_mode(disp, desw, desh)
 -- fixme, enumerate list of modes and pick one that has a fitting
 -- resolution and refresh
+	local list = video_displaymodes(disp.id);
+	if (not list or #list == 0) then
+		display_debug("mode_error:message=no_mode:display=" .. tostring(disp.id));
+		return;
+	end
+
+	if (not desw or not desh) then
+		desw = disp.w;
+		desh = disp.h;
+	end
+
+-- just score based on match against w/h
+	table.sort(list, function(a, b)
+		local dx = desw - a.width;
+		local dy = desh - a.height;
+		local ea = math.sqrt((dx * dx) + (dy * dy));
+		local dx = desw - b.width;
+		local dy = desh - b.height;
+		local eb = math.sqrt((dx * dx) + (dy * dy));
+
+-- same resolution? take the matching refresh, not the highest as that would
+-- excluding have a device- profile override
+		if (ea == eb) then
+			return math.abs(disp.refresh - a.refresh) < math.abs(disp.refresh - b.refresh);
+		end
+
+		return ea < eb;
+	end);
+
+	display_debug(
+		string.format("mode_set:display=%d:width=%d:height=%d:refresh=%d",
+		disp.id, list[1].width, list[1].height, list[1].refresh)
+	);
+
+	video_displaymodes(disp.id, list[1].modeid);
 end
 
 local function get_ppcm(pw_cm, ph_cm, dw, dh)
@@ -390,6 +425,9 @@ local function display_byname(name, id)
 		end
 		if (prof.height) then
 			res.h = prof.height;
+		end
+		if (prof.refresh) then
+			res.refresh = prof.refresh;
 		end
 		if (prof.ppcm) then
 			res.ppcm = prof.ppcm;
@@ -591,7 +629,7 @@ function display_manager_init(alloc_fn)
 
 -- this might come from a preset profile, so sweep the available display maps
 -- and pick the one with the best fit
-	set_best_mode(disp);
+	set_best_mode(ddisp);
 
 	ddisp.tiler = wm_alloc_function(ddisp);
 	displays[1] = ddisp;
