@@ -94,6 +94,8 @@ Minor:
 	* mouse/keyboard scripts are now switched to use the distribution
 	  default from arcan
 
+  * more terminal controls exposed: blinkrate, cursor style
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.

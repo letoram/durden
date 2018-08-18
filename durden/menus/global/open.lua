@@ -37,9 +37,12 @@ function terminal_build_argenv(group)
 	local fc = gconfig_get("term_fgcol");
 	local cp = group and group or gconfig_get("extcon_path");
 	local palette = gconfig_get("term_palette");
+	local cursor = gconfig_get("term_cursor");
+	local blink = gconfig_get("term_blink");
 
 	local lstr = string.format(
-		"bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		"cursor=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		cursor, blink,
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2], fc[3],
 			(cp and string.len(cp) > 0) and ("env=ARCAN_CONNPATH="..cp) or "",

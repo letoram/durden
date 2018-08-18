@@ -1,4 +1,4 @@
--- Copyright 2015-2017, Björn Ståhl
+-- Copyright 2015-2018, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Global / Persistent configuration management. These shouldn't
@@ -65,10 +65,10 @@ local defaults = {
 
 --
 -- advanced lockscreen features, not currently mapped to UI
--- lock_ok = "!/some/path/like/resume_all",
--- lock_on = "!/some/path/like/suspend_all"
--- lock_fail_1 = "!/system/output=fail_once",
--- lock_fail_10 = "!/system/shutdown/ok",
+-- lock_ok = "/some/path/like/resume_all",
+-- lock_on = "/some/path/like/suspend_all"
+-- lock_fail_1 = "/system/output=fail_once",
+-- lock_fail_10 = "/system/shutdown/ok",
 --
 
 -- default window dimensions (relative tiler size) for windows
@@ -228,6 +228,8 @@ local defaults = {
 	term_cellh = 12,
 	term_font_sz = 12,
 	term_font_hint = 2,
+	term_blink = 0,
+	term_cursor = "block",
 	term_font = "hack.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
 	term_fgcol = {0xff, 0xff, 0xff},
