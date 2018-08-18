@@ -31,7 +31,7 @@ local function run_idle_timers()
 
 -- add to front of wakeup queue so we get last-in-first-out
 			if (timer.wakeup) then
-				table.insert(wakeups, 1, {timer.wakeup, timer.name});
+				table.insert(wakeups, 1, {timer.wakeup, timer.once, timer.name});
 			end
 
 -- remove or mask so that it won't fire again until we've "left" idle state
@@ -121,7 +121,7 @@ function timer_reset_idle()
 	idle_count = 0;
 
 	for i,v in ipairs(wakeups) do
-		timer_debug(string.format(leave_fmtstr, timer.once and 1 or 0, v[2]));
+		timer_debug(string.format(leave_fmtstr, v[2] and 1 or 0, v[3]));
 		v[1]();
 	end
 	local wakeup = {};
