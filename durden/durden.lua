@@ -84,7 +84,7 @@ function durden(argv)
 		local res = tiler_create(ddisp.w, ddisp.h,
 			{
 				scalef = ddisp.ppcm / 38.4,
-				disptbl = {ppcm = ddisp.pccm, width = ddisp.w, h = ddisp.h}
+				disptbl = {ppcm = ddisp.ppcm, width = ddisp.w, h = ddisp.h}
 			}
 		);
 
