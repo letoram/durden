@@ -35,14 +35,14 @@ local function run_idle_timers()
 			end
 
 -- remove or mask so that it won't fire again until we've "left" idle state
-			if (idle_timers[i].once) then
+			if (timer.once) then
 				table.remove(idle_timers, i);
 			else
 				timer.passive = true;
 			end
 
 			timer_debug(string.format(enter_fmtstr, timer.once and 1 or 0, timer.name));
-			timer.func();
+			timer.trigger();
 		end
 	end
 end
