@@ -65,6 +65,32 @@ local config_terminal_font = {
 	}
 };
 
+local cursor_menu = {
+	{
+		name = "style",
+		label = "Style",
+		kind = "value",
+		description = "Change the cursor shape",
+		set = {"block", "frame", "halfblock", "vline", "uline"},
+		initial = function() return gconfig_get("term_cursor"); end,
+		handler = function(ctx, val)
+			gconfig_set("term_cursor", val);
+		end
+	},
+	{
+		name = "blink",
+		label = "Blinking",
+		kind = "value",
+		description = "Change the cursor blink rate",
+		initial = function() return tostring(gconfig_get("term_blink")); end,
+		handler = function(ctx, val)
+			gconfig_set("term_blink", tonumber(val));
+		end,
+		validator = gen_valid_num(0, 100),
+		hint = "(0 = off, 1..n ticks)"
+	}
+};
+
 return {
 	{
 		name = "alpha",
@@ -100,24 +126,9 @@ return {
 	{
 		name = "cursor",
 		label = "Cursor",
-		kind = "value",
-		description = "Change the cursor shape",
-		set = {"block", "frame", "halfblock", "vline", "uline"},
-		initial = function() return gconfig_get("term_cursor"); end,
-		handler = function(ctx, val)
-			gconfig_set("term_cursor", val);
-		end
-	},
-	{
-		name = "blink",
-		label = "Blinking",
-		kind = "value",
-		description = "Change the cursor blink rate",
-		initial = function() return tostring(gconfig_get("term_blink")); end,
-		handler = function(ctx, val)
-			gconfig_set("term_blink", tonumber(val));
-		end,
-		validator = gen_valid_num(0, 100),
-		hint = "(0 = off, 1..n ticks)"
+		kind = "action",
+		submenu = true,
+		handler = cursor_menu,
+		description = "Cursor look and feel"
 	}
 };
