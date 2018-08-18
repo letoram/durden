@@ -539,5 +539,16 @@ return {
 		handler = function(ctx, val)
 			gconfig_set("disp_fs_mode", string.lower(val));
 		end
+	},
+	{
+		name = "vppcm",
+		label = "ppcm",
+		description = "manual override of the safe density default",
+		kind = "value",
+		initial = function() return VPPCM; end,
+		validator = gen_valid_num(30, 100),
+		handler = function(ctx, val)
+			VPPCM = tonumber(val);
+		end
 	}
 };
