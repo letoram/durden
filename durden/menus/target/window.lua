@@ -572,6 +572,10 @@ end
 
 local titlebar_table = {
 	{
+		name = "color",
+		label = "Color"
+	},
+	{
 		name = "swap",
 		label = "Swap",
 		kind = "action",
@@ -647,6 +651,14 @@ local titlebar_table = {
 		end
 	}
 };
+-- these have a common factroy as we really want to provide a more advanced
+-- picking widget later that can take both various common swatches and cubes,
+-- but also grab from clients and quantized versions of clients
+suppl_append_color_menu(gconfig_get("titlebar_color"), titlebar_table[1],
+function(fmt, r, g, b)
+	image_color(active_display().selected.titlebar.anchor, r, g, b);
+end
+);
 
 local border_menu = {
 {
