@@ -148,7 +148,26 @@ local function get_remstr(val)
 end
 
 local function launch(str, cfg)
-	local vid = launch_target(str, cfg, LAUNCH_INTERNAL, def_handler);
+	local tags = list_target_tags(str)
+	local mode = LAUNCH_INTERNAL;
+
+-- use a tag to indicate that the target should be launched in
+-- external mode where we suspend everything in beforehand. This is
+-- quite preliminary and we should allow other hooks for the case
+-- so that a binding like "all windows migrate" could be possible
+-- on enter external.
+	print("enumerate modes for", str, #tags);
+	for i,v in ipairs(tags) do
+		if v == "external" then
+			mode = LAUNCH_EXTERNAL;
+		end
+	end
+
+	local vid = launch_target(str, cfg, mode, def_handler);
+-- if this is external, we should also have an 'on return' hook
+-- though this might come indirectly as a display-reset event might
+-- arrive to reset input state tracking etc.
+
 	if (valid_vid(vid)) then
 		if (gconfig_get("gamma_access") ~= "none") then
 			target_flags(vid, TARGET_ALLOWCM, true);
@@ -157,8 +176,6 @@ local function launch(str, cfg)
 		durden_devicehint(vid);
 		wnd.config_target = str;
 		wnd.config_config = cfg;
-	else
-		active_display():message("target broken or out-of-resources");
 	end
 end
 
