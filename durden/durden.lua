@@ -27,7 +27,6 @@ end
 
 function durden(argv)
 	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
-
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
@@ -691,7 +690,7 @@ function durden_normal_input(iotbl, fromim)
 
 -- try the input_table function, if it consumes the input, ok - otherwise
 -- try and forward to the display fallback input handler (like the wallpaper)
-local sel = active_display().selected;
+	local sel = active_display().selected;
 	if (not sel or not sel:input_table(iotbl)) then
 		if (active_display().fallthrough_ioh) then
 			active_display():fallthrough_ioh(iotbl);

@@ -1300,8 +1300,9 @@ end
 local function set_tile(space, repos)
 	local wm = space.wm;
 	if (gconfig_get("sbar_visible") == "desktop") then
-		wm.statusbar:show();
-		wm.statusbar.hidden_sb = false;
+		sbar_show(wm);
+	else
+		sbar_hide(wm);
 	end
 
 	local tbl = linearize(space);
@@ -3529,6 +3530,18 @@ local border_mh = {
 
 local canvas_mh = {
 	motion = function(ctx, vid, ...)
+		local ms = mouse_state();
+		if (ms.cursortag) then
+-- update accept state, for external clients we need to do a lot more
+-- via the clipboard - i.e. ask if the type is currently accepted and
+-- so on
+			if (ctx.tag.tag_state ~= nil and ctx.tag.tag_state(ms.cursortag.ref)) then
+				mouse_cursortag_state(true);
+			else
+				mouse_cursortag_state(false);
+			end
+		end
+
 		if (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
 			wnd_mousemotion(ctx, ...);
 		end
@@ -4931,6 +4944,10 @@ local function tiler_resize(wm, neww, newh, norz)
 	end
 end
 
+local function tiler_cancellation(wm, ok)
+	mouse_cursortag_drop();
+end
+
 local function tiler_activate(wm)
 	if (wm.deactivated) then
 		local deact = wm.deactivated;
@@ -5105,6 +5122,7 @@ function tiler_create(width, height, opts)
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
 		fallthrough_input = tiler_fallthrough_input,
+		cancellation = tiler_cancellation,
 
 -- shared event handlers, primarily for effects and layouting
 		on_wnd_create = {},
