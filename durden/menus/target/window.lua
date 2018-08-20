@@ -1,7 +1,3 @@
-local function cursortag_handler(a, b, c)
-	print(a, b, c, "cursortag_handler");
-end
-
 local swap_menu = {
 	{
 		name = "up",
