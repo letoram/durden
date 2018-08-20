@@ -79,7 +79,7 @@ local function update_control(key, val)
 	end
 
 	for k,v in ipairs(clients) do
-		v:close();
+		v.connection:close();
 	end
 	clients = {};
 
