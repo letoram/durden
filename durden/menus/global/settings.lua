@@ -465,11 +465,11 @@ return {
 		handler = system_load("menus/global/timer.lua")()
 	},
 	{
-		name = "notification",
-		label = "Notification",
+		name = "notifications",
+		label = "Notifications",
 		kind = "action",
 		submenu = true,
-		description = "Control Notification Behavior",
+		description = "Controls for the notification subsytem",
 		handler = system_load("menus/global/notification.lua")()
 	},
 	{
