@@ -392,6 +392,13 @@ function dispatch_translate(iotbl, nodispatch)
 		return true, lutsym, iotbl, tbl[lutsym];
 	end
 
+-- active display always receives cancellation / accept input,
+-- typically needed for a keyboard way out of the cursor tagging
+	if (iotbl.active and
+		(sym == SYSTEM_KEYS["cancel"] or sym == SYSTEM_KEYS["accept"])) then
+		active_display():cancellation(sym == SYSTEM_KEYS["accept"]);
+	end
+
 -- we can have special bindings on a per window basis
 	if (sel and sel.bindings and sel.bindings[lutsym]) then
 		if (iotbl.active) then
