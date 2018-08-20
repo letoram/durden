@@ -39,7 +39,11 @@
 		 added paths for border/titlebar primary colors
 
   * cursortagging:
-     added (target/window/cursortag) as an option
+     added (target/window/cursortag) as an option, experimental
+
+  * mass-actions:
+	   the root node /windows can now be used to address collections of
+		 windows based on some property, such as name or type
 
 Breaking:
   * statusbar visual config area changed to [px] from % point and
@@ -95,6 +99,8 @@ Minor:
 	  default from arcan
 
   * more terminal controls exposed: blinkrate, cursor style
+
+  * added controls for border color
 
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
