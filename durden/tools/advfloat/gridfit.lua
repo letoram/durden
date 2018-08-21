@@ -78,7 +78,8 @@ end
 
 local function dcmd(wnd, cmd)
 	return function(alt)
-		dispatch_symbol_wnd(cmd, wnd);
+
+		dispatch_symbol_wnd(wnd, cmd);
 		wnd:drop_popup();
 	end
 end
