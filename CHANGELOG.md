@@ -102,6 +102,8 @@ Minor:
 
   * added controls for border color
 
+  * display preset map now respects density and backlight
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.
