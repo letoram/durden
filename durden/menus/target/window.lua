@@ -551,10 +551,27 @@ local function set_impostor(wnd, px)
 end
 
 local border_table = {
-	{
-		name = "color",
-		label = "Color"
-	}
+{
+	name = "color",
+	label = "Color"
+},
+{
+	name = "toggle",
+	label = "Toggle",
+	kind = "value",
+	description = "Toggle the server-side decorated window border on/off",
+	set = {LBL_YES, LBL_NO, LBL_FLIP},
+	handler = function(ctx, val)
+		local wnd = active_display().selected;
+		if (val == LBL_FLIP) then
+			wnd:set_border(not wnd.show_border, true);
+		elseif (val == LBL_YES) then
+			wnd:set_border(false);
+		else
+			wnd:set_border(true);
+		end
+	end
+},
 };
 
 -- these have a common factroy as we really want to provide a more advanced
@@ -655,26 +672,6 @@ function(fmt, r, g, b)
 	image_color(active_display().selected.titlebar.anchor, r, g, b);
 end
 );
-
-local border_menu = {
-{
-	name = "border_toggle",
-	label = "Border Toggle",
-	kind = "value",
-	description = "Toggle the server-side decorated window border on/off",
-	set = {LBL_YES, LBL_NO, LBL_FLIP},
-	handler = function(ctx, val)
-		local wnd = active_display().selected;
-		if (val == LBL_FLIP) then
-			wnd:set_border(not wnd.show_border, true);
-		elseif (val == LBL_YES) then
-			wnd:set_border(false);
-		else
-			wnd:set_border(true);
-		end
-	end
-},
-};
 
 return {
 	{
