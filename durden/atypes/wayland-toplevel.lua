@@ -134,6 +134,59 @@ local function center_to(wnd, parent)
 	wnd:move(parent.x, parent.y, false, true, true, false);
 end
 
+local function float_reparent(wnd, parent)
+	parent:add_overlay("wayland", color_surface(1, 1, 0, 0, 0), {
+		stretch = true,
+		blend = 0.5,
+		mouse_handler = {
+			click = function(ctx)
+-- this should select the deepest child window in the chain
+				parent:to_front();
+				wnd:select();
+				wnd:to_front();
+			end,
+			drag = function(ctx, vid, dx, dy)
+-- in float, this should of course move the window
+				wnd:move(dx, dy, false, false, true, false);
+				parent:move(dx, dy, false, false, true, false);
+			end
+		},
+		xofs = xofs,
+		yofs = yofs,
+		wofs = wofs,
+		hofs = hofs
+	});
+
+	parent.old_protect = parent.delete_protect;
+
+-- override the parent selection to move to the new window, UNLESS
+-- another toplevel window has already performed this action
+	if (not parent.old_select) then
+		parent.old_select = parent.select;
+		parent.select = function(...)
+			if (wnd.select) then
+				wnd:select(...)
+			end
+		end
+	end
+
+-- since the surface might not have been presented yet, we want to
+-- try and center on the first resize event as well
+	wnd.pending_center = parent;
+	center_to(wnd, parent);
+
+-- track the reference so we know the state of the window on release
+	parent.indirect_child = wnd;
+	wnd.indirect_parent = parent;
+end
+
+local function tile_reparent(wnd, parent)
+	table.insert(parent.alternate, wnd);
+	wnd.alternate_parent = parent;
+	wnd.max_w = parent.max_w;
+	wnd.max_h = parent.max_h;
+end
+
 -- this is also triggered on_destroy for the toplevel window so the id
 -- always gets relinked before
 local function set_parent(wnd, id)
@@ -186,54 +239,11 @@ local function set_parent(wnd, id)
 		hofs = parent.effective_h - parent.geom[4] - yofs;
 	end
 
--- configure the size of the toplevel to match that of the parent..
-
--- for tile, we should set the window as an 'alternate' until it reparents
--- or when the client die
-
-	parent:add_overlay("wayland", color_surface(1, 1, 0, 0, 0), {
-		stretch = true,
-		blend = 0.5,
-		mouse_handler = {
-			click = function(ctx)
--- this should select the deepest child window in the chain
-				parent:to_front();
-				wnd:select();
-				wnd:to_front();
-			end,
-			drag = function(ctx, vid, dx, dy)
--- in float, this should of course move the window
-				wnd:move(dx, dy, false, false, true, false);
-				parent:move(dx, dy, false, false, true, false);
-			end
-		},
-		xofs = xofs,
-		yofs = yofs,
-		wofs = wofs,
-		hofs = hofs
-	});
-
-	parent.old_protect = parent.delete_protect;
-
--- override the parent selection to move to the new window, UNLESS
--- another toplevel window has already performed this action
-	if (not parent.old_select) then
-		parent.old_select = parent.select;
-		parent.select = function(...)
-			if (wnd.select) then
-				wnd:select(...)
-			end
-		end
+	if (parent.space.mode == "float") then
+		float_reparent(wnd, parent);
+	else
+		tile_reparent(wnd, parent);
 	end
-
--- track the reference so we know the state of the window on release
-	parent.indirect_child = wnd;
-	wnd.indirect_parent = parent;
-
--- since the surface might not have been presented yet, we want to
--- try and center on the first resize event as well
-	wnd.pending_center = parent;
-	center_to(wnd, parent);
 end
 
 function wayland_toplevel_handler(wnd, source, status)
