@@ -39,23 +39,47 @@ Starting / Configuring
 Make sure that arcan is built with support for builtin frameservers for
 terminal, decode, encode, remoting etc. else those features will be missing.
 Durden probes for available engine features and enables/disables access to
-these accordingly.
+these accordingly. You can simply check for binaries prefixed with afsrv_
 
-Install by adding or symlinking the durden subdirectory of the git repository
-to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan with
-an explicit path reference, e.g.
+distr/durden is a support script that can be run to try and automatically
+set everything up and start. It also takes care of relaunch/recover if the
+program terminated abnormally.
+
+If you have a system that uses the XDG_ set of directories, the script will
+build the directory tree in XDG\_DATA\_HOME/arcan, otherwise it will use
+$HOME/.arcan. To help debug issues, you can create a 'logs' folder in that
+directory and both engine output, Lua crash dumps and frameserver execution
+will be stored there.
+
+Most configuration should be able to be performed interactively from within
+the UI itself. Should this fail or you set things up in an unrecoverably
+broken way, you can shutdown arcan and then use the 'arcan_db' tool to
+access all configuration options:
+
+     arcan_db show_appl durden
+		 arcan_db add_appl_kv durden my_key
+
+Or clear all settings and revert to defaults:
+
+     arcan_db drop_appl durden
+
+## Manually
+
+Install by adding or symlinking the durden subdirectory of the git epository
+to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan
+with an explicit path reference, e.g.
 
      arcan /home/myuser/path/to/durden/durden
 
-Start arcan with the resource path set to whatever directory subtree you want
-to be able to access for assets when browsing for images, video etc.
+Start arcan with the resource path set to whatever directory subtree you
+want to be able to access for assets when browsing for images, video etc.
 
 e.g. arcan -p /home/myuser/stuff durden
 
 There are numerous other ways for setting this up, see the Arcan wiki and
-manpages for configuration options. If you're "lucky" (linux, normal "no-X" VT,
-build dependencies fullfilled and KMS/GBM on) the entire process should land in
-something like:
+manpages for configuration options. If you're "lucky" (linux, normal "no-X"
+VT, build dependencies fullfilled and KMS/GBM on) the entire process should
+land in something like:
 
      git clone https://github.com/letoram/arcan.git
      git clone https://github.com/letoram/durden.git
@@ -65,6 +89,10 @@ something like:
         -DSTATIC_FREETYPE=ON ../src
      make -j 8
      ./arcan ../../durden/durden
+
+Note that this will need to be run suid (preferred) or as root due to rules
+the kernel imposes on 'drmMaster'. If suid, the engine will fork out a child
+and only direct device access will run privileged.
 
 If you are on a more limited platform, like raspberry pi, you can try the
 the -DVIDEO\_PLATFORM=egl-gles -DAGP\_PLATFORM=gles2 build, which should work
@@ -95,9 +123,7 @@ or modify the default keybindings in 'durden/keybindings.lua' or you can bind
 your own menu paths in global/input/bind/custom. This menu path will also show
 the currently custom bound keys.
 
-Also try double-tapping meta-2 and you should see the titlebar change color.
+Also try double-tapping meta-2 and you should see the statusbar change color.
 This indicates that all normal bindings are ignored and input is forwarded
 raw to the selected window. This is important for clients that need access to
 keys you have bound to various key combinations, like Xarcan-, QEmu, and so on.
-
-
