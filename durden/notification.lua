@@ -16,7 +16,10 @@ function notification_deregister(key)
 end
 
 function notification_debug(msg, long)
-	notification_add("debug", msg, long, 1);
+	if (not long) then
+		long = ""
+	end
+	notification_add("debug", nil, msg, long, 1);
 end
 
 --
