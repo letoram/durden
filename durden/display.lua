@@ -88,6 +88,10 @@ local function tryload(v)
 		end
 	end
 
+	if (type(map.backlight) == "number" and map.backlight > 0.0) then
+		rv.backlight = map.backlight;
+	end
+
 	if (type(map.width) == "number" and map.width > 0) then
 		rv.width = map.width;
 	end
@@ -387,6 +391,7 @@ local function display_byname(name, id)
 		shader = gconfig_get("display_shader"),
 		maphint = HINT_NONE,
 		refresh = 60,
+		backlight = 1.0
 	};
 
 	local pref = "disp_" .. string.hexenc(res.name) .. "_";
@@ -432,6 +437,9 @@ local function display_byname(name, id)
 		if (prof.ppcm) then
 			res.ppcm = prof.ppcm;
 			res.ppcm_override = prof.ppcm;
+		end
+		if (prof.backlight) then
+			res.backlight = math.clamp(prof.backlight, 0.1, 1.0);
 		end
 	end
 
@@ -485,10 +493,8 @@ function display_set_backlight(name, ctrl, ind)
 		return;
 	end
 
-	disp.backlight = 1.0;
 	disp.ledctrl = ctrl;
 	disp.ledid = ind;
-
 	led_intensity(ctrl, ind, 255.0 * disp.backlight);
 end
 

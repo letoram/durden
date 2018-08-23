@@ -23,6 +23,7 @@ the following optional fields will be used when found:
                              will be expanded later to support displays dedicated
 														 for media output, VR compositing, etc.
 
+ backlight (number 0..1) : set default initial backlight value
  ppcm (number) : specify pixels per centimers
  width (number) : try to pick a mode that match this width
  height (number) : try to pick a mode that match this height
