@@ -15,19 +15,24 @@ local ent_count = 1;
 local create_workspace = function() end
 local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
+-- returns:
+-- position,scale
 local function wnd_animation_time(wnd, source, decor, position)
-	reset_image_transform(source);
+	local _, lm, _, ls = reset_image_transform(source);
 	if (wnd.attach_time == CLOCK) then
 		return 0;
 	end
 
+	local at = gconfig_get("wnd_animation");
+
 	if (position) then
-		return gconfig_get("wnd_animation"), INTERP_SMOOTHSTEP;
+		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
 
+-- autocrop still doesn't support animation
 	if (not wnd.autocrop and ( wnd.space.mode == "tile" or
 		(wnd.space.mode == "float" and not wnd.in_drag_rz))) then
-		return gconfig_get("wnd_animation"), INTERP_SMOOTHSTEP;
+		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
 	return 0;
 end
@@ -1276,8 +1281,8 @@ local function set_float(space)
 			v.x = space.wm.effective_width * v.last_float.x;
 			v.y = space.wm.effective_height * v.last_float.y;
 
-			move_image(v.anchor, v.x, v.y,
-				wnd_animation_time(v, v.anchor, false, true));
+			local lm, lr, interp = wnd_animation_time(v, v.anchor, false, true);
+			move_image(v.anchor, v.x, v.y, lm, interp);
 -- if window havn't been here before, clamp
 		else
 			neww = props.width + v.pad_left + v.pad_right;
@@ -1786,6 +1791,7 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 -- update the mouse scaling factors (value 5 and 6) so that the final
 -- absolute value take the effective range into account
+	local lm, lr, interp = wnd_animation_time(wnd, src, false, false);
 	if (wnd.crop_values) then
 		local ip = image_storage_properties(src);
 		wnd.crop_values[6] =
@@ -1809,18 +1815,24 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 			resize_image(src,
 				outw - wnd.crop_values[2] - wnd.crop_values[4],
 				outh - wnd.crop_values[1] - wnd.crop_values[3],
-				wnd_animation_time(wnd, src, false, false)
+				lr, interp
 			);
 		else
-			resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false));
+			resize_image(src, outw, outh, lr, interp);
 		end
 	else
-		resize_image(src, outw, outh, wnd_animation_time(wnd, src, false, false));
+		resize_image(src, outw, outh, lr, interp);
 	end
 
 	if (wnd.filtermode) then
 		image_texfilter(src, wnd.filtermode);
 	end
+
+	tiler_debug(wnd.wm,
+		string.format("pre_resize:name=%s:scale=%s:sw=%d:sh=%d:maxw=%d:maxh=%d" ..
+			"force=%s:outw=%d:outh=%d", wnd.name, wnd.scalemode, props.width,
+			props.height, maxw, maxh, force and "yes" or "no", outw, outh)
+	);
 
 	return outw, outh;
 end
@@ -1889,12 +1901,13 @@ local function wnd_repos(wnd)
 		return;
 	end
 
+	local lm, lr, interp = wnd_animation_time(wnd, wnd.anchor, false, true);
 	if (wnd.centered and wnd.space.mode ~= "float") then
 		if (wnd.space.mode == "tile") then
 			move_image(wnd.anchor,
 				wnd.x + math.floor(0.5 * (wnd.max_w - wnd.width)),
 				wnd.y + math.floor(0.5 * (wnd.max_h - wnd.height)),
-				wnd_animation_time(wnd, wnd.anchor, false, true)
+				lm, interp
 			);
 
 		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
@@ -1906,8 +1919,7 @@ local function wnd_repos(wnd)
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
 		end
 	else
-		move_image(wnd.anchor, wnd.x, wnd.y,
-			wnd_animation_time(wnd, wnd.anchor, false, true));
+		move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
 	end
 end
 
@@ -1928,7 +1940,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 	local af = nil;
 
 	if (animate) then
-		at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
+		local _, at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
 	end
 
 	wnd.pad_top = bw;
@@ -2411,7 +2423,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 
 -- make sure the titlebar (if visible) isn't occluded by the statusbar
 	local tbarh = tbar_geth(wnd);
-	local time = now and 0 or wnd_animation_time(wnd, wnd.anchor, false, true);
+	local lm, ls, interp = wnd_animation_time(wnd, wnd.anchor, false, true);
 
 	if (abs) then
 		local props = image_surface_resolve(wnd.wm.anchor);
@@ -2435,11 +2447,15 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		wnd.y = wnd.y + dy;
 	end
 
+	if (now) then
+		lm = 0;
+	end
+
 	if (not noclamp) then
 		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
 	end
 
-	move_image(wnd.anchor, wnd.x, wnd.y, time);
+	move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
 
 	wnd:recovertag();
 end
@@ -3865,9 +3881,11 @@ local function wnd_ws_attach(res, from_hook)
 			res.defer_y = nil;
 		else
 			res.x, res.y = mouse_xy();
+			res.x = res.x - res.pad_left - res.pad_right;
+			res.y = res.y - res.pad_top - res.pad_bottom;
 		end
-		res.max_w = wm.effective_width - res.x;
-		res.max_h = wm.effective_height - res.y;
+		res.max_w = wm.effective_width;
+		res.max_h = wm.effective_height;
 		move_image(res.anchor, res.x, res.y);
 	else
 	end
