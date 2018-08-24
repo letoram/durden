@@ -2689,7 +2689,8 @@ local function wnd_crop(wnd, t, l, d, r, mask, nopad)
 
 -- when sending window sizes, add these values in order to go from sliced
 -- window size to actual surface size, since we are now cropped, there is
--- more area for the client to use
+-- more area for the client to use - basically the case of wl- clients on
+-- tiling layout
 	if (nopad) then
 		wnd.dh_pad_w = 0;
 		wnd.dh_pad_h = 0;
@@ -4284,7 +4285,11 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 		dm = wnd.dispmask;
 	end
 
-	if (wnd.space and wnd.space.mode ~= "float") then
+-- basically only WL clients care about this because hey, CSD -
+-- but this also fights with cropping away CSD as the geometry
+-- changes
+	if (wnd.space and
+		(wnd.space.mode ~= "float" or wnd.maximized)) then
 		dm = bit.bor(dm, TD_HINT_MAXIMIZED);
 	end
 
