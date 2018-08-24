@@ -65,7 +65,7 @@ Or clear all settings and revert to defaults:
 
 ## Manually
 
-Install by adding or symlinking the durden subdirectory of the git epository
+Install by adding or symlinking the durden subdirectory of the git repository
 to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan
 with an explicit path reference, e.g.
 
@@ -127,3 +127,36 @@ Also try double-tapping meta-2 and you should see the statusbar change color.
 This indicates that all normal bindings are ignored and input is forwarded
 raw to the selected window. This is important for clients that need access to
 keys you have bound to various key combinations, like Xarcan-, QEmu, and so on.
+
+Troubleshooting
+====
+There are many moving parts that can go wrong, the display server aspects when
+it comes to managing GPUs, displays, clients and input devices - as well as
+client behaviors, the window management policies and the features themselves.
+
+On top of this, there are a number of special cases, like VT switching, crash-
+recovery, display hot-plug, soft-reset and 'suspend-exec until program return'
+scenarios that all massage these different subsystems in ways that are hard to
+test.
+
+If durden itself crashes, the recovery can be so fast that you won't notice,
+but the notification widget (if enabled) on the HUD will likely provide you
+with a crash log.
+
+If you suspect a client of behaving badly, you can start it with the environment
+ARCAN\_SHMIF\_DEBUG=1 to get a trace of what goes on, and there are multiple
+tools in the arcan source repository for live-inspecting the state of clients.
+
+You can also ask a client to provide a debug view for you, if it supports that
+feature, by going to /target/video/advanced/debug\_window - calling it multiple
+times may provide multiple levels of debug output.
+
+Durden also provides some special mechanisms, by going to
+global/settings/system/debug you can change the debuglevel which enables
+widgets that give more information, and special debug commands
+(global/system/debug).
+
+Then there are logging facilities for all the frameservers, durden itself (if
+run through the launcher script) and .lua snapshots on soft-crashes. These are
+all enabled by creating a 'logs' directory inside your .arcan folder (on non-xdg
+systems, that would be $HOME/.arcan) and restart durden.
