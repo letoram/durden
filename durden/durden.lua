@@ -473,9 +473,7 @@ function durden_adopt(vid, kind, title, parent, last)
 
 -- and relayout the dirty spaces
 	for space in all_spaces_iter() do
-		if (ds[space]) then
-			space:resize();
-		end
+		space:resize();
 	end
 
 -- the statusbar and other dependents are not necessarily synched on
