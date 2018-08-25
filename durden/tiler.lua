@@ -1813,8 +1813,8 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 		if (not wnd.ignore_crop) then
 			resize_image(src,
-				outw - wnd.crop_values[2] - wnd.crop_values[4],
-				outh - wnd.crop_values[1] - wnd.crop_values[3],
+				ip.width - wnd.crop_values[2] - wnd.crop_values[4],
+				ip.height - wnd.crop_values[1] - wnd.crop_values[3],
 				lr, interp
 			);
 		else
