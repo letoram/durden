@@ -31,6 +31,13 @@ toplevel_lut["maximize"] = function(wnd)
 	end
 end
 
+toplevel_lut["demaximize"] = function(wnd)
+	wayland_debug("toplevel:demaximize");
+	if (wnd.space.mode == "float") then
+		wnd:toggle_maximize();
+	end
+end
+
 toplevel_lut["menu"] = function(wnd)
 	wayland_debug("toplevel:menu");
 	if (active_display().selected == wnd) then
@@ -239,6 +246,13 @@ local function set_parent(wnd, id)
 		hofs = parent.effective_h - parent.geom[4] - yofs;
 	end
 
+-- let reparented window inherit crop values, unless other ones have been
+-- set, this should cover what fits with gtk3 at least
+	if (parent.crop_values and not wnd.crop_values) then
+		wnd:set_crop(parent.crop_values[1], parent.crop_values[2],
+			parent.crop_values[3], parent.crop_values[4]);
+	end
+
 	if (parent.space.mode == "float") then
 		float_reparent(wnd, parent);
 	else
@@ -333,7 +347,8 @@ function wayland_toplevel_handler(wnd, source, status)
 			local dy = status.height - wnd.last_h;
 			wnd.rz_acc_x = wnd.rz_acc_x - dx;
 			wnd.rz_acc_y = wnd.rz_acc_y - dy;
-			wnd:move(dx * wnd.move_mask[1], dy * wnd.move_mask[2], false, false, true, false);
+			wnd:move(dx * wnd.move_mask[1],
+				dy * wnd.move_mask[2], false, false, true, false);
 			wnd.move_mask = nil;
 
 -- and similar action for toplevel reparenting
@@ -382,7 +397,15 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 		"toplevel:resize_hook:name=%s:inw=%d:inh=%d:efw=%d:efh=%d:outw=%d:outh=%d",
 		wnd.name, neww, newh, efw, efh, nefw, nefh));
 
-	wnd:displayhint(nefw + wnd.dh_pad_w, nefh + wnd.dh_pad_h, wnd.dispmask);
+	local dw = wnd.dh_pad_w;
+	local dh = wnd.dh_pad_h;
+
+	if (wnd.space.mode == "float") then
+		wnd:displayhint(nefw + dw, nefh + dh, wnd.dispmask);
+-- for automatic modes, we just use the suggested max
+	else
+		wnd:displayhint(wnd.max_w + dw, wnd.max_h + dh, wnd.dispmask);
+	end
 end
 
 local toplevel_menu = {
