@@ -52,7 +52,7 @@ return
 			gconfig_set("borderw", tonumber(val));
 			active_display():rebuild_border();
 			for wnd in all_windows(nil, true) do
-				wnd:resize();
+				wnd:resize(wnd.width, wnd.height);
 			end
 			for k,v in pairs(active_display().spaces) do
 				v:resize();
@@ -71,7 +71,7 @@ return
 			gconfig_set("borderw_float", tonumber(val));
 			active_display():rebuild_border();
 			for wnd in all_windows(nil, true) do
-				wnd:resize();
+				wnd:resize(wnd.width, wnd.height)
 			end
 			for k,v in pairs(active_display().spaces) do
 				v:resize();
