@@ -63,7 +63,8 @@ end
 local function default_reqh(wnd, source, ev)
 	local normal = {
 		"lwa", "multimedia", "game", "vm",
-		"application", "remoting", "browser"
+		"application", "remoting", "browser",
+		"handover"
 	};
 
 -- early out if the type is not permitted
@@ -72,8 +73,17 @@ local function default_reqh(wnd, source, ev)
 		return;
 	end
 
+-- clients want to negotiate a connection on behalf of a new process,
+	if (ev.segkind == "handover") then
+		local hover = accept_target(32, 32, function(source, stat) end);
+		if (not valid_vid(hover)) then
+			return;
+		end
+
+		durden_launch(source, "handover");
+
 -- special handling, cursor etc. maybe we should permit subtype handler override
-	if (ev.segkind == "titlebar") then
+	elseif (ev.segkind == "titlebar") then
 -- ignore the titlebar for now, later, re-use the impostor feature to set it
 		return;
 	elseif (ev.segkind == "cursor") then

@@ -369,10 +369,12 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 		warning("launch failed, invalid vid provided");
 		return;
 	end
+
 	if (not wnd) then
 		wnd = active_display():add_hidden_window(vid, wargs);
 		if (not wnd) then
-			warning("add_hidden_window on vid failed");
+			delete_image(vid);
+			return;
 		end
 	end
 
@@ -501,7 +503,7 @@ end
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status, norespawn)
 	if (not status or status.kind ~= "connected") then
--- misplaced event, should really happen
+-- misplaced event, shouldn't really happen
 		return;
 	end
 
@@ -548,6 +550,7 @@ function durden_new_connection(source, status, norespawn)
 		wnd.external_connection = true;
 		local neww, newh = wnd.wm:suggest_size();
 		wnd:displayhint(neww, newh, wnd.dispmask, wnd.wm.disptbl);
+		return wnd;
 	end
 end
 
