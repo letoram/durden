@@ -29,8 +29,7 @@ local config_terminal_font = {
 		kind = "value",
 		description = "Change anti-aliasing hinting algorithm",
 		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return TERM_HINT_RLUT[
-		gconfig_get("term_font_hint")]; end,
+		initial = function() return hint_rlut[gconfig_get("term_font_hint")]; end,
 		handler = function(ctx, val)
 			gconfig_set("term_font_hint", hint_lut[val]);
 		end
