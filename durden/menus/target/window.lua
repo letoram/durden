@@ -553,25 +553,26 @@ end
 local border_table = {
 {
 	name = "color",
-	label = "Color"
+	label = "Color",
+	description = "Change the titlebar color",
 },
 {
-	name = "toggle",
-	label = "Toggle",
+	name = "enabled",
+	label = "Enabled",
 	kind = "value",
-	description = "Toggle the server-side decorated window border on/off",
+	description = "Toggle border rendering on / off (still used in layout)",
 	set = {LBL_YES, LBL_NO, LBL_FLIP},
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
 		if (val == LBL_FLIP) then
-			wnd:set_border(not wnd.show_border, true);
+			wnd:set_border(not wnd.show_border, true, true);
 		elseif (val == LBL_YES) then
-			wnd:set_border(false);
+			wnd:set_border(true, true);
 		else
-			wnd:set_border(true);
+			wnd:set_border(false, true);
 		end
 	end
-},
+}
 };
 
 -- these have a common factroy as we really want to provide a more advanced
@@ -586,7 +587,8 @@ end
 local titlebar_table = {
 	{
 		name = "color",
-		label = "Color"
+		label = "Color",
+		description = "Change the titlebar color",
 	},
 	{
 		name = "swap",
