@@ -8,8 +8,6 @@
 -- between window managers and their corresponding display.
 --
 
-
--- rather ugly check here, but some devices provide an unworkable high
 -- default PPCM, particularly some capture devices that tamper with EDID.
 if VPPCM > 240 then
 	VPPCM = 32
@@ -756,7 +754,10 @@ function display_add(name, width, height, ppcm, id)
 			h = height,
 			name = name,
 			primary = false,
-			maphint = HINT_NONE
+			maphint = HINT_NONE,
+			shader = gconfig_get("display_shader"),
+			ppcm = ppcm,
+			backlight = 1.0
 		};
 		nd.tiler = wm_alloc_function(nd);
 		table.insert(displays, nd);
