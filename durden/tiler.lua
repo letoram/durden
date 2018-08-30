@@ -140,9 +140,15 @@ local function moveup_children(wnd)
 end
 
 local function wnd_border_width(wnd)
-	if (not wnd.show_border) then
-		return 0;
-	end
+--
+-- This is slightly incomplete as we failed to take into account the difference
+-- between border presence (may be needed for drag-resize etc.) and visibility,
+-- returning 0 would break 'gaps' in layouting
+--
+--	if (not wnd.show_border) then
+--		return 0;
+--	end
+
 	if (wnd.space.mode == "float") then
 		return gconfig_get("borderw_float");
 	else
@@ -725,12 +731,15 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 				node.sz_delta[1] < gconfig_get("term_font_sz") * 2) then
 				local hd = node.pad_left + node.pad_right;
 				local delta_diff = (node.max_w - hd) % node.sz_delta[1];
+
+-- attempts at balancing down / up based on shortest distance didn't end well
 				if (delta_diff > 0) then
-					if (node.max_w - hd + delta_diff <= w) then
-						node.max_w = node.max_w + delta_diff + hd;
-					elseif (node.max_w - hd + delta_diff > 0) then
-						node.max_w = node.max_w - delta_diff + hd;
-					end
+					node.max_w = node.max_w - delta_diff;
+--					if (node.max_w - hd + delta_diff <= w) then
+--						node.max_w = node.max_w + delta_diff + hd;
+--					elseif (node.max_w - hd + delta_diff > 0) then
+--						node.max_w = node.max_w - delta_diff + hd;
+--					end
 				end
 			end
 		end
@@ -3387,6 +3396,7 @@ end
 
 local function wnd_border(wnd, visible, user_force, bw)
 	bw = wnd:border_width();
+	blend_image(wnd.border, visible and 1 or 0);
 
 -- early out no-ops
 	if (wnd.show_border == visible) then
