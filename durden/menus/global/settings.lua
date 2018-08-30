@@ -544,6 +544,14 @@ return {
 		handler = system_load("menus/global/statusbar.lua")(),
 	},
 	{
+		name = "titlebar",
+		label = "Titlebar",
+		kind = "action",
+		submenu = true,
+		description = "Change Window titlebar defaults",
+		handler = system_load("menus/global/titlebar.lua")()
+	},
+	{
 		name = "hud",
 		label = "HUD",
 		kind = "action",
