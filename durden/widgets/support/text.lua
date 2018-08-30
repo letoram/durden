@@ -3,6 +3,38 @@
 local neutral = "\\#999999";
 
 return {
+	setup = function(ctx, groups, yh)
+-- split based on number of rows that fit
+		local gc = 0;
+		local fd = active_display().font_delta;
+		local tw, th = text_dimensions(fd .. "m1_m2 0000");
+		local ul = math.floor(yh / th);
+
+-- slice a table based on the maximum number of rows in the column
+		local ct = {};
+		local stepg = function(g)
+			local ofs = 1;
+			local nt = {};
+
+			while (ofs < #g) do
+				table.insert(nt, g[ofs]);
+				if (#nt == ul) then
+					table.insert(ct, nt);
+					nt = {};
+				end
+				ofs = ofs + 1;
+			end
+
+			if (#nt > 0) then
+				table.insert(ct, nt);
+			end
+		end
+		for _,v in ipairs(groups) do
+			stepg(v);
+		end
+		ctx.group_cache = ct;
+		return #ctx.group_cache;
+	end,
 	show = function(ctx, anchor, tbl, start_i, stop_i, col_w)
 		local cind = 1;
 		local out = {};
