@@ -495,7 +495,7 @@ return {
 		handler = function() video_displaymodes(); end
 	},
 	{
-		name = "list",
+		name = "displays",
 		label = "Displays",
 		kind = "action",
 		submenu = true,
