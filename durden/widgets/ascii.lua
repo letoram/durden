@@ -21,29 +21,7 @@ for i=0x80,0xbf do
 end
 
 local function probe(ctx, yh)
-	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "(c3 aa) 0000");
-	local ul = math.floor(yh / th);
-
-	local ct = {};
-	local nt = {};
-	local ofs = 1;
-
-	while (ofs < #tbl) do
-		table.insert(nt, tbl[ofs]);
-		if (#nt == ul) then
-			table.insert(ct, nt);
-			nt = {};
-		end
-		ofs = ofs + 1;
-	end
-
-	if (#nt > 0) then
-		table.insert(ct, nt);
-	end
-
-	ctx.group_cache = ct;
-	return #ctx.group_cache;
+	return tsupp.setup(ctx, {tbl}, yh);
 end
 
 local function show(ctx, anchor, ofs)

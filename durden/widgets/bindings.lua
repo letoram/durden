@@ -4,7 +4,6 @@ local tsupp = system_load("widgets/support/text.lua")();
 
 local function probe(ctx, yh)
 	local lst = dispatch_list();
-
 -- group based on meta key presses
 	local m1g = {};
 	local m2g = {};
@@ -23,40 +22,7 @@ local function probe(ctx, yh)
 		end
 	end
 
--- split based on number of rows that fit
-	local gc = 0;
-	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "m1_m2 0000");
-	local ul = math.floor(yh / th);
-
--- slice a table based on the maximum number of rows in the column
-	local ct = {};
-	local stepg = function(g)
-		local ofs = 1;
-		local nt = {};
-
-		while (ofs < #g) do
-			table.insert(nt, g[ofs]);
-			if (#nt == ul) then
-				table.insert(ct, nt);
-				nt = {};
-			end
-			ofs = ofs + 1;
-		end
-
-		if (#nt > 0) then
-			table.insert(ct, nt);
-		end
-	end
-
--- finally add all to the group cache
-	stepg(m1g);
-	stepg(m2g);
-	stepg(m1m2g);
-	stepg(miscg);
-	ctx.group_cache = ct;
-
-	return #ctx.group_cache;
+	return tsupp.setup(ctx, {m1g, m2g, m1m2g, miscg}, yh);
 end
 
 local function show(ctx, anchor, ofs)

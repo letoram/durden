@@ -25,7 +25,7 @@ function string.split(instr, delim)
 end
 
 function string.starts_with(instr, prefix)
-	return string.sub(instr, #prefix) == prefix;
+	return string.sub(instr, 1, #prefix) == prefix;
 end
 
 --
@@ -1135,10 +1135,12 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
-			if ((type(j) == "function" and j(ctx, ident))
-				or ((type(j) == "string" and j == ident))) then
--- or query for the number of columns needed assuming a certain height
-				local nc = v.probe and v:probe(rh) or 1;
+			local ident_tag;
+			if (type(j) == "function") then
+				ident_tag = j(v, ident);
+			end
+			if ((type(j) == "string" and j == ident) or ident_tag) then
+				local nc = v.probe and v:probe(rh, ident_tag) or 1;
 				if (nc > 0) then
 					widget_destr[v] = true;
 					for n=1,nc do
@@ -1172,11 +1174,14 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 			link_image(anch, anchor);
 			local dy = 0;
 
--- only account for the helper unless the caller explicitly set a height,
--- and only for the "top" level"
+-- only account for the helper unless the caller explicitly set a height
+			local th = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
 			if (gconfig_get("menu_helper") and not barh and ctr % 2 == 1) then
-				dy = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
+				dy = th;
+			elseif ctr % 2 == 0 then
+				dy = -th;
 			end
+
 			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
