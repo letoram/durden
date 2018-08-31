@@ -31,34 +31,8 @@ local function reglob()
 	end
 end
 
-local function probe(ctx, yh)
-	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "(probe)");
-	local ul = math.floor(yh / th);
-
--- divide the cheatsheets across groups, always split on
--- sheet no matter the amount of elements versus vertical space
-	local ct = {};
-	for k,v in ipairs(ctx.sheetset) do
-		local nt = {};
-		for i=2,#v do
-			local step = false;
-			if (string.len(v[i]) == 0) then
-				step = #nt > 0;
-			else
-				table.insert(nt, v[i]);
-				step = #nt >= ul;
-			end
-
-			if (step) then
-				table.insert(ct, nt);
-				nt = {};
-			end
-		end
-		table.insert(ct, nt);
-	end
-	ctx.group_cache = ct;
-	return #ct;
+local function probe(ctx, yh, sheetset)
+	return tsupp.setup(ctx, sheetset, yh);
 end
 
 local function show(ctx, anchor, ofs)
@@ -68,28 +42,37 @@ end
 local function destroy()
 end
 
--- for sub-paths, only check path activation. For the root- level,
--- check both the program supplied id and the user- supplied optional tag
 local function ident(ctx, pathid)
-	local strset = {};
-	if (string.len(pathid) > 1) then
-		table.insert(strset, pathid);
+	if (pathid ~= "/target") then
+		return false;
 	end
 
 	ctx.sheetset = {};
+	local strset = {};
+	local wnd = active_display().selected;
+	if (#wnd.ident > 0) then
+		table.insert(strset, wnd.ident);
+	end
+	if (#wnd.prefix > 0) then
+		table.insert(strset, wnd.prefix);
+	end
+
+-- each sheet can apply either always or pattern match on set of windows tags
+	local sheetset = {};
 	for k,v in pairs(sheets) do
 		if (v[1] == "*") then
-			table.insert(ctx.sheetset, v);
+			table.insert(sheetset, v);
 		else
 			for i,j in ipairs(strset) do
 				if string.match(j, v[1]) then
-					table.insert(ctx.sheetset, v);
+					table.insert(sheetset, v);
 					break;
 				end
 			end
 		end
 	end
-	return #ctx.sheetset > 0;
+
+	return #sheetset > 0 and sheetset or nil;
 end
 
 reglob();

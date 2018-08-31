@@ -12,40 +12,19 @@ local function probe(ctx, yh)
 		return 0;
 	end
 
--- find out how many rows that fit in our allocation
-	local fd = active_display().font_delta;
-	local tw, th = text_dimensions(fd .. "(test)");
-	local ul = math.floor(yh / th);
-
 -- preprocess / sort the list of known labels
 	local linear = {};
 	for k,v in pairs(wnd.input_labels) do
-		table.insert(linear, v);
+		if (#v[1] > 0) then
+			table.insert(linear, v[1]);
+		end
 	end
 	table.sort(linear,
 		function(a, b)
-			return a[1] < b[1];
+			return a < b;
 		end
 	);
 
--- now 'render' it into different groups
-	local ofs = 1;
-	local ct = {};
-	local nt = {};
-	while (ofs <= #linear) do
-		table.insert(nt, linear[ofs][1]);
-		if (#nt == ul) then
-			table.insert(ct, nt);
-			nt = {};
-		end
-		ofs = ofs + 1;
-	end
-	if (#nt > 0) then
-		table.insert(ct, nt);
-	end
-
--- and return the number of allocations we need
-	ctx.group_cache = ct;
 	ctx.mouseh = {};
 	ctx.cursor_opa = 0.2;
 	ctx.cursor = color_surface(16, 16, 255, 255, 255);
@@ -54,7 +33,7 @@ local function probe(ctx, yh)
 		image_mask_set(ctx.cursor, MASK_UNPICKABLE);
 	end
 
-	return #ct;
+	return tsupp.setup(ctx, {linear}, yh);
 end
 
 local function send_input(dst, lbl)

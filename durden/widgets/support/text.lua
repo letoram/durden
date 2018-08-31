@@ -18,7 +18,7 @@ return {
 
 			while (ofs < #g) do
 				table.insert(nt, g[ofs]);
-				if (#nt == ul) then
+				if ((#g[ofs] == 0 and #nt > 0) or (#nt == ul)) then
 					table.insert(ct, nt);
 					nt = {};
 				end
