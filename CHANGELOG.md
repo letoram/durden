@@ -104,6 +104,9 @@ Minor:
 
   * display preset map now respects density and backlight
 
+  * launch targets with the tag 'autorun' will be launched on
+	  startup
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.

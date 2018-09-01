@@ -42,3 +42,13 @@ if (DEBUGLEVEL > 1) then
 		end
 	end);
 end
+
+-- look after all targets tagged 'autorun' and launch them internally
+for i,v in pairs(list_targets()) do
+	local tags = list_target_tags(v);
+	for i,j in ipairs(tags) do
+		if (f == "autorun") then
+			break;
+		end
+	end
+end
