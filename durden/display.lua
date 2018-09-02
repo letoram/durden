@@ -649,6 +649,7 @@ function display_manager_init(alloc_fn)
 	if (not displays.simple) then
 		rendertarget_forceupdate(WORLDID, 0);
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
+		map_video_display(ddisp.rt, 0, 0);
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 	end
