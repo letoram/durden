@@ -1156,7 +1156,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 		return;
 	end
 
-	local pad = 20;
+	local pad = 00;
 
 -- create anchors linked to background for automatic deletion, as they
 -- are used for clipping, distribute in a fair way between top and bottom

@@ -498,7 +498,7 @@ local function lbar_helper(lbar, lbl)
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	if (not lbar.helper_bg) then
 		lbar.helper_bg = fill_surface(64, barh, 255, 0, 0);
-		shader_setup(lbar.helper_bg, "ui", "lbar");
+		shader_setup(lbar.helper_bg, "ui", "rounded");
 		image_inherit_order(lbar.helper_bg, true);
 		link_image(lbar.helper_bg, lbar.text_anchor);
 		show_image(lbar.helper_bg);
@@ -507,17 +507,17 @@ local function lbar_helper(lbar, lbl)
 		image_inherit_order(lbar.helper_lbl, true);
 		link_image(lbar.helper_lbl, lbar.helper_bg);
 		show_image(lbar.helper_lbl);
-		move_image(lbar.helper_lbl, 0, pad);
+		move_image(lbar.helper_lbl, 2, pad);
 		nudge_image(lbar.helper_bg, 0, -barh);
-		resize_image(lbar.helper_bg, w, barh);
+		resize_image(lbar.helper_bg, w + 4, barh);
 
 -- just re-render text and show bar
 	else
 		local w;
 		show_image(lbar.helper_bg);
 		_, _, w = render_text(lbar.helper_lbl, dst);
-		move_image(lbar.helper_lbl, 0, pad);
-		resize_image(lbar.helper_bg, w, barh);
+		move_image(lbar.helper_lbl, 2, pad);
+		resize_image(lbar.helper_bg, w + 4, barh);
 	end
 end
 

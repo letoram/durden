@@ -16,7 +16,7 @@ return {
 			local ofs = 1;
 			local nt = {};
 
-			while (ofs < #g) do
+			while (ofs <= #g) do
 				table.insert(nt, g[ofs]);
 				if ((#g[ofs] == 0 and #nt > 0) or (#nt == ul)) then
 					table.insert(ct, nt);
@@ -74,11 +74,13 @@ return {
 		local bdh = (heights[#heights]+outh) + outh;
 		local bdw = bdw > props.width and props.width or bdw;
 		local bdh = bdh > props.height and props.height or bdh;
-		local backdrop = fill_surface(bdw, bdh, 20, 20, 20);
+		local backdrop = color_surface(bdw, bdh, 20, 20, 20);
+		shader_setup(backdrop, "ui", "rounded", "active");
 		link_image(backdrop, anchor);
 		link_image(tbl, backdrop);
 		image_inherit_order(backdrop, true);
 		image_inherit_order(tbl, true);
+		move_image(tbl, 4, 4);
 --			center_image(tbl, anchor);
 --			center_image(backdrop, anchor);
 		show_image({backdrop, tbl});

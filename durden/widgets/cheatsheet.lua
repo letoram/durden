@@ -43,13 +43,13 @@ local function destroy()
 end
 
 local function ident(ctx, pathid)
-	if (pathid ~= "/target") then
+	local wnd = active_display().selected;
+	if (pathid ~= "/target" or not wnd or not wnd.ident or not wnd.prefix) then
 		return false;
 	end
 
 	ctx.sheetset = {};
 	local strset = {};
-	local wnd = active_display().selected;
 	if (#wnd.ident > 0) then
 		table.insert(strset, wnd.ident);
 	end
