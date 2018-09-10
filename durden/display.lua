@@ -22,6 +22,17 @@ local wm_alloc_function = function() end
 
 local display_debug = suppl_add_logfn("display")();
 
+local function disp_string(disp)
+	return string.format("id=%d:name=%s:maphint=%d:w=%d:h=%d:backlight=%d:ppcm=%f",
+		disp.id and disp.id or -1, disp.name and disp.name or "broken",
+		disp.maphint and disp.maphint or -1,
+		disp.w and disp.w or -1,
+		disp.h and disp.h or -1,
+		disp.backlight and disp.backlight or -1,
+		disp.ppcm and disp.ppcm or -1
+	);
+end
+
 -- always return a valid string, for debug log tagging
 local function get_disp_name(name)
 	if (type(name) == "string") then
@@ -368,22 +379,30 @@ local function display_data(id)
 end
 
 local function get_name(id)
+	local name;
+	if (id == 0) then
+		name = "default_";
+	else
 -- first mapping nonsense has previously made it easier (?!)
--- getting a valid EDID in some cases
-	local name = id == 0 and "default" or "unkn_" .. tostring(id);
-	map_video_display(WORLDID, id, HINT_NONE);
+-- getting a valid EDID in some cases, might need to move this
+-- workaround to the platform layer though
+		name = "unknown_" .. tostring(id);
+		map_video_display(displays[1].rt, id, HINT_NONE);
+	end
 	local model, serial = display_data(id);
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial;
+	else
+		display_debug(string.format("id=%d:error=", id, "no_edid"));
 	end
 	return name;
 end
 
-local function display_byname(name, id)
+local function display_byname(name, id, w, h, ppcm)
 	local res = {
-		w = VRESW,
-		h = VRESH,
-		ppcm = VPPCM,
+		w = w,
+		h = h,
+		ppcm = ppcm,
 		id = id,
 		name = get_name(id),
 		shader = gconfig_get("display_shader"),
@@ -414,6 +433,14 @@ local function display_byname(name, id)
 				res.bg = val;
 			elseif (key == "primary") then
 				res.primary = tonumber(val) == 1;
+			elseif (key == "w") then
+				res.w = tonumber(val);
+			elseif (key == "h") then
+				res.h = tonumber(val);
+			elseif (key == "refresh") then
+				res.refresh = tonumber(val);
+			elseif (key == "backlight") then
+				res.backlight = tonumber(val);
 			else
 				warning("unknown stored display setting with key " .. key);
 			end
@@ -458,8 +485,13 @@ end
 
 function display_manager_shutdown()
 	local ktbl = {};
+	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
+
 	for i,v in ipairs(displays) do
 		local pref = "disp_" .. string.hexenc(v.name) .. "_";
+		local rotated = false;
+	--	bit.band(v.maphint, mfl) > 0;
+
 		if (v.ppcm_override) then
 			ktbl[pref .. "ppcm"] = v.ppcm;
 		end
@@ -470,13 +502,65 @@ function display_manager_shutdown()
 			ktbl[pref .. "shader"] = v.shader;
 -- MISSING: pack/unpack shader arguments
 		end
-		if (v.background) then
-			ktbl[pref .. "bg"] = v.background;
+		if (v.backlight) then
+			ktbl[pref .. "backlight"] = v.backlight;
+		end
+		ktbl[pref .. "bg"] = v.background and v.background or "";
+
+		if (v.w) then
+			ktbl[pref .. (rotated and "w" or "h")] = v.w;
+		end
+		if (v.h) then
+			ktbl[pref .. (rotated and "h" or "w")] = v.h;
+		end
+		if (v.refresh) then
+			ktbl[pref .. "refresh"] = v.refresh;
 		end
 		ktbl[pref .. "primary"] = v.primary and 1 or 0;
 	end
--- MISSING: mode settings
 	store_key(ktbl);
+end
+
+local function reorient_ddisp(disp, hint)
+	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
+
+-- is an explicit map hint set? then toggle the bits
+	if (hint ~= nil) then
+		disp.maphint = bit.bor(disp.maphint, hint);
+
+-- otherwise invert the current one
+	else
+		if (bit.band(disp.maphint, mfl) > 0) then
+			disp.maphint = bit.band(disp.maphint, bit.bnot(mfl));
+		else
+			disp.maphint = bit.bor(disp.maphint, HINT_ROTATE_CW_90);
+		end
+	end
+
+	local neww = disp.w;
+	local newh = disp.h;
+	if (bit.band(disp.maphint, mfl) > 0) then
+		neww = disp.h;
+		newh = disp.w;
+	end
+
+-- if the dimensions have changed, we should tell the tilers to reorg.
+	if (neww ~= disp.w or newh ~= disp.h) then
+		disp.w = neww;
+		disp.h = newh;
+		display_action(disp, function()
+			disp.tiler:resize(neww, newh);
+			disp.tiler:update_scalef(disp.tiler.scalef);
+		end);
+
+-- and this might have rebuilt the rendertarget as a new one, so switch
+-- the query target that the mouse will check for picking on
+		if (active_display(true) == disp.rt) then
+			mouse_querytarget(disp.rt);
+		end
+	end
+
+	map_video_display(disp.rt, disp.id, display_maphint(disp));
 end
 
 function display_set_backlight(name, ctrl, ind)
@@ -520,28 +604,13 @@ local function display_added(id)
 		end
 	end
 
--- special handling for id '0', the primary display.
 	local ddisp;
-	if (id == 0) then
-		ddisp = displays[1];
-		ddisp.id = 0;
-		ddisp.name = get_name(0);
-		ddisp.primary = true;
-		map_video_display(displays[1].rt, 0, display_maphint(displays[1]));
-		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
-
--- otherwise go down the complicated route, look for a display map that
--- indicates what kind of display it is (VR etc.) and setup the matching
--- profile.
-	else
-		ddisp, newh = display_add(get_name(id), dw, dh, ppcm, id);
-		if (not ddisp) then
-			return;
-		end
-
-		ddisp.id = id;
-		map_video_display(ddisp.rt, id, display_maphint(ddisp));
+	ddisp = display_add(get_name(id), dw, dh, ppcm, id);
+	if (not ddisp) then
+		return;
 	end
+
+	ddisp.id = id;
 
 -- load possible overrides since before, note that this is slightly
 -- inefficient as it will force rebuild of underlying rendertargets
@@ -556,6 +625,12 @@ local function display_added(id)
 		ddisp.active_ramps = ddisp.ramps;
 	end
 
+	display_debug(disp_string(ddisp));
+	display_apply(ddisp);
+	map_video_display(ddisp.rt, id, display_maphint(ddisp));
+	if (ddisp.bg) then
+		ddisp.tiler:set_background(ddisp.bg);
+	end
 	for k,v in ipairs(display_listeners) do
 		v("added", name, ddisp.tiler, id);
 	end
@@ -617,11 +692,6 @@ end
 
 function display_manager_init(alloc_fn)
 	wm_alloc_function = alloc_fn;
-	local defdisp = {
-		ppcm = VPPCM,
-		width = VRESW,
-		height = VRESH
-	};
 
 -- Since we won't get an 'added / removed' event for this display, the defaults
 -- and possible profile override needs to be activated manually. This should
@@ -629,7 +699,7 @@ function display_manager_init(alloc_fn)
 -- with how the platform is setup in Arcan, which in turn ties back to openGL
 -- setup without a working display.
 	local name = get_name(0);
-	local ddisp = display_byname(name, 0);
+	local ddisp = display_byname(name, 0, VRESW, VRESH, VPPCM);
 
 -- this might come from a preset profile, so sweep the available display maps
 -- and pick the one with the best fit
@@ -648,10 +718,12 @@ function display_manager_init(alloc_fn)
 
 	if (not displays.simple) then
 		rendertarget_forceupdate(WORLDID, 0);
+		delete_image(WORLDID);
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
 		map_video_display(ddisp.rt, 0, 0);
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
+		reorient_ddisp(ddisp, ddisp.maphint);
 	end
 
 	return ddisp.tiler;
@@ -704,6 +776,9 @@ end
 function display_add(name, width, height, ppcm, id)
 	local found = get_disp(name);
 	local new = nil;
+	local maphint = HINT_NONE;
+	local backlight = 1.0;
+
 	name = string.gsub(name, ":", "/");
 
 	width = math.clamp(width, width, MAX_SURFACEW);
@@ -712,54 +787,15 @@ function display_add(name, width, height, ppcm, id)
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
 	if (found) then
-		display_debug(string.format("add_match:name=%s", found.name));
+		display_debug(string.format("add_match:name=%s", string.hexenc(name)));
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
 		display_apply(found);
 
 	else
-		local prof = find_profile(name);
-
-		if (prof) then
-			display_debug(string.format("add_profile:name=%s", get_disp_name(name)));
--- facility for supporting more window management styles in the future
-			if (prof.wm == "ignore") then
-				if (prof.tag) then
-					display_debug("ignore_tag=" .. prof.tag);
-				end
-
-				table.insert(ignored, {
-					id = id, name = name,
-					width = width, height = height,
-					ppcm = ppcm, tag = prof.tag
-				});
-				return;
-			end
-
-			if (prof.width) then
-				width = math.clamp(prof.width, prof.width, MAX_SURFACEW);
-			end
-			if (prof.height) then
-				height = math.clamp(prof.height, prof.height, MAX_SURFACEW);
-			end
-			if (prof.ppcm) then
-				ppcm = prof.ppcm;
-			end
-		end
-
+		nd = display_byname(name, id, width, height, ppcm);
 -- make sure all resources are created in the global scope
 		set_context_attachment(WORLDID);
-
-		local nd = {
-			w = width,
-			h = height,
-			name = name,
-			primary = false,
-			maphint = HINT_NONE,
-			shader = gconfig_get("display_shader"),
-			ppcm = ppcm,
-			backlight = 1.0
-		};
 		nd.tiler = wm_alloc_function(nd);
 		table.insert(displays, nd);
 		nd.ind = #displays;
@@ -1049,34 +1085,7 @@ function display_reorient(name, hint)
 		return;
 	end
 
-	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
-	if (hint ~= nil) then
-		disp.maphint = bit.bor(disp.maphint, hint);
-	else
-		if (bit.band(disp.maphint, mfl) > 0) then
-			disp.maphint = bit.band(disp.maphint, bit.bnot(mfl));
-		else
-			disp.maphint = bit.bor(disp.maphint, HINT_ROTATE_CW_90);
-		end
-	end
-
-	local neww = disp.w;
-	local newh = disp.h;
-	if (bit.band(disp.maphint, mfl) > 0) then
-		neww = disp.h;
-		newh = disp.w;
-	end
-
-	display_action(disp, function()
-		map_video_display(disp.rt, disp.id, display_maphint(disp));
-		disp.tiler:resize(neww, newh);
-		disp.tiler:update_scalef(disp.tiler.scalef);
-	end);
-
--- as the dimensions have changed
-	if (active_display(true) == disp.rt) then
-		mouse_querytarget(disp.rt);
-	end
+	reorient_ddisp(disp, hint);
 end
 
 function display_simple()

@@ -64,8 +64,10 @@ Breaking:
     options have been merged into the YES/NO paths that have been
     extended with YES/NO/FLIP
 
-Minor:
+Minor / Fixes:
   * activate GPU rescan on hotplug event
+
+  * reworked multi-display state management / restoration / discovery
 
   * mouse should now work better with the HUD menu, particularly
 	  mouse-wheel, navigation button clicks and right-click to exit.
