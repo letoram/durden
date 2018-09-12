@@ -174,26 +174,21 @@ local function gen_disp_menu(disp)
 		},
 		{
 		name = "background",
-		label = "Set Background",
+		label = "Background",
 		kind = "action",
 		description = "Set a default background for all new workspaces on the display",
 		handler = function()
-			local loadfn = function(fn)
-				disp.tiler:set_background(fn, true);
-				disp.background = fn;
-			end
-			local imgfiles = {png = loadfn, jpg = loadfn, bmp = loadfn};
-			browse_file({}, imgfiles, SHARED_RESOURCE, nil);
-		end
-		},
-		{
-		name = "resetbg",
-		label = "Reset Backgrounds",
-		kind = "action",
-		description = "Remove the default background setting",
-		handler = function()
-			disp.background = "";
-			disp.tiler:set_background(nil, true);
+			dispatch_symbol_bind(
+				function(path)
+					local ln, kind = resource(path);
+					if (kind ~= "file") then
+						active_display():set_background();
+						active_display(false, true).background = nil;
+					else
+						active_display(false, true).background = path;
+						active_display():set_background(path);
+					end
+			end, "/browse/shared");
 		end,
 		},
 		{

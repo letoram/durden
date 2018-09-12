@@ -5076,12 +5076,17 @@ local function tiler_switchbg(wm, newbg, mh)
 	wm.background_name = newbg;
 
 	if (valid_vid(wm.background_id)) then
-		delete_image(wm.background_id);
+		blend_image(wm.background_id, 0.0, gconfig_get("transition"));
+		expire_image(wm.background_id, gconfig_get("transition"));
 		wm.background_id = nil;
 	end
 
 -- we need this synchronously unfortunately
-	if ((type(newbg) == "string" and resource(newbg))) then
+	if (type(newbg) == "string") then
+		local ln, kind = resource(newbg);
+		if (kind ~= "file") then
+			return;
+		end
 		wm.background_id = load_image(newbg);
 	elseif (valid_vid(newbg)) then
 		wm.background_id = null_surface(wm.width, wm.height);

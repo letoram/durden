@@ -184,19 +184,6 @@ return {
 		handler = set_ws_background,
 	},
 	{
-		name = "drop_bg",
-		label = "Drop Background",
-		kind = "action",
-		description = "Remove the currently set background image",
-		eval = function()
-			return valid_vid(
-				active_display().spaces[active_display().space_ind].background);
-		end,
-		handler = function()
-			active_display().spaces[active_display().space_ind]:set_background();
-		end
-	},
-	{
 		name = "rename",
 		label = "Rename",
 		kind = "value",
