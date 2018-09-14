@@ -402,13 +402,16 @@ local function display_byname(name, id, w, h, ppcm)
 	local res = {
 		w = w,
 		h = h,
+		rw = w,
+		rh = h,
 		ppcm = ppcm,
 		id = id,
 		name = get_name(id),
 		shader = gconfig_get("display_shader"),
 		maphint = HINT_NONE,
 		refresh = 60,
-		backlight = 1.0
+		backlight = 1.0,
+		wm = "tiler"
 	};
 
 	local pref = "disp_" .. string.hexenc(res.name) .. "_";
@@ -466,8 +469,13 @@ local function display_byname(name, id, w, h, ppcm)
 		if (prof.backlight) then
 			res.backlight = math.clamp(prof.backlight, 0.1, 1.0);
 		end
+		res.tag = prof.tag;
+		res.wm = prof.wm;
 	end
 
+-- distinguish between real-width and effective-width (rotation)
+	res.rw = res.w;
+	res.rh = res.h;
 	return res;
 end
 
@@ -485,12 +493,9 @@ end
 
 function display_manager_shutdown()
 	local ktbl = {};
-	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
 
 	for i,v in ipairs(displays) do
 		local pref = "disp_" .. string.hexenc(v.name) .. "_";
-		local rotated = false;
-	--	bit.band(v.maphint, mfl) > 0;
 
 		if (v.ppcm_override) then
 			ktbl[pref .. "ppcm"] = v.ppcm;
@@ -507,11 +512,11 @@ function display_manager_shutdown()
 		end
 		ktbl[pref .. "bg"] = v.background and v.background or "";
 
-		if (v.w) then
-			ktbl[pref .. (rotated and "w" or "h")] = v.w;
+		if (v.rw) then
+			ktbl[pref .. "w"] = v.rw;
 		end
-		if (v.h) then
-			ktbl[pref .. (rotated and "h" or "w")] = v.h;
+		if (v.rh) then
+			ktbl[pref .. "h"] = v.rh;
 		end
 		if (v.refresh) then
 			ktbl[pref .. "refresh"] = v.refresh;
@@ -522,11 +527,15 @@ function display_manager_shutdown()
 end
 
 local function reorient_ddisp(disp, hint)
+-- is an explicit map hint set? then toggle the bits but preserve
+-- other ones like CROP or FILL or PRIMARY
 	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
-
--- is an explicit map hint set? then toggle the bits
 	if (hint ~= nil) then
-		disp.maphint = bit.bor(disp.maphint, hint);
+		local valid = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
+		valid = bit.bor(valid, HINT_YFLIP);
+		hint = bit.band(valid, hint);
+		local mask = bit.band(disp.maphint, bit.bnot(valid));
+		disp.maphint = bit.bor(mask, hint);
 
 -- otherwise invert the current one
 	else
@@ -537,11 +546,11 @@ local function reorient_ddisp(disp, hint)
 		end
 	end
 
-	local neww = disp.w;
-	local newh = disp.h;
+	local neww = disp.rw;
+	local newh = disp.rh;
 	if (bit.band(disp.maphint, mfl) > 0) then
-		neww = disp.h;
-		newh = disp.w;
+		neww = disp.rh;
+		newh = disp.rw;
 	end
 
 -- if the dimensions have changed, we should tell the tilers to reorg.
@@ -705,6 +714,11 @@ function display_manager_init(alloc_fn)
 -- and pick the one with the best fit
 	set_best_mode(ddisp);
 
+-- virtual-display to-fix: there is an issue here when the system starts
+-- without any connected display or when the first display happens to be
+-- a VR display that should be ignored. What should be done is to create
+-- a virtual-display and bind a tiler to that, then allow a display to
+-- grab the orphaned virtual one.
 	ddisp.tiler = wm_alloc_function(ddisp);
 	displays[1] = ddisp;
 
@@ -794,6 +808,11 @@ function display_add(name, width, height, ppcm, id)
 
 	else
 		nd = display_byname(name, id, width, height, ppcm);
+		if (nd.wm == "ignore") then
+			table.insert(ignored, nd);
+			return;
+		end
+
 -- make sure all resources are created in the global scope
 		set_context_attachment(WORLDID);
 		nd.tiler = wm_alloc_function(nd);
@@ -1009,6 +1028,8 @@ function display_ressw(name, mode)
 	display_action(disp, function()
 		disp.w = mode.width;
 		disp.h = mode.height;
+		disp.rw = disp.w;
+		disp.rh = disp.h;
 		video_displaymodes(disp.id, mode.modeid);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
