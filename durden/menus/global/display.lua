@@ -1,13 +1,30 @@
 local function orientation_menu(name)
 	return {
 		{
-			name = "toggle_hv",
-			eval = function() return not display_simple(); end,
-			label = "Toggle H/V",
+			name = "default",
+			label = "Default",
+			description = "Set the display orientation to best for initial size",
 			kind = "action",
-			description = "Switch display orientation between horizontal and vertical",
 			handler = function()
-				display_reorient(name);
+				display_reorient(name, 0)
+			end
+		},
+		{
+			name = "90_cw",
+			label = "+90",
+			kind = "action",
+			description = "Rotate 90 degrees clockwise",
+			handler = function()
+				display_reorient(name, HINT_ROTATE_CW_90);
+			end
+		},
+		{
+			name = "90_ccw",
+			label = "-90",
+			kind = "action",
+			description = "Rotate 90 degrees counter-clockwise",
+			handler = function()
+				display_reorient(name, HINT_ROTATE_CCW_90);
 			end
 		}
 	};
