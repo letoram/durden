@@ -3562,7 +3562,8 @@ local canvas_mh = {
 -- update accept state, for external clients we need to do a lot more
 -- via the clipboard - i.e. ask if the type is currently accepted and
 -- so on
-			if (ctx.tag.tag_state ~= nil and ctx.tag.tag_state(ms.cursortag.ref)) then
+			if (ctx.tag.tag_state ~= nil and
+				ctx.tag.tag_state(ms.cursortag.ref, ctx.tag)) then
 				mouse_cursortag_state(true);
 			else
 				mouse_cursortag_state(false);
