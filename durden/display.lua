@@ -18,6 +18,11 @@ local displays = {};
 local profiles = {};
 local ignored = {};
 local display_listeners = {};
+
+-- there's no other way to detect the presence of LWA mode at the moment
+-- (which is just stupid since some functions have different semantics)
+local arcan_nested = VRES_AUTORES ~= nil;
+
 local wm_alloc_function = function() end
 
 local display_debug = suppl_add_logfn("display")();
@@ -732,12 +737,15 @@ function display_manager_init(alloc_fn)
 
 	if (not displays.simple) then
 		rendertarget_forceupdate(WORLDID, 0);
-		delete_image(WORLDID);
+		if (not arcan_nested) then
+			delete_image(WORLDID);
+		end
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
 		map_video_display(ddisp.rt, 0, 0);
 		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		reorient_ddisp(ddisp, ddisp.maphint);
+		mouse_querytarget(ddisp.rt);
 	end
 
 	return ddisp.tiler;
