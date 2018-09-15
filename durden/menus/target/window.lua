@@ -880,11 +880,22 @@ return {
 		handler = function()
 			local wnd = active_display().selected;
 			local icon = null_surface(64, 64);
-			if (valid_vid(icon)) then
-				image_sharestorage(wnd.canvas, icon);
-				show_image(icon);
-				mouse_cursortag(wnd, "window", cursortag_handler, icon);
+			if (not valid_vid(icon)) then
+				return;
 			end
+
+-- now we have something representing the state, forward all this to the
+-- mouse support scripts and have a callback that queries the target wnd
+-- if the source is accepted or not.
+-- For external clients (and wayland in particular) make sure that there
+-- is a handler in extevh/atypes that periodically updates the tag-icon.
+			image_sharestorage(wnd.canvas, icon);
+			show_image(icon);
+			mouse_cursortag(wnd, "window",
+				function(tag, dstwnd)
+					print("cursortag", tag, dstwnd);
+				end, icon
+			);
 		end,
 	},
 	{
