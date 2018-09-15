@@ -497,7 +497,7 @@ local function lbar_helper(lbar, lbl)
 -- build text and bar
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	if (not lbar.helper_bg) then
-		lbar.helper_bg = fill_surface(64, barh, 255, 0, 0);
+		lbar.helper_bg = color_surface(64, barh, unpack(gconfig_get("lbar_helperbg")));
 		shader_setup(lbar.helper_bg, "ui", "rounded");
 		image_inherit_order(lbar.helper_bg, true);
 		link_image(lbar.helper_bg, lbar.text_anchor);

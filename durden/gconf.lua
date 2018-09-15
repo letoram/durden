@@ -245,6 +245,7 @@ local defaults = {
 	lbar_spacing = 10,
 	lbar_sz = 12, -- dynamically recalculated on font changes
 	lbar_bg = {0x33, 0x33, 0x33},
+	lbar_helperbg = {0x24, 0x24, 0x24},
 	lbar_textstr = "\\#cccccc ",
 	lbar_alertstr = "\\#ff0000 ",
 	lbar_labelstr = "\\#00ff00 ",
