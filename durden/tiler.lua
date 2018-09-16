@@ -5062,7 +5062,7 @@ local function tiler_scalef(wm, newf, disptbl)
 
 -- mouse locking coordinates depend on active rt
 	if (active_display() == wm) then
-		mouse_querytarget(wm.rt);
+		mouse_querytarget(wm.rtgt_id);
 	end
 
 --	tiler_statusbar_build(wm);
