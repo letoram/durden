@@ -385,6 +385,7 @@ local function model_settings_menu(wnd, layer, model)
 		label = "Spin",
 		description = "Increment or decrement the current model-layer relative rotation",
 		kind = "value",
+		hint = "(roll pitch yaw)(-359..359)",
 		validator = suppl_valid_typestr("fff", -359, 359, 0),
 		handler = function(ctx, val)
 			local res = suppl_unpack_typestr("fff", val, -359, 359);
@@ -829,6 +830,9 @@ local function hmd_config(wnd, opts)
 	label = "Reset Orientation",
 	description = "Set the current orientation as the new base reference",
 	kind = "action",
+	eval = function()
+		return valid_vid(wnd.vr_state.vid, TYPE_FRAMESERVER);
+	end,
 	handler = function()
 		reset_target(wnd.vr_state.vid);
 	end
