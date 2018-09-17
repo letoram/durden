@@ -876,10 +876,14 @@ return {
 		label = "Cursor Tag",
 		description = "Set the current window as the 'drag' mouse state",
 		kind = "action",
+		interactive = true,
 		external_block = true,
 		handler = function()
 			local wnd = active_display().selected;
-			local icon = null_surface(64, 64);
+
+-- this approach doesn't work well when dragging across mixed-DPI but the
+-- changes for that need to be done on the mouse.lua side
+			local icon = null_surface(32, 32);
 			if (not valid_vid(icon)) then
 				return;
 			end
@@ -887,15 +891,33 @@ return {
 -- now we have something representing the state, forward all this to the
 -- mouse support scripts and have a callback that queries the target wnd
 -- if the source is accepted or not.
+--
 -- For external clients (and wayland in particular) make sure that there
 -- is a handler in extevh/atypes that periodically updates the tag-icon.
+--
+-- This is quite complicated as it involves both window state,
+-- client state, active tiler, input dispatch etc.
+--
+-- Basic flow:
+--  mouse.lua(set_tag) ->
+--   tiler(canvas_mh:motion->mouse_update_state) -> callback below -> fin.
+--   tiler(canvas_mh:release) -> callback below (accept or !accept)
+--   dispatch(escape) -> tiler:cancellation -> mouse:drop -> callback below
+--
+-- The return of the callback for the first case determines the visible
+-- "current target would accept the drop"
+--
 			image_sharestorage(wnd.canvas, icon);
 			show_image(icon);
 			mouse_cursortag(wnd, "window",
-				function(tag, dstwnd)
-					print("cursortag", tag, dstwnd);
+				function(srcwnd, accept, dstwnd)
+					if (not dstwnd or not srcwnd or
+						accept == false or not dstwnd.receive_cursortag) then
+						return;
+					end
+					return dstwnd:receive_cursortag(accept == nil, srcwnd);
 				end, icon
-			);
+			)
 		end,
 	},
 	{

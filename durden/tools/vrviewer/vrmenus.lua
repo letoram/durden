@@ -189,6 +189,16 @@ local function build_connpoint(wnd, layer, model)
 			handler = function(ctx, val)
 				model:set_connpoint(val, "reveal-focus");
 			end
+		},
+		{
+			name = "set_default",
+			label = "Default",
+			description = "Mark this connection point as the default migration target",
+			kind = "action",
+			eval = function() return model.ext_name ~= nil; end,
+			handler = function(ctx)
+				wnd.default_cp = model.ext_name;
+			end
 		}
 	};
 end
@@ -308,6 +318,16 @@ local function add_mapping_options(tbl, wnd, layer, model, subid)
 			browse_file({},
 				{png = loadfn, jpg = loadfn, bmp = loadfn}, SHARED_RESOURCE, nil);
 		end
+	});
+	table.insert(tbl,
+	{
+		name = "set_default",
+		label = "Default",
+		description = "Set this face as the default 'drag to-' mapping",
+		kind = "action",
+		handler = function()
+			wnd.default_model = model;
+		end,
 	});
 end
 

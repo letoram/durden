@@ -466,6 +466,15 @@ end
 local function model_destroy(model)
 	local layer = model.layer;
 
+-- dereference any 'default to...'
+	if (layer.ctx.default_cp == ext_name) then
+		layer.ctx.default_cp = nil;
+	end
+
+	if (layer.ctx.default_model == model) then
+		layer.ctx.default_model = nil;
+	end
+
 -- reparent any children
 	local dst;
 	local dst_i;

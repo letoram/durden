@@ -27,9 +27,10 @@ return {
 
 -- a hidden model that only gets activated on client
 -- connect/disconnect and uses side by side
---"layers/layer_fg/add_model/rectangle=sbsvid",
---"layers/layer_fg/models/sbsvid/connpoint/reveal=sbsvid",
---"layers/layer_fg/models/sbsvid/stereoscopic=sbs"
+"layers/layer_fg/add_model/rectangle=sbsvid",
+"layers/layer_fg/models/sbsvid/connpoint/reveal=sbsvid",
+"layers/layer_fg/models/sbsvid/stereoscopic=sbs",
+"layers/layer_fg/models/sbsvid/set_default",
 };
 
 -- "layers/layer_bg/add_model/sphere=bg",
