@@ -2974,6 +2974,8 @@ local function wnd_mousepress(ctx)
 		return;
 	end
 
+	local ct = mouse_state().cursortag;
+
 	if (not wnd.space or wnd.space.mode ~= "float") then
 		return;
 	end
@@ -3557,16 +3559,20 @@ local border_mh = {
 
 local canvas_mh = {
 	motion = function(ctx, vid, ...)
-		local ms = mouse_state();
-		if (ms.cursortag) then
+		local ct = mouse_state().cursortag;
+		if (ct) then
 -- update accept state, for external clients we need to do a lot more
 -- via the clipboard - i.e. ask if the type is currently accepted and
--- so on
-			if (ctx.tag.tag_state ~= nil and
-				ctx.tag.tag_state(ms.cursortag.ref, ctx.tag)) then
+-- so on. the distributed mouse.lua is flawed here so temporarily set
+-- overrides on vid and state here
+			if (ct.handler and ct.handler(ct.ref, nil, ctx.tag)) then
 				mouse_cursortag_state(true);
+				blend_image(ct.vid, 1.0);
+				ct.accept = true;
 			else
 				mouse_cursortag_state(false);
+				blend_image(ct.vid, 0.5);
+				ct.accept = false;
 			end
 		end
 
@@ -3574,7 +3580,14 @@ local canvas_mh = {
 			wnd_mousemotion(ctx, ...);
 		end
 	end,
-
+	release = function(ctx, vid, ...)
+		local ct = mouse_state().cursortag;
+		if (not ct) then
+			return;
+		end
+		ct.handler(ct.ref, true, ctx.tag);
+		ctx.tag.wm:cancellation();
+	end,
 	drag = function(ctx, vid, dx, dy, ...)
 		local wnd = ctx.tag;
 		if (not wnd.space.mode == "float") then
@@ -4978,7 +4991,8 @@ local function tiler_resize(wm, neww, newh, norz)
 	end
 end
 
-local function tiler_cancellation(wm, ok)
+-- drop whatever interactive/cursor state that is currently pending
+local function tiler_cancellation(wm)
 	mouse_cursortag_drop();
 end
 

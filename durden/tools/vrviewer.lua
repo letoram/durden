@@ -131,6 +131,46 @@ local function vrwnd()
 	mouse_droplistener(wnd.handlers.mouse.canvas);
 	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
 
+	wnd.receive_cursortag =
+	function(wnd, probe, srcwnd)
+		if (not wnd.default_model and not wnd.default_cp) then
+			return false;
+		end
+
+-- First [decode] + external_model? prefer that. Only open ended question
+-- is if this should prompt the mapping taking over if the parent window
+-- is terminated. A popup to query is probably the right way.
+		if (srcwnd.atype == "decode" and wnd.default_model) then
+			if (not probe) then
+				wnd.default_model.external = wnd.external;
+				image_sharestorage(srcwnd.canvas, wnd.default_model.vid);
+				wnd.default_model:show();
+			end
+			return true;
+		end
+
+-- Otherwise we first try direct migration
+		if (wnd.default_cp) then
+			if (not valid_vid(srcwnd.external, TYPE_FRAMESERVER)) then
+				return false;
+			end
+
+			if (not probe) then
+				target_devicehint(srcwnd.external, wnd.default_cp, true);
+			end
+			return true;
+		end
+
+-- And fallback to mapping
+		if (not probe) then
+			wnd.default_model.external = wnd.external;
+			image_sharestorage(srcwnd.canvas, wnd.default_model.vid);
+			wnd.default_model:show();
+		end
+
+		return true;
+	end
+
 	show_image(preview);
 	wnd.menu_state_disable = true;
 

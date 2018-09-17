@@ -171,6 +171,15 @@ local function sort_meshes(a, b)
 	end
 end
 
+local function wnd_to_model(cwin, model, wnd)
+	mesh_shader(model.vid, display, model.display_mesh);
+	set_image_as_frame(model.vid, wnd.canvas, model.display_slot);
+	cwin.menu_input_disable = false;
+	cwin.menu_state_disable = false;
+	cwin.external = wnd.external;
+	cwin.external_prot = true;
+end
+
 local function get_valid_windows(cwin, model)
 	local lst = {};
 	for wnd in all_windows() do
@@ -180,12 +189,7 @@ local function get_valid_windows(cwin, model)
 				name = "map_" .. wnd.name,
 				label = wnd:identstr(),
 				handler = function()
-					mesh_shader(model.vid, display, model.display_mesh);
-					set_image_as_frame(model.vid, wnd.canvas, model.display_slot);
-					cwin.menu_input_disable = false;
-					cwin.menu_state_disable = false;
-					cwin.external = wnd.external;
-					cwin.external_prot = true;
+					wnd_to_model(cwin, model, wnd);
 				end
 			});
 		end
@@ -397,8 +401,17 @@ local function modelwnd(name)
 	end
 	mouse_droplistener(wnd.handlers.mouse.canvas);
 	mouse_addlistener(wnd.handlers.mouse.canvas, lst);
-
 	show_image(tgtsurf);
+
+	if (res.display_slot) then
+		wnd.receive_cursortag = function(wnd, probe, srcwnd)
+			if (probe) then
+				return valid_vid(wnd.external, TYPE_FRAMESERVER);
+			end
+			wnd_to_model(wnd, res, srcwnd);
+		end
+	end
+
 	wnd.menu_input_disable = true;
 	wnd.menu_state_disable = true;
 		wnd.actions = {

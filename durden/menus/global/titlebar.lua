@@ -121,7 +121,7 @@ return
 {
 	{
 		name = "color",
-		label = "Titlebar Color",
+		label = "Color",
 		kind = "value",
 		hint = "(r g b)[0..255]",
 		initial = function()
@@ -140,7 +140,7 @@ return
 	},
 	{
 		name = "pattern",
-		label = "Titlebar(Pattern)",
+		label = "Pattern",
 		kind = "value",
 		description = "Change the format string used to populate the titlebar text",
 		initial = function() return gconfig_get("titlebar_ptn"); end,
@@ -169,10 +169,10 @@ return
 	},
 	{
 		name = "buttons",
-		label = "Titlebar Buttons",
+		label = "Buttons",
 		kind = "action",
 		submenu = true,
-		description = "Titlebar Buttons",
+		description = "Modify the default set of decoration buttons added to new windows",
 		handler = titlebar_buttons
 	},
 };
