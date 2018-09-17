@@ -89,6 +89,7 @@ function durden(argv)
 
 -- default click actions
 		res.name = ddisp.name;
+		res.buttons = gconfig_buttons;
 		res.status_lclick = function() dispatch_symbol("/global"); end
 		res.status_rclick = function() dispatch_symbol("/target"); end
 		return res;

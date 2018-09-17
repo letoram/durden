@@ -521,6 +521,7 @@ function suppl_valid_vsymbol(val)
 		if (not val or not string.to_u8(string.sub(val, 4))) then
 			return false;
 		end
+		val = string.to_u8(string.sub(val, 4));
 	end
 
 	if (string.sub(val, 1, 5) == "icon:") then
@@ -532,7 +533,7 @@ function suppl_valid_vsymbol(val)
 		return false;
 	end
 
-	return true;
+	return true, val;
 end
 
 local function append_color_menu(r, g, b, tbl, update_fun)
