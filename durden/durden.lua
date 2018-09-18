@@ -8,7 +8,7 @@
 EVENT_SYNCH = {};
 
 local update_default_font, update_connection_path;
-local eval_respawn, load_configure_mouse;
+local load_configure_mouse;
 
 local argv_cmds = {};
 
@@ -106,7 +106,7 @@ function durden(argv)
 -- only user-input controlled execution through configured database and browse
 	local cp = gconfig_get("extcon_path");
 	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
-		eval_respawn(true);
+		durden_eval_respawn(true);
 	end
 
 -- add hooks for changes to all default font properties
@@ -508,14 +508,22 @@ function durden_new_connection(source, status, norespawn)
 		return;
 	end
 
+-- clean up the global state (INCOMING_ENDPOINT), used to track the
+-- dangling connection point if the setting is changed while a
+-- connection is still pending, _new_connection is reused from the
+-- terminal groups in global/open
+	if (source == INCOMING_ENDPOINT) then
+		INCOMING_ENDPOINT = nil;
+	end
+
 -- allocate a new endpoint? or wait?
 	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
 		gconfig_get("extcon_startdelay")) then
 		timer_add_periodic("extcon_activation",
 			gconfig_get("extcon_rlimit"), true,
-			function() eval_respawn(false); end, true);
+			function() durden_eval_respawn(false); end, true);
 	else
-		eval_respawn(true);
+		durden_eval_respawn(true);
 	end
 
 -- invocation from config change, anything after this isn't relevant
@@ -555,7 +563,7 @@ function durden_new_connection(source, status, norespawn)
 	end
 end
 
-eval_respawn = function(manual)
+function durden_eval_respawn(manual)
 	local lim = gconfig_get("extcon_wndlimit");
 	local period = gconfig_get("extcon_rlimit");
 	local path = gconfig_get("extcon_path");
@@ -573,10 +581,16 @@ eval_respawn = function(manual)
 -- one-fire timer that re-runs this function
 	if ((lim > 0 and count > lim) and not manual) then
 		timer_add_periodic("extcon_activation", period, true,
-			function() eval_respawn(false); end, true);
+			function() durden_eval_respawn(false); end, true);
 		return;
 	end
 
+-- if the timer starts fighting with the user changing the setting for
+-- the connection point interactively at the right time, a small race
+-- might get the timer to try and respawn endlessly
+	if (valid_vid(INCOMING_ENDPOINT)) then
+		delete_image(INCOMING_ENDPOINT);
+	end
 	INCOMING_ENDPOINT = target_alloc(path, durden_new_connection);
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
@@ -586,7 +600,7 @@ eval_respawn = function(manual)
 		end
 	else
 		timer_add_periodic("excon_reset", 100, true,
-			function() eval_respawn(true); end, true);
+			function() durden_eval_respawn(true); end, true);
 	end
 end
 

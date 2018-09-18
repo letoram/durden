@@ -246,7 +246,7 @@ local durden_system = {
 			if (string.len(val) == 0) then
 				val = ":disabled";
 			else
-				eval_respawn(true);
+				durden_eval_respawn(true);
 			end
 		end
 	},
