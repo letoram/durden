@@ -1134,14 +1134,23 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 -- account for top/bottom padding of bar
 	local rh = (ad.height - y2) > y1 and y1 or (ad.height - y2);
 
+-- sweep all widgets and check their 'paths' table for a path
+-- or dynamic eval function and compare to the supplied ident
 	for k,v in pairs(widgets) do
 		for i,j in ipairs(v.paths) do
 			local ident_tag;
 			if (type(j) == "function") then
 				ident_tag = j(v, ident);
 			end
+
+-- if we actually find a match, probe the widget for how many
+-- groups of the maximum slot- height that is needed to present
 			if ((type(j) == "string" and j == ident) or ident_tag) then
 				local nc = v.probe and v:probe(rh, ident_tag) or 1;
+
+-- and if there is a number of groups returned, mark those in the
+-- tracking table (for later deallocation) and add to the set of
+-- groups to layout
 				if (nc > 0) then
 					widget_destr[v] = true;
 					for n=1,nc do
@@ -1152,6 +1161,9 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 		end
 	end
 
+-- abort if there were no widgets that wanted to present a group,
+-- otherwise start allocating visual resources for the groups and
+-- proceed to layout
 	local nm = #match;
 	if (nm == 0) then
 		return;
@@ -1165,6 +1177,10 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 	local start = fi+1;
 	local ctr = 0;
 
+
+-- the layouting algorithm here is a bit clunky. The algorithms evolved
+-- from the advfloat autolayouter should really be generalized into a
+-- helper script and simply be used here as well.
 	if (nm - fi > 0) then
 		local ndiv = (#match - fi) / 2;
 		local cellw = ndiv > 1 and (ad.width - pad - pad) / ndiv or ad.width;
