@@ -94,7 +94,7 @@ local function destroy(ctx)
 end
 
 return {
-	name = "bindings",
+	name = "wnddbg",
 	paths = {function(ctx, pathid)
 		if (pathid == "/target") then
 			return DEBUGLEVEL > 0;
