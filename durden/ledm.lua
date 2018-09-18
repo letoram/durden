@@ -131,7 +131,7 @@ end
 
 -- updated when selection changes, locked state changes or meta- key state
 -- changes.
-function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
+function ledm_kbd_state(m1, m2, locked, globals, locals)
 
 	if (locked) then
 		for k,v in ipairs(devices.keymap) do
@@ -164,15 +164,6 @@ function ledm_kbd_state(m1, m2, locked, globals, targets, locals)
 			for i,d in ipairs(globals) do
 				if (v.symtable[d[1]]) then
 					local cl = resolve_path_color(v, d[2], "global_color");
-					ledfun(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
-				end
-			end
-		end
-
-		if (targets) then
-			for i,d in ipairs(targets) do
-				if (v.symtable[d[1]]) then
-					local cl = resolve_path_color(v, d[2], "target_generic_color");
 					ledfun(v.devid, v.symtable[d[1]], cl[1], cl[2], cl[3], true);
 				end
 			end

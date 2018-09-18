@@ -27,7 +27,6 @@ local function update_meta(m1, m2)
 	if (m1 or m2) then
 		local pref = (m1 and "m1_" or "") .. (m2 and "m2_" or "");
 		local global = {};
-		local target = {};
 
 -- filter out set of valid bindings
 		for k,v in pairs(tbl) do
@@ -35,22 +34,17 @@ local function update_meta(m1, m2)
 				if (string.sub(k, string.len(pref)+1, 2) == "m2") then
 -- special case, m1_ on m1_m2__ binding
 				else
-					if (string.sub(v, 1, 1) == "#") then
-						table.insert(target, {string.sub(k, string.len(pref)+1), v});
-					else
-						table.insert(global, {string.sub(k, string.len(pref)+1), v});
-					end
+					table.insert(global, {string.sub(k, string.len(pref)+1), v});
 				end
 			end
 		end
 
-		ledm_kbd_state(m1, m2, dispatch_locked(), global, target);
+		ledm_kbd_state(m1, m2, dispatch_locked(), global);
 	else
 	-- get the default and bound locals
 		ledm_kbd_state(m1, m2, dispatch_locked()
 			-- locked
 			-- globals
-			-- targets
 			-- locals
 		);
 	end
