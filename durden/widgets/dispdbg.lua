@@ -61,7 +61,8 @@ local function probe(ctx, yh)
 end
 
 local function show(ctx, anchor, ofs)
-	return tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
+	return tsupp.show(ctx, anchor,
+		ctx.group_cache[ofs], 1, #ctx.group_cache[ofs], nil, ofs);
 end
 
 local function destroy(ctx)

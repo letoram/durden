@@ -20,16 +20,35 @@ for i=0x80,0xbf do
 		string.char(0xc3)..string.char(i)});
 end
 
+local function on_click(ctx, lbl, i)
+	lbl = lbl[1];
+	local start = string.find(lbl, "%(");
+	if (not start) then
+		return;
+	end
+	local stop = string.find(lbl, "%)");
+	if (not stop or stop + 1 <= start - 1) then
+		return;
+	end
+	local seq = string.sub(lbl, start + 1, stop - 1);
+	local lbar = tiler_lbar_isactive(true);
+	if (not lbar) then
+		return;
+	end
+	lbar.inp:set_str(seq);
+end
+
 local function probe(ctx, yh)
-	return tsupp.setup(ctx, {tbl}, yh);
+	return tsupp.setup(ctx, {tbl}, yh, on_click, nil);
 end
 
 local function show(ctx, anchor, ofs)
-	return tsupp.show(ctx, anchor, ctx.group_cache[ofs], 1, #ctx.group_cache[ofs]);
+	return tsupp.show(ctx, anchor,
+		ctx.group_cache[ofs], 1, #ctx.group_cache[ofs], nil, ofs);
 end
 
 local function destroy(ctx)
-	ctx.group_cache = nil;
+	return tsupp.destroy(ctx);
 end
 
 return {

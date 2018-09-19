@@ -249,6 +249,12 @@ local function query_value(ctx, mask)
 		end
 		res:set_helper(helper);
 	end
+
+-- if a menu path has a special widget trigger for input assistance
+	if (ctx.widget) then
+		suppl_widget_path(res, res.text_anchor, ctx.widget);
+	end
+
 	return res;
 end
 

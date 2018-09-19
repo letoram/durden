@@ -1,9 +1,101 @@
--- just cycle this to make it easier to distinguish
--- individual lines
+--
+-- Simple support script to generate widgets that take a set of rows
+-- and render / split out into groups.
+--
+-- For use, see ascii.lua
+--
+
+-- just cycle this to make it easier to distinguish individual lines
 local neutral = "\\#999999";
 
+-- if requested, setup a mouse-handler that calls back on row- clicks
+local function setup_mh(ctx, w, h, vid, heights, ofs)
+	local lasti = 1;
+	ctx.mouseh = {};
+	ctx.cursor_opa = 0.2;
+	ctx.cursor = color_surface(16, 16, 255, 255, 255);
+	if (valid_vid(ctx.cursor)) then
+		image_inherit_order(ctx.cursor, true);
+		image_mask_set(ctx.cursor, MASK_UNPICKABLE);
+	end
+
+-- take a vid and the list of line heights and figure out which line
+-- that the current y value best represents, clip so something always
+-- gets returned.
+	local find_index = function(vid, y)
+		y = y - image_surface_resolve(vid).y;
+		lasti = 1;
+		while (lasti < #heights) do
+			if (heights[lasti+1] > y) then
+				break;
+			end
+			lasti = lasti + 1;
+		end
+		return y, lasti;
+	end
+
+	local mh = {
+		name = "input_widget_" .. tostring(ofs),
+
+-- the lasti here in up-scope comes from the find_index call from motion
+		click = function(mctx, vid, x, y)
+			local lbl = ctx.group_cache[ofs][lasti];
+			if (valid_vid(ctx.cursor)) then
+				blend_image(ctx.cursor, ctx.cursor_opa * 3, 5);
+				blend_image(ctx.cursor, ctx.cursor_opa, 5);
+			end
+			if (ctx.on_click) then
+				ctx:on_click(lbl, lasti);
+			end
+		end,
+
+-- have a line oriented selection cursor
+		motion = function(mctx, vid, x, y)
+			if (not valid_vid(ctx.cursor)) then
+				return;
+			end
+			local y, ind = find_index(vid, y);
+			move_image(ctx.cursor, 0, heights[ind]);
+
+-- not each line has the same effective height
+			local sz = heights[ind+1] ~= nil and
+				(heights[ind+1]-heights[ind]-1) or heights[2];
+			if (sz == 0 or not sz) then
+				sz = image_surface_resolve(vid).height;
+			end
+			resize_image(ctx.cursor, w, sz);
+
+-- resolve and forward
+			if (ctx.on_motion) then
+				local lbl = ctx.group_cache[ofs][lasti];
+				ctx:on_motion(lbl, ind);
+			end
+		end,
+
+-- whenever we enter the surface, relink to the specific group
+		over = function()
+			if (not valid_vid(ctx.cursor)) then
+				return;
+			end
+			link_image(ctx.cursor, vid);
+			blend_image(ctx.cursor, ctx.cursor_opa);
+			order_image(ctx.cursor, 1);
+		end,
+		own = function(ctx, src)
+			return src == vid;
+		end
+	};
+
+-- need to keep a list of active mouse handlers so we can deregister
+	table.insert(ctx.mouseh, mh);
+	mouse_addlistener(mh, {"click", "over", "motion"});
+
+-- and only have the actual group be the one to receive mouse events
+	image_mask_clear(vid, MASK_UNPICKABLE);
+end
+
 return {
-	setup = function(ctx, groups, yh)
+	setup = function(ctx, groups, yh, click, motion)
 -- split based on number of rows that fit
 		local gc = 0;
 		local fd = active_display().font_delta;
@@ -33,9 +125,31 @@ return {
 			stepg(v);
 		end
 		ctx.group_cache = ct;
+
+-- register mouse handlers if those were provided
+		if (type(click) == "function") then
+			ctx.on_click = click;
+			if (type(motion) == "function") then
+				ctx.on_motion = motion;
+			end
+		end
+
 		return #ctx.group_cache;
 	end,
-	show = function(ctx, anchor, tbl, start_i, stop_i, col_w)
+	destroy = function(ctx)
+		if (ctx.mouseh) then
+			for i,v in ipairs(ctx.mouseh) do
+				mouse_droplistener(v);
+			end
+		end
+		ctx.mouseh = nil;
+		if (valid_vid(ctx.cursor)) then
+			delete_image(ctx.cursor);
+			ctx.cursor = nil;
+		end
+		ctx.group_cache = nil;
+	end,
+	show = function(ctx, anchor, tbl, start_i, stop_i, col_w, ofs)
 		local cind = 1;
 		local out = {};
 		local fd = active_display().font_delta;
@@ -90,6 +204,11 @@ return {
 		image_clip_on(backdrop, CLIP_SHALLOW);
 		image_mask_set(tbl, MASK_UNPICKABLE);
 		image_mask_set(backdrop, MASK_UNPICKABLE);
+
+		if (ctx.on_click or ctx.on_motion) then
+			setup_mh(ctx, bdw, bdh, tbl, heights, ofs);
+		end
+
 		return bdw, bdh, tbl, heights;
 	end
 };
