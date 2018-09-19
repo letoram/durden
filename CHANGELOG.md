@@ -23,6 +23,9 @@
      new widget (activated on any path) that flushes the currently
      queued set of notifications on HUD activation
 
+  * widgets/icon:
+	   new widget (for UI button to emoji- unicode-subset mapping)
+
   * custom-crop:
      support cropping [t l d r] px from the canvas area
 

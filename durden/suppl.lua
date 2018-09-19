@@ -817,7 +817,7 @@ function suppl_bind_u8(hook)
 				active_display():message("invalid utf-8 sequence specified");
 			end
 		end, ctx, {label = "specify byte-sequence (like f0 9f 92 a9):"});
-		suppl_widget_path(bar, bar.text_anchor, "special:u8", bar.barh);
+		suppl_widget_path(bar, bar.text_anchor, "special:u8");
 	end;
 
 	tiler_bbar(active_display(),
@@ -915,6 +915,16 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		if (ctx.caretpos - ctx.chofs + 1 > ctx.ulim) then
 				ctx.chofs = string.utf8lalign(ctx.msg, ctx.caretpos - ctx.ulim);
 		end
+	end
+
+	ctx.set_str = function(ctx, str)
+		ctx.msg = str;
+		ctx.caretpos = string.len( ctx.msg ) + 1;
+		ctx.chofs = ctx.caretpos - ctx.ulim;
+		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
+		ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
+		caretofs();
+		redraw(ctx);
 	end
 
 	if (iotbl.active == false) then

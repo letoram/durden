@@ -58,6 +58,7 @@ local function titlebar_buttons(dir, lbl)
 		validator = function(val)
 			return suppl_valid_vsymbol(val);
 		end,
+		widget = "special:icon",
 		description = "Add a new button used in all layout modes",
 		handler = function(ctx, val)
 			local st, val = suppl_valid_vsymbol(val);
@@ -69,6 +70,7 @@ local function titlebar_buttons(dir, lbl)
 		name = "add_tile",
 		kind = "value",
 		hint = hintstr,
+		widget = "special:icon",
 		description = "Add a new button for tiled layout modes",
 		validator = function(val)
 			return suppl_valid_vsymbol(val);
@@ -83,6 +85,7 @@ local function titlebar_buttons(dir, lbl)
 		name = "add_float",
 		kind = "value",
 		hint = hintstr,
+		widget = "special:icon",
 		validator = function(val)
 			return suppl_valid_vsymbol(val);
 		end,
