@@ -790,7 +790,7 @@ local bind_menu = {
 		end,
 		description = "Unset a previous custom binding",
 		handler = function(ctx, val)
-			store_key("custom_" .. val, "");
+			dispatch_set(val, "");
 		end
 	},
 	{
