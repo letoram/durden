@@ -483,8 +483,21 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 	tgt.handler(ctx.handler, instr, ctx);
 
 -- With m1 held, we just relaunch the same path we were at before the
--- action was activated.
+-- action was activated BUT since some paths are self-modifying, we'd
+-- need to rebuild into that state
 	if (m1) then
+		local path = cpath:get_path();
+
+-- so first check if there is still a menu at the path, and if not, go up
+		local menu, val, restbl = menu_resolve(path);
+		if (not menu or #menu == 0) then
+			path, inp_st = cpath:pop();
+
+-- otherwise, modify the stored set to reflect the new setup
+		else
+			inp_st.lastm = menu;
+		end
+
 		dispatch_symbol(cpath:get_path(), {
 			restore = inp_st,
 			on_create = lbar_create

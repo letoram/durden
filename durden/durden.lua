@@ -630,10 +630,7 @@ function durden_iostatus_handler(iotbl)
 end
 
 function durden_display_state(action, id, state)
-	local new_wm = display_event_handler(action, id);
-	if (new_wm) then
-		table.insert(new_wm, wnd_create_handler);
-	end
+	display_event_handler(action, id);
 
 	if (state and state.ledctrl) then
 		display_set_backlight(id, state.ledctrl, state.ledind);
@@ -713,16 +710,6 @@ function durden_normal_input(iotbl, fromim)
 			return;
 		end
 	end
-
---	if (iotbl.digital) then
---	active_display():message(string.format("sym: %s, label: %s %s",
---		SYMTABLE[iotbl.keysym] and SYMTABLE[iotbl.keysym] or "none",
---		iotbl.label and iotbl.label or "none", iotbl.active and "pressed" or
---		"released"));
---	elseif (iotbl.touch) then
---		active_display():message(string.format("touch: %d, %d, %s",
---			iotbl.devid, iotbl.subid, iotbl.active and "press" or "release"));
---	end
 end
 
 -- special case: (UP, DOWN, LEFT, RIGHT + mouse motion is mapped to
