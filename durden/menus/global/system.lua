@@ -155,17 +155,6 @@ local reset_query = {
 	}
 };
 
-local function query_dump()
-	local bar = tiler_lbar(active_display(), function(ctx, msg, done, set)
-		if (done) then
-			zap_resource("debug/" .. msg);
-			system_snapshot("debug/" .. msg);
-		end
-		return {};
-	end);
-	bar:set_label("filename (debug/):");
-end
-
 local function spawn_debug_wnd(vid, title)
 	show_image(vid);
 	local wnd = active_display():add_window(vid, {scalemode = "stretch"});
@@ -204,8 +193,14 @@ local debug_menu = {
 	{
 		name = "dump",
 		label = "Dump",
-		kind = "action",
-		handler = query_dump
+		kind = "value",
+		description = "create a debug snapshot",
+		hint = "(debug/)",
+		validator = strict_fname_valid,
+		handler = function(ctx, val)
+			zap_resource("debug/" .. val);
+			system_snapshot("debug/" .. val);
+		end
 	},
 	-- for testing fallback application handover
 	{
