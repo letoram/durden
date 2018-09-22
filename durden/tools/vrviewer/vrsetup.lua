@@ -314,6 +314,7 @@ local function setup_vr_display(wnd, callback, opts)
 			width = VRESW*0.5, height = VRESH,
 			horizontal = 0.126, vertical = 0.07100,
 			hsep = 0.063500, center = 0.049694,
+			vpos = 0.0468,
 			left_fov = 1.80763751, right_fov = 1.80763751,
 			left_ar = 0.888885, right_ar = 0.88885,
 			distortion = {0.247, -0.145, 0.103, 0.795},
