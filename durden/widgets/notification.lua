@@ -1,7 +1,10 @@
 -- [quick and dirty dumb notification widget]
+--
 -- improvements:
 --  layout / color controls
---  clickable references
+--  control buttons (dismiss, to clipboard, focus window, ...)
+--  a hook to refill/update if new notifications arrive
+--  while navigating the lbar
 --
 
 local bgc_def = {32, 32, 32};
@@ -198,6 +201,8 @@ local function show(ctx, anchor, ofs, yh)
 -- being used once.
 	local max_w = active_display().width * 0.3;
 	local max_h = 0;
+	local first = true;
+
 	ctx.list = {};
 	table.sort(queue, function(a, b)
 		return a.urgency > b.urgency;
@@ -208,16 +213,24 @@ local function show(ctx, anchor, ofs, yh)
 		if (not ent) then
 			break;
 		end
+
 		local new_h = max_h +
 			(ent.long_height and ent.long_height or ent.short_height);
-		if (new_h > yh) then
+		if (new_h > yh and not first) then
 			delete_image(ent.anchor);
 			ent:destroy();
 			break;
 		end
 
+-- The first check is to work around the 'expanded constraints'
+-- problem where the long message is so long that it wouldn't
+-- fit the group at all, preventing notifications to be visible.
+-- This is a subpar solution until we have scrolling in the
+-- widget or can split across multiple groups.
 		max_h = new_h;
 		anchor = ent.anchor;
+		first = false;
+
 		if (valid_vid(ent.sym)) then
 			delete_image(ent.sym);
 		end
