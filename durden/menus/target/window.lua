@@ -909,6 +909,8 @@ return {
 --
 			image_sharestorage(wnd.canvas, icon);
 			show_image(icon);
+			shader_setup(icon, "ui", "regmark");
+
 			mouse_cursortag(wnd, "window",
 				function(srcwnd, accept, dstwnd)
 					if (not dstwnd or not srcwnd or
