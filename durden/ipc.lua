@@ -616,6 +616,8 @@ local function client_flush(cl, ind)
 		end
 		if (i == string.len(line)) then
 			table.remove(cl.buffer, 1);
+		elseif (i == 0) then
+			break;
 		else
 			cl.buffer[1] = string.sub(line, i+1);
 		end
