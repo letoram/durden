@@ -162,6 +162,7 @@ function uiprim_buttongrid(rows, cols, cellw, cellh, xp, yp, buttons, opts)
 	end
 	image_inherit_order(res.anchor, true);
 	show_image(res.anchor);
+	image_tracetag(res.anchor, "butongrid_anchor");
 
 	local
 	function build_btn(tbl)
@@ -170,6 +171,7 @@ function uiprim_buttongrid(rows, cols, cellw, cellh, xp, yp, buttons, opts)
 		if (not valid_vid(bg)) then
 			return;
 		end
+		image_tracetag(bg, "buttongrid_button_bg");
 		link_image(bg, res.anchor);
 		image_inherit_order(bg, true);
 		order_image(bg, 1);
@@ -185,6 +187,7 @@ function uiprim_buttongrid(rows, cols, cellw, cellh, xp, yp, buttons, opts)
 				image_mask_set(vid, MASK_UNPICKABLE);
 				image_clip_on(vid, CLIP_SHALLOW);
 				center_image(vid, bg, ANCHOR_C);
+				image_tracetag(vid, "buttongrid_button_label");
 			end
 		end
 

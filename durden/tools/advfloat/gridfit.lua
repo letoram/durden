@@ -120,8 +120,6 @@ return {
 				{cmd = dcmd(wnd, tp .. "s"), color = oc, color_hi = hc},
 				{cmd = dcmd(wnd, tp .. "se"), color = ec, color_hi = hc},
 			}, {});
-			link_image(grid.anchor, wnd.anchor);
-			order_image(grid.anchor, 5);
 			wnd:add_popup(grid.anchor, false, function() grid:destroy(); end);
 		end,
 	},
