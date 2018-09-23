@@ -1140,9 +1140,8 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 	local y1 = props.y;
 	local y2 = props.y + props.height;
 	local ad = active_display();
-
--- account for top/bottom padding of bar
-	local rh = (ad.height - y2) > y1 and y1 or (ad.height - y2);
+	local th = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
+	local rh = y1 - th;
 
 -- sweep all widgets and check their 'paths' table for a path
 -- or dynamic eval function and compare to the supplied ident
@@ -1202,11 +1201,8 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 			local dy = 0;
 
 -- only account for the helper unless the caller explicitly set a height
-			local th = math.ceil(gconfig_get("lbar_sz") * active_display().scalef);
 			if (gconfig_get("menu_helper") and not barh and ctr % 2 == 1) then
 				dy = th;
-			elseif ctr % 2 == 0 then
-				dy = -th;
 			end
 
 			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
@@ -1220,7 +1216,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 				if (ctr % 2 == 1) then
 					move_image(anch, cx, -h - dy);
 				else
-					move_image(anch, cx, props.height - dy);
+					move_image(anch, cx, props.height + dy + th);
 					cx = cx + cellw;
 				end
 			else
