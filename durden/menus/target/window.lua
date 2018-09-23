@@ -388,6 +388,7 @@ local function titlebar_buttons(dir, lbl)
 		name = "add",
 		kind = "value",
 		hint = hintstr,
+		widget = "special:icon",
 		validator = function(val)
 			return suppl_valid_vsymbol(val);
 		end,
@@ -400,6 +401,7 @@ local function titlebar_buttons(dir, lbl)
 		label = "Add (Tile)",
 		name = "add_tile",
 		kind = "value",
+		widget = "special:icon",
 		hint = hintstr,
 		description = "Add a new button for tiled layout modes",
 		validator = function(val)
@@ -414,6 +416,7 @@ local function titlebar_buttons(dir, lbl)
 		label = "Add (Float)",
 		name = "add_float",
 		kind = "value",
+		widget = "special:icon",
 		hint = hintstr,
 		validator = function(val)
 			return suppl_valid_vsymbol(val);
