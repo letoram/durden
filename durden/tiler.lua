@@ -2529,6 +2529,7 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 	if (not valid_vid(res.anchor)) then
 		return;
 	end
+	image_tracetag(res.anchor, "popup_anchor");
 	local dst = wnd;
 
 	if (chain) then
@@ -2586,6 +2587,8 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 			y2 = y2 - wnd.crop_values[1];
 		end
 
+-- figure out where the caller want to bias the popup anchor and tie the src
+-- vid to our new popup anchor
 		local ap = bias == 0 and (#wnd.popups > 0 and 3 or 1) or bias;
 		ap = bias_lut[ap] and bias_lut[ap] or ANCHOR_UL;
 		link_image(vid, res.anchor, ap);
@@ -2595,7 +2598,9 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		local vprops = image_surface_resolve(vid);
 
 -- account for overflow, the rules here aren't really as good as they could be
--- since there is a region of influence that could be taken into account
+-- since there is a region of influence that could be taken into account for
+-- the cases where the popup would hit the edge and you'd want to chose spawn
+-- direction accordingly
 		local ox = wnd.wm.width - (props.x + vprops.width);
 		if (ox < 0) then
 			nudge_image(res.anchor, ox, 0);
@@ -2611,6 +2616,9 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		);
 	end
 
+-- tie our anchor to the canvas portion of the destination window OR if we are
+-- launching popup inside popup, the 'fake' canvas of that popup
+	link_image(vid, res.anchor);
 	link_image(res.anchor, dst.canvas);
 	image_inherit_order(vid, true);
 	image_inherit_order(res.anchor, true);
