@@ -1963,7 +1963,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 		wnd.titlebar:show();
 		wnd.titlebar:move(wnd.pad_left, wnd.pad_top, at, af);
 		wnd.titlebar:resize(
-			wnd.width - wnd.pad_left - wnd.pad_right, tbh, at, af);
+			wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
 		wnd.pad_top = wnd.pad_top + tbh;
 	else
 		wnd.titlebar:hide();
@@ -1971,7 +1971,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 
 	if (wnd.show_border) then
 		reset_image_transform(wnd.border);
-		resize_image(wnd.border, w, h, at, af);
+		resize_image(wnd.border, w + wnd.dh_pad_w, h + wnd.dh_pad_h, at, af);
 		show_image(wnd.border);
 	else
 		hide_image(wnd.border);
