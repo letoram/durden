@@ -40,7 +40,8 @@ local function show(ctx, anchor, ofs)
 		ctx.group_cache[ofs], 1, #ctx.group_cache[ofs], nil, ofs);
 end
 
-local function destroy()
+local function destroy(ctx)
+	return tsupp.destroy(ctx);
 end
 
 local function ident(ctx, pathid)
