@@ -4324,10 +4324,10 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 			wnd.hint_history = {};
 		end
 		table.insert(wnd.hint_history, string.format(
-			"(%d) %d * %d => %d * %d : %d",
-			wnd.effective_w, wnd.effective_h, CLOCK, hw, hh, dm)
+			"(%d) %d * %d => %d * %d : %d", CLOCK,
+			wnd.effective_w, wnd.effective_h, hw, hh, dm)
 		);
-		if (#wnd.hint_history > 10) then
+		if (#wnd.hint_history > 4) then
 			table.remove(wnd.hint_history, 1);
 		end
 	end

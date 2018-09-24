@@ -82,6 +82,13 @@ local function probe(ctx, yh)
 	if (wnd.guid) then
 		table.insert(lines, wnd.guid);
 	end
+
+	if (wnd.hint_history) then
+		for k,v in ipairs(wnd.hint_history) do
+			table.insert(lines, v);
+		end
+	end
+
 	return tsupp.setup(ctx, {lines}, yh);
 end
 
