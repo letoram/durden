@@ -63,7 +63,7 @@ local function setup_mh(ctx, w, h, vid, heights, ofs)
 			if (sz == 0 or not sz) then
 				sz = image_surface_resolve(vid).height;
 			end
-			resize_image(ctx.cursor, w, sz);
+			resize_image(ctx.cursor, ctx.text_w, sz);
 
 -- resolve and forward
 			if (ctx.on_motion) then
@@ -137,6 +137,10 @@ return {
 		return #ctx.group_cache;
 	end,
 	destroy = function(ctx)
+		if (not ctx) then
+			return;
+		end
+
 		if (ctx.mouseh) then
 			for i,v in ipairs(ctx.mouseh) do
 				mouse_droplistener(v);
@@ -184,11 +188,12 @@ return {
 			return;
 		end
 
-		local bdw = outw + outh;
+		ctx.text_w = outw;
+		local bdw = outw;
 		local bdh = (heights[#heights]+outh) + outh;
 		local bdw = bdw > props.width and props.width or bdw;
 		local bdh = bdh > props.height and props.height or bdh;
-		local backdrop = color_surface(bdw, bdh, 20, 20, 20);
+		local backdrop = color_surface(bdw + 4, bdh + 4, 20, 20, 20);
 		shader_setup(backdrop, "ui", "rounded", "active");
 		link_image(backdrop, anchor);
 		link_image(tbl, backdrop);
@@ -209,6 +214,6 @@ return {
 			setup_mh(ctx, bdw, bdh, tbl, heights, ofs);
 		end
 
-		return bdw, bdh, tbl, heights;
+		return bdw + 4, bdh + 4, tbl, heights;
 	end
 };

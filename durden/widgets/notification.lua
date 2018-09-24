@@ -11,7 +11,6 @@ local bgc_def = {32, 32, 32};
 local bgc_act = {16, 16, 16};
 local bgc_hi = {64, 64, 64};
 
-local tsupp = system_load("widgets/support/text.lua")();
 local queue = {};
 local test_queue = {
 	{
@@ -84,6 +83,12 @@ local function build_entry(anchor, ent, max_w)
 			if (old_over.vid ~= backdrop) then
 				image_color(backdrop, bgc_def[1], bgc_def[2], bgc_def[3]);
 			end
+		end,
+		rclick = function(ctx)
+			if (not ent.long or #ent.long == 0) then
+				return;
+			end
+			CLIPBOARD:set_global(ent.long, backdrop);
 		end,
 		click = function(ctx)
 			if (not ctx.long_height) then
@@ -167,7 +172,7 @@ local function build_entry(anchor, ent, max_w)
 		res.long_height = h + 20;
 	end
 
-	mouse_addlistener(res, {"click", "over", "out"});
+	mouse_addlistener(res, {"click", "over", "out", "rclick"});
 	local vid, lines, w, h = render_text(fmt);
 
 	if (not valid_vid(vid)) then
