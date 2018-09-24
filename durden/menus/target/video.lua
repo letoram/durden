@@ -172,6 +172,36 @@ local advanced = {
 	end
 	},
 	{
+	name = "override_size",
+	label = "Override Size",
+	kind = "value",
+	description = "Send a manual hint about presentation size, ignores Blocked Resize",
+	eval = function()
+		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+	end,
+	hint = string.format("(w,h)(32..%d)(32..%d)", MAX_SURFACEW, MAX_SURFACEH),
+	validator = function(val)
+		if #val == 0 then
+			return false;
+		end
+		local w, h = string.match(val, "(%d+),(%d+)");
+		w = tonumber(w);
+		h = tonumber(h);
+		if (not w or not h or w < 32 or w > MAX_SURFACEW) then
+			return false;
+		end
+		if (h < 32 or h > MAX_SURFACEH) then
+			return false;
+		end
+		return true;
+	end,
+	handler = function(ctx, val)
+		local w, h = string.match(val, "(%d+),(%d+)");
+		local wnd = active_display().selected;
+		wnd:displayhint(tonumber(w), tonumber(h), wnd.dispmask);
+	end,
+	},
+	{
 	name = "block_rz",
 	label = "Block Resize Hints",
 	kind = "value",

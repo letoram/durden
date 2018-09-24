@@ -114,6 +114,9 @@ Minor / Fixes:
 
   * display orientation options are now explicit +- 90
 
+	* added target/video/advanced/override\_size for testing client
+	  behavior at explicit sizes (combine with _block_resize)
+
 # 0.4.0
   * Display region sharing now supports force-pushing into clients
     that can handle input segments.
