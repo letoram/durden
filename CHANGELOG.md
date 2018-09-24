@@ -67,6 +67,10 @@ Breaking:
     options have been merged into the YES/NO paths that have been
     extended with YES/NO/FLIP
 
+  * mouse devices now get joined into one abstract label by default
+	  for binding, to revert back to the devid\_subid setup, you can
+		use /global/input/mouse/coalesce=false
+
 Minor / Fixes:
   * activate GPU rescan on hotplug event
 

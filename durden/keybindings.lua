@@ -43,6 +43,7 @@ tbl["m1_d"] = "/global/open/target";
 tbl["m1_c"] = "/global/display/cycle";
 tbl["m1_g"] = "/global";
 tbl["m1_h"] = "/target";
+tbl["m1_mouse1_3"] = "/target/clipboard/paste";
 tbl["m1_RIGHT"] = "/target/window/select/right";
 tbl["m1_UP"] = "/target/window/select/up";
 tbl["m1_LEFT"] = "/target/window/select/left";
