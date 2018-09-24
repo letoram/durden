@@ -62,6 +62,10 @@ local function probe(ctx, yh)
 			"geom: %d, %d, %d, %d", wnd.geom[1], wnd.geom[2], wnd.geom[3], wnd.geom[4]));
 	end
 
+	if (wnd.atype) then
+		table.insert(lines, "atype: " .. wnd.atype);
+	end
+
 	local lst = {};
 	for k,_ in pairs(wnd.overlays) do
 		table.insert(lst, k);
