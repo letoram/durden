@@ -425,21 +425,22 @@ local function wm_update_mode(wm)
 end
 
 local function tiler_statusbar_update(wm)
--- synch constraints
-	local statush = sbar_geth(wm);
+-- synch constraints, first get the statusbar height ignoring visibility
+	local statush = sbar_geth(wm, true);
 	local xpos = 0;
 	local ytop = 0;
 	local ybottom = 0;
 
 	assert(wm.width);
-	if (statush > 0) then
-		local pl = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
-		local pr = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
-		ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
-		ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
-		xpos = pl;
-		wm.statusbar:resize(wm.width - pl - pr, statush);
-	end
+	local pl = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
+	local pr = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
+	ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
+	ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
+	xpos = pl;
+	wm.statusbar:resize(wm.width - pl - pr, statush);
+
+-- positioning etc. still needs the current size of the statusbar
+	statush = sbar_geth(wm);
 
 -- modify this to implement vertical sidebars
 	wm.effective_width = wm.width;
