@@ -108,17 +108,31 @@ function iostatem_input(iotbl)
 			return;
 		end
 
--- need to check if it has been bound, which means resolving the full table
+-- need to check if it has been bound, which means resolving the full table,
+-- we join all mouse- tagged devices into one here and the .digital check
+-- further below, will need some changes to account for virtual devices that
+-- are built out of multiple individual ones
 		if (iotbl.digital and (m1 or m2)) then
-			iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
+			if (gconfig_get("mouse_coalesce")) then
+				iotbl.dsym = "mouse1_" .. tostring(iotbl.subid);
+			end
+
 			local _, _, _, bound = dispatch_translate(iotbl, true);
+-- if it was in an actual 'bound' state, drop the mouse device tag so that
+-- it won't get forwarded to the mouse event handler, yet return false so
+-- it gets reinjected into the bound event dispatch
 			if (bound) then
 				iotbl.mouse = nil;
+				return false;
 			end
+
 		else
 		end
 	end
 
+-- keyboard devices we need to distinguish modifiers (don't affect repeat)
+-- and normal ones, we don't consider latched as that falls into (led+state)
+-- that is up to the user to bind to custom keymaps should those be needed
 	if (iotbl.translated) then
 		if (not iotbl.active or SYMTABLE:is_modifier(iotbl)
 			or dispatch_repeatblock(iotbl)) then
@@ -129,16 +143,32 @@ function iostatem_input(iotbl)
 
 		devstate.iotbl = iotbl;
 
+-- digital devices continue the abstract mouse labeling used above in early
+-- dispatch resolve, but also checking for 'global slots' where single windows
+-- can be assigned an input device slot and get an automated 'game device'
+-- label.
 	elseif (iotbl.digital) then
-		iotbl.dsym = tostring(iotbl.devid).."_"..tostring(iotbl.subid);
+		if (iotbl.mouse and gconfig_get("mouse_coalesce")) then
+			iotbl.dsym = "mouse1_" .. tostring(iotbl.subid);
+		else
+			iotbl.dsym = tostring(iotbl.devid) .. "_" .. tostring(iotbl.subid);
+		end
+
 		if (dev.slot > 0 and dev.lookup) then
 			iotbl.label = "PLAYER" .. tostring(dev.slot) .. "_" ..
 				dev.lookup[1](iotbl.subid);
-			if (slot_grab and slot_grab.external) then
+
+-- forward to the dedicated slot recipient and return that the event has been
+-- consumed by the iostate manager and should short-circuit
+			if (slot_grab and valid_vid(slot_grab.external, TYPE_FRAMESERVER)) then
 				target_input(slot_grab.external, iotbl);
 				return true;
 			end
 		end
+
+-- and the same process for slotted analog devices, it might be that there
+-- should be a different hooking mechanism for these as it is a high-rate
+-- path, but not until benchmarked.
 	elseif (iotbl.analog and dev and dev.slot > 0) then
 		local ah, af = dev.lookup[2](iotbl.subid);
 		if (ah) then
@@ -154,9 +184,9 @@ function iostatem_input(iotbl)
 			end
 		end
 
--- only forward if asbolutely necessary (i.e. selected window explicitly accepts
--- analog) as the input storms can saturate most event queues
-	return true;
+-- only forward if absolutely necessary (i.e. selected window explicitly
+-- accepts analog) as the input storms can saturate most event queues
+		return true;
 
 -- touch is "deferred" registration because the event layer won't tell us
 -- if we have a touch device or not, so we react to the first sample and the

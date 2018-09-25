@@ -206,6 +206,25 @@ local mouse_menu = {
 		end
 	},
 	{
+		name = "coalesce",
+		kind = "value",
+		label = "Coalesce",
+		description = "Merge all mouse- capable devices into one abstract mouse1_ device",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		eval = function() return not mouse_blocked(); end,
+		initial = function()
+			return gconfig_get("mouse_coalesce") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			if (val == LBL_FLIP) then
+				val = not gconfig_get("mouse_coalesce");
+			else
+				val = val == LBL_YES;
+			end
+			gconfig_set("mouse_coalesce", val);
+		end,
+	},
+	{
 		name = "lock",
 		kind = "value",
 		label = "Hard Lock",

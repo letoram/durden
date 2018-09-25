@@ -172,6 +172,9 @@ local defaults = {
 	mouse_dragdelta = 4,
 	mouse_cursorset = "default",
 
+-- use in iostatem to join all mouse devices into one label
+	mouse_coalesce = true,
+
 -- disable all mouse management and related menus
 	mouse_block = false,
 
