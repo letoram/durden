@@ -52,10 +52,12 @@ local function simple_solver(nodes, w, h, nrest)
 	return nodes;
 end
 
--- find the nearest screen edge and move window out of the way, this has
--- the not-so-suble bug that if the window or the display resizes while we
+-- Find the nearest screen edge and move window out of the way, this has
+-- the not-so-subtle bug that if the window or the display resizes while we
 -- are "hidden" ore a window at the left/top edges resize, it will become
--- more visible
+-- more visible. The more thorough solution would be to add display_
+-- change hooks and resize handlers for each window, offsetting if the
+-- window belong to the wrong edge
 local function hide(nodes, w, h)
 	for _,v in ipairs(nodes) do
 -- find the nearest edge
@@ -137,6 +139,7 @@ local function run_layouter(method)
 	end
 end
 
+local last_hide = false;
 return {
 {
 	kind = "action",
@@ -152,8 +155,15 @@ return {
 	name = "hide",
 	label = "Hide",
 	description = "Hide the windows around the edges of the screen",
+-- actually acts as a flip-flop
 	handler = function()
-		run_layouter(hide);
+		if (last_hide) then
+			run_layouter();
+			last_hide = false;
+		else
+			run_layouter(hide);
+			last_hide = true;
+		end
 	end
 },
 {
@@ -162,6 +172,7 @@ return {
 	label = "Revert",
 	description = "Restore window positions to before last layouting operation",
 	handler = function()
+		last_hide = false;
 		run_layouter();
 	end
 }
