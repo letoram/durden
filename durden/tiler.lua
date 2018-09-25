@@ -3348,7 +3348,8 @@ local function wnd_setsuspend(wnd, susp)
 		tiler_debug(wnd.wm, string.format("suspend:name=%s:state=false", wnd.name));
 		resume_target(wnd.external);
 		wnd.suspended = nil;
-		shader_setup(wnd.border, "ui", "border", sel and "active" or "inactive");
+		shader_setup(wnd.border, "ui", wnd.space.mode == "float"
+			and "border_float" or "border", sel and "active" or "inactive");
 		wnd.titlebar:switch_state(sel and "active" or "inactive");
 	end
 end
