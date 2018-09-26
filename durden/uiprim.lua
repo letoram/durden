@@ -530,10 +530,18 @@ local function bar_relayout_horiz(bar)
 	resize_image(bar.anchor,
 		bar.width, bar.height, bar.anim_time, bar.anim_func);
 
+-- default hide center as it will matter later
+	local nvis = 0;
+	for i,v in ipairs(bar.buttons.center) do
+		if (not v.hidden) then
+			nvis = nvis + 1;
+		end
+		hide_image(v.bg);
+	end
+
 -- first figure out area allocations, ignore center if they don't fit
 -- currently don't handle left/right not fitting, return min-sz. also
 -- Center area is fill-fair at the moment, no weights are considered.
-
 	local relay = function(afn)
 		local lx = 0;
 		for k,v in ipairs(bar.buttons.left) do
@@ -541,7 +549,7 @@ local function bar_relayout_horiz(bar)
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			yp = yp < 0 and 0 or yp;
 			reset_image_transform(v.bg);
-			afn(v.bg, lx, yp, bar.anim_time, bar.anim_func);
+			afn(v.bg, v, w, h, lx, yp, bar.anim_time, bar.anim_func);
 			lx = lx + w;
 		end
 
@@ -552,7 +560,7 @@ local function bar_relayout_horiz(bar)
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
 			yp = yp < 0 and 0 or yp;
 			reset_image_transform(v.bg);
-			afn(v.bg, rx, yp, bar.anim_time, bar.anim_func);
+			afn(v.bg, v, w, h, rx, yp, bar.anim_time, bar.anim_func);
 		end
 		return lx, rx;
 	end
@@ -563,27 +571,27 @@ local function bar_relayout_horiz(bar)
 		ca = ca + w;
 	end
 
--- we have an overflow, abort
-	local lx, rx = relay(function() end);
-	if (lx > rx) then
-		return lx - rx;
-	end
-
-	local lx, rx = relay(move_image);
+	local lx, rx = relay(
+		function(vid, v, w, h, x, y, ...)
+			if (x + w > bar.width) then
+				hide_image(vid);
+			elseif (not v.hidden) then
+				show_image(vid);
+			end
+			move_image(vid, x, y, ...);
+		end
+	);
 
 	if (ca == 0) then
 		return 0;
 	end
 
-	local nvis = #bar.buttons.center;
-	for i,v in ipairs(bar.buttons.center) do
-		if (v.hidden) then
-			nvis = nvis - 1;
-		end
-	end
-
 -- fill region doesn't need to deal with forced- button layout
 	local fair_sz = nvis > 0 and math.floor((rx -lx)/nvis) or 0;
+	if (fair_sz <= 0) then
+		return;
+	end
+
 	for k,v in ipairs(bar.buttons.center) do
 		if (not v.hidden) then
 			v.minw = fair_sz;
@@ -595,6 +603,9 @@ local function bar_relayout_horiz(bar)
 			button_labelupd(v, nil, v.timeout, v.timeout_str);
 			v.anim_func = nil;
 			v.anim_time = nil;
+			if (lx + v.maxw <= bar.width) then
+				show_image(v.bg);
+			end
 			move_image(v.bg, lx, 0);
 			lx = lx + fair_sz;
 		end
