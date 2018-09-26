@@ -2411,9 +2411,19 @@ local function wnd_drag_resize(wnd, mctx, enter)
 		wnd.in_drag_rz = true;
 		wnd.drag_dx = 0;
 		wnd.drag_dy = 0;
+		wnd.drag_mode = wnd.scalemode;
+
+-- it was easier (though not as pretty) this way to get the problem
+-- with dominant axis/direction vs. drag- side when it comes to aspect-
+-- ratio preserving drag resize.
+		if (wnd.scalemode == "aspect") then
+			wnd.scalemode = "stretch";
+		end
 		return;
 	end
 
+	tiler_debug(wnd.wm, "on_drop_apply");
+	wnd.scalemode = wnd.drag_mode;
 	if (not wnd.in_drag_rz) then
 		wnd:resize(wnd.width, wnd.height, true);
 		return;
@@ -3123,6 +3133,23 @@ local function wnd_borderpos(wnd)
 	local dx = dle < dre and dle or dre;
 	local dy = due < dde and due or dde;
 
+-- for aspect ratio scaling, we practically only have the diagonals
+	if (wnd.scalemode == "aspect") then
+		if (dx < dy) then
+			if (dle < dre) then
+				return due < 0.5 * props.height and "ul" or "ll";
+			else
+				return due < 0.5 * props.height and "ur" or "lr";
+			end
+		else
+			if (dle < dre) then
+				return due < 0.5 * props.height and "ul" or "ll";
+			else
+				return due < 0.5 * props.height and "ur" or "lr";
+			end
+		end
+	end
+
 	if (dx < dy) then
 		return dle < dre and "l" or "r";
 	else
@@ -3584,18 +3611,21 @@ local border_mh = {
 	end,
 	drop = function(ctx)
 		local wnd = ctx.tag;
-		if (wnd ~= "float") then
+		tiler_debug(wnd.wm, "begin_drop");
+		if (wnd.space.mode ~= "float") then
 			return;
 		end
 
+-- should have separate rules for tiling here that shows a drag 'anchor'
+-- which we use to calculate splitting point
+
 		if (type(wnd.in_drag_rz) == "function") then
 			wnd:in_drag_rz(ctx.tag, ctx, vid, 0, 0, true);
-		elseif (wnd.in_drag_rz) then
-			wnd:drag_resize(ctx, false);
 		end
 
+-- normal might also care
 		if (wnd.drag_resize) then
-			wnd:drag_resize(ctx, 0, 0, false);
+			wnd:drag_resize(ctx, false);
 		end
 	end
 };
