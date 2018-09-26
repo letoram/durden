@@ -73,8 +73,13 @@ local function wnd_attach(wm, wnd)
 			local h = y2 - y1;
 			if (w > 64 and h > 64) then
 				wnd:resize(w, h);
+-- get control of the 'spawn' animation used here, might fight with flair later
+				instant_image_transform(wnd.anchor);
+				instant_image_transform(wnd.canvas);
+				instant_image_transform(wnd.border);
+				wnd.titlebar:resize(wnd.titlebar.width, wnd.titlebar.height, 0);
 			end
-			wnd:move(x1, y1, false, true, true);
+			wnd:move(x1, y1, false, true, 0);
 			wnd:show();
 		end);
 -- auto should really be to try and calculate the best fitting free space
