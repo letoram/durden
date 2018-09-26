@@ -15,31 +15,36 @@ local ent_count = 1;
 local create_workspace = function() end
 local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
+local tiler_logfun = suppl_add_logfn("wm")();
+local function tiler_debug(wm, msg)
+	tiler_logfun(wm.name .. ":" .. msg);
+end
+
 -- returns:
--- position,scale
+-- position,scale,interpolation_function
 local function wnd_animation_time(wnd, source, decor, position)
 	local _, lm, _, ls = reset_image_transform(source);
+
+-- if the window is just attached, don't animate by normal means
 	if (wnd.attach_time == CLOCK) then
-		return 0;
+		return 0, 0, INTERP_SMOOTHSTEP;
 	end
 
+-- if the action is normal motion, then let the global config apply
 	local at = gconfig_get("wnd_animation");
-
 	if (position) then
 		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
 
--- autocrop still doesn't support animation
+-- only float / tile modes work for animation, and we don't want to
+-- have the interactive drag etc. trigger animations
 	if (not wnd.autocrop and ( wnd.space.mode == "tile" or
 		(wnd.space.mode == "float" and not wnd.in_drag_rz))) then
 		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
-	return 0;
-end
 
-local tiler_logfun = suppl_add_logfn("wm")();
-local function tiler_debug(wm, msg)
-	tiler_logfun(wm.name .. ":" .. msg);
+-- autocrop still doesn't support animation
+	return 0, 0, INTERP_SMOOTHSTEP;
 end
 
 local function linearize(wnd)
@@ -1308,7 +1313,7 @@ local function set_float(space)
 		v.min_h = newh;
 
 		v.titlebar:switch_group("float", true);
-		v:resize(neww, newh, true);
+		v:resize(neww, newh, false);
 	end
 end
 
@@ -1779,7 +1784,11 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	outw = math.floor(outw);
 	outh = math.floor(outh);
-	reset_image_transform(src);
+
+-- we separate return width/height for the resize command
+-- and for the values to forward / store in the structure
+	local retw = outw;
+	local reth = outh;
 
 -- for normal where the source is larger than the alloted slot,
 -- this does not stack with manually defined crop regions, though
@@ -1801,7 +1810,6 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 -- update the mouse scaling factors (value 5 and 6) so that the final
 -- absolute value take the effective range into account
-	local lm, lr, interp = wnd_animation_time(wnd, src, false, false);
 	if (wnd.crop_values) then
 		local ip = image_storage_properties(src);
 		wnd.crop_values[6] =
@@ -1822,16 +1830,9 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 		image_set_txcos(wnd.canvas, {s1, t1, s2, t1, s2, t2, s1, t2});
 
 		if (not wnd.ignore_crop) then
-			resize_image(src,
-				ip.width - wnd.crop_values[2] - wnd.crop_values[4],
-				ip.height - wnd.crop_values[1] - wnd.crop_values[3],
-				lr, interp
-			);
-		else
-			resize_image(src, outw, outh, lr, interp);
+			retw = ip.width - wnd.crop_values[2] - wnd.crop_values[4];
+			reth = ip.height - wnd.crop_values[1] - wnd.crop_values[3];
 		end
-	else
-		resize_image(src, outw, outh, lr, interp);
 	end
 
 	if (wnd.filtermode) then
@@ -1840,11 +1841,11 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	tiler_debug(wnd.wm,
 		string.format("pre_resize:name=%s:scale=%s:sw=%d:sh=%d:maxw=%d:maxh=%d" ..
-			"force=%s:outw=%d:outh=%d", wnd.name, wnd.scalemode, props.width,
+			":force=%s:outw=%d:outh=%d", wnd.name, wnd.scalemode, props.width,
 			props.height, maxw, maxh, force and "yes" or "no", outw, outh)
 	);
 
-	return outw, outh;
+	return outw, outh, retw, reth;
 end
 
 local function wnd_effective_resize(wnd, neww, newh, ...)
@@ -1950,15 +1951,24 @@ local function wnd_size_decor(wnd, w, h, animate)
 	local af = nil;
 
 	if (animate) then
-		local _, at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
+		_, at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
 	end
+
+	tiler_debug(wnd.wm, string.format(
+		"size_decor:animate=%s:at=%d:border=%d:tbar=%d",
+		animate and "yes" or "no", at, bw, tbh)
+	);
 
 	wnd.pad_top = bw;
 	wnd.pad_left = bw;
 	wnd.pad_right = bw;
 	wnd.pad_bottom = bw;
 
-	resize_image(wnd.anchor, w, h);
+-- note that all these resize calls should actually first get the 'reset'
+-- transform length and subtract that from the at if the at is larger than
+-- zero to get proper animation cancellation
+	reset_image_transform(wnd.anchor);
+	resize_image(wnd.anchor, w, h, at);
 
 	if (wnd.show_titlebar) then
 		wnd.titlebar:show();
@@ -1978,9 +1988,17 @@ local function wnd_size_decor(wnd, w, h, animate)
 		hide_image(wnd.border);
 	end
 
+	reset_image_transform(wnd.canvas);
+	if (animate and wnd.resize_w and wnd.resize_h) then
+		resize_image(wnd.canvas, wnd.resize_w, wnd.resize_h, at, af);
+	else
+		resize_image(wnd.canvas, wnd.effective_w, wnd.effective_h);
+	end
+
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", wnd.titlebar.state);
-	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top, at, av);
+
+	move_image(wnd.canvas, wnd.pad_left, wnd.pad_top, at, af);
 end
 
 --
@@ -2043,19 +2061,23 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 -- Now we have the desired [neww, newh], the current [props],
 -- the scalemode, the size of the decration areas. Combine to calculate
 -- the size, input scaling and so on for the effective surface (canvas)
+	local outw, outh, rzw, rzh;
 	if (force) then
-		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
-			wnd.scalemode, wnd.canvas, props, neww, newh,
-			force
-		);
+		outw, outh, rzw, rzh = apply_scalemode(
+			wnd, wnd.scalemode, wnd.canvas, props, neww, newh, force);
 	else
-		wnd.effective_w, wnd.effective_h = apply_scalemode(wnd,
-			wnd.scalemode, wnd.canvas, props, wnd.max_w-decw, wnd.max_h-dech,
-			force
-		);
+		outw, outh, rzw, rzh = apply_scalemode(wnd, wnd.scalemode,
+			wnd.canvas, props, wnd.max_w-decw, wnd.max_h-dech, force);
 	end
 
 -- effective size + decoration sizes = total size
+	wnd.effective_w = outw;
+	wnd.effective_h = outh;
+
+-- but we may want different actual size arguments to the canvas itself
+	wnd.resize_w = rzw;
+	wnd.resize_h = rzh;
+
 	wnd.width = wnd.effective_w + decw - wnd.dh_pad_w;
 	wnd.height = wnd.effective_h + dech - wnd.dh_pad_h;
 
@@ -2431,6 +2453,13 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		return;
 	end
 
+	tiler_debug(wnd.wm, string.format(
+		"move:name=%s:absolute=%s:x=%d:y=%d:align=%s:now=%s:noclamp=%s",
+		wnd.name, abs and "true" or "false", dx, dy,
+		align and "true" or "false", now and "true" or "false",
+		noclamp and "true" or "false")
+	);
+
 -- make sure the titlebar (if visible) isn't occluded by the statusbar
 	local tbarh = tbar_geth(wnd);
 	local lm, ls, interp = wnd_animation_time(wnd, wnd.anchor, false, true);
@@ -2465,6 +2494,10 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
 	end
 
+	tiler_debug(wnd.wm, string.format(
+		"position:x=%.0f:y=%.0f:time=%d:method=%d", wnd.x, wnd.y, lm, interp));
+
+-- shouldn't be needed anymore as reposition gets called
 	move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
 
 	wnd:recovertag();

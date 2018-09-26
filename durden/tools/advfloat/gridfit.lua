@@ -70,8 +70,8 @@ local function grid_cell_ent(dir, lbl, x1, y1, x2, y2)
 				h = h
 			});
 
-			wnd:resize(w, h, true);
 			wnd:move(xp, yp, false, true);
+			wnd:resize(w, h, true);
 		end
 	};
 end
