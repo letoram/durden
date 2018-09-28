@@ -15,7 +15,7 @@
 --
 
 local tsupp = system_load("widgets/support/text.lua")();
-local tbl = system_load("widgets/unicode_data.lua")();
+local tbl = system_load("widgets/support/unicode_data.lua")();
 
 for i,v in ipairs(tbl) do
 	tbl[i] = {
