@@ -132,7 +132,13 @@ local function menu_cancel(wm, m1_overr, dangerous)
 		local path, ictx = cpath:pop();
 		dispatch_symbol(path, {restore = ictx});
 	else
-		run_hook(cpath:get_path());
+-- a possible pitfall to monitor for here since this is used allover,
+-- but if cpath:get_path is provided as a hook then the hook handler
+-- can't judge if the action has been cancelled or not, leading to
+-- many binds defaulting to opening the last visited path
+		run_hook(
+--		cpath:get_path()
+		);
 		cpath:reset();
 		iostatem_restore();
 	end
