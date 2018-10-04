@@ -307,7 +307,7 @@ function iostatem_added(iotbl)
 -- axis state, analog force, special bindings
 		devices[iotbl.devid] = {
 			devid = iotbl.devid,
-			label = iotbl.label,
+			label = iotbl.label and iotbl.label or "unknown",
 -- we only switch analog sampling on / off
 			lookup = label_lookup[iotbl.label]
 				and label_lookup[iotbl.label] or {default_lh, default_ah},
