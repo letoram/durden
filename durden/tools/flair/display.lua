@@ -11,7 +11,11 @@
 -- enabled, e.g. a HMD or presentation projector.
 --
 
-local snow_rules, snow_opts = system_load("tools/flair/snow.lua", false)();
+local snow_rules, snow_opts =
+	system_load("tools/flair/display/snow.lua", false)();
+
+local confetti_rules, confetti_opts =
+	system_load("tools/flair/display/confetti.lua", false)();
 
 return {
 	{
@@ -20,6 +24,14 @@ return {
 		description = "Snow Simulator",
 		create = function(disp, ...)
 			return flair_supp_psys("snow", snow_rules, snow_opts);
+		end
+	},
+	{
+		name = "confetti",
+		label = "Confetti",
+		description = "Confetti",
+		create = function(disp, ...)
+			return flair_supp_psys("confetti", confetti_rules, confetti_opts);
 		end
 	}
 };

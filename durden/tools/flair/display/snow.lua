@@ -38,6 +38,7 @@ local function snow_step(system)
 	counter = (counter + 0.01) % 360;
 	system.force_x = math.pow(math.sin(counter * step_sz) * 0.5 + 0.5, 4);
 	system.force_y = math.abs(math.sin(counter * step_sz)) * 0.05;
+	return true;
 end
 
 local function snow_expire(state)

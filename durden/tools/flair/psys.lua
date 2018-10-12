@@ -17,10 +17,20 @@ local in_psys = false;
 local psys_list = {};
 
 local function psys_create(v)
-	local nsrf = null_surface(
-		math.random(v.emitter.min_w, v.emitter.max_w),
-		math.random(v.emitter.min_h, v.emitter.max_h)
-	);
+	local nsrf;
+	if (v.emitter.kind == "color") then
+		nsrf = color_surface(
+			math.random(v.emitter.min_w, v.emitter.max_w),
+			math.random(v.emitter.min_h, v.emitter.max_h),
+			0, 255, 0
+		);
+	else
+		nsrf = null_surface(
+			math.random(v.emitter.min_w, v.emitter.max_w),
+			math.random(v.emitter.min_h, v.emitter.max_h)
+		);
+	end
+
 	show_image(nsrf);
 	link_image(nsrf, v.anchor);
 
@@ -40,29 +50,45 @@ local function psys_create(v)
 	table.insert(v.particles, iv);
 end
 
+local function process_particles(v)
+	if (#v.particles <= 0) then
+		if (v.particle_limit > 0) then
+			psys_create(v);
+		end
+		return;
+	end
+
+-- for all particles, if update says that it dies, expire
+	for i=#v.particles,1,-1 do
+		if (not v.update(v.particles[i], v)) then
+			v.expire(v.particles[i], 5);
+			table.remove(v.particles, i);
+
+-- and respawn if we get under the limit
+			if (#v.particles < v.particle_limit) then
+				psys_create(v);
+			end
+		end
+	end
+end
+
 local function psys_step()
 	local attach = set_context_attachment();
 
+-- each system is tied to a display
 	for _,v in ipairs(psys_list) do
 		set_context_attachment(v.display.rtgt_id);
-		v:step();
-		if (#v.particles > 0) then
-			for i=#v.particles,1,-1 do
-				if (not v.update(v.particles[i], v)) then
-					v.expire(v.particles[i], 5);
-					table.remove(v.particles, i);
-					psys_create(v);
-				end
-			end
+		local upd = v:step();
+		if (upd) then
+			process_particles(v);
 		end
+
+-- apply per-system spawn trigger
 		if (v.counter > 0) then
 			v.counter = v.counter - 1;
-		else
--- try emit
-			if (#v.particles < v.particle_limit) then
-				psys_create(v);
-				v.counter = v.counter_start;
-			end
+		elseif (#v.particles < v.particle_limit) then
+			psys_create(v);
+			v.counter = v.counter_start;
 		end
 	end
 
@@ -107,7 +133,8 @@ return function(name, handlers, opts)
 		counter = 1,
 		particle_limit = opts.particle_limit and opts.particle_limit or 100,
 		anchor = null_surface(1, 1),
-		particles = {}
+		particles = {},
+		opts = opts
 	};
 
 	show_image(new_sys.anchor);
@@ -118,9 +145,7 @@ return function(name, handlers, opts)
 			shape = "rectangle",
 			x1 = 0, y1 = -40,
 			x2 = display.width, y2 = 0,
-			min_w = 1, max_w = 4, min_h = 1, max_h = 4,
-			dx = {-1, 1},
-			dy = {0, 1}
+			min_w = 1, max_w = 4, min_h = 1, max_h = 4
 		}
 	else
 		new_sys.emitter = opts.emitter;
@@ -132,4 +157,17 @@ return function(name, handlers, opts)
 
 	table.insert(psys_list, new_sys);
 	table.insert(display.display_effects, new_sys);
+
+-- last stage that can override everything
+	if (handlers.setup) then
+		handlers.setup(new_sys);
+	end
+
+	if (opts.particle_burst) then
+		for i=1,opts.particle_burst do
+			psys_create(new_sys);
+		end
+	end
+
+	return new_sys;
 end
