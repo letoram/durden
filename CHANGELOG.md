@@ -1,3 +1,14 @@
+# 0.5.1
+  * tools/advfloat:
+	   add position/resize control to global/config/workspaces/float
+		 which works like 'draw 2 spawn' but for position and resize
+		 hint as a means of avoiding 'drag resize'.
+
+minor:
+  * shaders:
+	   added a 'rounded/shadowed' shader as a builtin effect/simple
+		 shader
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
