@@ -213,6 +213,12 @@ local function esetup(shader, dst, group, name)
 		return;
 	end
 
+-- Special shortpath, only one pass - used when we want global settings but
+-- otherwise the behavior of a simple shader
+	if (#shader.passes == 1 and shader.no_rendertarget) then
+		return ssetup(shader.passes[1], dst, group, name);
+	end
+
 -- Track the order in which the rendertargets are created. This is needed as
 -- each rendertarget is setup with manual update controls as a means of synching
 -- with the frame delivery rate of the source.
