@@ -83,6 +83,18 @@ menus_register("target", "window",
 	handler = system_load("tools/advfloat/gridfit.lua")()
 });
 
+menus_register("target", "window/move_resize",
+{
+	kind = "action",
+	submenu = false,
+	name = "drawrz",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	label = "Draw-Resize",
+	handler = system_load("tools/advfloat/rzctl.lua")()
+});
+
 menus_register("global", "workspace",
 {
 	kind = "action",
