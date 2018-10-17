@@ -17,7 +17,7 @@ and other controls via the [input labels](input) system.
 Most changes to the visual configuration are activated globally and immediately,
 and cover properties like the active font, fallback/alternate glyph source,
 font size, background opacity and so on. These properties can be be accessed
-through the <i>global/config/terminal</i> menu path.
+through the <i>global/settings/terminal</i> menu path.
 
 The default settings and behavior for the terminal archetype can be low-level
 inspected via the <i>durden/atypes/terminal.lua</i> source.

@@ -17,13 +17,13 @@ as workspaces gets tagged or if a window on a workspace alerts for attention.
 Each display gets its own statusbar, though the behavior settings apply globally.
 
 # Tuning
-Statusbar specific settings can be found at <i>global/config/statusbar</i> and
+Statusbar specific settings can be found at <i>global/settings/statusbar</i> and
 covers some visual properties (position, sizing / padding), presence of dynamic
 buttons and if it should only be active when the HUD is, or not.
 
 Other visual settings are part of the shader subsystem and can be found in
-<i>global/config/shaders/UI</i>, while some text positioning options that apply
-to both titlebar and statusbar are at <i>global/config/bars</i>.
+<i>global/settings/visual/shaders/UI</i>, while some text positioning options that apply
+to both titlebar and statusbar are at <i>global/settings/visual/bars</i>.
 
 # Layout button
 The first button indicates the current layouting mode for the active workspace,

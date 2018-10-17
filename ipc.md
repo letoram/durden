@@ -10,22 +10,25 @@ will not be covered here.
 
 ## Control
 
-<i>control</i> can be used to run menu commands. This is slightly dangerous as
-quite a number of menu paths were written with an interactive user in mind.
-Therefore it is also possible to define a custom whitelist (see
-[security](security) so that only benign menu path can be activated externally.
+<i>control</i> is a default-off, unix domain socket that can be used to
+perform external control of the entire desktop. There is a tool in the
+arcan source distribution, arcan\_cfgfs that can be used with FUSE to
+mount the file system so that you can interact with it using the normal
+command-line tools.
 
-control is split into two IPC channels, <i>control</i> and <i>control_out</i>.
+Otherwise, you can write your own tools to communicate via the trivial
+text protocol (commands: ls, read, exec, write, monitor) or use socat
+like:
 
-In addition to allowing normal paths, e.g. #/some/thing/here to be activated,
-there are a few ftp/filesystem like commands that can be used to query the
-current menu state. These are:
+    socat - unix-client:$HOME/.arcan/appl-out/durden/ipc/control
+
+All the commands end with either a single line OK and a linefeed, or
+an error message starting with Exxx.
 
 <i>read /path/to/something</i>
 
-read will write path-specific data to <i>control_out</i>, terminated by a
-single OK line or an EINVAL if the path doesn't exist. Trying to read a
-value that leads to a value entry path would output something like:
+Read simply lists the attributes and, depending on the path, additional
+metadata about a path.
 
     name: myname
     label: Name Field
@@ -34,33 +37,42 @@ value that leads to a value entry path would output something like:
 
 <i>ls /path</i>
 
-ls will write out the contents of a menu directory to <i>control_out</i>,
-terminated by a single OK line or an EINVAL if the path doesn't exist. The
-contents of each entry is simply the name- field of the corresponding menu
-path, with a type specific suffix, / for submenus, = for value paths.
+ls will list the contents of a menu directory, terminated by a single OK
+and linefeed oror an EINVAL if the path doesn't exist.
 
 <i>exec /path/to/action</i>
 
-exec will invoke the currently specified path, writing OK on a single line
-to <i>control_out</i> or EINVAL if the path does not exist or if it points
-to a submenu.
+exec will invoke the currently specified action path.
 
 <i>write /path/to/key=value</i>
 
-write will access the specified path and try to assign it the contents of
-<i>value</i>. It will write OK on a single line to <i>control_out</i> or
-EINVAL if the path does not point to a <i>value</i> entry or if the supplied
-value didn't pass validation.
+write works like <i>exec</i> but is used for value paths, that is paths
+which require a value to be provided in order to work properly.
 
 <i>eval /path/to/key=value</i>
 
-eval works just like <i>write</i> with the exception that the actual
-values are not committed, you only get OK or EINVAL back if the path accepts
-the value in its current form or not.
+### Monitor Mode
+
+The command 'monitor' is special, as it will change the state of the connection
+to only accept monitor commands. These are used to listen to one or many of the
+event subsystems that make out the core of durden.
+
+    monitor all
+
+Will become very noisy, whileas:
+
+    monitor wm
+
+Will only show window manager events. To get a list of currently available groups
+simply call monitor without any arguments and the list will be returned in the
+following EINVAL error message.
+
+The second monitor command disable monitoring and returns the connection back to
+a normal state.
 
 ## Output
 
-<i>output</i> is used to convey custom messages, like when a user-defined
+<i>output</i> is a FIFO used to convey custom messages, like when a user-defined
 statusbar button is clicked. There is also a hidden menu path (=bind only) that
 allows you to pass a custom message to the output channel. This path can be
 found at <i>global/system/output_msg</i>.

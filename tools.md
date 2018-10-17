@@ -12,7 +12,7 @@ Menu HUD.
 The included tools are:
 [Model Viewer](#model), [Dropdown Terminal](#dropdown)
 [Autolayouter](autolay), [Advanced Float](#advfloat), [Overview](#overview),
-[Flair](#flair) and the [Overlay](#overlay).
+[Flair](#flair),[Overlay](#overlay) and [VRViewer](#vrviewer).
 
 # Dropdown Terminal <a name="dropdown"/>
 
@@ -153,9 +153,18 @@ a background image to be set.
 The tool is easily extendable by modifying the scripts in the tools/flair
 subfolder.
 
+# VRViewer <a name="vrviewer"/>
+
+The VR viewer tool shares much of its setup and structure with that of the separate
+DE (<a href="https://github.com/letoram/safespaces">Safespaces</a>. Its primary
+role here is to act as a data viewer rather than a DE within a DE.
+
+Its menu structure is deep and rather complicated, and it is better to look at the
+default spaces (tools/vr
+
 # Future Changes
 - On-screen Keyboard
 - Touchpad Configuration
-- VR support for model viewer
 - Notification Agents
+- Gesture Analyzer
 - Composition Surface for sharing/recording

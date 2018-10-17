@@ -21,6 +21,16 @@ the selected item, and use the select (enter) binding to activate.
 Holding meta1 while activating a resource will spawn the resource in the
 background while keeping the menu active.
 
+# Preview Controls
+
+Via get <i>global/settings/browser</i> a number of preview controls are
+exposed. The ones currently available are:
+
+- Preview (image, all or none) changes the types that will be previewed
+- Timer controls how much time that should be elapsed before the preview is activated
+- Position controls video preview starting position
+- Trigger (selection, visibility) controls if preview should be triggered by selection or as soon as a label is visible
+
 # Special Paths
 
 Holding meta1 while pressing ESCAPE will have you go up one level in the
@@ -42,6 +52,5 @@ sorting order.
 - Toggle file details on/off
 - Map client bchunk- hint events to spawn browser for universal
   open/save file-picking
-- Video playback in preview windows
 - Selectable namespace (global or appl-)
 - Extend menu bindings to cover browser paths

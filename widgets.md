@@ -57,7 +57,15 @@ line. Colors are chosen by stepping through the palette defined in
 	<img alt="cheat-sheet" src="images/cheat.png" style="width: 50%"/>
 </a></center>
 
+# Input
+The input widget is activated via the <i>target/input</i> path, but only if
+a client has announced any input labels. If so, the logical name will be shown
+as the widget helper text. Clicking on a label will send a press/release pair
+of that specific input label to the client.
+
 # Future Changes
+- Support for enabling / disabling specific widgets
+- Override and remember widget positioning
 - External clients with "WIDGET" primary segid
 - Widget for analog input filter tuning
 - Widget for color picking

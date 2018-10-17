@@ -3,7 +3,7 @@ layout: default
 ---
 
 'The Menu' is a key feature in Durden, where all the internal features are
-exposed and controlled. Underneath the surface, the menu covers two directory
+exposed and controlled. Underneath the surface, the menu covers two primary
 trees (one 'global' and one 'target') where each entry describes either
 a subdirectory, an action or a key/value input. The global tree convers system
 wide settings, and the target tree covers the currently selected window.
@@ -31,25 +31,20 @@ not.
 
 Underneath the surface, these paths are evaluated like this:
 
-    !open/target
-    #clipboard/paste
-    !settings/visual/mouse_scale=5
+    /global/open/target
+    /target/clipboard/paste
+    /global/settings/visual/mouse_scale=5
 
-With \! being used to pick the global directory, and the \# for the target
-directory. The =5 in the example above is a binding to setting a specific
-key/value pair (here, setting the mouse cursor scale factor to 5).
-
-<b>All the path references in the documentation or elsewhere points to a
-logic 'name' which may be different from the language- specific 'label' that
-is presented when navigating the UI.</b>
+The =5 in the example above is a binding to setting a specific key/value pair
+(here, setting the mouse cursor scale factor to 5).
 
 Due to key naming restrictions, paths currently bound to custom keys will
 have a slightly diffferent format in the database. Inspecting them will look
 something like this:
 
-    arcan_db show_appl durden |grep cust
-       custg_m1_m2_p=workspace/switch
-       custs_m1_h=clipboard/paste
+    arcan_db show_appl durden |grep custom
+       custom_m1_m2_p=/global/workspace/switch
+       custom_m1_h=/target/clipboard/paste
 
 ## Navigation
 
@@ -76,15 +71,16 @@ not (red like in the screenshot).
 ## Binding Keys
 
 Though this falls under normal input management, there is a special feature
-worth noting in this context. When making a new binding by going to Input/
-Bind/Custom, you will be prompted to pick the menu path to bind.
+worth noting in this context. When making a new binding by going to
+/global/input/bind/custom, you will be prompted to pick the menu path to bind.
 
-If you select an action, there's nothing complicated going on - that
-particular action will be bound. If you select a key/value target, you can
-chose between binding the dialog itself or the specific value you enter by
-holding META1 when pressing SELECT to activate the dialog. In a similar way,
-you can bind activating a subdirectory by holding META1 pressed when pressing
-SELECT.
+If you select an action, there's nothing complicated going on - that particular
+action will be bound. If you select a key/value target, the default is that the
+value you entered will be the actually bound value but if you hold META1 when
+selecting the entry, the actual dialog prompt will be bound instead.
+
+In a similar fashion, you can also bind the navigation directory itself
+by holding META1 when pressing SELECT.
 
 ## Widgets <a name="widgets"></a>
 
@@ -94,8 +90,8 @@ during startup (see the .lua files in the widgets subpath) that explicitly
 binds their activation to certain paths and patterns.
 
 These are used to provide extra information, like the ASCII- table shown when
-going for "Input/Keyboard/Map/Bind-UTF8" and the list of keybindings shown when
-going for "Input/Bind/Custom" like in the screenshot below:
+going for "global/input/keyboard/map/bind_utf8" and the list of keybindings
+shown when going for "global/input/bind/custom" like in the screenshot below:
 
 <center><a href="images/widget.png">
 	<img alt="widget screenshot" src="images/widget.png" style="width: 50%"/>
@@ -107,54 +103,23 @@ by dropping a txt file in the widgets/cheatsheets path. The first line of the
 file is a lua pattern that will match against the identity of the window, and
 new groups are indiciated with an empty line.
 
-There is also the experimental option to run external widgets. When a client
-connects to arcan, it registers a type for its primary segment, and durden
-gives special treatment based on advertised type. A 'Game' segment, for
-instance, would get access to different input routing paths.
+## Multicast
 
-There is a 'Widget' type where subsegments, clipboards and other features are
-disabled. These gets forced to a maximum size, and are routed to the global
-menu. To write such a client is a little bit of work, though Arcan has a
-support layer (also Lua scriptable) as part of the 'TUI' (text-UI) subsystem.
-Refer to the Arcan wiki for more on this feature.
+There is also a way to emit the same /target path to a group of windows by
+using any of the available subpaths to /windows, where you can affect all
+windows, windows of a specific type and so on.
 
 ## Advanced
 
-Since many advanced menu features rely on figuring out a particular path,
-it would be convenient to be able to quickly enumerate the list of possible
-options, particularly since the logical path used for a binding will likely
-differ from the visual labels you see due to internationalization.
-
-If you use the following special command:
-
-     arcan durden dump_menus
-
-Durden will write the accessible global menu tree to stdout, and the target
-tree for a 'standard/null' window (so window type specific entries will not
-be shown). You can then use that dump to better define your bindings.
-An example of such a dump can be found [here](menus.txt).
-
-However, this dump will not be very accurate, as the menus are dynamically
-generated and regenerated based on what the available hardware and the
-selected window can do _currently_.
-
-For some menu paths, your only options are to read the source code (the
-menu entries are not particularly hard to read as they are mostly small
-tables with well known fields), and to increasing the debuglevel further
-(-g -g).
-
-Some menu entries are also marked as 'invisible'. This means that they
-are only shown when you are interactively binding a menu path to a key.
-The reason for this may be that they serve no purpose when a UI is inactive,
-or accidentaly activating them would yield in some dangerous state
-transition - like toggling displays on/off.
+It is also possible to mount the menu tree as a real filesystem, though with
+some performance drawbacks at the moment. See the separate 'arcan-cfgfs' tool
+that comes with your distribution or as part of the <i>src/tools/acfgfs</i>
+path in the arcan source repository, along with the section on [ipc](ipc).
 
 ## Coming Features
 The following changes are planned for the menu:
 
- - Mouse and touchpad gesture navigation
  - Mouse Cursor warping to reduce movement
- - Tooltips for each entry
  - Better Widget- area layouting
  - Client- provided menus merged into target- group
- - "Popup"- style for floating layout mode
+ - Alternative representations: radial menu, popup, ...
