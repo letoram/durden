@@ -1,13 +1,9 @@
 # 0.5.1
-  * tools/advfloat:
-	   add position/resize control to global/config/workspaces/float
-		 which works like 'draw 2 spawn' but for position and resize
-		 hint as a means of avoiding 'drag resize'.
+  * uiprim/sbar:
+	   statusbar custom button controls added
 
-minor:
-  * shaders:
-	   added a 'rounded/shadowed' shader as a builtin effect/simple
-		 shader
+  * uiprim/tbar:
+     titlebar merge-to-status bar mode on select
 
   * target-launch:
 	   query for a value argument for initial group tag, this is

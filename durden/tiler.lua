@@ -130,6 +130,29 @@ local function run_event(wnd, event, ...)
 	end
 end
 
+local function wnd_titlebar_to_statusbar(wnd)
+	if (not wnd.titlebar or not wnd.titlebar.hidden or
+		not gconfig_get("titlebar_statusbar")) then
+		return;
+	end
+
+	wnd.wm.statusbar:set_nested(wnd.titlebar,
+		function(destr)
+			if (not wnd.titlebar) then
+				return; -- already destroyed
+			end
+
+			local bw = wnd:border_width();
+			wnd.titlebar:reanchor(wnd.anchor, 4, bw, bw);
+			if (wnd.show_titlebar) then
+				wnd.titlebar:show();
+			else
+				wnd.titlebar:hide();
+			end
+		end
+	);
+end
+
 local function moveup_children(wnd)
 	if (not wnd.parent) then
 		return;
@@ -282,7 +305,10 @@ local function wnd_destroy(wnd, message)
 		end
 	end
 
-	wnd.titlebar:destroy();
+-- prevent the 'titlebar to statusbar" closure from running
+	local tb = wnd.titlebar;
+	wnd.titlebar = nil;
+	tb:destroy();
 
 -- external references are tracked separate from the canvas
 	if (valid_vid(wnd.external) and not wnd.external_prot) then
@@ -307,6 +333,10 @@ local function wnd_destroy(wnd, message)
 		for k,v in pairs(space.listeners) do
 			v(space, k, "lost", wnd);
 		end
+	end
+
+	if (wm.selected) then
+		wnd_titlebar_to_statusbar(wm.selected);
 	end
 end
 
@@ -353,6 +383,7 @@ local function wnd_deselect(wnd, nopick)
 
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
+		wnd.wm.statusbar:set_nested();
 	end
 
 	if (wnd.mouse_lock) then
@@ -562,6 +593,9 @@ local function tiler_statusbar_build(wm)
 		wm.sbar_ws[i]:hide();
 	end
 
+-- add the left/right buttons from the gconfig
+
+
 -- fill slot with system messages for the time being, need something
 -- more clever here later (ie. dock titlebar, notification area, ...)
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
@@ -629,6 +663,9 @@ end
 
 local function wnd_select(wnd, source, mouse)
 	local wm = wnd.wm;
+
+-- special cases, wm deactivated from being plugged out, or window
+-- not attached or explicitly prohibited from being selected
 	if (wm.deactivated or not wnd.space or wnd.select_block) then
 		return;
 	end
@@ -636,6 +673,7 @@ local function wnd_select(wnd, source, mouse)
 -- may be used to reactivate locking after a lbar or similar action
 -- has been performed.
 	if (wm.selected == wnd) then
+		wnd_titlebar_to_statusbar(wnd);
 		if (wnd.mouse_lock) then
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
@@ -643,30 +681,36 @@ local function wnd_select(wnd, source, mouse)
 		return;
 	end
 
+-- format focus state (unless that's blocked, set_dispmask handles that)
 	wnd:set_dispmask(bit.band(wnd.dispmask,
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
+-- deselect the current one
 	if (wm.selected and wm.selected.deselect) then
 		wm.selected:deselect();
 	end
 
+-- for tabbed modes, the titlebar and the 'tabs' are decoupled and
+-- we hide/show the entire window based on active tab
 	local mwm = wnd.space.mode;
 	if (mwm == "tab" or mwm == "vtab") then
 		show_image(wnd.anchor);
 	end
 
+-- update the shader state for the UI bar to reflect selection
 	local state = wnd.suspended and "suspended" or "active";
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
-
--- we don't want to mess with cursor/selected when it's a hidden wnd
-
 	wnd.titlebar:switch_state(state, true);
 
+-- there's a local selection state per workspace, but also a
+-- one for the wm itself (active_display().selected)
 	wnd.space.previous = wnd.space.selected;
 	if (wm:active_space() == wnd.space) then
 		wm.selected = wnd;
+		wnd_titlebar_to_statusbar(wnd);
 	end
+
 	wnd.space.selected = wnd;
 	tiler_debug(wm, "select:name=" .. wnd.name);
 	run_event(wnd, "select", mouse);
@@ -675,6 +719,9 @@ local function wnd_select(wnd, source, mouse)
 	ms = mouse_state();
 	ms.hover_ign = true;
 
+-- there is an option for letting the mouse cursor warp to last
+-- known position on selection when it is not initiated by the mouse
+-- cursor itself (so keyboard or similar)
 	local props = image_surface_resolve(wnd.canvas);
 	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local px = 0.0;
@@ -698,6 +745,7 @@ local function wnd_select(wnd, source, mouse)
 	ms.last_hover = CLOCK;
 	ms.hover_ign = false;
 
+-- lock-state per window so that things like warping etc. works
 	if (wnd.mouse_lock) then
 		mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center, wnd);
@@ -865,6 +913,7 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 		local sel = space.selected;
 		wnd_deselect(space.selected);
 		space.selected = sel;
+		wnd_titlebar_to_statusbar(sel);
 	end
 
 -- notify windows that they can take things slow
@@ -1976,7 +2025,9 @@ local function wnd_size_decor(wnd, w, h, animate)
 		wnd.titlebar:resize(
 			wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
 		wnd.pad_top = wnd.pad_top + tbh;
-	else
+
+-- only hide if we are not in a nested state. otherwise parent decides
+	elseif (not wnd.titlebar.parent) then
 		wnd.titlebar:hide();
 	end
 
@@ -2308,6 +2359,7 @@ local function wnd_reassign(wnd, ind, ninv)
 			if (wnd.children[1] ~= nil) then
 				wnd.children[1]:select();
 			else
+				wm.statusbar:set_nested();
 				wm.selected = nil;
 			end
 		end
@@ -4011,6 +4063,10 @@ local function wnd_ws_attach(res, from_hook)
 
 	res.titlebar:switch_group(space.mode, true);
 
+-- if we are attaching on the workspace that is currently selected, and
+-- there is no selected window (and the space is not in fullscreen state)
+-- then we should make the window visible immediately, otherwise that is
+-- deferred until the space loses fullscreen
 	if (wm.space_ind == dstindex and
 		not(wm.selected and wm.selected.fullscreen)) then
 		show_image(res.anchor);
@@ -4066,6 +4122,7 @@ local function wnd_ws_attach(res, from_hook)
 			);
 		end
 	end
+	wnd_titlebar_to_statusbar(res);
 
 	for k,v in ipairs(wm.on_wnd_create) do
 		v(wm, res, space, space == wm:active_space());
@@ -4073,7 +4130,7 @@ local function wnd_ws_attach(res, from_hook)
 
 	tiler_debug(wm, "attach:name=" .. res.name);
 	for k,v in pairs(space.listeners) do
-		v(space, k, "attach", wnd);
+		v(space, k, "attach", res);
 	end
 
 	return res;
@@ -4632,6 +4689,11 @@ local wnd_setup = function(wm, source, opts)
 	res.titlebar.tag = res;
 	res.titlebar:move(bw, bw);
 
+-- start the titlebar as hidden immediately
+	if (not res.show_titlebar) then
+		res.titlebar:hide();
+	end
+
 	res.titlebar:add_button("center", nil, "titlebar_text",
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
 --	res.titlebar:hide();
@@ -4802,6 +4864,7 @@ local function tiler_switchws(wm, ind)
 		wnd_select(nextsp.selected);
 	else
 		wm.selected = nil;
+		wm.statusbar:set_nested();
 	end
 
 	tiler_statusbar_update(wm);
@@ -5244,6 +5307,7 @@ function tiler_create(width, height, opts)
 		message = tiler_message,
 		resize = tiler_resize,
 		tile_update = tiler_statusbar_update,
+		rebuild_statussbar_custom = tiler_statusbar_custom,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
