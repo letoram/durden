@@ -93,8 +93,18 @@ res.init = function(res, wnd, source)
 	if (fbf and resource(fbf, SYS_FONT_RESOURCE)) then
 		tbl[2] = fbf;
 	end
-	wnd:update_font(gconfig_get("term_font_sz"),
-		gconfig_get("term_font_hint"), tbl);
+
+	if (gconfig_get("term_bitmap")) then
+		wnd.last_font = nil;
+		wnd:update_font(gconfig_get("term_font_sz"),
+			gconfig_get("term_font_hint"));
+		wnd:update_font(gconfig_get("term_font_sz"),
+			gconfig_get("term_font_hint"));
+	else
+		wnd:update_font(gconfig_get("term_font_sz"),
+			gconfig_get("term_font_hint"), tbl);
+	end
+
 	wnd.font_block = true;
 end
 
