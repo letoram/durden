@@ -65,6 +65,12 @@ Or clear all settings and revert to defaults:
 
 ## Manually
 
+Both arcan and durden are packaged under void linux, thus it should be as easy
+as going:
+
+    sudo xbps-install durden
+    durden
+
 Install by adding or symlinking the durden subdirectory of the git repository
 to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan
 with an explicit path reference, e.g.
@@ -74,7 +80,7 @@ with an explicit path reference, e.g.
 Start arcan with the resource path set to whatever directory subtree you
 want to be able to access for assets when browsing for images, video etc.
 
-e.g. arcan -p /home/myuser/stuff durden
+e.g. arcan -p $HOME -b :self durden
 
 There are numerous other ways for setting this up, see the Arcan wiki and
 manpages for configuration options. If you're "lucky" (linux, normal "no-X"
@@ -87,35 +93,20 @@ land in something like:
      cd ../../ ; mkdir build ; cd build
      cmake -DVIDEO_PLATFORM=egl-dri -DSTATIC_SQLITE3=ON -DSTATIC_OPENAL=ON
         -DSTATIC_FREETYPE=ON ../src
-     make -j 8
-     ./arcan ../../durden/durden
+     make
+     sudo make install
+     arcan path/to/durden/durden
 
-Note that this will need to be run suid (preferred) or as root due to rules
-the kernel imposes on 'drmMaster'. If suid, the engine will fork out a child
-and only direct device access will run privileged.
-
-If you are on a more limited platform, like raspberry pi, you can try the
-the -DVIDEO\_PLATFORM=egl-gles -DAGP\_PLATFORM=gles2 build, which should work
-with the proprietary drivers. You will also need to activate 'simple' display
-mode which deactivates some features:
-
-     arcan_db add_appl_kv durden display_simple true
-
-Note: the egl-dri video platforms are for running this as a dedicated desktop,
-if you just want to try things out, use -DVIDEO\_PLATFORM=sdl instead. Some
-features when it comes to display management and input will behave differently,
-and you likely want to bind a key for enabling/disabling cursor locking.
-
-Another option, if your drivers give you accelerated GL in X but not working
-KMS/DRI is to merely run arcan/durden with SDL as the video platform in
-fullscreen- mode and only application, essentially making X your "driver".
+Note that this will need to be run suid (which the install does) or as root due
+to rules the kernel imposes on 'drmMaster'. If suid, the engine will fork out a
+child and only direct device access will run privileged.
 
 Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
 for the currently mapped defaults. If you don't press any of the valid META +
 key bindings during the first n (20 or so) keypresses, it is assumed that your
 meta bindings are broken and you will be queried for new ones.
 
-Quick! meta1+enter - now you should get a terminal window.
+meta1+enter - now you should get a terminal window.
 
 You should also make sure that meta1+g (unless rebound) gives you access to
 the global menu, and meta1+h gives you access to the target menu. You can view
