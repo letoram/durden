@@ -206,6 +206,18 @@ local mouse_menu = {
 		end
 	},
 	{
+		name = "reveal_trigger",
+		kind = "action",
+		label = "Trigger Reveal",
+		description = "Activate the mouse-reveal effect regardless of visibility state",
+		handler = function()
+			local hook = mouse_state().reveal_hook;
+			if (hook) then
+				hook();
+			end
+		end
+	},
+	{
 		name = "coalesce",
 		kind = "value",
 		label = "Coalesce",
