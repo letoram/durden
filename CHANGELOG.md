@@ -9,6 +9,11 @@ minor:
 	   added a 'rounded/shadowed' shader as a builtin effect/simple
 		 shader
 
+  * target-launch:
+	   query for a value argument for initial group tag, this is
+		 useful for pairing windows with bindings in autorun.lua etc.
+		 when no uuid or other identity token has been established.
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
