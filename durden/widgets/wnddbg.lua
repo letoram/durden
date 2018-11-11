@@ -28,6 +28,10 @@ local function probe(ctx, yh)
 		table.insert(lines, "Normal");
 	end
 
+	if (wnd.group_tag) then
+		table.insert(lines, "Group-Tag: " .. wnd.group_tag);
+	end
+
 	table.insert(lines, string.format(
 		"pad: t-%d, l-%d, d-%d, r-%d + hint-pad: %d %d",
 		wnd.pad_top, wnd.pad_left, wnd.pad_bottom, wnd.pad_right,

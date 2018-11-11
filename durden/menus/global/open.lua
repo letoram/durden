@@ -147,7 +147,7 @@ local function get_remstr(val)
 	return base;
 end
 
-local function launch(str, cfg)
+local function launch(str, cfg, tag)
 	local tags = list_target_tags(str)
 	local mode = LAUNCH_INTERNAL;
 
@@ -156,7 +156,6 @@ local function launch(str, cfg)
 -- quite preliminary and we should allow other hooks for the case
 -- so that a binding like "all windows migrate" could be possible
 -- on enter external.
-	print("enumerate modes for", str, #tags);
 	for i,v in ipairs(tags) do
 		if v == "external" then
 			mode = LAUNCH_EXTERNAL;
@@ -176,6 +175,9 @@ local function launch(str, cfg)
 		durden_devicehint(vid);
 		wnd.config_target = str;
 		wnd.config_config = cfg;
+		if (type(tag) == "string") then
+			wnd.group_tag = tag;
+		end
 	end
 end
 
@@ -185,10 +187,13 @@ local function target_cfgmenu(str, cfgs)
 		table.insert(res,{
 			name = "launch_" .. string.hexenc(util.hash(str))
 				.. "_" .. string.hexenc(util.hash(v)),
-			kind = "action",
+			kind = "value",
+			validator = function(val)
+				return not val or #val == 0 or suppl_valid_name(val);
+			end,
 			label = v,
 			force_completion = true,
-			handler = function() launch(str, v); end
+			handler = function(ctx, val) launch(str, v, val); end
 		});
 	end
 	return res;
@@ -199,20 +204,30 @@ local function target_submenu()
 	local targets = list_targets();
 	for k,v in ipairs(targets) do
 		local cfgs = target_configurations(v);
-		local nent = {
-			name = "launch_" .. string.hexenc(util.hash(v)),
-			kind = "action",
-			label = v
-		};
-
-		if (#cfgs > 0) then
-			if (#cfgs > 1) then
-				nent.submenu = true;
-				nent.handler = function() return target_cfgmenu(v, cfgs); end
-			else
-				nent.handler = function() launch(v, cfgs[1]); end
-			end
-			table.insert(res, nent);
+		local short = "launch_" .. string.hexenc(util.hash(v));
+		if (#cfgs == 1) then
+			table.insert(res, {
+				name = short,
+				kind = "value",
+				hint = "(optional window tag)",
+				validator = function(val)
+					return not val or #val == 0 or suppl_valid_name(val);
+				end,
+				label = v,
+				handler = function(ctx, val)
+					launch(v, cfgs[1], val);
+				end,
+			});
+		elseif (#cfgs > 1) then
+			table.insert(res, {
+				name = "launch_" .. string.hexenc(util.hash(v)),
+				kind = "action",
+				label = v,
+				handler = function()
+					return target_cfgmenu(v, cfgs, val);
+				end,
+				submenu = true
+			});
 		end
 	end
 	return res;
