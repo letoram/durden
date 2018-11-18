@@ -155,6 +155,10 @@ local defaults = {
 -- per window toggle, global default here
 	hide_titlebar = false,
 
+-- if titlebars are "hidden" and this is true, merge the selected window
+-- titlebar into the statusbar center area and recursively relayout
+	titlebar_statusbar = false,
+
 -- %(fmt-char) p (tag) t (title) i (ident) a (archetype)
 -- optional character limit after each entry, whitespace breaks out of fmt-char
 	titlebar_ptn = "%p %t - %i",
@@ -357,8 +361,57 @@ gconfig_buttons = {
 	float = {
 	},
 	tile = {
-	}
+	},
 };
+
+gconfig_statusbar = {
+};
+
+-- for the sake of convenience, : is blocked from being a valid vsym as
+-- it is used as a separator elsewhere (suppl_valid_vsymbol)
+local function btn_str(v)
+	return string.format("%s:%s:%s", v.direction, v.label, v.command);
+end
+
+local function str_to_btn(dst, v)
+	local ign, rest = string.split_first(v, "=");
+	local dir, rest = string.split_first(rest, ":");
+	local key, rest = string.split_first(rest, ":");
+	local cmd = string.split_first(rest, ":");
+
+	if (#dir > 0 and #rest > 0 and #key > 0) then
+		table.insert(dst, {
+			label = key,
+			command = cmd,
+			direction = dir
+		});
+	end
+end
+
+function gconfig_statusbar_rebuild(nosynch)
+--double negative, but oh well - save the current state as config
+	if (not nosynch) then
+		drop_keys("sbar_btn_%");
+		local keys_out = {};
+		for i,v in ipairs(gconfig_statusbar) do
+			keys_out["sbar_btn_" .. tostring(i)] = btn_str(v);
+		end
+		store_key(keys_out);
+	end
+
+-- repopulate from the stored keys
+	gconfig_statusbar = {};
+	for _,v in ipairs(match_keys("sbar_btn_%")) do
+		str_to_btn(gconfig_statusbar, v);
+	end
+
+-- will take care of synching against gconfig_statusbar
+	if all_tilers_iter then
+		for tiler in all_tilers_iter() do
+			tiler:rebuild_statusbar_custom();
+		end
+	end
+end
 
 function gconfig_buttons_rebuild(nosynch)
 	local keys = {};
@@ -373,30 +426,16 @@ function gconfig_buttons_rebuild(nosynch)
 		local keys_out = {};
 		for _, group in ipairs({"all", "float", "tile"}) do
 			for i,v in ipairs(gconfig_buttons[group]) do
-				keys_out["tbar_btn_" .. group .. "_" .. tostring(i)] =
-					string.format("%s:%s:%s", v.direction, v.label, v.command);
+				keys_out["tbar_btn_" .. group .. "_" .. tostring(i)] = btn_str(v);
 			end
 		end
 		store_key(keys_out);
 	end
 
--- for the sake of convenience, : is blocked from being a valid vsym as
--- it is used as a separator elsewhere (suppl_valid_vsymbol)
 	for _, group in ipairs({"all", "float", "tile"}) do
 		gconfig_buttons[group] = {};
 		for _,v in ipairs(match_keys("tbar_btn_" .. group .. "_%")) do
-			local ign, rest = string.split_first(v, "=");
-			local dir, rest = string.split_first(rest, ":");
-			local key, rest = string.split_first(rest, ":");
-			local cmd = string.split_first(rest, ":");
-
-			if (#dir > 0 and #rest > 0 and #key > 0) then
-				table.insert(gconfig_buttons[group], {
-					label = key,
-					command = cmd,
-					direction = dir
-				});
-			end
+			str_to_btn(gconfig_buttons[group], v);
 		end
 	end
 end
@@ -439,7 +478,7 @@ local function gconfig_setup()
 		end
 	end
 
--- separate handling for mouse and buttons
+-- separate handling for mouse
 	local ms = mouse_state();
 	mouse_acceleration(defaults.mouse_factor, defaults.mouse_factor);
 	ms.autohide = defaults.mouse_autohide;
@@ -450,7 +489,9 @@ local function gconfig_setup()
 		ms.btns_bounce[i] = defaults["mouse_debounce_" .. tostring(i)];
 	end
 
+-- and for global state of titlebar and statusbar
 	gconfig_buttons_rebuild(true);
+	gconfig_statusbar_rebuild(true);
 end
 
 -- shouldn't store all of default overrides in database, just from a

@@ -172,6 +172,17 @@ return
 		handler = suppl_flip_handler("hide_titlebar")
 	},
 	{
+		name = "merge",
+		label = "Merge",
+		kind = "value",
+		description = "Hidden titlebars gets shown in the center area of the statusbar",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function() return
+			gconfig_get("titlebar_statusbar") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("titlebar_statusbar")
+	},
+	{
 		name = "buttons",
 		label = "Buttons",
 		kind = "action",
