@@ -124,7 +124,6 @@ local timer_add = {
 			local period, name = parse_timer(val);
 			query_timer_name(2,
 				function(paths)
-					print("add timer:", period, name, paths[1], paths[2]);
 					timer_add_idle(name, period, true,
 						function() dispatch_symbol(paths[1]); end,
 						function() dispatch_symbol(paths[2]); end, false
@@ -134,6 +133,17 @@ local timer_add = {
 		end
 	}
 };
+
+local function clone_entry(tbl, suffix)
+	local res = {
+	};
+	for k,v in pairs(tbl) do
+		if k == "name" then
+			res[k] = v .. suffix;
+		end
+
+	end
+end
 
 return {
 	{

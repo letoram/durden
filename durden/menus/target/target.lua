@@ -75,6 +75,14 @@ local shared_actions = {
 		description = "Window position and size controls",
 		handler = system_load("menus/target/window.lua")()
 	},
+	{
+		name = "triggers",
+		label = "Triggers",
+		kind = "action",
+		submenu = true,
+		description = "Bind menu actions to window events",
+		handler = system_load("menus/target/triggers.lua")()
+	}
 };
 
 if (DEBUGLEVEL > 0) then
