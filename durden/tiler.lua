@@ -712,8 +712,6 @@ local function wnd_select(wnd, source, mouse)
 	end
 
 	wnd.space.selected = wnd;
-	tiler_debug(wm, "select:name=" .. wnd.name);
-	run_event(wnd, "select", mouse);
 
 -- activate all "on-trigger" mouse events, like warping and locking
 	ms = mouse_state();
@@ -752,6 +750,8 @@ local function wnd_select(wnd, source, mouse)
 	end
 
 	wnd:to_front();
+	tiler_debug(wm, "select:name=" .. wnd.name);
+	run_event(wnd, "select", mouse);
 end
 
 --

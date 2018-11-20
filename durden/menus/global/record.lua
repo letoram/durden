@@ -38,7 +38,6 @@ return function(val, lbl)
 -- reusing the suppl_region..
 
 		timer_add_periodic("recwnd" .. tostring(CLOCK), 2, true, function()
-			print("activate timer");
 			local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 			local infn = function(source, status)
 				inputh(wnd, source, status);

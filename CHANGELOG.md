@@ -10,6 +10,10 @@
 		 useful for pairing windows with bindings in autorun.lua etc.
 		 when no uuid or other identity token has been established.
 
+	* triggers:
+		 added per-window option to bind multiple custom triggers on select,
+		 deselect and destroy
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
