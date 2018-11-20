@@ -34,6 +34,10 @@ end
 local function on_motion(ctx, lbl, i)
 -- need to re-resolve as our list is sorted
 	local wnd = active_display().selected;
+	if (not wnd.input_labels) then
+		return;
+	end
+
 	local lbar = tiler_lbar_isactive(true);
 	if (not lbar) then
 		return;
