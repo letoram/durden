@@ -105,6 +105,11 @@ function flt_fuzzy(val, instr)
 	return true;
 end
 
+local flt_lut = {
+["prefix"] = flt_prefix,
+["fuzzy"] = flt_fuzzy,
+};
+
 local function run_hook(path)
 	if (not menu_hook) then
 		return true;
@@ -287,7 +292,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 -- special case, control character
 	local res = {};
 	local lstr = string.len(instr);
-	local flt_fun = flt_prefix;
+	local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
 	ctx.subst = false;
 
 	if (lstr > 0) then
@@ -301,12 +306,18 @@ local function update_menu(ctx, instr, lastv, inp_st)
 			instr = string.sub(instr, 3);
 
 -- only one? substitute with commands
-		elseif(string.sub(instr, 1, 1) == "%") then
+		elseif (string.sub(instr, 1, 1) == "%") then
 			ctx.subst = true;
 			for k,v in pairs(sort_lut) do
 				table.insert(res, k);
 			end
+		elseif (string.sub(instr, 1, 1) == "~") then
+			flt_fun = flt_fuzzy;
 		end
+	end
+
+	if (flt_fun == flt_fuzzy) then
+		sort_mode = "fuzzy_relevance"
 	end
 
 -- generate the subset of fields from the expected range
