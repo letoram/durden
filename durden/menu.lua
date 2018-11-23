@@ -61,6 +61,9 @@ end,
 ["random"] = function()
 	sort_mode = "random";
 end,
+["fuzzy_relevance"] = function()
+	sort_mode = "fuzzy_relevance";
+end,
 ["numeric(a->Z)"] = function()
 	sort_mode = sort_az;
 end,
@@ -84,6 +87,22 @@ local function flt_ptn(val, instr)
 	else
 		return res;
 	end
+end
+
+function flt_fuzzy(val, instr)
+	local last_pos = 0
+	for i=1,#instr do
+		local ch = string.lower(string.sub(instr, i, i))
+		local pos = string.find(string.lower(val), ch, last_pos + 1)
+
+		if (not pos) then
+			return false;
+		else
+			last_pos = pos
+		end
+	end
+
+	return true;
 end
 
 local function run_hook(path)
@@ -347,6 +366,31 @@ local function update_menu(ctx, instr, lastv, inp_st)
 				local rand = math.random(sz);
 				res[i], res[rand] = res[rand], res[i];
 			end
+		elseif (sort_mode == "fuzzy_relevance") then
+			local fuzzy_dist = function(val)
+				if (not val) then
+					return math.huge;
+				end
+
+				local dist = 0;
+				local last_pos = 0;
+				for i=1,#instr do
+					local ch = string.sub(string.lower(instr), i, i);
+					local pos = string.find(string.lower(val), ch, last_pos + 1);
+					if (not pos) then
+						break;
+					end
+					dist = dist + (pos - last_pos);
+					last_pos = pos;
+				end
+				return dist;
+			end;
+			local relev_sort = function(a, b)
+				return
+					fuzzy_dist(type(a) == "table" and a[3] or a) <
+					fuzzy_dist(type(b) == "table" and b[3] or b);
+			end;
+			table.sort(res, relev_sort);
 		end
 	end
 
