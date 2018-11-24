@@ -61,6 +61,9 @@ end,
 ["random"] = function()
 	sort_mode = "random";
 end,
+["fuzzy_relevance"] = function()
+	sort_mode = "fuzzy_relevance";
+end,
 ["numeric(a->Z)"] = function()
 	sort_mode = sort_az;
 end,
@@ -85,6 +88,31 @@ local function flt_ptn(val, instr)
 		return res;
 	end
 end
+
+function flt_fuzzy(val, instr)
+	local last_pos = 0;
+	local i = string.utf8forward(instr, 0);
+	while i <= #instr do
+		local next_i = string.utf8forward(instr, i);
+		local ch = string.lower(string.sub(instr, i, next_i - 1));
+		local pos = string.find(string.lower(val), ch, last_pos + 1);
+
+		if (not pos) then
+			return false;
+		else
+			last_pos = pos;
+		end
+
+		i = next_i;
+	end
+
+	return true;
+end
+
+local flt_lut = {
+["prefix"] = flt_prefix,
+["fuzzy"] = flt_fuzzy,
+};
 
 local function run_hook(path)
 	if (not menu_hook) then
@@ -268,7 +296,7 @@ local function update_menu(ctx, instr, lastv, inp_st)
 -- special case, control character
 	local res = {};
 	local lstr = string.len(instr);
-	local flt_fun = flt_prefix;
+	local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
 	ctx.subst = false;
 
 	if (lstr > 0) then
@@ -282,12 +310,18 @@ local function update_menu(ctx, instr, lastv, inp_st)
 			instr = string.sub(instr, 3);
 
 -- only one? substitute with commands
-		elseif(string.sub(instr, 1, 1) == "%") then
+		elseif (string.sub(instr, 1, 1) == "%") then
 			ctx.subst = true;
 			for k,v in pairs(sort_lut) do
 				table.insert(res, k);
 			end
+		elseif (string.sub(instr, 1, 1) == "~") then
+			flt_fun = flt_fuzzy;
 		end
+	end
+
+	if (flt_fun == flt_fuzzy) then
+		sort_mode = "fuzzy_relevance"
 	end
 
 -- generate the subset of fields from the expected range
@@ -347,6 +381,36 @@ local function update_menu(ctx, instr, lastv, inp_st)
 				local rand = math.random(sz);
 				res[i], res[rand] = res[rand], res[i];
 			end
+		elseif (sort_mode == "fuzzy_relevance") then
+			local fuzzy_dist = function(val)
+				if (not val) then
+					return math.huge;
+				end
+
+				local dist = 0;
+				local last_pos = 0;
+				local i = string.utf8forward(instr, 0);
+				while i <= #instr do
+					local next_i = string.utf8forward(instr, i);
+					local ch = string.lower(string.sub(instr, i, next_i - 1));
+					local pos = string.find(string.lower(val), ch, last_pos + 1);
+
+					if (not pos) then
+						break;
+					end
+
+					dist = dist + (pos - last_pos);
+					last_pos = pos;
+					i = next_i;
+				end
+				return dist;
+			end;
+			local relev_sort = function(a, b)
+				return
+					fuzzy_dist(type(a) == "table" and a[3] or a) <
+					fuzzy_dist(type(b) == "table" and b[3] or b);
+			end;
+			table.sort(res, relev_sort);
 		end
 	end
 

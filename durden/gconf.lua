@@ -266,6 +266,7 @@ local defaults = {
 	lbar_seltextstr = "\\#ffffff ",
 	lbar_seltextbg = {0x44, 0x66, 0x88},
 	lbar_itemspace = 10,
+	lbar_fltfun = "prefix",
 
 -- binding bar
 	bind_waittime = 30,
