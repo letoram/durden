@@ -58,4 +58,13 @@ return {
 			gconfig_set("lbar_caret_col", tbl);
 		end,
 	},
+	{
+		name = "filter_function",
+		label = "Filter Function",
+		kind = "value",
+		description = "Change the default candidate filtering function",
+		set = {"prefix", "fuzzy"},
+		initial = function() return gconfig_get("lbar_fltfun"); end,
+		handler = function(ctx, val) gconfig_set("lbar_fltfun", val); end
+	}
 };
