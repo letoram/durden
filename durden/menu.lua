@@ -90,16 +90,20 @@ local function flt_ptn(val, instr)
 end
 
 function flt_fuzzy(val, instr)
-	local last_pos = 0
-	for i=1,#instr do
-		local ch = string.lower(string.sub(instr, i, i))
-		local pos = string.find(string.lower(val), ch, last_pos + 1)
+	local last_pos = 0;
+	local i = string.utf8forward(instr, 0);
+	while i <= #instr do
+		local next_i = string.utf8forward(instr, i);
+		local ch = string.lower(string.sub(instr, i, next_i - 1));
+		local pos = string.find(string.lower(val), ch, last_pos + 1);
 
 		if (not pos) then
 			return false;
 		else
-			last_pos = pos
+			last_pos = pos;
 		end
+
+		i = next_i;
 	end
 
 	return true;
@@ -385,14 +389,19 @@ local function update_menu(ctx, instr, lastv, inp_st)
 
 				local dist = 0;
 				local last_pos = 0;
-				for i=1,#instr do
-					local ch = string.sub(string.lower(instr), i, i);
+				local i = string.utf8forward(instr, 0);
+				while i <= #instr do
+					local next_i = string.utf8forward(instr, i);
+					local ch = string.lower(string.sub(instr, i, next_i - 1));
 					local pos = string.find(string.lower(val), ch, last_pos + 1);
+
 					if (not pos) then
 						break;
 					end
+
 					dist = dist + (pos - last_pos);
 					last_pos = pos;
+					i = next_i;
 				end
 				return dist;
 			end;
