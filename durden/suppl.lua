@@ -303,22 +303,21 @@ function table.insert_unique_i(tbl, i, v)
 	end
 end
 
-function table.i_subsel(table, label, field)
+--
+-- Extract subset of array-like table using
+-- given filter function
+--
+-- Accepts table and filter function.
+-- Input table is not modified in process.
+-- Rest of arguments are passed to filter
+-- function.
+--
+function table.filter(tbl, filter_fn, ...)
 	local res = {};
-	local ll = label and string.lower(label) or "";
-	local i = 1;
 
-	for k,v in ipairs(table) do
-		local match = field and v[field] or v;
-		if (type(match) ~= "string") then
-			warning(string.format("invalid entry(%s,%s) in table subselect",
-				v.name and v.name or "[no name]", field));
-			break;
-		end
-		match = string.lower(match);
-		if (string.len(ll) == 0 or string.sub(match, 1, string.len(ll)) == ll) then
-			res[i] = v;
-			i = i + 1;
+	for _,v in ipairs(tbl) do
+		if (filter_fn(v, ...) == true) then
+			table.insert(res, v);
 		end
 	end
 

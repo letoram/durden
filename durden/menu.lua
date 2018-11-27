@@ -179,11 +179,12 @@ local function set_input(ctx, instr, done, lastv)
 	local m1, m2 = dispatch_meta();
 	if (not done) then
 		local dset = ctx.set;
+		local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
 		if (type(ctx.set) == "function") then
 			dset = ctx.set();
 		end
 
-		return {set = table.i_subsel(dset, instr)};
+		return {set = table.filter(dset, flt_fun, instr)};
 	end
 
 -- let the presence of a menu hook handler decide where we go
@@ -211,7 +212,9 @@ local function value_entry_input(ctx, instr, done, lastv)
 		end
 
 		if (ctx.helpsel) then
-			return {set = table.i_subsel(ctx:helpsel(), instr)};
+-- instead of globally configured filter, use prefix filter here
+-- to prevent accidental auto-completion on custom text input
+			return {set = table.filter(ctx:helpsel(), flt_prefix, instr)};
 		end
 
 		return true;
@@ -355,20 +358,16 @@ local function update_menu(ctx, instr, lastv, inp_st)
 	end
 
 -- and filter these through the possible eval() function
-	inp_st.lastm = {};
-	for _,v in ipairs(subs) do
-		if (filter(v)) then
-			if (v.submenu) then
-				table.insert(res, {mlbl, msellbl, v.label});
+	inp_st.lastm = table.filter(subs, filter);
+	for _,v in ipairs(inp_st.lastm) do
+		if (v.submenu) then
+			table.insert(res, {mlbl, msellbl, v.label});
+		else
+			if (v.format and v.select_format) then
+				table.insert(res, {v.format, v.select_format, v.label});
 			else
-				if (v.format and v.select_format) then
-					table.insert(res, {v.format, v.select_format, v.label});
-				else
-					table.insert(res, v.label);
-				end
+				table.insert(res, v.label);
 			end
--- save a copy to the eval:ed table itself so we can show a help description
-			table.insert(inp_st.lastm, v);
 		end
 	end
 
