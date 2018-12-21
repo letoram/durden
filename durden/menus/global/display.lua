@@ -40,7 +40,8 @@ local function query_synch()
 				name = "synch_" .. tostring(k),
 				label = v,
 				kind = "action",
-				description = "Set dynamic synchronization strategy to '" .. v .. "'",
+				description = lst[v] and lst[v] or
+					"Set dynamic synchronization strategy to '" .. v .. "'",
 				handler = function(ctx)
 					video_synchronization(v);
 				end

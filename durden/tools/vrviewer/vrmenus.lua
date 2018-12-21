@@ -997,7 +997,7 @@ local res = {{
 		return res and type(durden) == "function";
 	end,
 	handler = function(ctx, val)
-		wnd:setup_vr(wnd, val);
+		wnd:setup_vr(function() end, {});
 	end
 }};
 	return res;

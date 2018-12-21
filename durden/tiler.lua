@@ -3342,6 +3342,12 @@ local function wnd_dispmask(wnd, val, noflush)
 
 	if (not noflush) then
 		wnd:displayhint(0, 0, wnd.dispmask);
+
+-- focus target is a new arcan API so wait with assuming its existance
+		if (focus_target and not bit.band(wnd.dispmask, TD_HINT_UNFOCUSED)
+			and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+			focus_target(wnd.external);
+		end
 	end
 end
 
@@ -3898,6 +3904,11 @@ local function wnd_setalternate(res, ind)
 -- swap the alternate sets, copy/synch attachment and visibility properties,
 -- hide the old window, show the new
 	local new = res.alternate[ind];
+	if (not valid_vid(new.anchor)) then
+		warning("set alternate called with new index being dead");
+		return;
+	end
+
 	res.alternate[ind] = res;
 
 -- reference parent-swap -> down.
