@@ -76,6 +76,9 @@ local defaults = {
 	float_defw = 0.3,
 	float_defh = 0.2,
 
+-- % ratio (0..1) of allocated column space for titlebar
+	htab_barw = 0.1,
+
 -- default encoder setting, used by suppl when building string. We don't
 -- have a way to query the span of these parameters yet (like available
 -- codecs).

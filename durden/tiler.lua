@@ -20,6 +20,10 @@ local function tiler_debug(wm, msg)
 	tiler_logfun(wm.name .. ":" .. msg);
 end
 
+local function is_tab_mode(str)
+	return str == "tab" or str == "vtab" or str == "htab" or str == "hrtab";
+end
+
 -- returns:
 -- position,scale,interpolation_function
 local function wnd_animation_time(wnd, source, decor, position)
@@ -375,7 +379,7 @@ local function wnd_deselect(wnd, nopick)
 	end
 
 	local mwm = wnd.space.mode;
-	if (mwm == "tab" or mwm == "vtab") then
+	if (is_tab_mode(str)) then
 		if (not nopick) then
 			hide_image(wnd.anchor);
 		end
@@ -692,8 +696,7 @@ local function wnd_select(wnd, source, mouse)
 
 -- for tabbed modes, the titlebar and the 'tabs' are decoupled and
 -- we hide/show the entire window based on active tab
-	local mwm = wnd.space.mode;
-	if (mwm == "tab" or mwm == "vtab") then
+	if (is_tab_mode(wnd.space.mode)) then
 		show_image(wnd.anchor);
 	end
 
@@ -1173,6 +1176,54 @@ local function reassign_tab(space, wnd)
 	show_image(wnd.border, wnd.show_border and 1 or 0);
 end
 
+local function set_htab(space, repos)
+	local lst = linearize(space);
+	if (#lst == 0) then
+		return;
+	end
+
+	if (space.layouter and space.layouter.resize(space, lst)) then
+		return;
+	end
+
+	space.mode_hook = drop_tab;
+	space.switch_hook = switch_tab;
+	space.reassign_hook = reassign_tab;
+
+	local wm = space.wm;
+	local tbarw = math.ceil(
+		wm.effective_width * gconfig_get("htab_barw") * wm.scalef);
+	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
+	local bw = gconfig_get("borderw");
+	local ofs = 0;
+
+	for i,v in ipairs(lst) do
+		v.max_w = wm.effective_width - tbarw;
+		v.max_h = wm.effective_height;
+		if (not repos) then
+			v:resize(v.max_w, v.max_h);
+		end
+		move_image(v.anchor, 0, 0);
+		move_image(v.canvas, tbarw, 0);
+		hide_image(v.anchor);
+		hide_image(v.border);
+		v.titlebar:switch_group("htab", true);
+		v.titlebar:reanchor(space.anchor, 2, 0, ofs);
+		v.titlebar:resize(tbarw, tbar_sz);
+		ofs = ofs + tbar_sz;
+	end
+
+	if (space.selected) then
+		local wnd = space.selected;
+		wnd:deselect();
+		wnd:select();
+	end
+
+-- this mode is a bit special in that there is often space for attaching
+-- something 'after' the tabs - not used now but a
+--
+end
+
 -- just unlink statusbar, resize all at the same time (also hides some
 -- of the latency in clients producing new output buffers with the correct
 -- dimensions etc). then line the statusbars at the top.
@@ -1193,7 +1244,6 @@ local function set_tab(space, repos)
 	local wm = space.wm;
 	local fairw = math.ceil(wm.effective_width / #lst);
 	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
-	local sb_sz = sbar_geth(wm);
 	local bw = gconfig_get("borderw");
 	local ofs = 0;
 
@@ -1396,7 +1446,8 @@ local space_handlers = {
 	float = set_float,
 	fullscreen = set_fullscreen,
 	tab = set_tab,
-	vtab = set_vtab
+	vtab = set_vtab,
+	htab = set_htab,
 };
 
 local function workspace_destroy(space)
@@ -1691,6 +1742,7 @@ create_workspace = function(wm, anim)
 		tab = function(ws) workspace_set(ws, "tab"); end,
 		vtab = function(ws) workspace_set(ws, "vtab"); end,
 		float = function(ws) workspace_set(ws, "float"); end,
+		htab = function(ws) workspace_set(ws, "htab"); end,
 
 		set_label = workspace_label,
 		set_background = workspace_background,
@@ -1970,7 +2022,7 @@ local function wnd_repos(wnd)
 				lm, interp
 			);
 
-		elseif (wnd.space.mode == "tab" or wnd.space.mode == "vtab") then
+		elseif (is_tab_mode(wnd.space.mode)) then
 			move_image(wnd.anchor, 0, 0);
 		end
 
@@ -2211,6 +2263,7 @@ local function wnd_next(mw, level)
 		return;
 	end
 
+-- should really be split out to its own mode handler
 	local mwm = mw.space.mode;
 	if (mwm == "float") then
 		wnd = level and find_nearest(mw, 0, 1) or find_nearest(mw, 1, 0);
@@ -2219,7 +2272,7 @@ local function wnd_next(mw, level)
 			return;
 		end
 
-	elseif (mwm == "tab" or mwm == "vtab") then
+	elseif (is_tab_mode(mwm)) then
 		local lst = linearize(mw.space);
 		local ind = table.find_i(lst, mw);
 		ind = ind == #lst and 1 or ind + 1;
@@ -2268,7 +2321,7 @@ local function wnd_prev(mw, level)
 			return;
 		end
 
-	elseif (mwm == "tab" or mwm == "vtab" or mwm == "float") then
+	elseif (is_tab_mode(mwm) or "float") then
 		local lst = linearize(mw.space);
 		local ind = table.find_i(lst, mw);
 		ind = ind == 1 and #lst or ind - 1;
@@ -2276,7 +2329,7 @@ local function wnd_prev(mw, level)
 		return;
 	end
 
-	if (level or mwm == "tab" or mwm == "vtab") then
+	if (level or is_tab_mode(mwm)) then
 		if (mw.parent.select) then
 			mw.parent:select();
 			return;
