@@ -119,6 +119,16 @@ local workspace_layout_menu = {
 			local space = active_display().spaces[active_display().space_ind];
 			space = space and space:vtab() or nil;
 		end
+	},
+	{
+		name = "htab",
+		kind = "action",
+		description = "Switch the workspace management to horiztonal-column tabbed mode",
+		label = "Tabbed Column",
+		handler = function()
+			local space = active_display().spaces[active_display().space_ind];
+			space = space and space:htab() or nil;
+		end
 	}
 };
 

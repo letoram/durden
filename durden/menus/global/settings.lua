@@ -91,6 +91,21 @@ function ui_scheme_menu(scope, tgt)
 	return res;
 end
 
+local tab_menu = {
+	{
+		label = "Column Weight",
+		description = "Percentage of screen width reserved for tab column",
+		name = "htab_weight",
+		kind = "value",
+		initial = function(ctx) return tostring(gconfig_get("htab_barw")); end,
+		validator = gen_valid_num(0.01, 0.5),
+		handler = function(ctx, val)
+			gconfig_set("htab_barw", tonumber(val));
+
+		end,
+	},
+};
+
 local config_browser = {
 	{
 		name = "preview_mode",
@@ -172,6 +187,14 @@ local durden_workspace = {
 		end,
 		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
 		handler = suppl_flip_handler("ws_autoadopt")
+	},
+	{
+		name = "tabbed",
+		label = "Tabs",
+		description = "Configuration options for tabbed workspace layouts",
+		kind = "action",
+		submenu = true,
+		handler = tab_menu
 	}
 };
 
