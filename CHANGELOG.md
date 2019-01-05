@@ -14,6 +14,9 @@
 		 added per-window option to bind multiple custom triggers on select,
 		 deselect and destroy
 
+	* menu/hud:
+	   Cipharius added support for fuzzy-string matching to the HUD
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is

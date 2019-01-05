@@ -46,6 +46,17 @@ Working with the IPC system is a decent way to explore and test things.
 To do so, build the arcan-cfgfs (src/tools/acfgfs) with FUSE so you can
 mount the control point (e.g. ~/.arcan/appl-out/durden/control). If the
 FUSE driver misbehaves, try with something like socat - unix-connect:p
+The 'Monitor' mode is particularly helpful.
+
+Debug-level and Widgets
+------
+The debug-level can be changed via the global/config/system/debug path.
+This enables some more widgets (in root for target showing window state
+for instance) but also the global/system/debug submenu. The dump option
+should be particularly helpful for getting partial state. A normal REPL
+into the lua machine is not currently there as blocking parts would add
+timing problems.
+
 
 Testing
 ------
@@ -75,8 +86,6 @@ the near future. A few of the planned changes include:
  * Extending menus and alerts with translations
  * Allowing for multiple- 'tiler.lua' and enforcing better separation,
    this is partially being done now with the VR- tool
- * Extending the shader interface for multi-pass work
- * Supporting multiple shader dialects
 
 The translations will be kept seperate and act as replacements for the
 label field in the menus and shouldn't impose much change at all as it
