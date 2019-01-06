@@ -79,6 +79,11 @@ local defaults = {
 -- % ratio (0..1) of allocated column space for titlebar
 	htab_barw = 0.1,
 
+-- padding pixels
+	htab_lpad = 0,
+	htab_tpad = 0,
+	htab_rpad = 0,
+
 -- default encoder setting, used by suppl when building string. We don't
 -- have a way to query the span of these parameters yet (like available
 -- codecs).
