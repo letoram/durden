@@ -1195,7 +1195,9 @@ local function set_htab(space, repos)
 		wm.effective_width * gconfig_get("htab_barw") * wm.scalef);
 	local tbar_sz = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
 	local bw = gconfig_get("borderw");
-	local ofs = 0;
+	local lpad = math.ceil(gconfig_get("htab_lpad") * wm.scalef);
+	local rpad = math.ceil(gconfig_get("htab_rpad") * wm.scalef);
+	local ofs = math.ceil(gconfig_get("htab_tpad") * wm.scalef);
 
 	for i,v in ipairs(lst) do
 		v.max_w = wm.effective_width - tbarw;
@@ -1204,11 +1206,11 @@ local function set_htab(space, repos)
 			v:resize(v.max_w, v.max_h);
 		end
 		move_image(v.anchor, 0, 0);
-		move_image(v.canvas, tbarw, 0);
+		move_image(v.canvas, lpad + rpad + tbarw, 0);
 		hide_image(v.anchor);
 		hide_image(v.border);
 		v.titlebar:switch_group("htab", true);
-		v.titlebar:reanchor(space.anchor, 2, 0, ofs);
+		v.titlebar:reanchor(space.anchor, 2, lpad, ofs);
 		v.titlebar:resize(tbarw, tbar_sz);
 		ofs = ofs + tbar_sz;
 	end

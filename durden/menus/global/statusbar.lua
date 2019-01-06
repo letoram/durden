@@ -92,7 +92,7 @@ return {
 	{
 		name = "border_pad",
 		label = "Border Padding",
-		description = "Insert padding (% of display size)",
+		description = "Insert padding",
 		kind = "value",
 		initial = function()
 			return string.format("%.2d %.2d %.2d %.2d",

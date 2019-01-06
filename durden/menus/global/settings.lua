@@ -91,21 +91,6 @@ function ui_scheme_menu(scope, tgt)
 	return res;
 end
 
-local tab_menu = {
-	{
-		label = "Column Weight",
-		description = "Percentage of screen width reserved for tab column",
-		name = "htab_weight",
-		kind = "value",
-		initial = function(ctx) return tostring(gconfig_get("htab_barw")); end,
-		validator = gen_valid_num(0.01, 0.5),
-		handler = function(ctx, val)
-			gconfig_set("htab_barw", tonumber(val));
-
-		end,
-	},
-};
-
 local config_browser = {
 	{
 		name = "preview_mode",
@@ -152,49 +137,6 @@ local config_browser = {
 		handler = function(ctx, val)
 			gconfig_set("browser_trigger", val);
 		end
-	}
-};
-
-local durden_workspace = {
-	{
-		name = "autodel",
-		label = "Autodelete",
-		kind = "value",
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		description = "Automatically destroy workspaces that do not have any windows",
-		initial = function() return
-			gconfig_get("ws_autodestroy") and LBL_YES or LBL_NO end,
-		handler = suppl_flip_handler("ws_autodestroy")
-	},
-	{
-		name = "defmode",
-		label = "Default Mode",
-		kind = "value",
-		set = {"tile", "tab", "vtab", "float"},
-		initial = function() return tostring(gconfig_get("ws_default")); end,
-		handler = function(ctx, val)
-			gconfig_set("ws_default", val);
-		end
-	},
-	{
-		name = "adopt",
-		label = "Autoadopt",
-		kind = "value",
-		description = "Let displays adopt orphaned workspaces automatically",
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		eval = function()
-			return gconfig_get("display_simple") and LBL_YES or LBL_NO;
-		end,
-		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
-		handler = suppl_flip_handler("ws_autoadopt")
-	},
-	{
-		name = "tabbed",
-		label = "Tabs",
-		description = "Configuration options for tabbed workspace layouts",
-		kind = "action",
-		submenu = true,
-		handler = tab_menu
 	}
 };
 
@@ -477,7 +419,7 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "Workspace layout mode settings",
-		handler = durden_workspace
+		handler = system_load("menus/global/workspaces.lua")()
 	},
 	{
 		name = "timers",
