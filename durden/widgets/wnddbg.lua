@@ -47,6 +47,9 @@ local function probe(ctx, yh)
 		"suggested max: %d * %d", wnd.max_w, wnd.max_h));
 
 	table.insert(lines, string.format(
+		"input-rate limited: %s", wnd.rate_unlimited and "no" or "yes"));
+
+	table.insert(lines, string.format(
 		"weight: %d - %d", wnd.weight, wnd.vweight));
 
 	table.insert(lines, "scale: " .. wnd.scalemode);
