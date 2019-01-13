@@ -15,7 +15,6 @@ local mtrack = {
 	mlock = "none"
 };
 
--- same as with every subsystem, should really just consolidate these in suppl
 local dispatch_debug = suppl_add_logfn("dispatch")();
 
 local function update_meta(m1, m2)

@@ -134,8 +134,11 @@ end
 local defhtbl = {};
 defhtbl["input_label"] =
 function(wnd, source, tbl)
-	if (not wnd.input_labels) then
+	if (not wnd.input_labels or #tbl.labelhint == 0) then
 		wnd.input_labels = {};
+		if (#tbl.labelhint == 0) then
+			return;
+		end
 	end
 
 -- NOTE: this does not currently respect:
