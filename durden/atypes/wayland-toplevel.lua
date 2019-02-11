@@ -402,9 +402,13 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 
 	if (wnd.space.mode == "float") then
 		wnd:displayhint(nefw + dw, nefh + dh, wnd.dispmask);
--- for automatic modes, we just use the suggested max
+-- for automatic modes, we just use the suggested max and subtract any decorations
 	else
-		wnd:displayhint(wnd.max_w + dw, wnd.max_h + dh, wnd.dispmask);
+		wnd:displayhint(
+			wnd.max_w - dw - wnd.pad_top - wnd.pad_bottom,
+			wnd.max_h - dh - wnd.pad_left - wnd.pad_right,
+			wnd.dispmask
+		);
 	end
 end
 

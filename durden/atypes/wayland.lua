@@ -196,7 +196,7 @@ local function cursor_handler(cl, source, status)
 end
 
 local seglut = {};
-seglut["application"] = function(wnd, source, stat)
+local function build_application_window(wnd, source, stat, opts)
 -- need to wait with assigning a handler since we want to forward a new window
 	local ad = active_display();
 	local neww, newh = ad:suggest_size();
@@ -216,11 +216,6 @@ seglut["application"] = function(wnd, source, stat)
 	if (not wnd.wl_children) then
 		wnd.wl_children = {};
 	end
-
-	local opts = {
-		show_titlebar = false,
-		show_border = false
-	};
 
 	local newwnd = active_display():add_hidden_window(id, opts);
 	if (not newwnd) then
@@ -244,6 +239,20 @@ seglut["application"] = function(wnd, source, stat)
 	newwnd.bridge = wnd;
 
 	return true;
+end
+
+seglut["application"] = function(wnd, source, stat)
+	return build_application_window(wnd, source, stat, {
+		show_titlebar = false,
+		show_border = false
+	});
+end
+
+seglut["bridge-x11"] = function(wnd, source, stat)
+	return build_application_window(wnd, source, stat, {
+		show_titlebar = true,
+		show_border = true
+	});
 end
 
 -- so this is part of the s[hi,ea]t concept, the same custom cursor is shared
