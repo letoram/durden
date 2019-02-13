@@ -385,15 +385,22 @@ local function wnd_deselect(wnd, nopick)
 		end
 	end
 
+-- remove from the current selected, and detach from the statusbar if the
+-- window has its titlebar being dynamically embedded there
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
 		wnd.wm.statusbar:set_nested();
 	end
 
+-- don't keep a lock to the window either
 	if (wnd.mouse_lock) then
 		mouse_lockto(BADID);
 	end
 
+-- remove any popup chains that might be locked
+	wnd:drop_popup(true);
+
+-- forward state to the client
 	wnd:set_dispmask(bit.bor(wnd.dispmask, TD_HINT_UNFOCUSED));
 
 	local x, y = mouse_xy();
@@ -403,6 +410,7 @@ local function wnd_deselect(wnd, nopick)
 		mouse_hidemask(false);
 	end
 
+-- switch the 'visual' state
 	local state = wnd.suspended and "suspended" or "inactive";
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
@@ -420,6 +428,7 @@ local function wnd_deselect(wnd, nopick)
 		end
 	end
 
+-- run any other chained handlers, typically from autolayouters
 	tiler_debug(wnd.wm, "deselect:name=" .. wnd.name);
 	run_event(wnd, "deselect");
 end
@@ -1185,6 +1194,17 @@ local function set_htab(space, repos)
 	if (space.layouter and space.layouter.resize(space, lst)) then
 		return;
 	end
+
+--	if (not valid_vid(space.dropshadow)) then
+--	experimental shadow region
+--		local shadow = fill_surface(128, 800, 0, 0, 0);
+--		blend_image(shadow, 0.9);
+--		shader_setup(shadow, "ui", "dropshadow");
+--		link_image(shadow, space.anchor);
+--		image_inherit_order(shadow, true);
+--		order_image(shadow, 1);
+--		space.dropshadow = shadow;
+--	end
 
 	space.mode_hook = drop_tab;
 	space.switch_hook = switch_tab;
@@ -2814,6 +2834,7 @@ end
 local function wnd_droppopup(wnd, all)
 	local at = gconfig_get("animation");
 
+-- work in reverse order
 	if (all) then
 		for i=#wnd.popups,1,-1 do
 			v = wnd.popups[i];
@@ -2827,6 +2848,7 @@ local function wnd_droppopup(wnd, all)
 		wnd.popups = {};
 		wnd.input_focus = nil;
 
+-- or just remove the previous in the chain
 	elseif (#wnd.popups > 0) then
 		local pop = wnd.popups[#wnd.popups];
 		if (pop.on_destroy) then
