@@ -14,6 +14,9 @@
 		 added per-window option to bind multiple custom triggers on select,
 		 deselect and destroy
 
+  * layout/tile:
+	   allow titlebar drag/drop as a mouse- triggered way to swap
+
 	* menu/hud:
 	   Cipharius added support for fuzzy-string matching to the HUD
 

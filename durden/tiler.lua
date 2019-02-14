@@ -1240,10 +1240,6 @@ local function set_htab(space, repos)
 		wnd:deselect();
 		wnd:select();
 	end
-
--- this mode is a bit special in that there is often space for attaching
--- something 'after' the tabs - not used now but a
---
 end
 
 -- just unlink statusbar, resize all at the same time (also hides some
@@ -2586,7 +2582,7 @@ local function wnd_drag_resize(wnd, mctx, enter)
 end
 
 local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
-	if (not wnd.space or wnd.space.mode ~= "float") then
+	if (not wnd.space) then
 		return;
 	end
 
@@ -3638,6 +3634,15 @@ local function wnd_border(wnd, visible, user_force, bw)
 	wnd.space:resize();
 end
 
+local function try_swap(vids, wnd, candidates)
+	for i,v in ipairs(candidates) do
+		if (v ~= wnd and vids[v.canvas]) then
+			wnd:swap(v, false, false);
+			return;
+		end
+	end
+end
+
 local titlebar_mh = {
 	over = function(ctx)
 		if (ctx.tag.space.mode == "float") then
@@ -3664,23 +3669,41 @@ local titlebar_mh = {
 	end,
 	drop = function(ctx)
 		local tag = ctx.tag;
+
 		if (tag.space.mode == "float") then
 			mouse_switch_cursor("grabhint");
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, dx, dy, true);
 			end
 			tag:recovertag();
+
+-- drop in tiled means swap, but also "restore" if no wnd.
+		elseif (tag.space.mode == "tile") then
+			local wnds = {};
+			local x, y = mouse_xy();
+			local items = pick_items(x, y, 8, true, active_display(true));
+			print("tile, drop, items: ", #items, x, y);
+			local set = {};
+			if (#items) then
+				for i,v in ipairs(items) do
+					set[v] = true;
+				end
+				try_swap(set, tag, tag.space:linearize());
+			end
+
+-- restore is just relayout, so applies to both cases
+			tag.space:resize();
 		end
 	end,
 	drag = function(ctx, vid, dx, dy)
 		local tag = ctx.tag;
 -- no constraint or collision solver here, might be needed?
-		if (tag.space.mode == "float") then
-			if (tag.space.drag_solver) then
-				tag.space.drag_solver(tag);
-			else
-				tag:move(dx, dy, false, false, true);
-			end
+		if (tag.space.mode == "float" or tag.space.mode == "tile") then
+-- disable the VIDs from the 'drag' so that on-over/on-out tracking
+-- register for windows that we are passing
+			tag:move(dx, dy, false, false, true);
+
+-- some event handlers to allow determining if it is 'droppable' or not
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, dx, dy);
 			end
@@ -3822,11 +3845,8 @@ local canvas_mh = {
 				wnd_step_drag(wnd, ctx, vid, dx, dy);
 			end
 		elseif (wnd.in_drag_move) then
-			if (wnd.space.drag_solver) then
-				wnd.space.drag_solver(wnd);
-			else
-				wnd:move(dx, dy, false, false, true);
-			end
+			wnd:move(dx, dy, false, false, true);
+
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
 				v(wnd.space.wm, wnd, dx, dy);
 			end
