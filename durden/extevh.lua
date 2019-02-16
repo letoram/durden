@@ -307,6 +307,8 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	wnd.dispatch = atbl.dispatch and atbl.dispatch or {};
 	wnd.labels = atbl.labels and atbl.labels or {};
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
+	wnd.show_titlebar = atbl.hide_titlebar and false or true;
+	wnd.show_border = atbl.hide_border and false or true;
 	wnd.atype = atype;
 
 -- only apply for the selected window, weird edge-case

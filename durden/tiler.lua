@@ -3643,6 +3643,22 @@ local function try_swap(vids, wnd, candidates)
 	end
 end
 
+local function drop_swap(wnd)
+	local wnds = {};
+	local x, y = mouse_xy();
+	local items = pick_items(x, y, 8, true, active_display(true));
+	local set = {};
+	if (#items) then
+		for i,v in ipairs(items) do
+			set[v] = true;
+		end
+		try_swap(set, wnd, wnd.space:linearize());
+	end
+
+-- restore is just relayout, so applies to both cases
+	wnd.space:resize();
+end
+
 local titlebar_mh = {
 	over = function(ctx)
 		if (ctx.tag.space.mode == "float") then
@@ -3673,26 +3689,13 @@ local titlebar_mh = {
 		if (tag.space.mode == "float") then
 			mouse_switch_cursor("grabhint");
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
-				v(tag.space.wm, tag, dx, dy, true);
+				v(tag.space.wm, tag, 0, 0, true);
 			end
 			tag:recovertag();
 
 -- drop in tiled means swap, but also "restore" if no wnd.
 		elseif (tag.space.mode == "tile") then
-			local wnds = {};
-			local x, y = mouse_xy();
-			local items = pick_items(x, y, 8, true, active_display(true));
-			print("tile, drop, items: ", #items, x, y);
-			local set = {};
-			if (#items) then
-				for i,v in ipairs(items) do
-					set[v] = true;
-				end
-				try_swap(set, tag, tag.space:linearize());
-			end
-
--- restore is just relayout, so applies to both cases
-			tag.space:resize();
+			drop_swap(tag);
 		end
 	end,
 	drag = function(ctx, vid, dx, dy)
@@ -3778,7 +3781,7 @@ local border_mh = {
 -- which we use to calculate splitting point
 
 		if (type(wnd.in_drag_rz) == "function") then
-			wnd:in_drag_rz(ctx.tag, ctx, vid, 0, 0, true);
+--			wnd:in_drag_rz(ctx.tag, vid, 0, 0, true);
 		end
 
 -- normal might also care
@@ -3821,7 +3824,7 @@ local canvas_mh = {
 	end,
 	drag = function(ctx, vid, dx, dy, ...)
 		local wnd = ctx.tag;
-		if (not wnd.space.mode == "float") then
+		if (wnd.space.mode ~= "float" and wnd.space.mode ~= "tile") then
 			return;
 		end
 
@@ -3860,7 +3863,11 @@ local canvas_mh = {
 
 	drop = function(ctx, vid)
 		local tag = ctx.tag;
+
 		if (tag.in_drag_move) then
+			if (tag.space.mode == "tile") then
+				drop_swap(tag);
+			end
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, 0, 0, true);
 			end
