@@ -44,19 +44,31 @@ applicable. If in doubt, check on the IRC channel first.
 
 Working with the IPC system is a decent way to explore and test things.
 To do so, build the arcan-cfgfs (src/tools/acfgfs) with FUSE so you can
-mount the control point (e.g. ~/.arcan/appl-out/durden/control). If the
-FUSE driver misbehaves, try with something like socat - unix-connect:p
-The 'Monitor' mode is particularly helpful.
+mount the control point (e.g. ~/.arcan/appl-out/durden/control).
 
-Debug-level and Widgets
+Debugging Tools
 ------
-The debug-level can be changed via the global/config/system/debug path.
-This enables some more widgets (in root for target showing window state
-for instance) but also the global/system/debug submenu. The dump option
-should be particularly helpful for getting partial state. A normal REPL
-into the lua machine is not currently there as blocking parts would add
-timing problems.
+The menu paths and HUD/widgets behave differently baseed on which debug
+level that is set (default: 0=off). It can be changed via global/config
+/system/debug. Raising it opens up helper widgets and system/debug.
 
+The same debugging techniques that apply to arcan are useful here:
+
+ * script errors gets snapshotted and stored in the ARCAN\_LOGPATH
+
+Then there are extra debug features added here:
+
+ * if a script error was recovered the issue will appear as a widget on
+   the HUD, right click it will also add the trace to the clipboard.
+
+ * debug windows can be injected into clients via the
+   target/video/advanced/debug path, multiple calls can yield different
+	 views.
+
+ * the external control socket (global/config/system/control) i
+   connected to, it appears in the ARCAN\_APPLTEMPPATH or the resolved
+	 default ($HOME/.arcan or corresponding XDG path)/durden/ipc/control
+	 then use monitor subsystem (or all) to see WM state logs.
 
 Testing
 ------
@@ -144,7 +156,8 @@ specially formatted table that should look something like this:
                  varying vec2 texco;
                  void main()
                  {
-                     gl_FragColor = vec4(texture2D(map_tu0, texco), obj_opacity);
+                     gl_FragColor = vec4(
+										     texture2D(map_tu0, texco), obj_opacity);
                  }
                 ]]
         };
