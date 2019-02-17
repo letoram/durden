@@ -50,6 +50,9 @@ local function probe(ctx, yh)
 		"input-rate limited: %s", wnd.rate_unlimited and "no" or "yes"));
 
 	table.insert(lines, string.format(
+		"block_rz: %s", wnd.block_rz_hint and "yes" or "no"));
+
+	table.insert(lines, string.format(
 		"weight: %d - %d", wnd.weight, wnd.vweight));
 
 	table.insert(lines, "scale: " .. wnd.scalemode);

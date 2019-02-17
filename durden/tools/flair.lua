@@ -94,7 +94,14 @@ local background_effects = system_load("tools/flair/background.lua", false)();
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
 local function flair_drag_hook(wm, wnd, dx, dy, last)
+	if (wnd.space.mode ~= "float") then
+		return;
+	end
+
+-- already in effect, just update
 	if (in_drag) then
+
+-- on-drag-leave
 		if (last) then
 			if (drag_effect) then
 				drag_effect.stop(wnd);
@@ -102,20 +109,24 @@ local function flair_drag_hook(wm, wnd, dx, dy, last)
 			end
 			in_drag = false;
 			show_image(wnd.anchor);
+
 		elseif (drag_effect) then
 			drag_effect.update(wnd, dx, dy);
 		end
-	else
-		local cv = gconfig_get("flair_drag");
-		in_drag = true;
-		blend_image(wnd.anchor, gconfig_get("flair_drag_opacity"));
-		if (drag_effects) then
-			for i,v in ipairs(drag_effects) do
-				if (v.label == cv) then
-					drag_effect = v;
-					drag_effect.start(wnd);
-					return;
-				end
+		return;
+	end
+
+-- on-drag-enter
+	local cv = gconfig_get("flair_drag");
+	in_drag = true;
+	blend_image(wnd.anchor, gconfig_get("flair_drag_opacity"));
+
+	if (drag_effects) then
+		for i,v in ipairs(drag_effects) do
+			if (v.label == cv) then
+				drag_effect = v;
+				drag_effect.start(wnd);
+				return;
 			end
 		end
 	end

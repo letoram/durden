@@ -26,14 +26,14 @@ end
 
 toplevel_lut["maximize"] = function(wnd)
 	wayland_debug("toplevel:maximize");
-	if (wnd.space.mode == "float") then
+	if (wnd.space and wnd.space.mode == "float") then
 		wnd:toggle_maximize();
 	end
 end
 
 toplevel_lut["demaximize"] = function(wnd)
 	wayland_debug("toplevel:demaximize");
-	if (wnd.space.mode == "float") then
+	if (wnd.space and wnd.space.mode == "float") then
 		wnd:toggle_maximize();
 	end
 end

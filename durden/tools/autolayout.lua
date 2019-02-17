@@ -539,7 +539,7 @@ local layouters = {
 	kind = "action",
 	eval = function()
 		local d = active_display():active_space();
-		return d.layouter;
+		return d.layouter ~= nil;
 	end,
 	handler = function()
 		local space = active_display():active_space();

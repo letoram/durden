@@ -3686,16 +3686,17 @@ local titlebar_mh = {
 	drop = function(ctx)
 		local tag = ctx.tag;
 
-		if (tag.space.mode == "float") then
+		if (tag.space.mode == "float" or tag.space.mode == "tile") then
 			mouse_switch_cursor("grabhint");
+
+			if (tag.space.mode == "tile") then
+				drop_swap(tag);
+			end
+
 			for k,v in ipairs(tag.space.wm.on_wnd_drag) do
 				v(tag.space.wm, tag, 0, 0, true);
 			end
 			tag:recovertag();
-
--- drop in tiled means swap, but also "restore" if no wnd.
-		elseif (tag.space.mode == "tile") then
-			drop_swap(tag);
 		end
 	end,
 	drag = function(ctx, vid, dx, dy)
@@ -4474,7 +4475,11 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	link_image(vid, wnd.canvas);
 	image_inherit_order(vid, true);
 	order_image(vid, 1);
-	image_clip_on(vid, CLIP_SHALLOW);
+
+-- clipping is default, but opt out of it
+	if not (opts.noclip) then
+		image_clip_on(vid, CLIP_SHALLOW);
+	end
 
 -- opaque or blended
 	if (opts.blend) then
@@ -4863,8 +4868,12 @@ local wnd_setup = function(wm, source, opts)
 	res.ws_attach = wnd_ws_attach;
 -- load / override settings with whatever is in tag-memory
 	res:recovertag(true);
+
 	tiler_debug(wm, string.format(
-		"create:name=%s:=w%d:h=%d", res.name, res.width, res.height));
+		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s",
+		res.name, res.width, res.height,
+		tostring(res.show_titlebar), tostring(res.show_border))
+	);
 
 	return res;
 end
