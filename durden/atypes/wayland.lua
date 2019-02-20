@@ -3,7 +3,7 @@
 -- arcan/src/tools/wlbridge.
 --
 local wlwnds = {}; -- vid->window allocation tracking
-local wlsurf = {}; -- segment cookie->vid tracking
+local wlsurf = {}; -- segment cookie->vi tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
 -- also used in xdg- ... so global scope
@@ -13,14 +13,18 @@ function wayland_wndcookie(id)
 	return wlsurf[id] and wlwnds[wlsurf[id]];
 end
 
-function wayland_lostwnd(source)
+function wayland_lostwnd(source, id)
 	wayland_debug("dropped:source=" .. tostring(source));
 	wlwnds[source] = nil;
+	if (id) then
+		wlsurf[id] = nil;
+		wlsubsurf[id] = nil;
+	end
 end
 
-function wayland_gotwnd(source)
+function wayland_gotwnd(source, wnd)
 	wayland_debug("added:source=" .. tostring(source));
-	wlwnds[source] = nil;
+	wlwnds[source] = wnd;
 end
 
 local function subsurf_handler(cl, source, status)
@@ -196,7 +200,7 @@ local function cursor_handler(cl, source, status)
 end
 
 local seglut = {};
-local function build_application_window(wnd, source, stat, opts)
+local function build_application_window(wnd, source, stat, opts, atype, handler)
 -- need to wait with assigning a handler since we want to forward a new window
 	local ad = active_display();
 	local neww, newh = ad:suggest_size();
@@ -217,25 +221,34 @@ local function build_application_window(wnd, source, stat, opts)
 		wnd.wl_children = {};
 	end
 
+-- build window, forward options, add our type specific patches as well
 	local newwnd = active_display():add_hidden_window(id, opts);
 	if (not newwnd) then
 		return false;
 	end
+	newwnd.wl_autossd = opts.auto_ssd;
 
-	newwnd.wl_autossd = gconfig_get("wl_decorations") == "autossd";
+-- chain to the handler, expose the window to the handler
 	target_updatehandler(id,
 		function(source, status)
-			wayland_toplevel_handler(newwnd, source, status);
+			handler(newwnd, source, status);
 		end
 	);
 
 -- since the 'registered' event won't get routed past the extevh, we need
 -- to manually apply the atype for the toplevel here - this does not attach/
 -- cascade a resize though
-	extevh_apply_atype(newwnd, "wayland-toplevel", id, stat);
+	extevh_apply_atype(newwnd, atype, id, stat);
 	newwnd.source_audio = aid;
+	newwnd.cookie = cookie;
+
+-- keep separate track of the wayland windows so that we don't mix and match,
+-- a wlwnd shouldn't be able to reparent to one that isn't
 	wlwnds[id] = newwnd;
 	table.insert(wnd.wl_children, newwnd);
+
+-- and keep track of the bridge node where this was allocated, as there might
+-- be multiple that we want to keep separated
 	newwnd.bridge = wnd;
 
 	return true;
@@ -244,15 +257,16 @@ end
 seglut["application"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
 		show_titlebar = false,
-		show_border = false
-	});
+		show_border = false,
+		auto_ssd = gconfig_get("wl_decorations") == "autossd",
+	}, "wayland-toplevel", wayland_toplevel_handler);
 end
 
 seglut["bridge-x11"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
 		show_titlebar = true,
 		show_border = true
-	});
+	}, "x11surface", x11_event_handler);
 end
 
 -- so this is part of the s[hi,ea]t concept, the same custom cursor is shared
@@ -298,6 +312,7 @@ seglut["multimedia"] = function(wnd, source, stat)
 
 	if (valid_vid(vid)) then
 		link_image(vid, wnd.anchor);
+		image_mask_set(vid, MASK_UNPICKABLE);
 		return true;
 	end
 end

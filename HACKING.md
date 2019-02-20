@@ -70,6 +70,12 @@ Then there are extra debug features added here:
 	 default ($HOME/.arcan or corresponding XDG path)/durden/ipc/control
 	 then use monitor subsystem (or all) to see WM state logs.
 
+The external control socket is convenient as an alias, e.g.
+
+    alias durden_debug='socat unix-client:$HOME/.arcan/appl-out/durden/ipc/control -'
+		durden_debug
+		 > monitor wm input
+
 Testing
 ------
 For any newly developed feature, figuring out what needs testing is not
@@ -226,7 +232,7 @@ accessed via the CLIPBOARD global table and expose the following methods:
                 provider matched to the video-id 'source_vid'.
 
     set_monitor(monitor_function(ctx, msg, src) )
-            register a clipboard monitor, this is a singleton and any
+                register a clipboard monitor, this is a singleton and any
                 pre-existing monitor will be disabled. monitor_function will
                 be called every time something is added to the global clipboard,
                 or with a 'nil' msg / src_vid when the monitor will be dropped.
