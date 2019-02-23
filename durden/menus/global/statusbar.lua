@@ -18,7 +18,7 @@ local function remove_button(dir)
 			if (not dir or v.direction == string.lower(dir)) then
 				table.insert(res, {
 					name = tostring(i),
-					label = group .. "_" .. tostring(i),
+					label = dir .. "_" .. tostring(i),
 					description = "Button Label: " .. v.label,
 					kind = "action",
 					handler = function()
