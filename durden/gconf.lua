@@ -414,10 +414,13 @@ function gconfig_statusbar_rebuild(nosynch)
 		str_to_btn(gconfig_statusbar, v);
 	end
 
--- will take care of synching against gconfig_statusbar
+-- will take care of synching against gconfig_statusbar, but only
+-- if the tiler itself expose that method
 	if all_tilers_iter then
 		for tiler in all_tilers_iter() do
-			tiler:rebuild_statusbar_custom();
+			if (tiler.rebuild_statusbar_custom) then
+				tiler:rebuild_statusbar_custom(gconfig_statusbar);
+			end
 		end
 	end
 end

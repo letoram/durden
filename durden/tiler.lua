@@ -135,8 +135,12 @@ local function run_event(wnd, event, ...)
 end
 
 local function wnd_titlebar_to_statusbar(wnd)
-	if (not wnd.titlebar or not wnd.titlebar.hidden or
-		not gconfig_get("titlebar_statusbar")) then
+	if (
+		not wnd.titlebar or
+		not wnd.titlebar.hidden or
+		not gconfig_get("titlebar_statusbar") or
+		not tbar_mode(wnd.space.mode)
+	) then
 		return;
 	end
 
@@ -491,7 +495,9 @@ local function tiler_statusbar_update(wm)
 -- positioning etc. still needs the current size of the statusbar
 	statush = sbar_geth(wm);
 
--- modify this to implement vertical sidebars
+-- modify this to implement vertical sidebars, interesting option
+-- would be to attach to the list of tabs in the sidebar tabbed
+-- mode and split left/center/right into groups of its own.
 	wm.effective_width = wm.width;
 	wm.effective_height = wm.height - ytop - ybottom - statush;
 
@@ -564,6 +570,10 @@ end
 
 local function tiler_statusbar_build(wm)
 	local sbsz = sbar_geth(wm, true);
+	if (wm.statusbar) then
+		wm.statusbar:destroy();
+	end
+
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
@@ -2090,7 +2100,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 	reset_image_transform(wnd.anchor);
 	resize_image(wnd.anchor, w, h, at);
 
-	if (wnd.show_titlebar) then
+	if (wnd.show_titlebar or not tbar_mode(wnd.space.mode)) then
 		wnd.titlebar:show();
 		wnd.titlebar:move(wnd.pad_left, wnd.pad_top, at, af);
 		wnd.titlebar:resize(
@@ -5432,7 +5442,6 @@ function tiler_create(width, height, opts)
 		message = tiler_message,
 		resize = tiler_resize,
 		tile_update = tiler_statusbar_update,
-		rebuild_statussbar_custom = tiler_statusbar_custom,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
