@@ -1960,8 +1960,9 @@ local function apply_scalemode(wnd, mode, src, props, maxw, maxh, force)
 
 	tiler_debug(wnd.wm,
 		string.format("pre_resize:name=%s:scale=%s:sw=%d:sh=%d:maxw=%d:maxh=%d" ..
-			":force=%s:outw=%d:outh=%d", wnd.name, wnd.scalemode, props.width,
-			props.height, maxw, maxh, force and "yes" or "no", outw, outh)
+			":force=%s:outw=%d:outh=%d:origo=%s", wnd.name, wnd.scalemode, props.width,
+			props.height, maxw, maxh, force and "yes" or "no", outw, outh,
+			wnd.origo_ll and "ll" or "ul")
 	);
 
 	return outw, outh, retw, reth;

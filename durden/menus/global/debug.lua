@@ -231,6 +231,12 @@ DataDumper = function(value, varname, fastmode, ident)
   end
 end
 
+local function spawn_debug_wnd(vid, title)
+	show_image(vid);
+	local wnd = active_display():add_window(vid, {scalemode = "stretch"});
+	wnd:set_title(title);
+end
+
 local function gen_displaywnd_menu()
 	local res = {};
 	for disp in all_displays_iter() do
@@ -249,12 +255,6 @@ local function gen_displaywnd_menu()
 	end
 
 	return res;
-end
-
-local function spawn_debug_wnd(vid, title)
-	show_image(vid);
-	local wnd = active_display():add_window(vid, {scalemode = "stretch"});
-	wnd:set_title(title);
 end
 
 local function gettitle(wnd)
@@ -299,6 +299,7 @@ local dump_menu = {
 },
 };
 
+local counter = 0;
 return {
 	{
 		name = "dump",
