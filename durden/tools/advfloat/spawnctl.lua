@@ -25,9 +25,10 @@ local function activate_pending()
 end
 
 local function wnd_attach(wm, wnd)
-	wnd:ws_attach(true);
+	local res = wnd:ws_attach(true);
+
 	if (wnd.wm:active_space().mode ~= "float") then
-		return;
+		return res;
 	end
 
 	if (pending) then
@@ -95,6 +96,8 @@ local function wnd_attach(wm, wnd)
 		wnd:move(x, y, false, true, true);
 	else
 	end
+
+	return res;
 end
 
 --- hook displays so we can decide spawn mode between things like
