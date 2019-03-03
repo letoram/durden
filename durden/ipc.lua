@@ -11,7 +11,7 @@ local control_socket;
 -- DISPLAY: [displays] - added/removed/rediscovered/reset/...
 -- WM: [tilers] - window state changes
 -- CONNECTION: [external connections] - rate limiting etc.
--- INPUT: [input / iostatem] - device arriving, ...
+-- IDEVICE: [iostatem] - device appearing, disappearing, entering idle, ..
 -- DISPATCH: [dispatch] - menu paths getting activated
 -- WAYLAND: [special] - wayland clients
 -- IPC: [ipc] - clients connecting
@@ -23,7 +23,7 @@ local all_categories = {
 	"DISPLAY",
 	"WM",
 	"CONNECTION",
-	"INPUT",
+	"IDEVICE",
 	"DISPATCH",
 	"WAYLAND",
 	"IPC",
@@ -43,7 +43,7 @@ local function toggle_monitoring(on)
 		wayland = "WAYLAND:",
 		dispatch = "DISPATCH:",
 		wm = "WM:",
-		input = "INPUT:",
+		idevice = "IDEVICE:",
 		timers = "TIMERS:",
 		notification = "NOTIFICATION:",
 		extconn = "CLIENT:",
@@ -525,8 +525,13 @@ commands = {
 
 		local categories = string.split(line, " ");
 		for i=#categories,1,-1 do
-			categories[i] = string.trim(categories[i]);
+-- remove missing categories and empty entries
+			categories[i] = string.trim(string.upper(categories[i]));
 			if (#categories[i] == 0) then
+				table.remove(categories, i);
+			end
+			if (not table.find_i(all_categories, categories[i])
+				and categories[i] ~= "ALL" and categories[i] ~= "NONE") then
 				table.remove(categories, i);
 			end
 		end
@@ -540,7 +545,6 @@ commands = {
 			categories = all_categories;
 
 		elseif (string.upper(categories[1]) == "NONE") then
-			clients.in_monitor = false;
 			clients.category_map = nil;
 			if (client.in_monitor) then
 				client.in_monitor = false;

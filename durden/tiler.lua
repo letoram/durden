@@ -568,6 +568,32 @@ local function tiler_statusbar_update(wm)
 	end
 end
 
+local function gen_button_handler(cmd, alt_cmd)
+	return {
+		click = function(btn)
+			local m1, m2 = dispatch_meta();
+			if (m1 and alt_cmd) then
+				dispatch_symbol(alt_cmd);
+			elseif (cmd) then
+				dispatch_symbol(cmd);
+			end
+		end,
+
+		over = function(btn)
+			btn:switch_state("alert");
+		end,
+
+		out = function(btn)
+			btn:switch_state("active");
+		end,
+
+		rclick = function(btn)
+			tiler_debug("status button rclick");
+			dispatch_symbol(alt_cmd and alt_cmd or cmd);
+		end
+	};
+end
+
 local function tiler_statusbar_build(wm)
 	local sbsz = sbar_geth(wm, true);
 	if (wm.statusbar) then
@@ -602,6 +628,21 @@ local function tiler_statusbar_build(wm)
 			end
 		});
 
+-- add the left / right buttons from the gconfig, an open question
+-- here is how to approach the 'status indicator' for buttons that
+-- act as minimization targets
+	if (wm.sbar_custom) then
+		wm.sbar_ws["custom"] = {};
+		for i,v in ipairs(wm.sbar_custom) do
+			local state, outlbl = suppl_valid_vsymbol(v.label);
+			table.insert(wm.sbar_ws["custom"],
+				wm.statusbar:add_button(v.direction, "sbar_item_bg",
+				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
+				gen_button_handler(v.command, v.alt_command)
+			));
+			end
+	end
+
 -- pre-allocate buffer slots, but keep hidden
 	for i=1,10 do
 		wm.sbar_ws[i] = wm.statusbar:add_button("left", "sbar_item_bg",
@@ -616,9 +657,6 @@ local function tiler_statusbar_build(wm)
 		wm.sbar_ws[i]:hide();
 	end
 
--- add the left/right buttons from the gconfig
-
-
 -- fill slot with system messages for the time being, need something
 -- more clever here later (ie. dock titlebar, notification area, ...)
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
@@ -629,6 +667,13 @@ local function tiler_statusbar_build(wm)
 			end
 		});
 	wm.sbar_ws["msg"].align_left = true;
+end
+
+local function tiler_statusbar_custom(wm, bar)
+	wm.sbar_custom = bar;
+	if (wm.statusbar) then
+		tiler_statusbar_build(wm);
+	end
 end
 
 local function wm_order(wm)
@@ -4240,13 +4285,16 @@ local function wnd_ws_attach(res, from_hook)
 	for k,v in pairs(wm.buttons) do
 		local dst_group = (k ~= "all" and k);
 		for _,v in ipairs(v) do
-			res.titlebar:add_button(v.direction,
-				"titlebar_iconbg", "titlebar_icon", v.label,
-				gconfig_get("sbar_tpad") * wm.scalef,
-				wm.font_resfn, nil, nil,
-				suppl_button_default_mh(res, v.command),
-				{group = dst_group}
-			);
+			local state, outlbl = suppl_valid_vsymbol(v.label);
+			if (state) then
+				res.titlebar:add_button(v.direction,
+					"titlebar_iconbg", "titlebar_icon", outlbl,
+					gconfig_get("sbar_tpad") * wm.scalef,
+					wm.font_resfn, nil, nil,
+					suppl_button_default_mh(res, v.command),
+					{group = dst_group}
+				);
+			end
 		end
 	end
 	wnd_titlebar_to_statusbar(res);
@@ -5442,6 +5490,7 @@ function tiler_create(width, height, opts)
 		message = tiler_message,
 		resize = tiler_resize,
 		tile_update = tiler_statusbar_update,
+		rebuild_statusbar_custom = tiler_statusbar_custom,
 		rebuild_border = tiler_rebuild_border,
 		set_input_lock = tiler_input_lock,
 		update_scalef = tiler_scalef,
@@ -5459,6 +5508,7 @@ function tiler_create(width, height, opts)
 		on_preview_step = function() end
 	};
 
+	res.sbar_custom = opts.sbar_custom;
 	res.font_resfn = function() return tiler_fontres(res); end
 	res.height = height;
 	res.width = width;

@@ -1,7 +1,7 @@
 local function button_query_path(vsym, dir, group)
 	dispatch_symbol_bind(
 		function(path)
-			table.insert(gconfig_statusbar, {
+			table.insert(gconfig_statusbar_buttons, {
 				label = vsym,
 				direction = dir,
 				command = path
@@ -13,8 +13,7 @@ end
 
 local function remove_button(dir)
 	local res = {};
-
-		for i,v in ipairs(gconfig_statusbar) do
+		for i,v in ipairs(gconfig_statusbar_buttons) do
 			if (not dir or v.direction == string.lower(dir)) then
 				table.insert(res, {
 					name = tostring(i),
@@ -22,7 +21,7 @@ local function remove_button(dir)
 					description = "Button Label: " .. v.label,
 					kind = "action",
 					handler = function()
-						table.remove(gconfig_statusbar, i);
+						table.remove(gconfig_statusbar_buttons, i);
 						gconfig_statusbar_rebuild();
 					end
 				});
@@ -33,7 +32,7 @@ local function remove_button(dir)
 end
 
 local function statusbar_buttons(dir, lbl)
-	local hintstr = "(0x:byte seq | icon:ref | string)";
+	local hintstr = "(0x_byte seq | icon_name | string)";
 	return
 {
 	{
@@ -58,7 +57,6 @@ local function statusbar_buttons(dir, lbl)
 		widget = "special:icon",
 		description = "Add a new button used in all layout modes",
 		handler = function(ctx, val)
-			local st, val = suppl_valid_vsymbol(val);
 			button_query_path(val, dir, "all");
 		end
 	}

@@ -516,14 +516,14 @@ function suppl_valid_vsymbol(val)
 		return false;
 	end
 
-	if (string.sub(val, 1, 3) == "0x:") then
+	if (string.sub(val, 1, 3) == "0x_") then
 		if (not val or not string.to_u8(string.sub(val, 4))) then
 			return false;
 		end
 		val = string.to_u8(string.sub(val, 4));
 	end
 
-	if (string.sub(val, 1, 5) == "icon:") then
+	if (string.sub(val, 1, 5) == "icon_") then
 		print("fixme: global icon lookup not yet supported");
 		return false;
 	end
@@ -1245,6 +1245,11 @@ function suppl_add_logfn(prefix)
 					table.remove(queue, 1);
 				end
 			end
+		end
+
+-- don't overwrite existing ones
+		if (_G[prefix .. "_debug_listener"]) then
+			return _G[prefix .. "_debug_listener"];
 		end
 
 		_G[prefix .. "_debug_listener"] = function(newh)

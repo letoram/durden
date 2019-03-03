@@ -1,4 +1,4 @@
--- Copyright 2015-2018, Björn Ståhl
+-- Copyright 2015-2019, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Global / Persistent configuration management. These shouldn't
@@ -373,7 +373,7 @@ gconfig_buttons = {
 	},
 };
 
-gconfig_statusbar = {
+gconfig_statusbar_buttons = {
 };
 
 -- for the sake of convenience, : is blocked from being a valid vsym as
@@ -402,24 +402,25 @@ function gconfig_statusbar_rebuild(nosynch)
 	if (not nosynch) then
 		drop_keys("sbar_btn_%");
 		local keys_out = {};
-		for i,v in ipairs(gconfig_statusbar) do
+		for i,v in ipairs(gconfig_statusbar_buttons) do
 			keys_out["sbar_btn_" .. tostring(i)] = btn_str(v);
 		end
 		store_key(keys_out);
 	end
 
 -- repopulate from the stored keys
-	gconfig_statusbar = {};
+	gconfig_statusbar_buttons = {};
 	for _,v in ipairs(match_keys("sbar_btn_%")) do
-		str_to_btn(gconfig_statusbar, v);
+		str_to_btn(gconfig_statusbar_buttons, v);
 	end
 
--- will take care of synching against gconfig_statusbar, but only
--- if the tiler itself expose that method
+-- will take care of synching against gconfig_statusbar,
+-- but only if the tiler itself expose that method (i.e.
+-- gconf can be loaded before)
 	if all_tilers_iter then
 		for tiler in all_tilers_iter() do
 			if (tiler.rebuild_statusbar_custom) then
-				tiler:rebuild_statusbar_custom(gconfig_statusbar);
+				tiler:rebuild_statusbar_custom(gconfig_statusbar_buttons);
 			end
 		end
 	end

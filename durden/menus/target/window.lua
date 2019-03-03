@@ -342,6 +342,11 @@ local function remove_button(wnd, dir, lbl)
 end
 
 local function button_query_path(wnd, vsym, dir, group)
+	local ok, vsym = suppl_valid_vsymbol(vsym);
+	if (not ok) then
+		return;
+	end
+
 	dispatch_symbol_bind(function(path)
 		local wm = active_display();
 		local new_wnd = wm.selected;
