@@ -39,7 +39,7 @@ local function on_click(ctx, lbl, i)
 	if (not lbar) then
 		return;
 	end
-	lbar.inp:set_str("0x:" .. seq);
+	lbar.inp:set_str("0x_" .. seq);
 end
 
 local function probe(ctx, yh)

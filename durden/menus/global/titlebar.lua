@@ -23,7 +23,6 @@ end
 
 local function button_query_path(wnd, vsym, dir, group)
 	dispatch_symbol_bind(function(path)
-		local wm = active_display();
 -- can actually change during interaction time so verify
 		table.insert(gconfig_buttons[group], {
 			label = vsym,

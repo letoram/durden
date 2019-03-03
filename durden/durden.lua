@@ -83,7 +83,8 @@ function durden(argv)
 		local res = tiler_create(ddisp.w, ddisp.h,
 			{
 				scalef = ddisp.ppcm / 38.4,
-				disptbl = {ppcm = ddisp.ppcm, width = ddisp.w, h = ddisp.h}
+				disptbl = {ppcm = ddisp.ppcm, width = ddisp.w, h = ddisp.h},
+				sbar_custom = gconfig_statusbar_buttons
 			}
 		);
 
@@ -490,15 +491,6 @@ function durden_adopt(vid, kind, title, parent, last)
 
 	adopt_new = {};
 	return true;
-end
-
-if (not target_devicehint) then
-	local warned;
-	function target_devicehint()
-		if (not warned) then
-			warning("missing target_devicehint call, upgrade arcan build");
-		end
-	end
 end
 
 local extcon_wndcnt = 0;

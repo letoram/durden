@@ -6,6 +6,7 @@
 --
 
 system_load("touchm.lua")();
+local iostatem_evlog = suppl_add_logfn("idevice")();
 
 local devstate = {
 	counter = 0,
@@ -239,7 +240,6 @@ end
 -- normal input dispatch
 function iostatem_tick()
 	touch_tick();
-
 	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
 	evc = 0;
 
@@ -339,13 +339,15 @@ function iostatem_added(iotbl)
 -- keeping this around for devices and platforms that generate a new
 -- ID for each insert/removal will slooowly leak (unlikely though)
 		if (dev.lost) then
+			iostatem_evlog("added:lost=yes:name=" .. dev.label);
 			dev.lost = false;
 -- reset analog settings and possible load slot again
 			assign_slot(dev);
 		else
-			warning("added existing device "..dev.label..", likely platform bug.");
+			iostatem_evlog("warning:added:lost=no:name=" .. dev.label);
 		end
 	end
+
 	return devices[iotbl.devid];
 end
 
@@ -359,13 +361,14 @@ function iostatem_removed(iotbl)
 	if (dev) then
 		notification_add("Device", nil, "Lost", dev.label, 1);
 		dev.lost = true;
+		iostatem_evlog("removed:name=" .. dev.label);
 -- protection against keyboard behaving differently when lost/found
 		if (iotbl.devkind == "keyboard") then
 			meta_guard_reset();
 		end
 	else
 		notification_add("Device", nil, "Removed", "unknown device (bug)", 1);
-		warning("remove unknown device, likely platform bug.");
+		iostatem_evlog("warning:removed:known=false:id=" .. tostring(iotbl.devid));
 	end
 end
 
