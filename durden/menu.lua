@@ -89,7 +89,7 @@ local function flt_ptn(val, instr)
 	end
 end
 
-function flt_fuzzy(val, instr)
+local function flt_fuzzy(val, instr)
 	local last_pos = 0;
 	local i = string.utf8forward(instr, 0);
 	while i <= #instr do
@@ -643,12 +643,96 @@ function menu_default_lookup(tbl)
 	end
 end
 
+-- take a set of suggested paths and build a corresponding menu table
+-- this is intended as a way of providing custom popups or other user-
+-- defined menus, such as 'most common paths' or similar.
+function menu_build(set)
+	local res = {};
+	local nt = {};
+
+	for i,v in ipairs(set) do
+-- if it is a table, we treat the first string as the new label, and
+-- the second as the path we are interested in.
+	local path = v;
+	local relabel;
+
+	if (type(v) == "table") then
+		path = v[2];
+		relabel = v[1];
+
+	elseif (type(v) ~= "string") then
+		warning("menu_build called with invalid input");
+		return;
+	end
+
+-- special case, inject a separator entry unless it doesn't make sense
+-- i.e. first entry or previous entry already being a separator
+		if (path == "-") then
+			if (#res > 0 and not res[#res].separator) then
+				table.insert(res, {
+					kind = "action",
+					name = "sep_" .. tostring(i),
+					label = "--------",
+					separator = true,
+
+-- false eval lets popup UI primitive show it as 'inactive'
+					eval = function() return false; end,
+					handler = function()
+					end
+				});
+			end
+
+-- normal entry, resolve to a menu table, copy it and add to the result
+-- set but use the resolve form that doesn't expand a menu entry
+		else
+			local menu, msg, val, enttbl = menu_resolve(path, nil, true);
+
+-- copy the menu as we may need to modify it and don't want that to
+-- be reflected globally.
+			if (menu and menu_validate(menu)) then
+				local new_menu = {};
+				for k,v in pairs(menu) do
+					new_menu[k] = v;
+				end
+
+				if (relabel) then
+					new_menu.label = relabel;
+				end
+
+				if (val or not menu.submenu) then
+					new_menu.kind = "action";
+					new_menu.handler = function()
+						dispatch_symbol(v);
+					end
+				end
+
+-- avoid collision for name entry
+				if (nt[menu.name]) then
+					nt[menu.name] = nt[menu.name] + 1;
+					new_menu.name = menu.name .. "_" .. tostring(nt[menu.name]);
+				else
+					nt[menu.name] = 1;
+				end
+				table.insert(res, new_menu);
+			end
+		end
+	end
+
+	return res;
+end
+
 --
 -- Take a menu path and a context destination and return what it would
 -- actually give you. This does not activate the path or set any value
 -- itself, to do that, invoke the handler or run through menu_launch.
+-- Returns a valid menu entry table, or a menu table (table of menu
+-- entry tables), an error string and possible input value (/ent=xxx).
 --
-function menu_resolve(line, wnd)
+-- If [wnd] is provided, the window will be used as the active eval
+-- context for target dependent paths. If [noresolve] is set, menus
+-- won't be expanded.
+--
+function menu_resolve(line, wnd, noresolve)
 	local ds = active_display().selected;
 	if (wnd) then
 		active_display().selected = wnd;
@@ -670,11 +754,25 @@ function menu_resolve(line, wnd)
 
 	local items = string.split(path, "/");
 	local menu = menus_get_root();
+
 	if (path == "/" or path == "") then
-		return menu;
+		if (noresolve) then
+			return {
+				label = path,
+				name = "root_menu",
+				kind = "action",
+				submenu = true,
+				handler = function()
+					return menus_get_root();
+				end
+			};
+		else
+			return menu;
+		end
 	end
 
 	local restbl = {};
+	local last_menu = nil;
 
 	while #items > 0 do
 		local ent = nil;
@@ -720,11 +818,19 @@ function menu_resolve(line, wnd)
 			else
 				menu = nil;
 			end
+			last_menu = ent;
+
+-- special case, don't resolve and the next expanded entry would be a menu
+			if (#items == 1 and noresolve) then
+				menu = ent;
+			end
 			table.remove(items, 1);
 		end
 	end
 
+-- change back to the previously selected entity
 	active_display().selected = ds;
+
 	return menu, "", val, restbl;
 end
 

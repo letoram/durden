@@ -205,7 +205,10 @@ local function ssetup(shader, dst, group, name, state)
 -- now the shader exists, apply
 	local shid = ((state and shader.states and shader.states[state]) and
 		shader.states[state].shid) or shader.shid;
-	image_shader(dst, shid);
+
+	if (valid_vid(dst)) then
+		image_shader(dst, shid);
+	end
 end
 
 local function esetup(shader, dst, group, name)

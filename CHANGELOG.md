@@ -20,6 +20,11 @@
 	* menu/hud:
 	   Cipharius added support for fuzzy-string matching to the HUD
 
+  * menu/devmaps:
+	   Custom menus/aliasmaps can now be built. These register in the
+		 menu root (/menus) and are intended for shortcut button grids,
+		 popup menus, radial menus and so on.
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is

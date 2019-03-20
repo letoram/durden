@@ -3,6 +3,58 @@ local target = system_load("menus/target/target.lua")();
 local browse = system_load("menus/browse.lua")();
 local window = system_load("menus/window.lua")();
 
+local menu_list = {};
+
+local function rescan_menu()
+-- save the first entry always
+	local ent = menu_list[1];
+	menu_list = {
+		ent
+	};
+
+-- now glob and popen()
+	local list = glob_resource("devmaps/menus/*.lua");
+	for k,v in ipairs(list) do
+		local res, msg = system_load("devmaps/menus/" .. v, false);
+		if (v == "rescan") then
+			warning("devmaps/menus/rescan ignored, name collision");
+		elseif (not res) then
+			warning(string.format("could parse devmaps/menus: %s", v));
+		else
+			local okstate, msg = pcall(res);
+			if not (okstate) then
+				warning(string.format("runtime error loading menu: %s - %s", v, msg));
+			elseif type(msg) ~= "table" then
+				warning(string.format("runtime error loading menu: %s, no table returned", v));
+
+-- all error conditions handled, add as a dynamic submenu and resolve the list
+-- when triggered
+			else
+				local short = string.sub(v, 1, #v-4);
+				table.insert(menu_list, {
+					name = short,
+					label = short,
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return menu_build(msg);
+					end
+				});
+			end
+		end
+	end
+end
+
+menu_list[1] = {
+	name = "rescan",
+	kind = "action",
+	label = "Rescan",
+	description = "Rescan devmaps/menus for updates",
+	handler = rescan_menu
+};
+
+rescan_menu();
+
 -- add m2 to m1, overwrite on collision
 local function merge_menu(m1, m2)
 	local kt = {};
@@ -109,6 +161,13 @@ return {
 	kind = "action",
 	handler = browse,
 	description = "File browser/picker"
+},
+{	name = "menus",
+	label = "Menus",
+	submenu = true,
+	kind = "action",
+	handler = menu_list,
+	description = "Custom menu selectors (devmaps/menus)"
 }
 };
 end
