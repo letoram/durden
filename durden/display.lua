@@ -500,6 +500,7 @@ function display_manager_shutdown()
 	local ktbl = {};
 
 	for i,v in ipairs(displays) do
+		print("display", v.name, v.shader)
 		local pref = "disp_" .. string.hexenc(v.name) .. "_";
 
 		if (v.ppcm_override) then
@@ -786,11 +787,17 @@ function display_shader(name, key)
 		return;
 	end
 
-	if (key) then
+-- special path, the engine can optimize if we use the "DEFAULT" shader
+	if (key == "basic") then
+		image_shader(disp.rt, 'DEFAULT');
+		disp.shader = key;
+	elseif (key) then
+		warning("shader" .. key);
 		shader_setup(disp.rt, "display", key, disp.name);
 		--set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
 		disp.shader = key;
 	end
+	map_video_display(disp.rt, disp.id, disp.maphint);
 
 	return disp.shader;
 end
