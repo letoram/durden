@@ -3849,7 +3849,7 @@ local border_mh = {
 };
 
 local canvas_mh = {
-	motion = function(ctx, vid, ...)
+	motion = function(ctx, vid, x, y, rx, ry)
 		local ct = mouse_state().cursortag;
 		if (ct) then
 -- update accept state, for external clients we need to do a lot more
@@ -3867,8 +3867,9 @@ local canvas_mh = {
 			end
 		end
 
+		run_event(ctx.tag, "mouse_motion", x, y, rx, ry);
 		if (valid_vid(ctx.tag.external, TYPE_FRAMESERVER)) then
-			wnd_mousemotion(ctx, ...);
+			wnd_mousemotion(ctx, x, y, rx, ry);
 		end
 	end,
 	release = function(ctx, vid, ...)
@@ -4718,6 +4719,7 @@ local wnd_setup = function(wm, source, opts)
 			lost_relative = {},
 			select = {},
 			deselect = {},
+			mouse_motion = {},
 			mouse = {}
 		},
 
