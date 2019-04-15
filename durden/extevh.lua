@@ -13,6 +13,8 @@ local archetypes = {};
 -- source-id-to-window-mapping
 local swm = {};
 
+local client_log = suppl_add_logfn("client")();
+
 -- notice that logging server to client commands are done elsewhere as
 -- the hook is quite costly and we only want to enable it when in an IPC
 -- monitor.
@@ -70,6 +72,7 @@ local function default_reqh(wnd, source, ev)
 -- early out if the type is not permitted
 	if (wnd.allowed_segments and
 		not table.find_i(wnd.allowed_segments, ev.segkind)) then
+		client_log("segreq:name=" .. wnd.name .. ":kind=clipboard:state=rejected");
 		return;
 	end
 
@@ -77,44 +80,58 @@ local function default_reqh(wnd, source, ev)
 	if (ev.segkind == "handover") then
 		local hover = accept_target(32, 32, function(source, stat) end);
 		if (not valid_vid(hover)) then
+			client_log("segreq:name=" .. wnd.name .. ":kind=handover:state=oom");
 			return;
 		end
 
-		durden_launch(source, "handover");
+		client_log("segreq:name=" .. wnd.name .. ":state=handover");
+		durden_launch(hover, "", "external");
 
 -- special handling, cursor etc. maybe we should permit subtype handler override
-	elseif (ev.segkind == "titlebar") then
--- ignore the titlebar for now, later, re-use the impostor feature to set it
-		return;
 	elseif (ev.segkind == "cursor") then
 		if (wnd.custom_cursor and valid_vid(wnd.custom_cursor.vid)) then
 			delete_image(wnd.custom_cursor.vid);
 		end
+
 		local sz = mouse_state().size;
 		local cursor = accept_target(sz[1], sz[2]);
-		if (valid_vid(cursor)) then
-			target_updatehandler(cursor, function(a, b)
-				cursor_handler(wnd, a, b);
-			end);
-			wnd.custom_cursor = {
-				vid = cursor,
-				active = true,
-				width = sz[1], height = sz[2],
-				hotspot_x = 0, hotspot_y = 0,
-			};
+		if (not valid_vid(cursor)) then
+			client_log("segreq:name=" .. wnd.name .. ":kind=mouse_cursor:state=oom");
+			return;
+		end
+
+		client_log("segreq:name=" .. wnd.name .. ":kind=cursor:state=ok");
+		target_updatehandler(cursor, function(a, b)
+			cursor_handler(wnd, a, b);
+		end);
+
+		wnd.custom_cursor = {
+			vid = cursor,
+			active = true,
+			width = sz[1], height = sz[2],
+			hotspot_x = 0, hotspot_y = 0,
+		};
 -- something to activate if we are already over? just mouse_xy test against
 -- selected canvas?
-			link_image(cursor, wnd.anchor);
-		end
+		link_image(cursor, wnd.anchor);
 		return;
-	elseif (ev.segkind == "icon") then
--- reject for now, can later be used for status icon and for hint
+
 	else
 -- something that should map to a new / normal window?
 		if (wnd.allowed_segments or
 			(not wnd.allowed_segments and table.find_i(normal, ev.segkind))) then
 			local vid = accept_target();
+			if (not valid_vid(vid)) then
+				client_log("segreq:name=" .. wnd.name
+					.. ":kind=" .. ev.segkind .. ":state=oom");
+				return
+			end
+			client_log("segreq:name=" .. wnd.name
+				.. ":kind=" .. ev.segkind .. ":state=ok");
 			durden_launch(vid, "", "external", nil);
+		else
+			client_log("segreq:name=" .. wnd.name
+				.. ":kind=" .. ev.segkind .. ":state=blocked");
 		end
 	end
 end
@@ -337,6 +354,7 @@ end
 
 defhtbl["registered"] =
 function(wnd, source, stat)
+	client_log("register:name=" .. wnd.name .. ":kind=" .. stat.segkind);
 	extevh_apply_atype(wnd, stat.segkind, source, stat);
 -- can either be table [tgt, cfg] or [guid], ignore the 0- value
 -- as that is an obvious failure
@@ -347,6 +365,8 @@ end
 --  stateinf is used in the builtin/shared
 defhtbl["state_size"] =
 function(wnd, source, stat)
+	client_log("state_size:name=" ..
+		wnd.name .. ":size=" .. tostring(stat.state_size));
 	wnd.stateinf = {size = stat.state_size, typeid = stat};
 end
 
@@ -385,26 +405,26 @@ function(wnd, source, stat)
 	end
 end
 
--- support timer implementation (some reasonable limit), we rely on internal
--- autoclock handling for non-dynamic / periodic
+-- support timer implementation (some reasonable limit),
+-- we rely on internal autoclock handling for non-dynamic / periodic
 defhtbl["clock"] =
 function(wnd, source, stat)
 	if (not stat.once) then
 		return;
 	end
-	-- FIXME:
-	-- value, id; add to window timer and tick handler will work with it
+	client_log("clock:unhandled:name=" .. wnd.name);
 end
 
 defhtbl["content_state"] =
 function(wnd, source, stat)
--- FIXME: map to window scroll-bars (rel_x, rel_y, x_size, y_size)
+	client_log("content_state:unhandled:name=" .. wnd.name);
 end
 
 defhtbl["segment_request"] =
 function(wnd, source, stat)
 -- eval based on requested subtype etc. if needed
 	if (stat.segkind == "clipboard") then
+		client_log("segment_request:name=" .. wnd.name .. ":kind=clipboard");
 		if (wnd.clipboard ~= nil) then
 			delete_image(wnd.clipboard)
 		end
@@ -448,7 +468,7 @@ end
 function extevh_default(source, stat)
 	local wnd = swm[source];
 	if (not wnd) then
-		warning("event on missing window");
+		client_log(string.format("source=%d:message=no matching window", source));
 		return;
 	end
 
