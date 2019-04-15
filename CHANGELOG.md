@@ -1,4 +1,4 @@
-# 0.5.1
+# 0.6.0
   * uiprim/sbar:
 	   statusbar custom button controls added
 
@@ -10,12 +10,20 @@
 		 useful for pairing windows with bindings in autorun.lua etc.
 		 when no uuid or other identity token has been established.
 
+  * tools/traybtn added:
+	  registers into global/settings/statusbar and adds option for
+		external clients to connect and attach custom buttons. This
+		deprecates the statusbar IPC in favor of solving this externally.
+
 	* triggers:
 		 added per-window option to bind multiple custom triggers on select,
 		 deselect and destroy
 
   * layout/tile:
 	   allow titlebar drag/drop as a mouse- triggered way to swap
+
+  * layout/htab:
+	   added side column based tabbed layout mode
 
 	* menu/hud:
 	   Cipharius added support for fuzzy-string matching to the HUD
@@ -24,6 +32,14 @@
 	   Custom menus/aliasmaps can now be built. These register in the
 		 menu root (/menus) and are intended for shortcut button grids,
 		 popup menus, radial menus and so on.
+
+Breaking:
+  * statusbar ipc removed in favor of tools/traybtn
+
+Minor / Fixes:
+  * handover subsegment allocation now routes correctly
+
+	* more subsystems expose logging over the monitor ipc
 
 # 0.5.0
   * tools/advfloat:
