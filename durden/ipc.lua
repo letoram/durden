@@ -14,8 +14,10 @@ local control_socket;
 -- IDEVICE: [iostatem] - device appearing, disappearing, entering idle, ..
 -- DISPATCH: [dispatch] - menu paths getting activated
 -- WAYLAND: [special] - wayland clients
--- IPC: [ipc] - clients connecting
+-- IPC: [ipc] - other IPC user actions
 -- TIMERS: [timers] - when fired
+-- CLIENTS: [clients] - events related
+-- TOOLS: [tools] - domain used for toolscripts, prefix with name=xxx:"
 --
 local debug_count = 0;
 local all_categories = {
@@ -29,7 +31,8 @@ local all_categories = {
 	"IPC",
 	"TIMERS",
 	"CLIPBOARD",
-	"CLIENTS"
+	"CLIENT",
+	"TOOLS",
 };
 
 local monitor_state = false;
@@ -46,8 +49,9 @@ local function toggle_monitoring(on)
 		idevice = "IDEVICE:",
 		timers = "TIMERS:",
 		notification = "NOTIFICATION:",
-		extconn = "CLIENT:",
-		clipboard = "CLIPBOARD:"
+		client = "CLIENT:",
+		clipboard = "CLIPBOARD:",
+		tools = "TOOLS:"
 	};
 
 -- see suppl_add_logfn for the function that constructs the logger,
