@@ -9,6 +9,7 @@ EVENT_SYNCH = {};
 
 local update_default_font, update_connection_path;
 local load_configure_mouse;
+local connection_log;
 
 local argv_cmds = {};
 
@@ -98,6 +99,8 @@ function durden(argv)
 
 -- buttons with the set that is loaded / stored in gconf.lua
 	nt.buttons = gconfig_buttons;
+
+	connection_log = suppl_add_logfn("connection")();
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	suppl_scan_tools();
@@ -368,7 +371,7 @@ end
 
 function durden_launch(vid, prefix, title, wnd, wargs)
 	if (not valid_vid(vid)) then
-		warning("launch failed, invalid vid provided");
+		connection_log("broken_launch:reason=invalid_vid");
 		return;
 	end
 
@@ -380,9 +383,10 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 		end
 	end
 
--- hidden window creation failed or event during creation
--- triggered destruction immediately, hence the table will be empty
+-- hidden window creation failed or event during creation triggered
+-- destruction immediately, hence the table will be empty
 	if (not wnd.set_prefix) then
+		connection_log("broken_launch:reason=wnd_creation");
 		delete_image(vid);
 		return;
 	end
@@ -420,7 +424,7 @@ end
 local adopt_new = {};
 function durden_adopt(vid, kind, title, parent, last)
 -- always ignore unknown ones as they are likely pending or external listening
-	if (kind == "unknown") then
+	if (kind == "unknown" or image_tracetag(vid) == "adopt_destroy") then
 		return false;
 	end
 
@@ -511,6 +515,7 @@ function durden_new_connection(source, status, norespawn)
 -- allocate a new endpoint? or wait?
 	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
 		gconfig_get("extcon_startdelay")) then
+		connection_log("ratelimit");
 		timer_add_periodic("extcon_activation",
 			gconfig_get("extcon_rlimit"), true,
 			function() durden_eval_respawn(false); end, true);
@@ -532,9 +537,11 @@ function durden_new_connection(source, status, norespawn)
 -- exceeding limits, ignore for now
 	if (extcon_wndcnt >= gconfig_get("extcon_wndlimit") and
 		gconfig_get("extcon_wndlimit") > 0) then
+		connection_log("external_limit");
 		delete_image(source);
 	else
 		extcon_wndcnt = extcon_wndcnt + 1;
+		connection_log("new:count=" .. tostring(extcon_wndcnt));
 -- allow 'per connpath' connection interception to modify wnd post creation
 -- but pre-attachment
 		local wargs = extevh_run_intercept(status.key);
