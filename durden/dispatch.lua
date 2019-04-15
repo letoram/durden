@@ -266,6 +266,13 @@ local dispatch_queue = {};
 function dispatch_symbol_unlock(flush)
 	assert(dispatch_locked == true);
 	dispatch_locked = nil;
+	local old_queue = dispatch_queue;
+	dispatch_queue = {};
+	if (flush) then
+		for i,v in ipairs(old_queue) do
+			dispatch_symbol(v);
+		end
+	end
 end
 
 function dispatch_symbol_lock()
@@ -326,7 +333,7 @@ function dispatch_symbol(sym, menu_opts)
 
 -- just queue if locked
 	if (dispatch_locked) then
-		table.insert(dispatch_queue, {menu, msg, val});
+		table.insert(dispatch_queue, sym);
 		return true;
 	end
 
