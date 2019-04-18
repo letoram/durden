@@ -100,7 +100,7 @@ function durden(argv)
 -- buttons with the set that is loaded / stored in gconf.lua
 	nt.buttons = gconfig_buttons;
 
-	connection_log = suppl_add_logfn("connection")();
+	connection_log = suppl_add_logfn("connection");
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	suppl_scan_tools();

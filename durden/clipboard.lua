@@ -6,7 +6,7 @@
 -- little stopping us from using more advanced input and output formats.
 --
 
-clipboard_debug = suppl_add_logfn("clipboard")();
+clipboard_debug = suppl_add_logfn("clipboard");
 
 local function clipboard_add(ctx, source, msg, multipart)
 	clipboard_debug(string.format(

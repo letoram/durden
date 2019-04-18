@@ -6,7 +6,7 @@
 --
 
 system_load("touchm.lua")();
-local iostatem_evlog = suppl_add_logfn("idevice")();
+local iostatem_evlog = suppl_add_logfn("idevice");
 
 local devstate = {
 	counter = 0,

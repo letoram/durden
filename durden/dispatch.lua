@@ -15,7 +15,7 @@ local mtrack = {
 	mlock = "none"
 };
 
-local dispatch_debug = suppl_add_logfn("dispatch")();
+local dispatch_debug = suppl_add_logfn("dispatch");
 
 local function update_meta(m1, m2)
 	mtrack.m1 = m1;

@@ -13,7 +13,7 @@ local archetypes = {};
 -- source-id-to-window-mapping
 local swm = {};
 
-local client_log = suppl_add_logfn("client")();
+local client_log = suppl_add_logfn("client");
 
 -- notice that logging server to client commands are done elsewhere as
 -- the hook is quite costly and we only want to enable it when in an IPC

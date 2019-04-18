@@ -15,7 +15,7 @@ local ent_count = 1;
 local create_workspace = function() end
 local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
-local tiler_logfun = suppl_add_logfn("wm")();
+local tiler_logfun = suppl_add_logfn("wm");
 local function tiler_debug(wm, msg)
 	tiler_logfun(wm.name .. ":" .. msg);
 end
@@ -603,6 +603,7 @@ local function tiler_statusbar_build(wm)
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
+	wm.statusbar.owner = wm;
 	wm.sbar_ws = {};
 
 -- add_button(left, pretile, label etc.)
