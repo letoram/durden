@@ -7,7 +7,7 @@ local wlsurf = {}; -- segment cookie->vi tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
 -- also used in xdg- ... so global scope
-wayland_debug = suppl_add_logfn("wayland")();
+wayland_debug = suppl_add_logfn("wayland");
 
 function wayland_wndcookie(id)
 	return wlsurf[id] and wlwnds[wlsurf[id]];

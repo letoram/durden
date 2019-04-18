@@ -25,7 +25,7 @@ local arcan_nested = VRES_AUTORES ~= nil;
 
 local wm_alloc_function = function() end
 
-local display_debug = suppl_add_logfn("display")();
+local display_debug = suppl_add_logfn("display");
 
 local function disp_string(disp)
 	return string.format("id=%d:name=%s:maphint=%d:w=%d:h=%d:backlight=%d:ppcm=%f",

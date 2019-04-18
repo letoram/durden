@@ -16,7 +16,7 @@ local idle_masked = false;
 
 local leave_fmtstr = "type=idle:state=leave:once=%d:name=%s";
 local enter_fmtstr = "type=idle:state=enter:once=%d:name=%s";
-local timer_debug = suppl_add_logfn("timers")();
+local timer_debug = suppl_add_logfn("timers");
 
 local function run_idle_timers()
 	for i=#idle_timers,1,-1 do

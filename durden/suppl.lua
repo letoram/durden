@@ -1228,14 +1228,21 @@ end
 
 -- register a prefix_debug_listener function to attach/define a
 -- new debug listener, and return a local queue function to append
--- to the log without exposing the table, used by most subsystems
--- and exposed via the ipc.
+-- to the log without exposing the table in the global namespace
+local prefixes = {
+};
 function suppl_add_logfn(prefix)
-	return function()
+	if (prefixes[prefix]) then
+		return prefixes[prefix];
+	end
+
+-- nest one level so we can pull the scope down with us
+	local logscope =
+	function()
 		local queue = {};
 		local handler = nil;
 
-		local res = function(msg)
+		prefixes[prefix] = function(msg)
 			local exp_msg = CLOCK .. ":" .. msg .. "\n";
 			if (handler) then
 				handler(exp_msg);
@@ -1247,12 +1254,10 @@ function suppl_add_logfn(prefix)
 			end
 		end
 
--- don't overwrite existing ones
-		if (_G[prefix .. "_debug_listener"]) then
-			return _G[prefix .. "_debug_listener"];
-		end
-
-		_G[prefix .. "_debug_listener"] = function(newh)
+-- and register a global function that can be used to set the singleton
+-- that the queue flush to or messages gets immediately forwarded to
+		_G[prefix .. "_debug_listener"] =
+		function(newh)
 			if (newh and type(newh) == "function") then
 				handler = newh;
 				for i,v in ipairs(queue) do
@@ -1263,7 +1268,8 @@ function suppl_add_logfn(prefix)
 			end
 			queue = {};
 		end
-
-		return res;
 	end
+
+	logscope();
+	return prefixes[prefix];
 end

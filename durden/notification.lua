@@ -5,7 +5,7 @@
 --
 
 local listeners = {};
-local note_debug = suppl_add_logfn("notification")();
+local note_debug = suppl_add_logfn("notification");
 
 function notification_register(key, handler)
 	listeners[key] = handler;

@@ -7,7 +7,7 @@
 --
 -- symbol paths can be found using arcan durden dump_menus though
 --
--- dispatch_symbol("!display/target/rescan")
+-- dispatch_symbol("/global/display/target/rescan")
 -- active_display().selected gives you a reference handle to the current window
 --
 
@@ -20,3 +20,5 @@ for i,v in pairs(list_targets()) do
 		end
 	end
 end
+
+dispatch_symbol("/global/settings/statusbar/add_external=tray")

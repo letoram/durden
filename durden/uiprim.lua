@@ -199,7 +199,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
 			delete_image(btn.lbl);
 		end
-		local props = image_surface_properties(lbl);
+		local props = image_storage_properties(lbl);
 		btn.lbl = lbl;
 		w = props.width;
 		h = props.height;
@@ -381,6 +381,7 @@ function uiprim_button(anchor, bgshname,
 	lblshname, lbl, pad, fontfn, minw, minh, mouseh)
 	ind = ind + 1;
 	assert(pad);
+
 	local res = {
 		lblfmt = "\\f,0\\#ffffff",
 		bgsh = bgshname,
