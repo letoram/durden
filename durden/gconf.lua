@@ -133,6 +133,9 @@ local defaults = {
 	display_simple = false,
 	display_shader = "basic",
 
+-- clear-color on display rendertarget when no wallpaper is set
+	display_color = {30, 30, 30},
+
 -- on dedicated- fullscreen, switch rendertarget refreshrate to the following
 -- cloclvalue (0, disabled entirely, -n every n frame, n every n tick
 	display_fs_rtrate = 2,

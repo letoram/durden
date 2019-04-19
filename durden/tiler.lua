@@ -5222,6 +5222,8 @@ local function tiler_rendertarget(wm, set)
 		for i,v in ipairs(list) do
 			rendertarget_attach(wm.rtgt_id, v, RENDERTARGET_DETACH);
 		end
+		local colors = gconfig_get("display_color");
+		image_color(wm.rtgt_id, colors[1], colors[2], colors[3]);
 	else
 		for i,v in ipairs(list) do
 			rendertarget_attach(WORLDID, v, RENDERTARGET_DETACH);
