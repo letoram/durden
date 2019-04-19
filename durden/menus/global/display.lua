@@ -499,7 +499,7 @@ local region_menu = {
 	}
 };
 
-return {
+local res = {
 	{
 		name = "rescan",
 		label = "Rescan",
@@ -555,7 +555,7 @@ return {
 	},
 	{
 		name = "vppcm",
-		label = "ppcm",
+		label = "Density",
 		description = "manual override of the safe density default",
 		kind = "value",
 		initial = function() return VPPCM; end,
@@ -563,5 +563,22 @@ return {
 		handler = function(ctx, val)
 			VPPCM = tonumber(val);
 		end
+	},
+	{
+		name = "color",
+		label = "Color",
+		description = "Color to use when no wallpaper is defined",
 	}
 };
+suppl_append_color_menu(
+	gconfig_get("display_color"), res[#res],
+	function(fmt, r, g, b)
+		for tiler in all_tilers_iter() do
+			if (valid_vid(tiler.rtgt_id)) then
+				image_color(tiler.rtgt_id, r, g, b);
+			end
+		end
+	end
+);
+
+return res;

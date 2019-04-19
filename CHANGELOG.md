@@ -26,7 +26,9 @@
 	   added side column based tabbed layout mode
 
 	* menu/hud:
-	   Cipharius added support for fuzzy-string matching to the HUD
+	   Cipharius added support for fuzzy-string matching to the HUD,
+		 switch it on by entering % and pick fuzzy_relevance as the sort
+		 method.
 
   * menu/devmaps:
 	   Custom menus/aliasmaps can now be built. These register in the
@@ -40,6 +42,9 @@ Minor / Fixes:
   * handover subsegment allocation now routes correctly
 
 	* more subsystems expose logging over the monitor ipc
+
+  * /global/displays/color can be used to change the default clear
+	  color when there is no wallpaper
 
 # 0.5.0
   * tools/advfloat:
