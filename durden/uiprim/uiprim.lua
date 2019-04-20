@@ -405,10 +405,12 @@ function uiprim_button(anchor, bgshname,
 		constrain = button_constrain
 	};
 	res.lbl_tag = res.name .. "_label";
+
+-- only need anchor or we should have a real drawn node?
 	if (not bgshname) then
 		res.bg = null_surface(1, 1);
 	else
-		res.bg = fill_surface(1, 1, 255, 0, 0);
+		res.bg = color_surface(1, 1, 127, 127, 127);
 	end
 
 	if (minw and minw > 0) then
