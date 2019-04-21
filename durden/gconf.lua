@@ -26,7 +26,9 @@ HC_PALETTE = {
 	"\\#43abc9",
 	"\\#cd594a",
 	"\\#b5c689",
-	"\\#f58b4c"
+	"\\#f58b4c",
+	"\\#ed6785",
+	"\\#d0d0d0",
 };
 
 local defaults = {
@@ -38,7 +40,6 @@ local defaults = {
 	font_hint = 2,
 	font_str = "",
 	text_color = "\\#aaaaaa",
-	label_color = "\\#ffff00",
 
 -- decoration settings
 	borderw = 1,
@@ -298,6 +299,8 @@ local defaults = {
 	sbar_modebutton = true, -- show the dynamic workspace mode button
 	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
 	sbar_numberprefix = true,
+	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
+	sbar_prefixcolor = "dynamic", -- "\\#ffffff ",
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
@@ -305,7 +308,6 @@ local defaults = {
 	tbar_bpad = 2,
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
-	pretiletext_color = "\\#ffffff ",
 
 -- notification system
 	notifications_enable = true,
@@ -503,6 +505,12 @@ local function gconfig_setup()
 	ms.hide_base = defaults.mouse_hidetime;
 	for i=1,8 do
 		ms.btns_bounce[i] = defaults["mouse_debounce_" .. tostring(i)];
+	end
+
+-- and for the high-contrast palette used for widgets, ...
+	for i,v in ipairs(match_keys("hc_palette_%")) do
+		local cl = string.split(v, "=")[2];
+		HC_PALETTE[i] = cl;
 	end
 
 -- and for global state of titlebar and statusbar

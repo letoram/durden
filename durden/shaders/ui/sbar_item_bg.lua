@@ -3,31 +3,42 @@ return {
 	label = "Statusbar(Tile)",
 	frag = [[
 uniform float border;
-uniform vec3 col_border;
-uniform vec3 col_bg;
+uniform float factor;
+uniform vec3 obj_col;
+uniform vec4 col_bg;
 uniform vec2 obj_output_sz;
 varying vec2 texco;
 
-void main()
+#ifdef FULL_BORDER
+float full_border(float bstep_x, float bstep_y)
 {
-	float bstep_x = border/obj_output_sz.x;
-	float bstep_y = border/obj_output_sz.y;
-
 	bvec2 marg1 = greaterThan(texco, vec2(1.0 - bstep_x, 1.0 - bstep_y));
 	bvec2 marg2 = lessThan(texco, vec2(bstep_x, bstep_y));
-	float f = float( !(any(marg1) || any(marg2)) );
+	return float( !(any(marg1) || any(marg2)) );
+}
+#else
+float underline(float bstep_y)
+{
+	return float( !(texco.t > 1.0 - bstep_y && (texco.s > 0.2 && texco.s < 0.8 )) );
+}
+#endif
 
-	gl_FragColor = vec4(mix(col_border, col_bg, f), 1.0);
+void main()
+{
+	float bstep_y = border/obj_output_sz.y;
+
+#ifdef FULL_BORDER
+	float bstep_x = border/obj_output_sz.x;
+	float f = full_border(bstep_x, bstep_y);
+#else
+	float f = underline(bstep_y);
+#endif
+	vec4 fg = vec4(obj_col.r, obj_col.g, obj_col.b, 1.0);
+	gl_FragColor =
+		vec4(factor, factor, factor, 1.0) * vec4(mix(fg, col_bg, f));
 }
 ]],
 	uniforms = {
-		col_border = {
-			label = 'Border Color',
-			utype = 'fff',
-			default = {0.5, 0.5, 0.5},
-			low = 0,
-			high = 1.0
-		},
 		border = {
 			label = 'Border Size',
 			utype = 'f',
@@ -37,20 +48,26 @@ void main()
 		},
 		col_bg = {
 			label = "Tile Color",
-			utype = 'fff',
-			default = {0.135, 0.135, 0.135},
+			utype = 'ffff',
+			default = {0.135, 0.135, 0.135, 1.0},
 			low = 0,
 			high = 1.0
 		},
+		factor = {
+			label = "Factor",
+			utype = 'f',
+			default = 1.0,
+			low = 0.1,
+			high = 1.0
+		}
  	},
 	states = {
 		inactive = { uniforms = {
-			col_border = {0.3, 0.3, 0.3},
-			col_bg = {0.03, 0.03, 0.03}
+			factor = 0.2
 		} },
 		alert = { uniforms = {
-			col_border = {1.0, 1.0, 0.0},
-			col_bg = {0.549, 0.549, 0.0}
+			col_bg = {0.549, 0.549, 0.0, 1.0},
+			factor = 1.0
 		} }
 	}
 };

@@ -174,7 +174,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		end
 		btn.last_lbl = lbl;
 
-		if (btn.lbl) then
+		if (valid_vid(btn.lbl)) then
 			txt, lineh, w, h, asc = render_text(btn.lbl, lbl);
 		else
 			txt, lineh, w, h, asc = render_text(lbl);
@@ -383,7 +383,7 @@ function uiprim_button(anchor, bgshname,
 	assert(pad);
 
 	local res = {
-		lblfmt = "\\f,0\\#ffffff",
+		lblfmt = "\\f,0",
 		bgsh = bgshname,
 		lblsh = lblshname,
 		fontfn = fontfn,
