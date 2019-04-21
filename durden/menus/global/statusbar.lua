@@ -7,6 +7,9 @@ local function button_query_path(vsym, dir, group)
 				command = path
 			});
 			gconfig_statusbar_rebuild();
+			for disp in all_tilers_iter() do
+				disp:tile_update();
+			end
 		end
 	);
 end
@@ -23,6 +26,9 @@ local function remove_button(dir)
 					handler = function()
 						table.remove(gconfig_statusbar_buttons, i);
 						gconfig_statusbar_rebuild();
+						for disp in all_tilers_iter() do
+							disp:tile_update();
+						end
 					end
 				});
 			end
