@@ -31,9 +31,7 @@ function durden(argv)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
-	system_load("uiprim/uiprim.lua")(); -- ui primitives (buttons!)
-	system_load("uiprim/lbar.lua")(); -- used to navigate menus
-	system_load("uiprim/bbar.lua")(); -- input binding
+	system_load("uiprim/uiprim.lua")(); -- ui primitives
 	system_load("menu.lua")(); -- menu subsystem
 	system_load("timer.lua")(); -- timers, will hook clock_pulse
 	system_load("notification.lua")(); -- queue of message+descriptions
@@ -424,7 +422,7 @@ end
 local adopt_new = {};
 function durden_adopt(vid, kind, title, parent, last)
 -- always ignore unknown ones as they are likely pending or external listening
-	if (kind == "unknown" or image_tracetag(vid) == "adopt_destroy") then
+	if (kind == "unknown") then
 		return false;
 	end
 
