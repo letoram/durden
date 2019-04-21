@@ -6,14 +6,16 @@ return {
 	frag =
 [[
 	uniform sampler2D map_tu0;
-	varying vec2 texco;
+	uniform float factor;
+	uniform float mix;
 	uniform vec3 col;
-	uniform float obj_opacity;
+	varying vec2 texco;
 
 	void main()
 	{
-		float alpha = texture2D(map_tu0, texco).a;
-		gl_FragColor = vec4(col.rgb, alpha);
+		vec4 txcol = texture2D(map_tu0, texco);
+		vec3 bc = mix(col, txcol.rgb, mix);
+		gl_FragColor = vec4(bc.rgb * factor, txcol.a);
 	}
 ]],
 	uniforms = {
@@ -23,9 +25,24 @@ return {
 		default = {1.0, 1.0, 1.0},
 		low = 0.0,
 		high = 1.0
+		},
+		factor = {
+		label = 'Factor',
+		utype = 'f',
+		default = 1.0,
+		low = 0.1,
+		high = 1.0
+		},
+-- use static color or override?
+		mix = {
+		label = 'Mix',
+		utype = 'f',
+		default = 1.0,
+		low = 0.0,
+		high = 1.0
 		}
 	},
 	states = {
-		inactive = { uniforms = { col = {0.3, 0.3, 0.3} } },
+		inactive = { uniforms = { factor = 0.3 } }
 	}
 };

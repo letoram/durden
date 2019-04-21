@@ -17,6 +17,7 @@ local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
 local tiler_logfun = suppl_add_logfn("wm");
 local function tiler_debug(wm, msg)
+	msg = msg and msg or "bad message";
 	tiler_logfun(wm.name .. ":" .. msg);
 end
 
@@ -540,12 +541,22 @@ local function tiler_statusbar_update(wm)
 	for i=1,10 do
 		if (wm.spaces[i] ~= nil and not hide_ws) then
 			wm.sbar_ws[i]:show();
-			local lbltbl = {gconfig_get("pretiletext_color"), tostring(i)};
+			local lbltbl = {gconfig_get("sbar_prefixcolor"), tostring(i)};
+			if (lbltbl[1] == "dynamic") then
+				lbltbl[1] = HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
+			end
 			local lbl = wm.spaces[i].label;
+			local r = tonumber(string.sub(lbltbl[1], 3, 4), 16);
+			local g = tonumber(string.sub(lbltbl[1], 5, 6), 16);
+			local b = tonumber(string.sub(lbltbl[1], 7, 8), 16);
+			image_color(wm.sbar_ws[i].bg, r, g, b);
+
 			if (lbl and string.len(lbl) > 0) then
 				lbltbl[3] = "";
 				lbltbl[4] = ":";
-				lbltbl[5] = gconfig_get("label_color");
+				local lbl = gconfig_get("sbar_lblcolor");
+				lbltbl[5] = lbl ~=
+					"dynamic" and lbl or HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
 				lbltbl[6] = lbl;
 			end
 
@@ -556,7 +567,7 @@ local function tiler_statusbar_update(wm)
 				end
 			end
 
-			wm.sbar_ws[i]:update(lbltbl);
+			wm.sbar_ws[i]:update(lbltbl, 0, true);
 			if (wm.spaces[i].background) then
 				wm.spaces[i].background_y = -(image_surface_resolve(wm.anchor).y);
 				move_image(wm.spaces[i].background, 0, wm.spaces[i].background_y);
@@ -588,7 +599,7 @@ local function gen_button_handler(cmd, alt_cmd)
 		end,
 
 		rclick = function(btn)
-			tiler_debug("status button rclick");
+			tiler_debug(active_display(), "status button rclick");
 			dispatch_symbol(alt_cmd and alt_cmd or cmd);
 		end
 	};
@@ -667,6 +678,7 @@ local function tiler_statusbar_build(wm)
 				btn:update("");
 			end
 		});
+
 	wm.sbar_ws["msg"].align_left = true;
 end
 
@@ -5408,7 +5420,7 @@ local function tiler_scalef(wm, newf, disptbl)
 end
 
 local function tiler_fontres(wm)
-	return wm.font_delta .. "\\#ffffff", wm.scalef * gconfig_get("sbar_tpad");
+	return wm.font_delta, wm.scalef * gconfig_get("sbar_tpad");
 end
 
 local function tiler_switchbg(wm, newbg, mh)
