@@ -46,6 +46,11 @@ Minor / Fixes:
   * /global/displays/color can be used to change the default clear
 	  color when there is no wallpaper
 
+  * statusbar ws- button coloring now defaults to dynamic from hc
+	  palette
+
+	* started refactoring and splitting uiprim.lua
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
