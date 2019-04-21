@@ -578,6 +578,7 @@ suppl_append_color_menu(
 				image_color(tiler.rtgt_id, r, g, b);
 			end
 		end
+		gconfig_set("display_color", {r, g, b});
 	end
 );
 
