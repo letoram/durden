@@ -142,7 +142,9 @@ return {
 	label = "Target",
 	submenu = true,
 	kind = "action",
-	eval = function() return active_display().selected; end,
+	eval = function()
+		return active_display().selected ~= nil;
+	end,
 	handler = get_target_menu,
 	description = "Actions that target the currently selected window"
 },
