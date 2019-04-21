@@ -186,19 +186,6 @@ local system_menu = {
 		end
 	},
 	{
-		name = "output_msg",
-		label = "IPC-Output",
-		kind = "value",
-		description = "Write a custom string to the output IPC fifo",
-		invisible = true,
-		validator = function(val) return string.len(val) > 0; end,
-		handler = function(ctx, val)
-			if (OUTPUT_CHANNEL) then
-				OUTPUT_CHANNEL:write(val .. "\n");
-			end
-		end
-	},
-	{
 		name = "debug",
 		label = "Debug",
 		kind = "action",

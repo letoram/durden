@@ -275,58 +275,6 @@ local durden_system = {
 		end
 	},
 	{
-		name = "statpipe",
-		label = "Status Pipe",
-		kind = "value",
-		hint = "(a..Z_)",
-		description = "Set the fifo-name (ipc/XXX) used for statusbar control",
-		validator = strict_fname_valid,
-		initial = function() local path = gconfig_get("status_path");
-			return path == ":disabled" and "[disabled]" or path;
-		end,
-		handler = function(ctx, val)
-			if (STATUS_CHANNEL) then
-				STATUS_CHANNEL:close();
-				zap_resource(gconfig_get("status_path"));
-				STATUS_CHANNEL = nil;
-			end
-
-			if (string.len(val) == 0) then
-				val = ":disabled";
-			else
-				STATUS_CHANNEL = open_nonblock("<ipc/" .. val);
-			end
-
-			gconfig_set("status_path", val);
-		end
-	},
-	{
-		name = "outpipe",
-		label = "Output Pipe",
-		kind = "value",
-		hint = "(a..Z_)",
-		validator = strict_fname_valid,
-		initial = function() local path = gconfig_get("output_path");
-				return path == ":disabled" and "[disabled]" or path;
-		end,
-		description = "Set the fifo-name (ipc/XXX) used for IPC output feedback",
-		handler = function(ctx, val)
-			if (OUTPUT_CHANNEL) then
-				OUTPUT_CHANNEL:close();
-				zap_resource(gconfig_get("output_path"));
-				OUTPUT_CHANNEL = nil;
-			end
-
-			if (string.len(val) == 0) then
-				val = ":disabled";
-			else
-				OUTPUT_CHANNEL = open_nonblock("<ipc/" .. val, true);
-			end
-
-			gconfig_set("output_path", val);
-		end
-	},
-	{
 		name = "dispmode",
 		label = "Display Mode",
 		kind = "value",
