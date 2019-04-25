@@ -478,23 +478,52 @@ local function wm_update_mode(wm)
 	wm.sbar_ws["left"]:update(modestr);
 end
 
+local function update_sbar_shadow(wm)
+	local sb = wm.statusbar;
+
+	local t = gconfig_get("sbar_tshadow");
+	local l = gconfig_get("sbar_lshadow");
+	local d = gconfig_get("sbar_dshadow");
+	local r = gconfig_get("sbar_rshadow");
+	local cr, cg, cb = unpack(gconfig_get("sbar_shadow_color"));
+
+	suppl_region_shadow(sb,
+		sb.width, sb.height, t, l, d, r, cr, cg, cb, gconfig_get("sbar_shadow"));
+end
+
 local function tiler_statusbar_update(wm)
 -- synch constraints, first get the statusbar height ignoring visibility
 	local statush = sbar_geth(wm, true);
 	local xpos = 0;
 	local ytop = 0;
 	local ybottom = 0;
+	local pad_l = 0;
+	local pad_r = 0;
+
+-- consider visibility (fullscreen, or HUD mode affects it)
+	local space = wm:active_space();
+	local sb_invisible = space.mode == "fullscreen";
+	if (gconfig_get("sbar_visible") == "hud") then
+		sb_invisible = not tiler_lbar_isactive();
+	elseif (gconfig_get("sbar_visible") == "hidden") then
+		sb_invisible = true;
+	end
+	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
 	assert(wm.width);
-	local pl = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
-	local pr = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
-	ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
-	ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
-	xpos = pl;
-	wm.statusbar:resize(wm.width - pl - pr, statush);
+
+	if (not sb_invisible) then
+		pad_l = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
+		pad_r = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
+		ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
+		ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
+		xpos = pad_l;
+		statush = 0;
+	end
 
 -- positioning etc. still needs the current size of the statusbar
 	statush = sbar_geth(wm);
+	wm.statusbar:resize(wm.width - pad_l - pad_r, statush);
 
 -- modify this to implement vertical sidebars, interesting option
 -- would be to attach to the list of tabs in the sidebar tabbed
@@ -518,16 +547,6 @@ local function tiler_statusbar_update(wm)
 
 -- regenerate buttons and labels
 	wm_update_mode(wm);
-	local space = wm:active_space();
-
--- consider visibility (fullscreen, or HUD mode affects it)
-	local invisible = space.mode == "fullscreen";
-	if (gconfig_get("sbar_visible") == "hud") then
-		invisible = not tiler_lbar_isactive();
-	elseif (gconfig_get("sbar_visible") == "hidden") then
-		invisible = true;
-	end
-	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
 -- we just hide the layout button, it's always present even if not wanted
 	if (gconfig_get("sbar_modebutton")) then
@@ -577,6 +596,8 @@ local function tiler_statusbar_update(wm)
 		end
 		wm.sbar_ws[i]:switch_state(i == wm.space_ind and "active" or "inactive");
 	end
+
+	update_sbar_shadow(wm);
 end
 
 local function gen_button_handler(cmd, alt_cmd)

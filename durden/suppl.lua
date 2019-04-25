@@ -376,6 +376,57 @@ function suppl_region_stop(trig)
 	mouse_select_end(trig);
 end
 
+-- Attach a shadow to ctx, two enhancements that would be useful here is to use
+-- the resample_image function to generate a cached version to offload the
+-- fragment stage, though that should have a cache to re-use between sources of
+-- same or similar size as well.
+--
+-- The other is to use a color LUT along with the shadow (w,2 would suffice) and
+-- use that to have dynamic content aware shadows. Other option again would be to
+-- go completely nuts, and just encode lightsource ray-trace in a polar texture
+-- and blend there.
+function suppl_region_shadow(ctx, w, h, t, l, d, r, cr, cg, cb, method)
+	local shname = method and method or gconfig_get("shadow_method");
+	if (shname == "none") then
+		if (valid_vid(ctx.shadow)) then
+			delete_image(ctx.shadow);
+			ctx.shadow = BADID;
+		end
+		return;
+	end
+
+	t = t and t or gconfig_get("shadow_t");
+	l = l and l or gconfig_get("shadow_l");
+	d = d and d or gconfig_get("shadow_d");
+	r = r and r or gconfig_get("shadow_r");
+	if (not cr) then
+		cr, cg, cb = unpack(gconfig_get("shadow_color"));
+	end
+
+-- allocate on first call
+	if not valid_vid(ctx.shadow) then
+		ctx.shadow = color_surface(w + l + r, h + t + d, 0, 0, 0);
+
+-- and handle OOM
+		if (not valid_vid(ctx.shadow)) then
+			return;
+		end
+
+-- assume we can patch ctx and that it has an anchor
+		show_image(ctx.shadow);
+		link_image(ctx.shadow, ctx.anchor);
+		image_inherit_order(ctx.shadow, true);
+		order_image(ctx.shadow, -1);
+		shader_setup(ctx.shadow, "ui", "dropshadow", "active");
+		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
+	end
+
+	image_color(ctx.shadow, cr, cg, cb);
+	resize_image(ctx.shadow, w + l + r, h + t + d);
+	move_image(ctx.shadow, -l, -t);
+end
+
+
 function suppl_region_select(r, g, b, handler)
 	local col = fill_surface(1, 1, r, g, b);
 	blend_image(col, 0.2);

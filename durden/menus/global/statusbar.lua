@@ -69,34 +69,11 @@ local function statusbar_buttons(dir, lbl)
 };
 end
 
-local statusbar_buttons_dir = {
+local border_menu = {
 	{
-		name = "left",
-		kind = "action",
-		label = "Left",
-		description = "Modify buttons in the left group",
-		submenu = true,
-		handler = function()
-			return statusbar_buttons("left", "Left");
-		end
-	},
-	{
-		name = "right",
-		kind = "action",
-		label = "Right",
-		description = "Modify buttons in the right group",
-		submenu = true,
-		handler = function()
-			return statusbar_buttons("right", "Right");
-		end
-	}
-};
-
-return {
-	{
-		name = "border_pad",
-		label = "Border Padding",
-		description = "Insert padding",
+		name = "padding",
+		label = "Padding",
+		description = "Insert padding space between bar and edge",
 		kind = "value",
 		initial = function()
 			return string.format("%.2d %.2d %.2d %.2d",
@@ -120,15 +97,76 @@ return {
 		end
 	},
 	{
-		name = "mode_button",
-		label = "Mode Button",
+		name = "border",
+		label = "Border",
+		description = "Draw a border around the statusbar",
 		kind = "value",
-		description = "Control the presence of the dynamic mode- statusbar button",
 		initial = function()
-			return gconfig_get("sbar_modebutton") and LBL_YES or LBL_NO; end,
+			return string.format("%.2d %.2d %.2d %.2d",
+				gconfig_get("sbar_tshadow"), gconfig_get("sbar_lshadow"),
+				gconfig_get("sbar_dshadow"), gconfig_get("sbar_rshadow"));
+		end,
+		hint = "(t l d r) px",
+		validator = suppl_valid_typestr("ffff", 0.0, 100.0, 0.0),
+		handler = function(ctx, val)
+			local elem = string.split(val, " ");
+			if (#elem ~= 4) then
+				return;
+			end
+			gconfig_set("sbar_tshadow", math.floor(tonumber(elem[1])));
+			gconfig_set("sbar_lshadow", math.floor(tonumber(elem[2])));
+			gconfig_set("sbar_dshadow", math.floor(tonumber(elem[3])));
+			gconfig_set("sbar_rshadow", math.floor(tonumber(elem[4])));
+			for disp in all_tilers_iter() do
+				disp:tile_update();
+			end
+		end
+	},
+	{
+		name = "style",
+		label = "Style",
+		description = "Set the drawing method for the border area (if defined)",
+		set = {"none", "soft"},
+		kind = "value",
+		initial = function()
+			return gconfig_get("sbar_shadow");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_shadow", val);
+			for disp in all_tilers_iter() do
+				disp:tile_update();
+			end
+		end
+	}
+};
+
+local statusbar_buttons_dir = {
+	{
+		name = "left",
+		kind = "action",
+		label = "Left",
+		description = "Modify buttons in the left group",
+		submenu = true,
+		handler = statusbar_buttons("left", "Left")
+	},
+	{
+		name = "right",
+		kind = "action",
+		label = "Right",
+		description = "Modify buttons in the right group",
+		submenu = true,
+		handler = statusbar_buttons("right", "Right");
+	},
+	{
+		name = "force_prefix",
+		label = "Number Prefix Buttons",
+		kind = "value",
+		description = "Force number prefix on tagged workspaces",
+		initial = function()
+			return gconfig_get("sbar_numberprefix") and LBL_YES or LBL_NO; end,
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
-			gconfig_set("sbar_modebutton", val == LBL_YES);
+			gconfig_set("sbar_numberprefix", val == LBL_YES);
 			for tiler in all_tilers_iter() do
 				tiler:tile_update();
 			end
@@ -150,19 +188,71 @@ return {
 		end
 	},
 	{
-		name = "force_prefix",
-		label = "Number Prefix Buttons",
+		name = "mode_button",
+		label = "Mode Button",
 		kind = "value",
-		description = "Force number prefix on tagged workspaces",
+		description = "Control the presence of the dynamic mode- statusbar button",
 		initial = function()
-			return gconfig_get("sbar_numberprefix") and LBL_YES or LBL_NO; end,
+			return gconfig_get("sbar_modebutton") and LBL_YES or LBL_NO; end,
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
-			gconfig_set("sbar_numberprefix", val == LBL_YES);
+			gconfig_set("sbar_modebutton", val == LBL_YES);
 			for tiler in all_tilers_iter() do
 				tiler:tile_update();
 			end
 		end
+	},
+-- like the normal suppl_append_color_menu but special handling for
+-- the possible "dynamic" option where we pick the color from a palette
+	{
+		name = "label_color",
+		label = "Label Color",
+		kind = "value",
+		initial = function()
+			local lbl = gconfig_get("sbar_lblcolor");
+			if (v == "dynamic") then
+				return v;
+			else
+				local r = tonumber(string.sub(v, 3, 4), 16);
+				local g = tonumber(string.sub(v, 5, 6), 16);
+				local b = tonumber(string.sub(v, 7, 8), 16);
+				return string.format("%.0f %.0f %.0f", r, g, b);
+			end
+		end,
+		validator = function(val)
+			if (val == "dynamic") then
+				return true;
+			else
+				return suppl_valid_typestr("fff", 0, 255, 0)(val);
+			end
+		end,
+		handler = function(ctx, val)
+			if (val == "dynamic") then
+				gconfig_set("sbar_lblcolor", val);
+			else
+				local tbl = suppl_unpack_typestr("fff", val, 0, 255);
+				if (not tbl) then
+					return;
+				end
+				gconfig_set("sbar_lblcolor",
+					string.format("\\#%02x%02x%02x", tbl[1], tbl[2], tbl[3])
+				);
+			end
+			for tiler in all_tilers_iter() do
+				tiler:tile_update();
+			end
+		end,
+	}
+};
+
+return {
+	{
+		name = "border",
+		label = "Border",
+		kind = "action",
+		submenu = true,
+		description = "Configure statusbar border attributes (padding, shadow, ...)",
+		handler = border_menu
 	},
 	{
 		name = "buttons",
