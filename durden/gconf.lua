@@ -49,6 +49,19 @@ local defaults = {
 	border_color = {60, 104, 135},
 	titlebar_color = {60, 104, 135},
 
+-- quite expensive so need to be 'none' at start (or have a GPU probe stage)
+	shadow_style = "none",
+	shadow_focus = 1.0,
+	shadow_defocus = 0.2,
+	shadow_t = 8,
+	shadow_l = 8,
+	shadow_d = 8,
+	shadow_r = 8,
+
+-- soft, fixed
+	shadow_style = "none",
+	shadow_color = {0, 0, 0},
+
 -- right now, the options are 'none', 'image', 'full'
 	browser_preview = "full",
 	browser_timer = 5,

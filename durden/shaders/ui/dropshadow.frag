@@ -64,8 +64,8 @@ void main()
 	vec2 high = obj_output_sz;
 
 	float a = rounded_box_shadow(vec2(0.0, 0.0), high, vert, sigma, radius);
-	if (a > 0.99)
+	if (a > 0.999)
 		discard;
 
-	gl_FragColor = vec4(obj_col, max(weight * a, 0.0));
+	gl_FragColor = vec4(obj_col, max(obj_opacity * weight * a, 0.0));
 }

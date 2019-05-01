@@ -85,7 +85,7 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "Controls/Settings for titlebars and the statusbar",
-		handler = system_load("menus/global/bars.lua")
+		handler = system_load("menus/global/shadow.lua")();
 	},
 	{
 		name = "border",
@@ -93,7 +93,15 @@ return {
 		kind = "action",
 		submenu = true,
 		description = "Global window border style and settings",
-		handler = system_load("menus/global/border.lua")
+		handler = system_load("menus/global/border.lua")();
+	},
+	{
+		name = "shadow",
+		label = "Shadow",
+		kind = "action",
+		submenu = true,
+		description = "Global window and UI element shadow settings",
+		handler = system_load("menus/global/shadow.lua")();
 	},
 	{
 		name = "shaders",

@@ -408,6 +408,8 @@ local function wnd_deselect(wnd, nopick)
 -- forward state to the client
 	wnd:set_dispmask(bit.bor(wnd.dispmask, TD_HINT_UNFOCUSED));
 
+-- hide if the cursor should be hidden and it is actually over the surface
+-- (needed when the selection ischanged via keyboard)
 	local x, y = mouse_xy();
 	if (image_hit(wnd.canvas, x, y) and wnd.cursor == "hidden") then
 		mouse_hidemask(true);
@@ -420,6 +422,9 @@ local function wnd_deselect(wnd, nopick)
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
+	if (wnd.shadow) then
+		blend_image(wnd.shadow, gconfig_get("shadow_defocus"));
+	end
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
@@ -478,17 +483,19 @@ local function wm_update_mode(wm)
 	wm.sbar_ws["left"]:update(modestr);
 end
 
+-- different shadow routine here for the color and padding
 local function update_sbar_shadow(wm)
 	local sb = wm.statusbar;
+	local opts = {
+		t = gconfig_get("sbar_tshadow"),
+		l = gconfig_get("sbar_lshadow"),
+		d = gconfig_get("sbar_dshadow"),
+		r = gconfig_get("sbar_rshadow"),
+		color = gconfig_get("sbar_shadow_color"),
+		shader = gconfig_get("sbar_shadow")
+	};
 
-	local t = gconfig_get("sbar_tshadow");
-	local l = gconfig_get("sbar_lshadow");
-	local d = gconfig_get("sbar_dshadow");
-	local r = gconfig_get("sbar_rshadow");
-	local cr, cg, cb = unpack(gconfig_get("sbar_shadow_color"));
-
-	suppl_region_shadow(sb,
-		sb.width, sb.height, t, l, d, r, cr, cg, cb, gconfig_get("sbar_shadow"));
+	suppl_region_shadow(sb, sb.width, sb.height, opts);
 end
 
 local function tiler_statusbar_update(wm)
@@ -803,6 +810,9 @@ local function wnd_select(wnd, source, mouse)
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
+	if (wnd.shadow) then
+		blend_image(wnd.shadow, gconfig_get("shadow_focus"));
+	end
 
 -- there's a local selection state per workspace, but also a
 -- one for the wm itself (active_display().selected)
@@ -955,13 +965,13 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		end
 	end
 
+-- flush out pending transforms
 	instant_image_transform(space.anchor);
 	if (valid_vid(space.background)) then
 		instant_image_transform(space.background);
 	end
 
 	if (not noanim and time > 0 and method ~= "none") then
-		local htime = time * 0.5;
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
 			move_image(space.anchor, 0, 0, time);
@@ -972,20 +982,21 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 			show_image(space.anchor);
 		elseif (method == "fade") then
 			move_image(space.anchor, 0, 0);
--- stay at level zero for a little while so not to fight with crossfade
 			blend_image(space.anchor, 0.0);
-			blend_image(space.anchor, 0.0, htime);
-			blend_image(space.anchor, 1.0, htime);
+-- stay at level zero for a little while so not to fight and crossfade
+			blend_image(space.anchor, 0.0, time * 0.5);
+			blend_image(space.anchor, 1.0, time * 0.5);
 		else
 			warning("broken method set for ws_transition_in: " ..method);
 		end
+
 -- slightly more complicated, we don't want transitions if the background is the
 -- same between different workspaces as it is visually more distracting
 		local bg = space.background;
 		if (bg) then
 			if (not valid_vid(oldbg) or not image_matchstorage(oldbg, bg)) then
-				blend_image(bg, 0.0, htime);
-				blend_image(bg, 1.0, htime);
+				blend_image(bg, 0.0);
+				blend_image(bg, 1.0, time * 0.5);
 				image_mask_set(bg, MASK_POSITION);
 				image_mask_set(bg, MASK_OPACITY);
 			else
@@ -996,7 +1007,9 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		end
 	else
 		show_image(space.anchor);
-		if (space.background) then show_image(space.background); end
+		if (space.background) then
+			show_image(space.background);
+		end
 	end
 
 	local lst = linearize(space);
@@ -1283,17 +1296,6 @@ local function set_htab(space, repos)
 	if (space.layouter and space.layouter.resize(space, lst)) then
 		return;
 	end
-
---	if (not valid_vid(space.dropshadow)) then
---	experimental shadow region
---		local shadow = fill_surface(128, 800, 0, 0, 0);
---		blend_image(shadow, 0.9);
---		shader_setup(shadow, "ui", "dropshadow");
---		link_image(shadow, space.anchor);
---		image_inherit_order(shadow, true);
---		order_image(shadow, 1);
---		space.dropshadow = shadow;
---	end
 
 	space.mode_hook = drop_tab;
 	space.switch_hook = switch_tab;
@@ -2163,9 +2165,14 @@ local function wnd_size_decor(wnd, w, h, animate)
 		_, at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
 	end
 
+	if (wnd.want_shadow) then
+		suppl_region_shadow(wnd, w, h, {time = at, interp = af});
+		tiler_debug(wnd.wm, "region_shadow: %d, %d", at, af);
+	end
+
 	tiler_debug(wnd.wm, string.format(
-		"size_decor:animate=%s:at=%d:border=%d:tbar=%d",
-		animate and "yes" or "no", at, bw, tbh)
+		"size_decor:animate=%s:at=%d:border=%d:tbar=%d:shadow=%s",
+		animate and "yes" or "no", at, bw, tbh, wnd.want_shadow and "yes" or "no")
 	);
 
 	wnd.pad_top = bw;
@@ -4872,6 +4879,8 @@ local wnd_setup = function(wm, source, opts)
 
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
+	res.want_shadow =
+		(not opts.block_shadow) and gconfig_get("shadow_style") == "soft";
 
 	if (opts.show_titlebar ~= nil) then
 		res.show_titlebar = opts.show_titlebar;
