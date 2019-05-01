@@ -385,27 +385,37 @@ end
 -- use that to have dynamic content aware shadows. Other option again would be to
 -- go completely nuts, and just encode lightsource ray-trace in a polar texture
 -- and blend there.
-function suppl_region_shadow(ctx, w, h, t, l, d, r, cr, cg, cb, method)
-	local shname = method and method or gconfig_get("shadow_method");
-	if (shname == "none") then
+function suppl_region_shadow(ctx, w, h, opts)
+	opts = opts and opts or {};
+	opts.method = opts.method and opts.method or gconfig_get("shadow_style");
+	if (opts.method == "none") then
 		if (valid_vid(ctx.shadow)) then
 			delete_image(ctx.shadow);
-			ctx.shadow = BADID;
+			ctx.shadow = nil;
 		end
 		return;
 	end
 
-	t = t and t or gconfig_get("shadow_t");
-	l = l and l or gconfig_get("shadow_l");
-	d = d and d or gconfig_get("shadow_d");
-	r = r and r or gconfig_get("shadow_r");
-	if (not cr) then
+-- assume 'soft' for now
+	local shname = "dropshadow";
+
+	local time = opts.time and opts.time or 0;
+	local t = opts.t and opts.t or gconfig_get("shadow_t");
+	local l = opts.l and opts.l or gconfig_get("shadow_l");
+	local d = opts.d and opts.d or gconfig_get("shadow_d");
+	local r = opts.r and opts.r or gconfig_get("shadow_r");
+	local interp = opts.interp and opts.interp or INTERP_SMOOTHSTEP;
+	local cr, cg, cb;
+
+	if (opts.color) then
+		cr, cg, cb = unpack(opts.color);
+	else
 		cr, cg, cb = unpack(gconfig_get("shadow_color"));
 	end
 
 -- allocate on first call
 	if not valid_vid(ctx.shadow) then
-		ctx.shadow = color_surface(w + l + r, h + t + d, 0, 0, 0);
+		ctx.shadow = color_surface(w + l + r, h + t + d, cr, cg, cb);
 
 -- and handle OOM
 		if (not valid_vid(ctx.shadow)) then
@@ -413,19 +423,18 @@ function suppl_region_shadow(ctx, w, h, t, l, d, r, cr, cg, cb, method)
 		end
 
 -- assume we can patch ctx and that it has an anchor
-		show_image(ctx.shadow);
+		blend_image(ctx.shadow, 1.0, time);
 		link_image(ctx.shadow, ctx.anchor);
 		image_inherit_order(ctx.shadow, true);
 		order_image(ctx.shadow, -1);
-		shader_setup(ctx.shadow, "ui", "dropshadow", "active");
+		shader_setup(ctx.shadow, "ui", shname, "active");
 		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
 	end
 
 	image_color(ctx.shadow, cr, cg, cb);
-	resize_image(ctx.shadow, w + l + r, h + t + d);
+	resize_image(ctx.shadow, w + l + r, h + t + d, time, interp);
 	move_image(ctx.shadow, -l, -t);
 end
-
 
 function suppl_region_select(r, g, b, handler)
 	local col = fill_surface(1, 1, r, g, b);
