@@ -219,6 +219,10 @@ local defaults = {
 	float_tile_sz = {16, 16},
 	float_tbar_override = false,
 
+-- used for adding 'gaps' in the tile layout
+	tile_gap_w = 0,
+	tile_gap_h = 0,
+
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
 -- scaling parameters, SDL on OSX for instance.

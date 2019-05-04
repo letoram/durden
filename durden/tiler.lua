@@ -881,6 +881,9 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 		return;
 	end
 
+	local tpad_w = gconfig_get("tile_gap_w");
+	local tpad_h = gconfig_get("tile_gap_h");
+
 	local process_node = function(node, last, fairh)
 		node.x = x; node.y = y;
 		node.max_h = h;
@@ -888,13 +891,14 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 		if (last) then
 			node.max_w = w;
 		else
+			node.max_w = node.max_w - tpad_w;
 			node.max_w = math.floor(fairw * node.weight);
 			node.max_w = (node.max_w % 2) == 0 and node.max_w or node.max_w + 1;
 
 -- align with font size, but safe-guard against bad / broken client
 			if (node.sz_delta and
 				node.sz_delta[1] < gconfig_get("term_font_sz") * 2) then
-				local hd = node.pad_left + node.pad_right;
+				local hd = node.pad_left + node.pad_right + tpad_w;
 				local delta_diff = (node.max_w - hd) % node.sz_delta[1];
 
 -- attempts at balancing down / up based on shortest distance didn't end well
@@ -912,14 +916,17 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 -- recurse downwards
 		if (#node.children > 0) then
 			node.max_h = math.floor(fairh * node.vweight);
-			level_resize(node,
-				x, y + node.max_h, node.max_w, h - node.max_h, repos, fairh);
+			level_resize(node, x,
+				y + tpad_h + node.max_h,
+				node.max_w, h - tpad_h - node.max_h,
+				repos, fairh
+			);
 		end
 
 		node:resize(node.max_w, node.max_h, true);
 
-		x = x + node.max_w;
-		w = w - node.max_w;
+		x = x + node.max_w + tpad_w;
+		w = w - node.max_w - tpad_w;
 	end
 
 -- recursively find the depth to know the fair division, (N) is not high
