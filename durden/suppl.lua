@@ -429,6 +429,8 @@ function suppl_region_shadow(ctx, w, h, opts)
 		order_image(ctx.shadow, -1);
 		shader_setup(ctx.shadow, "ui", shname, "active");
 		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
+	else
+		reset_image_transform(ctx.shadow);
 	end
 
 	image_color(ctx.shadow, cr, cg, cb);
