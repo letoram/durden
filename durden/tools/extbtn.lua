@@ -14,14 +14,16 @@ local log = suppl_add_logfn("tools");
 -- all receiving basic fonts, fixed height, restricted width.
 menus_register("global", "settings/statusbar/buttons",
 {
-	name = "connection_points",
-	label = "Connection Points",
+	name = "external",
+	label = "External",
 	submenu = true,
 	kind = "action",
 	eval = function()
-		return #cps > 0;
+		for k,v in pairs(cps) do
+			return true;
+		end
 	end,
-	handler = gen_cp_menu
+	handler = function() return gen_cp_menu(); end
 }
 );
 
@@ -60,7 +62,9 @@ local function gen_submenu_for_cp(v)
 		description = "Close the connection point but keep existing clients around",
 		handler = function()
 			table.remove_match(cps, v);
-			delete_image(v.vid);
+			if (valid_vid(v.vid)) then
+				delete_image(v.vid);
+			end
 		end,
 	},
 	{
@@ -83,12 +87,12 @@ local function gen_submenu_for_cp(v)
 	};
 end
 
-local function gen_cp_menu()
+gen_cp_menu = function()
 	local res = {};
-	for i,v in ipairs(cps) do
+	for k,v in pairs(cps) do
 		table.insert(res, {
-			name = v,
-			label = v,
+			name = k,
+			label = k,
 			kind = "action",
 			submenu = true,
 			description = "Control connection point behaviour",
