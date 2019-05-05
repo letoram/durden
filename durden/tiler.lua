@@ -3741,7 +3741,14 @@ end
 local function try_swap(vids, wnd, candidates)
 	for i,v in ipairs(candidates) do
 		if (v ~= wnd and vids[v.canvas]) then
-			wnd:swap(v, false, false);
+			local m1, m2 = dispatch_meta();
+			if (m1) then
+				wnd:reparent(v);
+			elseif (m2) then
+				wnd:reparent(v, true);
+			else
+				wnd:swap(v, false, false);
+			end
 			return;
 		end
 	end
@@ -4022,8 +4029,8 @@ local canvas_mh = {
 	end
 };
 
--- move w1 from whatever parent and set as child to w2
-local function wnd_tochild(w1,w2)
+-- move w1 from whatever parent and set as child or sibling to w2
+local function wnd_tochild(w1, w2, sibling)
 	if (w1.space ~= w2.space) then
 		return;
 	end
@@ -4031,8 +4038,14 @@ local function wnd_tochild(w1,w2)
 	local wp1 = w1.parent;
 	local wp1i = table.find_i(wp1.children, w1);
 	table.remove(wp1.children, wp1i);
-	table.insert(w2.children, w1);
-	w1.parent = w2;
+
+	if (sibling) then
+		w1.parent = w2.parent;
+		table.insert(w1.parent.children, w1);
+	else
+		table.insert(w2.children, w1);
+		w1.parent = w2;
+	end
 
 	w1:recovertag();
 end
