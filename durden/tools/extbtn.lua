@@ -103,7 +103,6 @@ local function setup_default(name, new_vid, dir)
 		vid = new_vid,
 		group = dir
 	};
-	print(cps[name], new_vid, dir);
 end
 
 local function send_fonts(dst)
@@ -266,11 +265,16 @@ local function setup_grab(ctx, bar, source, status)
 -- the anchor here is simply a hidden surface we play at the relative order
 -- of the wm components, and it will absorb mouse motion until we release it
 	local anchor = null_surface(bar.owner.width, bar.owner.height);
+	show_image(anchor);
 	if not (valid_vid(anchor)) then
 		delete_image(source);
 		return;
 	end
 	image_tracetag(anchor, "traybtn_mouse_anchor");
+	link_image(anchor, source);
+	image_inherit_order(anchor, true);
+	order_image(anchor, -1);
+	image_mask_clear(anchor, MASK_POSITION);
 
 -- save input handler until we release the grab
 	local old_ioh = _G[APPLID .. "_input"];
@@ -303,33 +307,77 @@ local function setup_grab(ctx, bar, source, status)
 -- IPC, ...)
 	dispatch_symbol_lock();
 
+-- mouse handler for the grab- surface and for the popup itself,
+-- forward motion and buttons to the source, destroy on grab-click
+	local mouseh = {
+		own = function(mctx, vid)
+			return vid == anchor or vid == source;
+		end,
+		motion = function(ctx, vid, x, y, rx, ry)
+			if vid ~= source then
+				return
+			end
+			local aprops = image_surface_resolve(source);
+			local lx = x - aprops.x;
+			local ly = y - aprops.y;
+			target_input(source, {
+				kind = "analog", mouse = true, devid = 0, subid = 0,
+				samples = {lx, rx}
+			});
+			target_input(source, {
+				kind = "analog", mouse = true, devid = 0, subid = 1,
+				samples = {ly, ry}
+			});
+		end,
+		button = function(ctx, vid, ind, pressed, x, y)
+			if vid == source then
+			target_input(source, { active = pressed,
+				devid = 0, subid = ind, kind = "digital", mouse = true});
+			end
+		end,
+		click = function(mctx, vid)
+			if vid == anchor then
+				ctx:destroy();
+			end
+		end,
+		name = "extbtn_grab_anchor"
+	};
+	mouse_addlistener(mouseh, {"click", "motion", "button"});
+
 -- add our handler
 	ctx.destroy = function()
 		_G[APPLID .. "_input"] = old_ioh;
 		dispatch_symbol_unlock(true);
+		ctx.destroy = nil;
+
+		local time = gconfig_get("animation");
+		if (valid_vid(source)) then
+			expire_image(source, time);
+			blend_image(source, 0.0, time);
+		end
+		mouse_droplistener(mouseh);
 	end
 
--- use the source properties and the ctx.button vid to figure out position
--- of the popup itself
+-- use the source properties and the ctx.button vid to figure out
+-- position of the popup itself
 end
 
 local function reposition(source, bar, btn)
-	local sp = image_surface_resolve(source);
-	local dx = 0;
-	local dy = 0;
-	local ne = sp.x + sp.width;
-	local se = sp.y + sp.height;
+	local ap = gconfig_get("sbar_pos");
+	local sprop = image_surface_resolve(source);
+	local bprop = image_surface_properties(btn.bg);
 
-	if (ne > bar.owner.width) then
-		dx = bar.owner.width - ne;
+-- align to the lower left unless overflow, then end at lower right
+	if (ap == "top") then
+		move_image(source, 0, bprop.height);
+	else
+		move_image(source, 0, -sprop.height);
 	end
 
-	if (se > bar.owner.height) then
-		dy = bar.owner.height - se;
+	log(string.format("%f, %f", sprop.x + sprop.width, bar.owner.width));
+	if (sprop.x + sprop.width > bar.owner.width) then
+		nudge_image(source, -sprop.width + bprop.width, 0);
 	end
-
-	nudge_image(source, dx, dy);
-	log("nudge:" .. tostring(dx) .. ", " .. tostring(dy));
 end
 
 local function popup_handler(ctx, bar, source, status)
@@ -337,9 +385,7 @@ local function popup_handler(ctx, bar, source, status)
 		.. status.kind .. ":source=" .. tostring(source));
 
 	if (status.kind == "resized") then
-		if (last_click == ctx.parent_ctx) then
-			setup_grab(ctx, bar, source, status);
-		else
+		if (last_click ~= ctx.parent_ctx) then
 -- If the client was slow to wake up and something else was clicked in
 -- between, we can / should just kill it off.
 			log("name=traybtn:kind=error:source="
@@ -356,18 +402,23 @@ local function popup_handler(ctx, bar, source, status)
 -- link to the button anchor itself for positioning
 		show_image(source);
 		rendertarget_attach(bar.owner.rtgt_id, source, RENDERTARGET_DETACH);
-		link_image(source, ctx.parent_ctx.button.bg, ANCHOR_LR);
-
-		move_image(source, -status.width, 0);
+		link_image(source, ctx.parent_ctx.button.bg);
 
 		image_inherit_order(source, true);
 		order_image(source, 1);
 		resize_image(source, status.width, status.height);
 
+-- set source as anchor attribute so shadow gets attached right
+		ctx.anchor = source;
+		suppl_region_shadow(ctx, status.width, status.height);
+
 -- then resolve display- space coordinates and adjust versus screen edge
 -- this has quite a few edge cases due to possible 'overflow' and to cover
 -- both bar orientations
 		reposition(source, bar, ctx.parent_ctx.button);
+		if (not ctx.destroy) then
+			setup_grab(ctx, bar, source, status);
+		end
 
 	elseif (status.kind == "preroll") then
 -- send the current display density
@@ -376,13 +427,14 @@ local function popup_handler(ctx, bar, source, status)
 
 	elseif (status.kind == "terminated") then
 		if (last_click == ctx) then
-			if (ctx.destroy) then
-				ctx:destroy();
-			end
 			last_click = nil;
 		end
 
-		delete_image(source);
+		if (ctx.destroy) then
+			ctx:destroy();
+		else
+			delete_image(source);
+		end
 	end
 end
 
