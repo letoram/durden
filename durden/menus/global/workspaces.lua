@@ -41,6 +41,38 @@ local tab_menu = {
 	},
 };
 
+local tile_menu = {
+	{
+		label = "Horizontal Gap",
+		name = "horizontal_gap",
+		kind = "value",
+		description = "Change the relayouting gap width spacing",
+		hint = "(px)",
+		initial = function()
+			return gconfig_get("tile_gap_w");
+		end,
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx, val)
+			gconfig_set("tile_gap_w", tonumber(val));
+-- for all tilers, force a resize
+		end
+	},
+	{
+		label = "Vertical Gap",
+		name = "vertical_gap",
+		kind = "value",
+		description = "Change the relayouting gap width spacing",
+		hint = "(px)",
+		initial = function()
+			return gconfig_get("tile_gap_h");
+		end,
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx, val)
+			gconfig_set("tile_gap_h", tonumber(val));
+		end
+	}
+};
+
 return {
 	{
 		name = "autodel",
@@ -73,6 +105,14 @@ return {
 		end,
 		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
 		handler = suppl_flip_handler("ws_autoadopt")
+	},
+	{
+		name = "tiled",
+		label = "Tiled",
+		description = "Configuration options for tiled workspace layouts",
+		kind = "action",
+		submenu = true,
+		handler = tile_menu
 	},
 	{
 		name = "tabbed",
