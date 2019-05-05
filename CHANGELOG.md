@@ -10,7 +10,7 @@
 		 useful for pairing windows with bindings in autorun.lua etc.
 		 when no uuid or other identity token has been established.
 
-  * tools/traybtn added:
+  * tools/extbtn added:
 	  registers into global/settings/statusbar and adds option for
 		external clients to connect and attach custom buttons. This
 		deprecates the statusbar IPC in favor of solving this externally.
@@ -20,7 +20,11 @@
 		 deselect and destroy
 
   * layout/tile:
-	   allow titlebar drag/drop as a mouse- triggered way to swap
+	   allow titlebar drag/drop as a mouse- triggered way to swap, m1 and
+		 m2 control swap, join as child or join as sibling
+
+  * layout/tile:
+	   allow option to specify layouting gaps
 
   * layout/htab:
 	   added side column based tabbed layout mode
@@ -34,6 +38,9 @@
 	   Custom menus/aliasmaps can now be built. These register in the
 		 menu root (/menus) and are intended for shortcut button grids,
 		 popup menus, radial menus and so on.
+
+	* visual:
+	   Add soft shadow controls to windows, ui elements and statusbar
 
 Breaking:
   * statusbar ipc removed in favor of tools/traybtn
