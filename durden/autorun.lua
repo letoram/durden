@@ -21,4 +21,4 @@ for i,v in pairs(list_targets()) do
 	end
 end
 
-dispatch_symbol("/global/settings/statusbar/add_external=tray")
+-- dispatch_symbol("/global/settings/statusbar/buttons/right/add_external=tray")
