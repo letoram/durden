@@ -13,6 +13,9 @@ local archetypes = {};
 -- source-id-to-window-mapping
 local swm = {};
 
+-- special window overrides (intended for tools)
+local guid_handler_table = {};
+
 local client_log = suppl_add_logfn("client");
 
 -- notice that logging server to client commands are done elsewhere as
@@ -66,7 +69,7 @@ local function default_reqh(wnd, source, ev)
 	local normal = {
 		"lwa", "multimedia", "game", "vm",
 		"application", "remoting", "browser",
-		"handover"
+		"handover", "tui", "terminal"
 	};
 
 -- early out if the type is not permitted
@@ -354,10 +357,29 @@ end
 
 defhtbl["registered"] =
 function(wnd, source, stat)
-	client_log("register:name=" .. wnd.name .. ":kind=" .. stat.segkind);
+-- ignore 0- value (b64), we also (ab)use injected registered event to get
+-- the same path for internal launch via target/cfg where the guid can be
+-- tracked in the database.
+	local logged = false;
+	if (type(stat.guid) == "string") then
+		if (stat.guid == "AAAAAAAAAAAAAAAAAAAAAA==") then
+-- redirect if an external tool has registered a handler for a specific guid
+		else
+			logged = true;
+			client_log(string.format(
+				"registered:name=%s:kind=%s:guid=%s", wnd.name, stat.segkind, stat.guid));
+			if (guid_handler_table[stat.guid]) then
+				guid_handler_table[stat.guid](wnd, source, stat);
+				return;
+			end
+		end
+	end
+
+	if not logged then
+		client_log(string.format(
+			"registered:name=%s:kind=%s", wnd.name, stat.segkind));
+	end
 	extevh_apply_atype(wnd, stat.segkind, source, stat);
--- can either be table [tgt, cfg] or [guid], ignore the 0- value
--- as that is an obvious failure
 	wnd:set_title(stat.title);
 	wnd:set_guid(stat.guid);
 end
@@ -440,6 +462,16 @@ function(wnd, source, stat)
 		);
 	else
 		default_reqh(wnd, source, stat);
+	end
+end
+
+function extevh_register_guid(guid, source, handler)
+	if (guid_handler_table[guid]) then
+		client_log("guid_override:kind=error:message=EEXIST:source=" .. source ..":guid=" .. guid);
+		return;
+	else
+		client_log("guid_override:kind=registered:source=" .. source .. "guid=" .. guid);
+		guid_handler_table[guid] = handler;
 	end
 end
 
