@@ -257,7 +257,6 @@ local durden_system = {
 		kind = "value",
 		description = "Control permission for external privileged GPU access",
 		initial = function() return gconfig_get("gpu_auth"); end,
-		eval = function() return TARGET_ALLOWGPU ~= nil; end,
 		set = {"none", "full"},
 		handler = function(ctx, val)
 			gconfig_set("gpu_auth", val);

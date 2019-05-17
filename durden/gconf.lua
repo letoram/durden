@@ -117,7 +117,7 @@ local defaults = {
 -- against the GPU to let those tokens go through. This can compromise security
 -- or safety as the privileges given for such a token may expose buffer contents
 -- or queue GPU resources that may compromise the display server.
-	gpu_auth = "none",
+	gpu_auth = "full",
 
 -- SECURITY: set to passive, active, full or none depending on the default
 -- access permissions to any client that requests to manage gamma or clipboard
