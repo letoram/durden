@@ -52,6 +52,17 @@ local function wnd_animation_time(wnd, source, decor, position)
 	return 0, 0, INTERP_SMOOTHSTEP;
 end
 
+local function wnd_synch_mouse(wnd, x, y)
+	local props = image_surface_resolve(wnd.canvas);
+	if (x >= props.x and y >= props.y and
+		x <= props.x + props.width and y <= props.y + props.height) then
+		wnd.mouse = {
+			(x - props.x) / props.width,
+			(y - props.y) / props.height
+		};
+	end
+end
+
 local function linearize(wnd)
 	local res = {};
 	local dive = function(wnd, df)
@@ -129,7 +140,12 @@ local function sbar_show(wm)
 end
 
 local function run_event(wnd, event, ...)
-	assert(wnd.handlers[event]);
+	if not wnd.handlers then
+		tiler_logfun(event .. "on broken window");
+		return
+	end
+
+	assert(wnd.handlers[event])
 	for i,v in ipairs(wnd.handlers[event]) do
 		v(wnd, unpack({...}));
 	end
@@ -428,14 +444,7 @@ local function wnd_deselect(wnd, nopick)
 
 -- save scaled coordinates so we can handle a resize
 	if (gconfig_get("mouse_remember_position")) then
-		local props = image_surface_resolve(wnd.canvas);
-		if (x >= props.x and y >= props.y and
-			x <= props.x + props.width and y <= props.y + props.height) then
-			wnd.mouse = {
-				(x - props.x) / props.width,
-				(y - props.y) / props.height
-			};
-		end
+		wnd_synch_mouse(wnd, x, y);
 	end
 
 -- run any other chained handlers, typically from autolayouters
@@ -1788,7 +1797,7 @@ local function workspace_background(ws, bgsrc, generalize)
 			shader_setup(ws.background, "simple", "noalpha");
 		end
 		if (not valid_vid(ws.anchor)) then
-			print("new on broken ws - investigate: ", debug.traceback());
+			tiler_logfun("new on broken workspace");
 			return;
 		end
 		resize_image(ws.background, wm.width, wm.height);
@@ -3161,27 +3170,12 @@ local function wnd_mousebutton(ctx, ind, pressed, x, y)
 		output_mouse_devent({
 			active = pressed, devid = 0, subid = ind}, wnd);
 	end
-end
 
-local function wnd_mouseclick(ctx, vid)
-	local wnd = ctx.tag;
-
-	if (wnd.wm.selected ~= wnd and
-		gconfig_get("mouse_focus_event") == "click") then
-		wnd:select(nil, true);
-		return;
-	elseif (#wnd.popups > 0) then
-		wnd:drop_popup(true);
-		return;
-	end
-
-	if (not (vid == wnd.canvas and
-		valid_vid(wnd.external, TYPE_FRAMESERVER))) then
-		return;
-	end
-
-	output_mouse_devent({
-		active = true, devid = 0, subid = 0, gesture = true, label = "click"}, wnd);
+-- forward mouse event both in the display- local and the surface- local
+	local x, y = mouse_xy();
+	wnd_synch_mouse(wnd, x, y);
+	run_event(wnd, "mouse_button",
+		subid, pressed, x, y, wnd.mouse[1], wnd.mouse[2]);
 end
 
 local function wnd_toggle_maximize(wnd)
@@ -4632,7 +4626,8 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		yofs = opts.yofs and opts.yofs or 0,
 		wofs = opts.wofs and opts.wofs or 0,
 		hofs = opts.hofs and opts.hofs or 0,
-		mh = opts.mouse_handler
+		mh = opts.mouse_handler,
+		closure = opts.closure
 	};
 
 	tiler_debug(wnd.wm, string.format(
@@ -4723,7 +4718,12 @@ local function wnd_drop_overlay(wnd, key)
 
 	blend_image(wnd.overlays[key].vid, 0.0, gconfig_get("wnd_animation"));
 	expire_image(wnd.overlays[key].vid, gconfig_get("wnd_animation"));
+
+	local closure = wnd.overlays[key].closure;
 	wnd.overlays[key] = nil;
+	if closure then
+		closure();
+	end
 end
 
 -- build an orphaned window that isn't connected to a real workspace yet,
@@ -4781,6 +4781,7 @@ local wnd_setup = function(wm, source, opts)
 			select = {},
 			deselect = {},
 			mouse_motion = {},
+			mouse_button = {},
 			mouse = {}
 		},
 
