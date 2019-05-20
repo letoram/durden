@@ -60,13 +60,16 @@ local function popup_handler(wnd, source, status, wtype)
 		);
 		resize_image(source, status.width, status.height);
 		order_image(source, 2);
-		blend_image(source, 0.5);
-		force_image_blend(source);
+		show_image(source);
+		local mx, my = mouse_xy();
+		move_image(source, mx, my);
 	end
 end
 
 local function apply_type_size(wnd, status)
-	if (wnd.surface_type == "popup" or wnd.surface_type == "tooltip") then
+	if (wnd.surface_type == "popup" or
+		wnd.surface_type == "tooltip" or
+		wnd.surface_type == "menu") then
 -- destroy the 'container', won't be needed with popup, uncertain
 -- what the 'rules' say about the same surface mutating in type, but
 -- assume for now that it doesn't.
