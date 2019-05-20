@@ -376,15 +376,16 @@ function suppl_region_stop(trig)
 	mouse_select_end(trig);
 end
 
--- Attach a shadow to ctx, two enhancements that would be useful here is to use
--- the resample_image function to generate a cached version to offload the
--- fragment stage, though that should have a cache to re-use between sources of
--- same or similar size as well.
+-- Attach a shadow to ctx.
 --
--- The other is to use a color LUT along with the shadow (w,2 would suffice) and
--- use that to have dynamic content aware shadows. Other option again would be to
--- go completely nuts, and just encode lightsource ray-trace in a polar texture
--- and blend there.
+-- This is a simple/naive version that repeats the fragment shader for every
+-- updated friend. A decent optimization (depending on memory) is to RTT it
+-- and maintain a cache for non/dynamic updates (animations and drag-resize).
+--
+-- Shadows can use a single color or a weighted mix between a base color and
+-- a reference texture map. For this case, the opts.reference is set to the
+-- textured source and the global 'shadow_style' config is set to textured.
+--
 function suppl_region_shadow(ctx, w, h, opts)
 	opts = opts and opts or {};
 	opts.method = opts.method and opts.method or gconfig_get("shadow_style");
@@ -415,11 +416,15 @@ function suppl_region_shadow(ctx, w, h, opts)
 
 -- allocate on first call
 	if not valid_vid(ctx.shadow) then
-		ctx.shadow = color_surface(w + l + r, h + t + d, cr, cg, cb);
+		ctx.shadow = fill_surface(w + l + r, h + t + d, cr, cg, cb);
 
 -- and handle OOM
 		if (not valid_vid(ctx.shadow)) then
 			return;
+		end
+
+		if opts.reference and opts.method == "textured" then
+			image_sharestorage(opts.reference, ctx.shadow);
 		end
 
 -- assume we can patch ctx and that it has an anchor
@@ -427,7 +432,16 @@ function suppl_region_shadow(ctx, w, h, opts)
 		link_image(ctx.shadow, ctx.anchor);
 		image_inherit_order(ctx.shadow, true);
 		order_image(ctx.shadow, -1);
-		shader_setup(ctx.shadow, "ui", shname, "active");
+
+-- This is slightly problematic as the uniforms are shared, thus
+-- the option of colour vs texture source etc. will be shared.
+--
+-- Though this does not apply here, multi-pass effect composition
+-- etc. that requires indirect blits would not work this way either.
+		local shid = shader_setup(ctx.shadow, "ui", shname, "active");
+		if shid then
+			shader_uniform(shid, "color", "fff", cr, cg, cb);
+		end
 		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
 	else
 		reset_image_transform(ctx.shadow);

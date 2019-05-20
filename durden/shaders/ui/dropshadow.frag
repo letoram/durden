@@ -9,8 +9,9 @@
 	uniform float sigma;
 	uniform vec2 obj_output_sz;
 	uniform sampler2D map_tu0;
-	uniform vec3 obj_col;
+	uniform vec3 color;
 	uniform float weight;
+	uniform float mix_factor;
 	varying vec2 texco;
 
 vec2 error_function(vec2 x)
@@ -62,10 +63,16 @@ void main()
 
 	vec2 rvec = vec2(radius, radius);
 	vec2 high = obj_output_sz;
+	vec3 col = color;
+
+	if (mix_factor > 0.001){
+		col = texture2D(map_tu0, texco).rgb;
+		col = mix(col, color, mix_factor);
+	}
 
 	float a = rounded_box_shadow(vec2(0.0, 0.0), high, vert, sigma, radius);
-	if (a > 0.999)
+	if (a > 0.99)
 		discard;
 
-	gl_FragColor = vec4(obj_col, max(obj_opacity * weight * a, 0.0));
+	gl_FragColor = vec4(col, max(obj_opacity * weight * a, 0.0));
 }

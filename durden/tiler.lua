@@ -439,7 +439,11 @@ local function wnd_deselect(wnd, nopick)
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
 	if (wnd.shadow) then
-		blend_image(wnd.shadow, gconfig_get("shadow_defocus"));
+		local focus = gconfig_get("shadow_defocus");
+		if is_tab_mode(wnd.space.mode) then
+			focus = 0;
+		end
+		blend_image(wnd.shadow, focus);
 	end
 
 -- save scaled coordinates so we can handle a resize
@@ -820,7 +824,11 @@ local function wnd_select(wnd, source, mouse)
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
 	if (wnd.shadow) then
-		blend_image(wnd.shadow, gconfig_get("shadow_focus"));
+		local focus = gconfig_get("shadow_focus");
+		if is_tab_mode(wnd.space.mode) then
+			focus = 0;
+		end
+		blend_image(wnd.shadow, focus);
 	end
 
 -- there's a local selection state per workspace, but also a
@@ -2182,8 +2190,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 	end
 
 	if (wnd.want_shadow) then
-		suppl_region_shadow(wnd, w, h, {time = at, interp = af});
-		tiler_debug(wnd.wm, "region_shadow: %d, %d", at, af);
+		suppl_region_shadow(wnd, w, h, {time = at, interp = af, reference = wnd.canvas});
 	end
 
 	tiler_debug(wnd.wm, string.format(
@@ -3766,7 +3773,7 @@ end
 
 local titlebar_mh = {
 	over = function(ctx)
-		if (ctx.tag.space.mode == "float") then
+		if (ctx.tag.space.mode == "float" or ctx.tag.space.mode == "tile") then
 			mouse_switch_cursor("grabhint");
 		end
 	end,
@@ -4901,7 +4908,7 @@ local wnd_setup = function(wm, source, opts)
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
 	res.want_shadow =
-		(not opts.block_shadow) and gconfig_get("shadow_style") == "soft";
+		(not opts.block_shadow) and gconfig_get("shadow_style") ~= "none";
 
 	if (opts.show_titlebar ~= nil) then
 		res.show_titlebar = opts.show_titlebar;
