@@ -1,9 +1,9 @@
-return {
+local res = {
 	{
 		name = "style",
 		label = "Style",
 		description = "Set the drawing method for windowed UI elements (on-creation)",
-		set = {"soft", "none"},
+		set = {"soft", "textured", "none"},
 		kind = "value",
 		initial = function()
 			return gconfig_get("shadow_style");
@@ -62,4 +62,18 @@ return {
 			gconfig_set("shadow_r", math.floor(tonumber(elem[4])));
 		end
 	},
+	{
+		name = "color",
+		label = "Color",
+		kind = "value",
+		description = "Set the shadow base color"
+	},
 };
+
+suppl_append_color_menu(
+	gconfig_get("shadow_color"), res[#res],
+	function(fmt, r, g, b)
+		gconfig_set("shadow_color", {r * 0.003921, g * 0.003921, b * 0.003921});
+	end);
+
+return res;

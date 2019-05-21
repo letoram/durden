@@ -209,6 +209,7 @@ local function ssetup(shader, dst, group, name, state)
 	if (valid_vid(dst)) then
 		image_shader(dst, shid);
 	end
+	return shid;
 end
 
 local function esetup(shader, dst, group, name)
