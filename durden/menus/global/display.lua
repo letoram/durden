@@ -348,6 +348,37 @@ local function query_displays()
 	return res;
 end
 
+local function gen_gpu_reset()
+	local res = {};
+	local n_cards = 1;
+	table.insert(res, {
+		name = "all",
+		label = "Reset All",
+		dangerous = true,
+		description = "Force all GPUs to be disconnected and rebuilt",
+		kind = "action",
+		handler = function()
+			subsystem_reset("video");
+		end
+	});
+
+-- with multiple GPUs we need card-IDs tracked
+	for i=0,n_cards-1 do
+		table.insert(res, {
+			name = "swap_" .. tostring(i),
+			label = "Reset Card " .. tostring(i),
+			description = "Force a GPU swap on card slot " .. tostring(i),
+			dangerous = true,
+			kind = "action",
+			handler = function()
+				subsystem_reset("video", i, 1);
+			end
+		});
+	end
+
+	return res;
+end
+
 local record_handler = system_load("menus/global/record.lua")();
 local last_dvid; -- track VID for OCR
 local last_msg; -- append message for multipart
@@ -565,10 +596,18 @@ local res = {
 		end
 	},
 	{
+		name = "reset",
+		label = "Reset",
+		description = "(Dangerous) Force a video subsystem reset",
+		submenu = true,
+		kind = "action",
+		handler = gen_gpu_reset,
+	},
+	{
 		name = "color",
 		label = "Color",
 		description = "Color to use when no wallpaper is defined",
-	}
+	},
 };
 suppl_append_color_menu(
 	gconfig_get("display_color"), res[#res],
