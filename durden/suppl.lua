@@ -627,13 +627,41 @@ local function append_color_menu(r, g, b, tbl, update_fun)
 	end
 end
 
+function suppl_hexstr_to_rgb(str)
+	local base;
+
+-- safeguard 1.
+	if not type(str) == "string" then
+		str = ""
+	end
+
+-- check for the normal #  and \\#
+	if (string.sub(str, 1,1) == "#") then
+		base = 2;
+	elseif (string.sub(str, 2,1) == "#") then
+		base = 3;
+	else
+		base = 1;
+	end
+
+-- convert based on our assumed starting pos
+	local r = tonumber(string.sub(str, base+0, base+1), 16);
+	local g = tonumber(string.sub(str, base+2, base+3), 16);
+	local b = tonumber(string.sub(str, base+4, base+5), 16);
+
+-- safe so we always return a value
+	r = r and r or 255;
+	g = g and g or 255;
+	b = b and b or 255;
+
+	return r, g, b;
+end
+
 function suppl_append_color_menu(v, tbl, update_fun)
 	if (type(v) == "table") then
 		append_color_menu(v[1], v[2], v[3], tbl, update_fun);
 	else
-		local r = tonumber(string.sub(v, 3, 4), 16);
-		local g = tonumber(string.sub(v, 5, 6), 16);
-		local b = tonumber(string.sub(v, 7, 8), 16);
+		local r, g, b = suppl_hexstr_to_rgb(v);
 		append_color_menu(r, g, b, tbl, update_fun);
 	end
 end
