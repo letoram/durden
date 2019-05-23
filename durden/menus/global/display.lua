@@ -391,7 +391,8 @@ local region_menu = {
 		external_block = true,
 		description = "Take a snapshot of a screen region",
 		handler = function()
-			suppl_region_select(255, 0, 0, function(x1, y1, x2, y2)
+			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[1]);
+			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
 				if (not valid_vid(dvid)) then return; end
 				show_image(dvid);
@@ -407,7 +408,8 @@ local region_menu = {
 		description = "Create a window that monitors the contents of a screen region",
 		external_block = true,
 		handler = function()
-			suppl_region_select(0, 255, 0, function(x1, y1, x2, y2)
+			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[3]);
+			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
 				if (not valid_vid(dvid)) then return; end
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
@@ -429,7 +431,8 @@ local region_menu = {
 		external_block = true,
 		description = "OCR the contents of a screen region unto the global clipboard",
 		handler = function()
-			suppl_region_select(255, 0, 255, function(x1, y1, x2, y2)
+			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[4]);
+			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
 
 -- assume that a new OCR call invalidates the last / pending one
 				if (valid_vid(last_dvid)) then

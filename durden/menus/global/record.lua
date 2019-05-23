@@ -9,7 +9,8 @@ local function inputh(wnd, source, status)
 end
 
 return function(val, lbl)
-	suppl_region_select(255, 255, 0,
+	local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[2]);
+	suppl_region_select(r, g, b,
 	function(x1, y1, x2, y2)
 		x1 = math.floor(x1);
 		y1 = math.floor(y1);

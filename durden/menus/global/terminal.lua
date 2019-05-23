@@ -107,7 +107,7 @@ return {
 		name = "palette",
 		label = "Palette",
 		kind = "value",
-		set = {"default", "solarized", "solarized-black", "solarized-white"},
+		set = {"default", "solarized", "solarized-black", "solarized-white", "srcery"},
 		description = "Change palette used by terminal at startup",
 		initial = function() return gconfig_get("term_palette"); end,
 		handler = function(ctx, val)
