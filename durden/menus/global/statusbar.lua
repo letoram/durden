@@ -204,18 +204,20 @@ local statusbar_buttons_dir = {
 	},
 -- like the normal suppl_append_color_menu but special handling for
 -- the possible "dynamic" option where we pick the color from a palette
-	{
-		name = "label_color",
-		label = "Label Color",
+};
+
+local function add_hex_dynamic(tbl, name, label, key)
+	table.insert(tbl, {
+		name = name,
+		label = label,
 		kind = "value",
+		hint = "dynamic | hex: r g b",
 		initial = function()
-			local lbl = gconfig_get("sbar_lblcolor");
-			if (v == "dynamic") then
-				return v;
+			local lbl = gconfig_get(key);
+			if (lbl == "dynamic") then
+				return lbl;
 			else
-				local r = tonumber(string.sub(v, 3, 4), 16);
-				local g = tonumber(string.sub(v, 5, 6), 16);
-				local b = tonumber(string.sub(v, 7, 8), 16);
+				local r, g, b = suppl_hexstr_to_rgb(lbl);
 				return string.format("%.0f %.0f %.0f", r, g, b);
 			end
 		end,
@@ -228,13 +230,13 @@ local statusbar_buttons_dir = {
 		end,
 		handler = function(ctx, val)
 			if (val == "dynamic") then
-				gconfig_set("sbar_lblcolor", val);
+				gconfig_set(key, val);
 			else
 				local tbl = suppl_unpack_typestr("fff", val, 0, 255);
 				if (not tbl) then
 					return;
 				end
-				gconfig_set("sbar_lblcolor",
+				gconfig_set(key,
 					string.format("\\#%02x%02x%02x", tbl[1], tbl[2], tbl[3])
 				);
 			end
@@ -242,8 +244,11 @@ local statusbar_buttons_dir = {
 				tiler:tile_update();
 			end
 		end,
-	}
-};
+	});
+end
+
+add_hex_dynamic(statusbar_buttons_dir, "label", "Label", "sbar_lblcolor");
+add_hex_dynamic(statusbar_buttons_dir, "prefix", "Prefix", "sbar_prefixcolor");
 
 return {
 	{
