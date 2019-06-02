@@ -90,6 +90,7 @@ local drag_effects = system_load("tools/flair/drag.lua", false)();
 local hide_effects = system_load("tools/flair/hide.lua", false)();
 local display_effects = system_load("tools/flair/display.lua", false)();
 local background_effects = system_load("tools/flair/background.lua", false)();
+local select_effects = system_load("tools/flair/select.lua", false)();
 
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
@@ -171,18 +172,36 @@ local function flair_wnd_create(wm, wnd, space, space_active, popup)
 	end
 end
 
+local function flair_wnd_select(wm, wnd, space, space_active, popup)
+	local sel = gconfig_get("flair_select");
+	if (select_effects and select_effects[sel]) then
+		display_tiler_action(wm, function()
+			select_effects[sel](wm, wnd, space, space_active, popup);
+		end);
+	end
+end
+
 -- only menu/config key registration from this point
 gconfig_register("flair_drag", "disabled");
 gconfig_register("flair_destroy", "disabled");
 gconfig_register("flair_create", "disabled");
 gconfig_register("flair_hide", "disabled");
+gconfig_register("flair_select", "disabled");
 gconfig_register("flair_speed", 50);
 gconfig_register("flair_drag_opacity", 1.0);
+gconfig_register("flair_select", "disabled");
 
 local drag_set = {"disabled"};
 if (drag_effects) then
 	for k,v in ipairs(drag_effects) do
 		table.insert(drag_set, v.label);
+	end
+end
+
+local select_set = {"disabled"};
+if (select_effects) then
+	for k,v in pairs(select_effects) do
+		table.insert(select_set, k);
 	end
 end
 
@@ -289,6 +308,19 @@ local flair_config_menu = {
 		end
 	},
 	{
+		name = "select",
+		label = "Select",
+		kind = "value",
+		description = "Set the effect that is used 'on window - select'",
+		set = select_set,
+		initial = function()
+			return gconfig_get("flair_select");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("flair_select", val);
+		end
+	},
+	{
 		name = "hide",
 		label = "Hide",
 		description = "Set the effect that is used 'on window - hide'",
@@ -343,11 +375,13 @@ local function set_tiler(wm)
 		table.insert(wm.on_wnd_create, flair_wnd_create);
 		table.insert(wm.on_wnd_destroy, flair_wnd_destroy);
 		table.insert(wm.on_wnd_hide, flair_wnd_hide);
+		table.insert(wm.on_wnd_select, flair_wnd_select);
 	else
 		table.remove_match(wm.on_wnd_drag, flair_drag_hook);
 		table.remove_match(wm.on_wnd_create, flair_wnd_create);
 		table.remove_match(wm.on_wnd_destroy, flair_wnd_destroy);
 		table.remove_match(wm.on_wnd_hide, flair_wnd_hide);
+		table.remove_match(wm.on_wnd_select, flair_wnd_select);
 	end
 end
 
