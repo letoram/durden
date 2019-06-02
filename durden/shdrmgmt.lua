@@ -209,7 +209,6 @@ local function ssetup(shader, dst, group, name, state)
 	if (valid_vid(dst)) then
 		image_shader(dst, shid);
 	end
-	return shid;
 end
 
 local function esetup(shader, dst, group, name)
@@ -502,6 +501,13 @@ function shader_setup(dst, group, name, state)
 	end
 
 	return fmtgroups[group][1](shdrtbl[group][name], dst, group, name, state);
+end
+
+-- workaround for not being able to expose custom arguments from normal _setup
+function shader_ui_lookup(dst, group, name, state)
+	local a, b, c = fmtgroups[group][1](shdrtbl[group][name], dst, group, name, state);
+	local shid = shdrtbl[group][name].shid;
+	return shid, a, b, c;
 end
 
 function shader_uform_menu(name, group, state)
