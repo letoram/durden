@@ -880,6 +880,10 @@ local function wnd_select(wnd, source, mouse)
 	wnd:to_front();
 	tiler_debug(wm, "select:name=" .. wnd.name);
 	run_event(wnd, "select", mouse);
+
+	for i,v in ipairs(wm.on_wnd_select) do
+		v(wm, wnd, wnd.space, wnd.space == wm:active_space());
+	end
 end
 
 --
@@ -5577,6 +5581,7 @@ function tiler_create(width, height, opts)
 		on_wnd_destroy = {},
 		on_wnd_drag = {},
 		on_wnd_hide = {},
+		on_wnd_select = {},
 		on_tiler_resize = {},
 
 -- unique event handlers
