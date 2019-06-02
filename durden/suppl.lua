@@ -438,7 +438,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 --
 -- Though this does not apply here, multi-pass effect composition
 -- etc. that requires indirect blits would not work this way either.
-		local shid = shader_setup(ctx.shadow, "ui", shname, "active");
+		local shid = shader_ui_lookup(ctx.shadow, "ui", shname, "active");
 		if shid then
 			shader_uniform(shid, "color", "fff", cr, cg, cb);
 		end
