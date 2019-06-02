@@ -1,12 +1,15 @@
--- Copyright: 2015, Björn Ståhl
+-- Copyright: 2015-2019, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
---
 -- Description: Basic clipboard handling, currently text only but there's
 -- little stopping us from using more advanced input and output formats.
 --
-
-clipboard_debug = suppl_add_logfn("clipboard");
+local clipboard_debug
+if suppl_add_logfn then
+	clipboard_debug = suppl_add_logfn("clipboard");
+else
+	clipboard_debug = warning
+end
 
 local function clipboard_add(ctx, source, msg, multipart)
 	clipboard_debug(string.format(
@@ -87,7 +90,8 @@ local function clipboard_save(ctx, fn)
 	zap_resource(fn);
 	local wout = open_nonblock(fn, 1);
 	if (not wout) then
-		warning("clipboard/save: couldn't open " .. fn .. " for writing.");
+		clipboard_debug(
+			string.format("save:kind=error:destination=%s:message=couldn't open", fn));
 		return false;
 	end
 
@@ -119,13 +123,13 @@ local function clipboard_load(ctx, fn)
 
 	local res = system_load(fn, 0);
 	if (not res) then
-		warning("parsing error loading clipboard history from: " .. fn);
+		clipboard_debug(string.format("load:kind=error:source=%s:message=couldn't open", fn));
 		return;
 	end
 
 	local okstate, map = pcall(res);
 	if (not okstate) then
-		warning("execution error loading clipboard history from: " .. fn);
+		clipboard_debug(string.format("load:kind=error:source=%s:message=couldn't parse", fn));
 		return;
 	end
 
@@ -150,13 +154,30 @@ end
 -- premade filters to help in cases where we get a lot of junk like
 -- copy / paste from terminals.
 local pastemodes = {
-	normal = {"Normal", function(instr) return instr; end},
-	trim = {"Trim", function(instr)
-		return (string.gsub(instr, "^%s*(.-)%s*$", "%1")); end},
-	nocrlf = {"No CR/LF", function(instr)
-		return (string.gsub(instr, "[\n\r]+", "")); end},
-	nodspace = {"Single Spaces", function(instr)
-		return (string.gsub(instr, "%s+", " ")); end}
+normal = {
+	"Normal",
+	function(instr)
+		return instr;
+	end
+},
+trim = {
+	"Trim",
+	function(instr)
+		return (string.gsub(instr, "^%s*(.-)%s*$", "%1"));
+	end
+},
+nocrlf = {
+	"No CR/LF",
+	function(instr)
+		return (string.gsub(instr, "[\n\r]+", ""));
+	end
+},
+nodspace = {
+	"Single Spaces",
+	function(instr)
+		return (string.gsub(instr, "%s+", " "));
+	end
+}
 };
 
 local function clipboard_pastemodes(ctx, key)
