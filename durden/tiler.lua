@@ -60,6 +60,8 @@ local function wnd_synch_mouse(wnd, x, y)
 			(x - props.x) / props.width,
 			(y - props.y) / props.height
 		};
+	elseif not wnd.mouse then
+		wnd.mouse = {0, 0};
 	end
 end
 
@@ -577,36 +579,45 @@ local function tiler_statusbar_update(wm)
 
 -- same tactic to hiding the ws buttons
 	local hide_ws = not gconfig_get("sbar_wsbuttons");
+	local prefcolor = gconfig_get("sbar_prefixcolor");
+	local dyncolor = gconfig_get("sbar_prefixcolor") == "dynamic";
+	local use_prefix = gconfig_get("sbar_numberprefix");
+	local r, g, b = suppl_hexstr_to_rgb(prefcolor);
+
 	for i=1,10 do
+-- change base color based on index?
+		local hccolor = HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
+		if dyncolor then
+			prefcolor = hccolor;
+			r, g, b = suppl_hexstr_to_rgb(hccolor);
+		end
+
+-- buttons are always 'there' but can be hidden or not
 		if (wm.spaces[i] ~= nil and not hide_ws) then
 			wm.sbar_ws[i]:show();
-			local lbltbl = {gconfig_get("sbar_prefixcolor"), tostring(i)};
-			if (lbltbl[1] == "dynamic") then
-				lbltbl[1] = HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
-			end
-			local lbl = wm.spaces[i].label;
-			local r = tonumber(string.sub(lbltbl[1], 3, 4), 16);
-			local g = tonumber(string.sub(lbltbl[1], 5, 6), 16);
-			local b = tonumber(string.sub(lbltbl[1], 7, 8), 16);
+			local lbltbl = use_prefix and {prefcolor, tostring(i)} or {};
+
+-- shader defines what of the 'background' actually gets this color,
+-- and this is used for underline or border
 			image_color(wm.sbar_ws[i].bg, r, g, b);
+			local label = wm.spaces[i].label;
 
-			if (lbl and string.len(lbl) > 0) then
-				lbltbl[3] = "";
-				lbltbl[4] = ":";
-				local lbl = gconfig_get("sbar_lblcolor");
-				lbltbl[5] = lbl ~=
-					"dynamic" and lbl or HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
-				lbltbl[6] = lbl;
-			end
-
--- special treatment, don't number-prefix tagged workspaces
-			if (not gconfig_get("sbar_numberprefix")) then
-				if (lbltbl[6]) then
-					lbltbl = {lbltbl[5], lbltbl[6]};
+-- is there a custom workspace tag to use?
+			if (label and #label > 0) then
+				if use_prefix then
+					table.insert(lbltbl, "");
+					table.insert(lbltbl, ":");
 				end
+
+-- differentiate the coloring between user and generated content
+				local prefix = gconfig_get("sbar_lblcolor");
+				table.insert(lbltbl, prefix == "dynamic" and hccolor or prefix);
+				table.insert(lbltbl, label);
 			end
 
 			wm.sbar_ws[i]:update(lbltbl, 0, true);
+
+-- offset background to take titlebar- size into account
 			if (wm.spaces[i].background) then
 				wm.spaces[i].background_y = -(image_surface_resolve(wm.anchor).y);
 				move_image(wm.spaces[i].background, 0, wm.spaces[i].background_y);
