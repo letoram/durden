@@ -638,7 +638,7 @@ function suppl_hexstr_to_rgb(str)
 -- check for the normal #  and \\#
 	if (string.sub(str, 1,1) == "#") then
 		base = 2;
-	elseif (string.sub(str, 2,1) == "#") then
+	elseif (string.sub(str, 2,2) == "#") then
 		base = 3;
 	else
 		base = 1;
