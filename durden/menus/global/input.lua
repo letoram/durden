@@ -746,10 +746,10 @@ input_lock_toggle = function()
 	end
 end
 
-local old_input;
+local iolog = suppl_add_logfn("idevice");
+
 input_lock_on = function()
-	old_input = durden_input;
-	durden_input = ign_input;
+	durden_input_sethandler(function() end, "global/input/lock");
 	dispatch_meta_reset();
 	iostatem_save();
 	iostatem_repeat(0, 0);
@@ -757,10 +757,10 @@ input_lock_on = function()
 end
 
 input_lock_off = function()
-	durden_input = old_input;
 	dispatch_meta_reset();
 	iostatem_restore(iostate);
 	dispatch_meta_reset();
+	durden_input_sethandler()
 	active_display():message("Ignore input disabled");
 end
 
@@ -921,7 +921,6 @@ return {
 		kind = "action",
 		label = "Disable Input",
 		descrption = "Disable all input processing",
-		eval = function() return durden_input ~= ign_input; end,
 		handler = input_lock_on,
 		invisible = true
 	},
@@ -930,7 +929,6 @@ return {
 		kind = "action",
 		label = "Enable Input",
 		descrption = "Enable input processing",
-		eval = function() return durden_input == ign_input; end,
 		handler = input_lock_off,
 		invisible = true
 	}
