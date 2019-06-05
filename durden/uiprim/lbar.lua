@@ -651,7 +651,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 
-	wm:set_input_lock(lbar_input);
+	wm:set_input_lock(lbar_input, "bbar");
 	local res = {
 		anchor = bg,
 		text_anchor = bar,

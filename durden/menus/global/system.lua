@@ -37,14 +37,14 @@ local idle_setup = function(val, failed)
 		end
 	end
 
-	active_display():set_input_lock(ef);
+	active_display():set_input_lock(ef, "idle");
 	timer_add_idle("idle_wakeup", 10, true, ef, function()
 		idle_wakeup(val, failed);
 	end);
 end
 
 local function idle_restore()
-	durden_input = durden_normal_input;
+	durden_input_sethandler()
 	for d in all_tilers_iter() do
 		show_image(d.anchor);
 	end
@@ -86,12 +86,10 @@ local function lock_value(ctx, val)
 -- don't go through the normal input lock as events could then
 -- still be forwarded to the selected window, input should trigger
 -- lbar that, on escape, immediately jumps into idle state.
-	if (durden_input == durden_locked_input) then
-		warning("already in locked state, ignoring");
+	if (not durden_input_sethandler(durden_locked_input, "global/system/lock")) then
 		return;
 	end
 
-	durden_input = durden_locked_input;
 	iostatem_save();
 
 -- this doesn't allow things like a background image / "screensaver"

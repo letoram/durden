@@ -46,7 +46,7 @@ local function wnd_attach(wm, wnd)
 		mouse_select_begin(col);
 		dispatch_meta_reset();
 		dispatch_symbol_lock();
-		durden_input = durden_regionsel_input;
+		durden_input_sethandler(durden_regionsel_input, "draw-to-spawn");
 
 -- the region setup and accept/fail is really ugly, but reworking it
 -- right now is not really an option

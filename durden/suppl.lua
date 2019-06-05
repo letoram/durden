@@ -370,9 +370,16 @@ function suppl_recarg_eval()
 end
 
 function suppl_region_stop(trig)
+-- restore repeat- rate state etc.
 	iostatem_restore();
-	durden_input = durden_normal_input;
+
+-- then return the input processing pipeline
+	durden_input_sethandler()
+
+-- and allow external input triggers to re-appear
 	dispatch_symbol_unlock(true);
+
+-- and trigger the on-end callback
 	mouse_select_end(trig);
 end
 
@@ -460,7 +467,7 @@ function suppl_region_select(r, g, b, handler)
 	dispatch_meta_reset();
 	shader_setup(col, "ui", "regsel", "active");
 	dispatch_symbol_lock();
-	durden_input = durden_regionsel_input;
+	durden_input_sethandler(durden_regionsel_input, "region-select");
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
 

@@ -5344,13 +5344,15 @@ local function tiler_fallthrough_input(wm, inputh)
 	end
 end
 
-local function tiler_input_lock(wm, dst)
+local function tiler_input_lock(wm, dst, source)
 	if (dst) then
+		tiler_logfun("input locked to " .. (source and source or "unknown"));
 		wm.input_lock = function(...)
 			timer_reset_idle();
 			dst(...);
 		end
 	else
+		tiler_logfun("input locked released")
 		wm.input_lock = nil;
 	end
 end

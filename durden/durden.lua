@@ -787,7 +787,32 @@ function durden_locked_input(iotbl)
 	local ok, outsym, iotbl = dispatch_translate(iotbl, true);
 end
 
-durden_input = durden_normal_input;
+-- we don't want to mutate the entry-point as that would interfere with
+-- user provided hookscripts from woring properly, provide an indirection
+-- and a logging interface for switching
+local current_input = durden_normal_input;
+function durden_input(...)
+	return current_input(...)
+end
+
+local ilog;
+function durden_input_sethandler(handler, name)
+	if not ilog then
+		ilog = suppl_add_logfn("idevice");
+	end
+
+	if not handler then
+		ilog("new input handler: default/normal");
+		current_input = durden_normal_input;
+	else
+		if handler == current_input then
+			return false
+		end
+		ilog("new input handler: " .. name);
+		current_input = handler;
+	end
+	return true
+end
 
 function durden_shutdown()
 	SYMTABLE:store_translation();
