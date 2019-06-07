@@ -392,9 +392,8 @@ local function update_menu(ctx, instr, lastv, inp_st)
 				while i <= #instr do
 					local next_i = string.utf8forward(instr, i);
 					local ch = string.lower(string.sub(instr, i, next_i - 1));
-					local pos = string.find(string.lower(val), ch, last_pos + 1);
-
-					if (not pos) then
+					local ok, msg = pcall(string.find, string.lower(val), ch, last_pos + 1);
+					if (not ok or not pos) then
 						break;
 					end
 
