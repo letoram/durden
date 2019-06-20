@@ -5,6 +5,9 @@
   * uiprim/tbar:
      titlebar merge-to-status bar mode on select
 
+  * uiprim/popup:
+     added basic popup component
+
   * target-launch:
 	   query for a value argument for initial group tag, this is
 		 useful for pairing windows with bindings in autorun.lua etc.
