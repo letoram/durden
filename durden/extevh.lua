@@ -255,7 +255,10 @@ end
 defhtbl["resized"] =
 function(wnd, source, stat)
 	if (wnd.ws_attach) then
-		if (not wnd:ws_attach()) then
+-- edge conditions could fail to attach depending on the window type and
+-- certain widgets which hijack attachment, like draw-to-spawn modes
+		local attach = wnd:ws_attach();
+		if (not attach) then
 			return;
 		end
 	end
