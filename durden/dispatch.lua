@@ -286,11 +286,20 @@ end
 -- case for a tiler where the lbar is currently active (timers) as we want
 -- to wait after the current one has been destroyed or the hook will fire
 -- erroneously.
-function dispatch_symbol_bind(callback, path)
+function dispatch_symbol_bind(callback, path, opts)
 	local menu = menu_resolve(path and path or "/");
+	dispatch_debug("bind:path=" .. tostring(path));
+
 	menu_hook_launch(callback);
-	menu_launch(active_display(),
-		{list = menu, show_invisible = true}, {}, "/", menu_default_lookup(menu));
+	opts = opts and opts or {};
+
+-- old default behavior before we started reusing this thing
+	if (opts.show_invisible == nil) then
+		opts.show_invisible = true;
+	end
+	opts.list = menu;
+
+	menu_launch(active_display(), opts, {}, "/", menu_default_lookup(menu));
 end
 
 -- Due to the (current) ugly of lots of active_display() calls being used,
@@ -301,7 +310,7 @@ function dispatch_symbol_wnd(wnd, sym)
 		return;
 	end
 
-	dispatch_debug("wnd_context:%s", wnd.name);
+	dispatch_debug(string.format("wnd_context:%s", wnd.name));
 
 -- fake "selecting" the window
 	local old_sel = wnd.wm;
@@ -324,27 +333,34 @@ function dispatch_symbol(sym, menu_opts)
 -- note, it's up to us to forward the argument for validator before exec
 	local menu, msg, val, enttbl = menu_resolve(sym);
 	last_symbol = sym;
-	dispatch_debug("run:" .. sym);
+	dispatch_debug("run=" .. sym);
 
 -- catch all the 'value path returned', submenu returned, ...
-	if (not menu or menu.validator and not menu.validator(val)) then
+	if (not menu) then
+		dispatch_debug("status=error:kind=einval:message=could not resolve " .. sym);
+		return false;
+	elseif (menu.validator and not menu.validator(val)) then
+		dispatch_debug("status=error:kind=efault:message=validator rejected " .. sym);
 		return false;
 	end
 
 -- just queue if locked
 	if (dispatch_locked) then
+		dispatch_debug("status=queued");
 		table.insert(dispatch_queue, sym);
 		return true;
 	end
 
 -- shortpath the common case
 	if (menu.handler and not menu.submenu) then
+		dispatch_debug("status=trigger");
 		menu:handler(val);
 		return true;
 	end
 
 -- actual menu returned, need to spawn
 	if (type(menu[1]) == "table") then
+		dispatch_debug("status=menu");
 		menu_launch(active_display(),
 			{list = menu}, menu_opts, sym, menu_default_lookup(enttbl));
 	else
