@@ -260,12 +260,19 @@ end
 
 local dispatch_locked = nil;
 local dispatch_queue = {};
+local last_unlock = "";
 
 -- take the list of accumulated symbols to dispatch and push them out now,
 -- note that this can trigger another dispatch_symbol_lock and so on..
 function dispatch_symbol_unlock(flush)
-	assert(dispatch_locked == true);
+	if (not dispatch_locked) then
+		dispatch_debug(
+			"kind=api_error:message=unlock_not_locked:trace=" .. last_unlock);
+		return;
+	end
 	dispatch_locked = nil;
+	last_unlock = debug.traceback();
+
 	local old_queue = dispatch_queue;
 	dispatch_queue = {};
 	if (flush) then

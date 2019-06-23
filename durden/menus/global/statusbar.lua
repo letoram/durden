@@ -206,10 +206,11 @@ local statusbar_buttons_dir = {
 -- the possible "dynamic" option where we pick the color from a palette
 };
 
-local function add_hex_dynamic(tbl, name, label, key)
+local function add_hex_dynamic(tbl, name, label, descr, key)
 	table.insert(tbl, {
 		name = name,
 		label = label,
+		description = descr,
 		kind = "value",
 		hint = "dynamic | hex: r g b",
 		initial = function()
@@ -247,8 +248,8 @@ local function add_hex_dynamic(tbl, name, label, key)
 	});
 end
 
-add_hex_dynamic(statusbar_buttons_dir, "label", "Label", "sbar_lblcolor");
-add_hex_dynamic(statusbar_buttons_dir, "prefix", "Prefix", "sbar_prefixcolor");
+add_hex_dynamic(statusbar_buttons_dir, "label", "Label", "Coloring options for the label", "sbar_lblcolor");
+add_hex_dynamic(statusbar_buttons_dir, "prefix", "Prefix", "Coloring option for the number prefix", "sbar_prefixcolor");
 
 return {
 	{

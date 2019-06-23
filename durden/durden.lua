@@ -43,6 +43,7 @@ function durden(argv)
 
 	system_load("dispatch.lua")(); -- UI keyboard routing / management
 	system_load("tiler.lua")(); -- window management
+	system_load("uimap.lua")(); -- map uiprim/* to tiler etc.
 	system_load("iostatem.lua")(); -- input repeat delay/period
 	system_load("ledm.lua")(); -- led controllers
 	system_load("display.lua")(); -- multidisplay management
