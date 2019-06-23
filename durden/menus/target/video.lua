@@ -405,57 +405,6 @@ return {
 				active_display().selected.canvas);
 		end
 	},
--- there are tons of controls that could possibly be added here,
--- the better solution is probably to allow a record-tool window with
--- all the knobs needed for mixing, adding / dropping sources etc.
-	{
-		name = "record",
-		label = "Record",
-		kind = "value",
-		description = "Begin recording a video of the client contents",
-		hint = suppl_recarg_hint,
-		hintsel = suppl_recarg_eval,
-		validator = suppl_recarg_valid,
-		eval = function()
-			return not active_display().selected.in_record and
-				suppl_recarg_eval();
-		end,
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, val);
-		end
-	},
-	{
-		name = "record_noaudio",
-		label = "Record (no sound)",
-		kind = "value",
-		description = "Begin recording a silent video of the client contents",
-		hint = suppl_recarg_hint,
-		hintsel = suppl_recarg_eval,
-		validator = suppl_recarg_valid,
-		eval = function()
-			return not active_display().selected.in_record and
-				suppl_recarg_eval();
-		end,
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			wnd.in_record = suppl_setup_rec(wnd, val, true);
-		end
-	},
-	{
-		name = "stop_record",
-		label = "Stop Record",
-		kind = "action",
-		description = "Stop an ongoing recording task",
-		eval = function(val)
-			return valid_vid(active_display().selected.in_record);
-		end,
-		handler = function()
-			local wnd = active_display().selected;
-			delete_image(wnd.in_record);
-			wnd.in_record = nil;
-		end
-	},
 	{
 		name = "shader",
 		label = "Shader",

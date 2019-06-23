@@ -231,47 +231,6 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
-		name = "record",
-		label = "Record",
-		kind = "value",
-		hint = suppl_recarg_hint,
-		eval = function() return disp.share_slot == nil
-			 and suppl_recarg_eval();
-		end,
-		description = "Start display streaming or recording",
-		hintsel = suppl_recarg_sel,
-		validator = suppl_recarg_valid,
-		handler = function(ctx, val)
-			local args, ign, path = suppl_build_recargs(val, nil, nil, val);
-			display_share(disp, args, path);
-		end
-		},
-		{
-		name = "stop_record",
-		label = "Stop Recording",
-		kind = "action",
-		description = "Stop display streaming or recording",
-		eval = function() return disp.share_slot ~= nil; end,
-		handler = function()
-			display_share(disp);
-		end
-		},
-		{
-		name = "raw",
-		label = "Screenshot(raw)",
-		kind = "value",
-		hint = "(stored in output/)",
-		description = "Save a raw dump of display rendertarget output",
-		eval = function() return valid_vid(disp.rt); end,
-		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val) and
-				not string.match(val, "%.%.");
-		end,
-		handler = function(ctx, val)
-			save_screenshot("output/" .. val, FORMAT_RAW32, disp.rt);
-		end
-		},
-		{
 		name = "scheme",
 		label = "Scheme",
 		kind = "action",
@@ -279,6 +238,29 @@ local function gen_disp_menu(disp)
 		description = "Set the UI scheme profile for this display",
 		eval = function()	return #(ui_scheme_menu("display", disp)) > 0; end,
 		handler = function() return ui_scheme_menu("display", disp); end
+		},
+		{
+		name = "to_window",
+		label = "Window",
+		kind = "action",
+		description = "Create a window with display contents as canvas",
+		eval = function()
+			return not display_simple();
+		end,
+		handler = function()
+			local nsrf = null_surface(disp.tiler.width, disp.tiler.height);
+			if not valid_vid(nsrf) then
+				return;
+			end
+			image_sharestorage(disp.rt, nsrf);
+			show_image(nsrf);
+			local wnd = active_display():add_window(nsrf, {scalemode = "stretch"});
+			if not wnd then
+				delete_image(nsrf);
+				return;
+			end
+			wnd:set_title(disp.name);
+		end
 		}
 	};
 end
@@ -379,7 +361,6 @@ local function gen_gpu_reset()
 	return res;
 end
 
-local record_handler = system_load("menus/global/record.lua")();
 local last_dvid; -- track VID for OCR
 local last_msg; -- append message for multipart
 
@@ -409,9 +390,16 @@ local region_menu = {
 		external_block = true,
 		handler = function()
 			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[3]);
-			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
+			suppl_region_select(r, g, b,
+			function(x1, y1, x2, y2)
 				local dvid = suppl_region_setup(x1, y1, x2, y2, false, false);
-				if (not valid_vid(dvid)) then return; end
+				if (not valid_vid(dvid)) then
+					return;
+				end
+
+-- this requires something more refined in order to do proper sharing, and that
+-- is a separate state-tracker for mouse etc. that works off input_table inside
+-- wnd.
 				local wnd = active_display():add_window(dvid, {scalemode = "stretch"});
 				if (wnd) then
 					wnd:set_title("Monitor");
@@ -467,68 +455,6 @@ local region_menu = {
 				rendertarget_forceupdate(dvid);
 				stepframe_target(dvid);
 			end);
-		end
-	},
-
--- also need to become more complicated for an 'action connection' rather
--- than 'passive streaming over VNC', with the big change being how lbar,
--- active_display and tiler interact so that the shared subset can become
--- a restricted tiler of its own
-	{
-		name = "share",
-		label = "Share",
-		kind = "action",
-		description = "Access Sharing and Remoting settings",
-		eval = function() return string.match(
-			FRAMESERVER_MODES, "encode") ~= nil;
-		end,
-		external_block = true,
-		handler = system_load("menus/global/remoting.lua")();
-	},
--- forward means 'create an output segment inside target'
-	{
-		name = "forward",
-		label = "Forward",
-		kind = "action",
-		description = "Forward screen contents to a specific window",
-		eval = function()
-			for wnd in all_windows(atype) do
-				if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-					return true;
-				end
-			end
-			return false;
-		end,
-		submenu = true,
-		handler = function()
-			local lst = {};
-			for wnd in all_windows(atype) do
-				if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-					table.insert(lst, {
-						name = wnd.name,
-						label = wnd:get_name(),
-						kind = "action",
-						handler = function(ctx, val)
-							record_handler(wnd.external, wnd:get_name());
-						end
-					});
-				end
-			end
-			return lst;
-		end
-	},
-	{
-		name = "record",
-		label = "Record",
-		kind = "value",
-		description = "Start a recording session of marked screen region contents",
-		hint = suppl_recarg_hint,
-		hintsel = suppl_recarg_set,
-		validator = suppl_recarg_valid,
-		eval = suppl_recarg_eval,
-		external_block = true,
-		handler = function(ctx, val)
-			record_handler(val);
 		end
 	}
 };

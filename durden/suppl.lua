@@ -329,46 +329,6 @@ function suppl_strcol_fmt(str, sel)
 	return HC_PALETTE[(hv % #HC_PALETTE) + 1];
 end
 
---
--- the suppl_ arguments here are used to share the same code / fetch / help
--- functions for all menu items that are connected to recording (e.g.
--- global/display/*/record, global/display/region/ and target/video/...
---
-function suppl_build_recargs(vsrc, asrc, streaming, val)
-	local argstr = string.format("vcodec=%s:fps=%.3f:container=%s",
-		gconfig_get("enc_vcodec"), gconfig_get("enc_fps"),
-		streaming and "stream" or gconfig_get("enc_container")
-	);
-
-	local vbr = gconfig_get("enc_vbr");
-	local vqual = gconfig_get("enc_vpreset");
-	if (vqual > 0) then
-		argstr = argstr .. ":vpreset=" .. tostring(vqual);
-	else
-		argstr = argstr .. ":vbitrate=" .. tostring(vbr);
-	end
-
-	if (not asrc or #asrc == 0) then
-		argstr = argstr .. ":noaudio";
-	end
-
-	return argstr, gconfig_get("enc_srate"), "output/" .. val .. ".mkv";
-end
-
-suppl_recarg_hint = "(stored in output/name.mkv)";
-
-function suppl_recarg_valid(val)
-	return string.len(val) > 0 and
-		not resource("output/" .. val .. ".mkv") and not string.match(val, "%.%.");
-end
-
--- [when we have a credential store for streaming destinations]
--- suppl_recarg_sel
-
-function suppl_recarg_eval()
-	return string.match(FRAMESERVER_MODES, "encode") ~= nil;
-end
-
 function suppl_region_stop(trig)
 -- restore repeat- rate state etc.
 	iostatem_restore();
@@ -469,6 +429,104 @@ function suppl_region_select(r, g, b, handler)
 	dispatch_symbol_lock();
 	durden_input_sethandler(durden_regionsel_input, "region-select");
 	DURDEN_REGIONSEL_TRIGGER = handler;
+end
+
+local function defer_spawn(wnd, new, t, l, d, r, closure)
+-- window died before timer?
+	if (not wnd.add_handler) then
+		delete_image(new);
+		return;
+	end
+
+-- don't make the source visible until we can spawn new
+	show_image(new);
+	local cwin = active_display():add_window(new, {scalemode = "stretch"});
+	if (not cwin) then
+		delete_image(new);
+		return;
+	end
+
+-- closure to update the crop if the source changes (shaders etc.)
+	local function recrop()
+		local sprops = image_storage_properties(wnd.canvas);
+		cwin.origo_ll = wnd.origo_ll;
+		cwin:set_crop(
+			t * sprops.height, l * sprops.width,
+			d * sprops.height, r * sprops.width, false, true
+		);
+	end
+
+-- deregister UNLESS the source window is already dead
+	cwin:add_handler("destroy",
+		function()
+			if (wnd.drop_handler) then
+				wnd:drop_handler("resize", recrop);
+			end
+		end
+	);
+
+-- add event handlers so that we update the scaling every time the source changes
+	recrop();
+	cwin:set_title("Slice");
+	cwin.source_name = wnd.name;
+	cwin.name = cwin.name .. "_crop";
+
+-- finally send to a possible source that wants to do additional modifications
+	if closure then
+		closure(cwin);
+	end
+end
+
+local function slice_handler(wnd, x1, y1, x2, y2, closure)
+-- grab the current values
+	local props = image_surface_resolve(wnd.canvas);
+	local px2 = props.x + props.width;
+	local py2 = props.y + props.height;
+
+-- and actually clamp
+	x1 = x1 < props.x and props.x or x1;
+	y1 = y1 < props.y and props.y or y1;
+	x2 = x2 > px2 and px2 or x2;
+	y2 = y2 > py2 and py2 or y2;
+
+-- safeguard against range problems
+	if (x2 - x1 <= 0 or y2 - y1 <= 0) then
+		return;
+	end
+
+-- create clone with proper texture coordinates, this has problems with
+-- source windows that do other coordinate transforms as well and switch
+-- back and forth.
+	local new = null_surface(x2-x1, y2-y1);
+	image_sharestorage(wnd.canvas, new);
+
+-- calculate crop in source surface relative coordinates
+	local t = (y1 - props.y) / props.height;
+	local l = (x1 - props.x) / props.width;
+	local d = (py2 - y2) / props.height;
+	local r = (px2 - x2) / props.width;
+
+-- work-around the chaining-region-select problem with a timer
+	timer_add_periodic("wndspawn", 1, true, function()
+		defer_spawn(wnd, new, t, l, d, r, closure);
+	end);
+end
+
+function suppl_wnd_slice(wnd, closure)
+-- like with all suppl_region_select calls, this is race:y as the
+-- selection state can go on indefinitely and things might've changed
+-- due to some event (thing wnd being destroyed while select state is
+-- active)
+	local wnd = active_display().selected;
+	local props = image_surface_resolve(wnd.canvas);
+
+	suppl_region_select(255, 0, 255,
+		function(x1, y1, x2, y2)
+			if (valid_vid(wnd.canvas)) then
+				slice_handler(wnd, x1, y1, x2, y2, closure);
+			end
+		end
+	);
 end
 
 local function build_rt_reg(drt, x1, y1, w, h, srate)

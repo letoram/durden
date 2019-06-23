@@ -231,7 +231,9 @@ local function wnd_destroy(wnd, message)
 -- activate the next in line and give it our alternate set
 	if (wnd.alternate and #wnd.alternate > 0) then
 		local newwnd = wnd:swap_alternate();
-		table.remove_match(newwnd.alternate, wnd);
+		if (newwnd) then
+			table.remove_match(newwnd.alternate, wnd);
+		end
 		ign_delink = true;
 	end
 

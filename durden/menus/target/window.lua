@@ -939,93 +939,14 @@ return {
 		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function(ctx, val)
--- like with all suppl_region_select calls, this is race:y as the
--- selection state can go on indefinitely and things might've changed
--- due to some event (thing wnd being destroyed while select state is
--- active)
 			local wnd = active_display().selected;
-			local props = image_surface_resolve(wnd.canvas);
-
-			suppl_region_select(255, 0, 255,
-				function(x1, y1, x2, y2)
--- grab the current values
-					local wnd = active_display().selected;
-					local props = image_surface_resolve(wnd.canvas);
-					local px2 = props.x + props.width;
-					local py2 = props.y + props.height;
-
--- and actually clamp
-					x1 = x1 < props.x and props.x or x1;
-					y1 = y1 < props.y and props.y or y1;
-					x2 = x2 > px2 and px2 or x2;
-					y2 = y2 > py2 and py2 or y2;
-
--- safeguard against range problems
-					if (x2 - x1 <= 0 or y2 - y1 <= 0) then
-						return;
-					end
-
--- create clone with proper texture coordinates, this has problems with
--- source windows that do other coordinate transforms as well and switch
--- back and forth.
-					local new = null_surface(x2-x1, y2-y1);
-					image_sharestorage(wnd.canvas, new);
-
--- calculate crop in source surface relative coordinates
-					local t = (y1 - props.y) / props.height;
-					local l = (x1 - props.x) / props.width;
-					local d = (py2 - y2) / props.height;
-					local r = (px2 - x2) / props.width;
-
--- bind to a window, with optional input-routing but run this as a one-off
--- timer to handle the odd case where the add-window event would trigger
--- another selection region to nest.
-					local source_name = wnd.name;
-
-					timer_add_periodic("wndspawn", 2, true, function()
-						if (not wnd.add_handler) then
-							return;
-						end
-
-						show_image(new);
-						local cwin = active_display():add_window(new, {scalemode = "stretch"});
-						if (not cwin) then
-							delete_image(new);
-							return;
-						end
-
-						local function recrop()
-							local sprops = image_storage_properties(wnd.canvas);
-							cwin.origo_ll = wnd.origo_ll;
-							cwin:set_crop(
-								t * sprops.height, l * sprops.width,
-								d * sprops.height, r * sprops.width, false, true
-							);
-						end
-
--- add event handlers so that we update the scaling every time the source changes
-						wnd:add_handler("resize", recrop);
-						cwin:add_handler("destroy", function()
-							if (wnd.drop_handler)
-								then wnd:drop_handler("resize", recrop);
-							end
-						end
-						);
-
-						recrop();
-						cwin:set_title("Slice");
-						cwin.source_name = wnd.name;
-						cwin.name = cwin.name .. "_crop";
-
--- add references to the external source
-					if (valid_vid(wnd.external, TYPE_FRAMESERVER) and
-						val == "Active") then
-						cwin.external = wnd.external;
-						cwin.external_prot = true;
-					end
-				end, true);
-			end
-			);
+			suppl_wnd_slice(active_display().selected,
+			function(cwin)
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER) and val == "Active") then
+					cwin.external = wnd.external;
+					cwin.external_prot = true;
+				end
+			end);
 		end
 	},
 	{

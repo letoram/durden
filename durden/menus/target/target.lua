@@ -82,6 +82,14 @@ local shared_actions = {
 		submenu = true,
 		description = "Bind menu actions to window events",
 		handler = system_load("menus/target/triggers.lua")()
+	},
+	{
+		name = "share",
+		label = "Share",
+		kind = "action",
+		submenu = true,
+		description = "Sharing, Streaming and Recording Options",
+		handler = system_load("menus/target/share.lua")()
 	}
 };
 
