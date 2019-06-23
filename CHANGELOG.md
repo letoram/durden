@@ -1,65 +1,71 @@
 # 0.6.0
-  * uiprim/sbar:
-	   statusbar custom button controls added
+* universal open/save:
+Clients that announce support for global open/save via bchunk-hints
+now trigger the file browser accordingly.
 
-  * uiprim/tbar:
-     titlebar merge-to-status bar mode on select
+* display/share and target/share reworked:
+Display/region/ based sharing removed (except for snapshot/monitor)
+in favoring of a /target/share menu that consolidate all such options.
 
-  * uiprim/popup:
-     added basic popup component
+* uiprim/sbar:
+statusbar custom button controls added
 
-  * target-launch:
-	   query for a value argument for initial group tag, this is
-		 useful for pairing windows with bindings in autorun.lua etc.
-		 when no uuid or other identity token has been established.
+ * uiprim/tbar:
+titlebar merge-to-status bar mode on select (if hidden)
 
-  * tools/extbtn added:
-	  registers into global/settings/statusbar and adds option for
-		external clients to connect and attach custom buttons. This
-		deprecates the statusbar IPC in favor of solving this externally.
+* uiprim/popup:
+added basic popup component
 
-	* triggers:
-		 added per-window option to bind multiple custom triggers on select,
-		 deselect and destroy
+* target-launch:
+When activating global/target/launch to start a trusted application you
+can also supply an application tag. This helps automation as you can now
+specify that tag as part of /windows/by-tag etc. when there are no UUIDs
+or other values to take advantage of.
 
-  * layout/tile:
-	   allow titlebar drag/drop as a mouse- triggered way to swap, m1 and
-		 m2 control swap, join as child or join as sibling
+* tools/extbtn added:
+Registers into global/settings/statusbar and adds option for external clients
+to connect and attach custom buttons. This deprecates the statusbar IPC in
+favor of solving this externally.
 
-  * layout/tile:
-	   allow option to specify layouting gaps
+* triggers:
+added per-window option to bind multiple custom triggers on select,
+deselect and destroy
 
-  * layout/htab:
-	   added side column based tabbed layout mode
+* layout/tile:
+allow titlebar drag/drop as a mouse- triggered way to swap, m1 and m2 control
+swap, join as child or join as sibling. allow better gap controls.
 
-	* menu/hud:
-	   Cipharius added support for fuzzy-string matching to the HUD,
-		 switch it on by entering % and pick fuzzy_relevance as the sort
-		 method.
+* layout/htab:
+added side column based tabbed layout mode
 
-  * menu/devmaps:
-	   Custom menus/aliasmaps can now be built. These register in the
-		 menu root (/menus) and are intended for shortcut button grids,
-		 popup menus, radial menus and so on.
+* menu/hud:
+Cipharius added support for fuzzy-string matching to the HUD, switch it on by
+entering % and pick fuzzy_relevance as the sort method.
 
-	* visual:
-	   Add soft shadow controls to windows, ui elements and statusbar
+* menu/devmaps:
+Custom menus/aliasmaps can now be built. These register in the menu root
+(/menus) and are intended for shortcut button grids, popup menus, radial menus
+and so on.
+
+* visual:
+Add soft shadow controls to windows, ui elements and statusbar
 
 Breaking:
-  * statusbar ipc removed in favor of tools/traybtn
 
 Minor / Fixes:
-  * handover subsegment allocation now routes correctly
+* handover subsegment allocation now routes correctly
 
-	* more subsystems expose logging over the monitor ipc
+* region selection closure management reworked
 
-  * /global/displays/color can be used to change the default clear
-	  color when there is no wallpaper
+* more subsystems expose logging over the monitor ipc
 
-  * statusbar ws- button coloring now defaults to dynamic from hc
-	  palette
+* /global/displays/color can be used to change the default clear
+  color when there is no wallpaper
 
-	* started refactoring and splitting uiprim.lua
+* statusbar ws- button coloring now defaults to dynamic from hc
+  palette
+
+* started refactoring and splitting uiprim.lua
 
 # 0.5.0
   * tools/advfloat:

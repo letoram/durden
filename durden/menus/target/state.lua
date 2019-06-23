@@ -20,6 +20,27 @@ local function gen_load_menu()
 	return res;
 end
 
+local function grab_file(handler, open)
+	dispatch_symbol_bind(
+		function(path)
+			if (not path) then
+				return;
+			end
+
+			local ln, kind = resource(path);
+			if (not ln or not kind) then
+				return;
+			end
+
+			if (kind == "file") then
+				handler(path);
+			end
+		end,
+		"/browse/shared",
+		{ show_invisible = false; }
+	);
+end
+
 return {
 	{
 		name = "suspend",
@@ -56,6 +77,39 @@ return {
 		description = "Request that the client soft-resets to an initial state",
 		handler = function()
 			shared_reset(active_display().selected);
+		end
+	},
+	{
+		name = "force_load",
+		label = "Load",
+		kind = "action",
+		hidden = true,
+		interactive = true,
+		description = "Browse for a file and send it to the client in open mode",
+		handler = function()
+-- cache source and re-validate as the asynch- nature of the grab_ menu may
+-- have the source die while we are waiting
+			local source = active_display().selected.external;
+			grab_file(function(path)
+				if valid_vid(source, TYPE_FRAMESERVER) then
+					restore_target(source, path, SHARED_RESOURCE);
+				end
+			end, true);
+		end
+	},
+	{
+		name = "force_store",
+		label = "Store",
+		kind = "action",
+		hidden = true,
+		description = "Select a place for the client to store data",
+		handler = function()
+			local source = active_display().selected.external;
+			grab_file(function(path)
+				if valid_vid(source, TYPE_FRAMESERVER) then
+					snapshot_target(source, path, SHARED_RESOURCE);
+				end
+			end, false);
 		end
 	},
 	{

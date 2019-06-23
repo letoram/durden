@@ -198,6 +198,7 @@ defhtbl["alert"] =
 function(wnd, source, stat)
 	local msg;
 
+-- do we need to concatenate a longer message?
 	if (wnd.alert_multipart) then
 		wnd.alert_multipart.message = wnd.alert_multipart.message .. stat.message;
 		wnd.alert_multipart.count = wnd.alert_multipart.count + 1;
@@ -205,17 +206,22 @@ function(wnd, source, stat)
 			msg = wnd.alert_multipart.message;
 			wnd.alert_multipart = nil;
 		end
+-- first of a multipart text message?
 	elseif (stat.multipart) then
 		wnd.alert_multipart = {
 			message = stat.message,
 			count = 1
 		};
+		return;
 	else
 		msg = stat.message;
 	end
 
-	if (msg) then
+-- actual alert message or just a hint that the client wants some attention
+	if (msg and #msg > 0) then
 		wnd:set_message(msg);
+	else
+		wnd:alert();
 	end
 end
 
@@ -276,6 +282,49 @@ function(wnd, source, stat)
 
 	wnd:resize_effective(stat.width, stat.height, true, true);
 	wnd.space:resize(true);
+end
+
+defhtbl["bchunkstate"] =
+function(wnd, source, stat)
+-- if clients are allowed to popup open/close dialogs,
+	client_log(
+		string.format("bchunk_state:input=%d:stream=%d:hint=%d:ext=%s",
+			stat.input and 1 or 0, stat.stream and 1 or 0,
+			stat.hint and 1 or 0, stat.extensions
+		)
+	);
+
+-- only announce extension - open capability, this is used by
+-- the passive- browser or the target option path as such
+	if stat.hint then
+		if stat.input then
+			wnd.input_extensions = stat.extensions
+		else
+			wnd.output_extensions = stat.extensions
+		end
+		return
+	end
+
+-- client wants input as soon as possible, if not focus, then set alert
+-- and when focus is obtained, trigger
+	local fun = function()
+		wnd.ephemeral_ext = stat.extensions;
+		dispatch_symbol_wnd(wnd,
+			"/target/state/force_" .. (stat.input and "load" or "store"));
+		wnd.ephemeral_ext = nil;
+	end
+
+	if active_display().selected == wnd then
+		fun();
+	else
+		local fwrap;
+		fwrap = function()
+			fun()
+			wnd:drop_handler("select", fwrap);
+		end
+		wnd:add_handler("select", fwrap);
+		wnd:alert();
+	end
 end
 
 defhtbl["message"] =
