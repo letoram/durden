@@ -4133,12 +4133,12 @@ local function wnd_setalternate(res, ind)
 	end
 
 	if (not res.alternate[ind]) then
-		warning("set alternate called on broken index");
+		tiler_debug(res.wm, "set_alternate, broken index: " .. tostring(ind));
 		return res;
 	end
 
 	if (res.alternate_parent) then
-		warning("set alternate called on alternate window");
+		tiler_debug(res.wm, "set_alternate, wrong parent");
 		return res;
 	end
 
@@ -4146,8 +4146,8 @@ local function wnd_setalternate(res, ind)
 -- hide the old window, show the new
 	local new = res.alternate[ind];
 	if (not valid_vid(new.anchor)) then
-		warning("set alternate called with new index being dead");
-		return;
+		tiler_debug(res.wm, "set_alternate, dead index: " .. tostring(ind));
+		return res;
 	end
 
 	res.alternate[ind] = res;
@@ -5019,9 +5019,10 @@ local wnd_setup = function(wm, source, opts)
 	res:recovertag(true);
 
 	tiler_debug(wm, string.format(
-		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s",
+		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s%s",
 		res.name, res.width, res.height,
-		tostring(res.show_titlebar), tostring(res.show_border))
+		tostring(res.show_titlebar), tostring(res.show_border),
+		opts.alternate and (":alternate=" .. opts.alternate.name) or "")
 	);
 
 	return res;

@@ -57,6 +57,36 @@ function terminal_build_argenv(group)
 	return lstr;
 end
 
+local function setup_group_cp(wnd, group)
+-- link the newly created connection point ot the anchor of the window
+	local cpoint = target_alloc(group,
+		function(source, status)
+			durden_new_connection(source, status);
+		end
+	);
+	link_image(cpoint, wnd.anchor);
+
+-- whenever 'group' path is used by a window that is about to be spawned,
+-- lookup and return override options that would associate the new window
+-- with the alternate.
+	extevh_set_intercept(group,
+		function(path)
+			cpoint = target_alloc(group,
+				function(source, status)
+					durden_new_connection(source, status);
+				end
+			);
+			return {alternate = wnd};
+		end
+	);
+
+	wnd:add_handler("destroy", function()
+		extevh_set_intercept(group, nil);
+	end, true
+	);
+
+end
+
 function spawn_terminal(cmd, group)
 	local lstr = terminal_build_argenv(group);
 	if (cmd) then
@@ -76,7 +106,13 @@ function spawn_terminal(cmd, group)
 
 -- fake registration so we use the same path as a normal external connection
 			extevh_default(source, {
-				kind = "registered", segkind = "terminal", title = "", guid = guid});
+				kind = "registered",
+				segkind = "terminal",
+				title = "",
+				guid = guid
+			});
+
+-- the window hint for the preroll stage can be derived from the parent constraints
 			local wnd_w = math.clamp(
 				wnd.max_w - wnd.pad_left - wnd.pad_right, 32, MAX_SURFACEW);
 			local wnd_h = math.clamp(
@@ -89,20 +125,7 @@ function spawn_terminal(cmd, group)
 -- but with different controls for connection point respawn (to maintain
 -- respect for rate-limiting etc.)
 			if (group) then
-				local cpoint = target_alloc(group,
-					function(s, st) durden_new_connection(s, st, true); end);
-				link_image(cpoint, wnd.anchor);
-
--- register a pre-window creation hook tied to the group- connection path and
--- use this to associate the new window with the parent window
-				extevh_set_intercept(group,
-					function(path)
-						return {alternate = wnd};
-					end
-				);
-				wnd:add_handler("destroy", function()
-					extevh_set_intercept(group, nil);
-				end, true);
+				setup_group_cp(wnd, group);
 			end
 
 		elseif (status.kind == "terminated") then
