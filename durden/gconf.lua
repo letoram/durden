@@ -108,6 +108,7 @@ local defaults = {
 	enc_container = "mkv",
 	enc_presilence = 0,
 	enc_vbr = 0,
+	enc_vqual = 7,
 
 -- SECURITY: set _path to :disabled to disable these features
 	extcon_path = "durden",

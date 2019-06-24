@@ -250,7 +250,7 @@ return {
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
 	description = "Connect to a remote desktop session",
-	hint = "(user:pass@host+port)",
+	hint = "(user:pass@host+port) | (pass@host+port)",
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
 	end,
