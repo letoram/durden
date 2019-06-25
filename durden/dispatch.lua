@@ -314,13 +314,14 @@ end
 -- those calls have been factored out.
 function dispatch_symbol_wnd(wnd, sym)
 	if (not wnd or not wnd.wm) then
+		dispatch_debug("dispatch_wnd:status=error:message=bad window");
 		return;
 	end
 
-	dispatch_debug(string.format("wnd_context:%s", wnd.name));
+	dispatch_debug(string.format("dispatch_wnd:set_dst=%s", wnd.name));
 
 -- fake "selecting" the window
-	local old_sel = wnd.wm;
+	local old_sel = wnd.wm.selected;
 	wnd.wm.selected = wnd;
 
 -- need to run in the context of the display as any object creation gets
@@ -329,9 +330,11 @@ function dispatch_symbol_wnd(wnd, sym)
 		dispatch_symbol(sym);
 	end)
 
--- might have been removed while running
-	if (old_sel.destroy) then
+-- might have been removed while running, so check that first
+	if (old_sel and old_sel.destroy) then
 		wnd.wm.selected = old_sel;
+	else
+		wnd.wm.selected = nil;
 	end
 end
 

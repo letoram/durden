@@ -2,11 +2,11 @@
 local function get_path_for_set(set, path)
 	local nents = {};
 
+-- first build a list of possible paths based on the context of
+-- each entry in the path
 	for i,wnd in ipairs(set) do
 		local menu, _, val, restbl = menu_resolve(path, wnd);
 		if (menu) then
--- switch out the handlers to correspond to the same get_path_for..
--- it will always result in a menu path
 			for k,v in ipairs(menu) do
 				if (not v.interactive) then
 					nents[v.name] = v;
@@ -15,12 +15,22 @@ local function get_path_for_set(set, path)
 		end
 	end
 
+-- now, for each possible menu entry, make a shallow copy of it but switch out
+-- handlers, evaluators and so on to proxy submenu lookup, handlers and
+-- evaluators to be able to trigger with a specific window (rather than the
+-- current selected) as the active wm selected one.
 	local menu = {};
 	for k,v in pairs(nents) do
--- copy, but switch out handlers based on type.
 		local newtbl = {};
 		for i,j in pairs(v) do newtbl[i] = j; end
 		local fullpath = path .. "/" .. newtbl.name;
+
+-- eval is a bit tricky, basically ignore the original and implement as handler
+		if newtbl.eval then
+			newtbl.eval = function()
+				return true;
+			end;
+		end
 
 -- the set might mutate while the UI is being queried, so verify that
 -- the table we are referencing still has the relevant functions.
@@ -33,6 +43,7 @@ local function get_path_for_set(set, path)
 						end
 					end
 				end
+-- action items can have submenus
 			else
 				if (newtbl.submenu == true) then
 					newtbl.handler = function()
