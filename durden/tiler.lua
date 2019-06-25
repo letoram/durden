@@ -4248,10 +4248,10 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
--- Can be intercepted by a hook handler that regulates placement
--- but we avoid it if we are attaching after recovery. A proper hook
--- handler then re-runs attachment when it has done its possible
--- positioning and sizing
+-- Can be intercepted by a hook handler that regulates placement but we avoid
+-- it if we are attaching after recovery or if the window spawns in a
+-- non-active workspace. A proper hook handler then re-runs attachment when it
+-- has done its possible positioning and sizing
 	if ((dstindex == wm.space_ind and not res.attach_temp)
 		and wm.attach_hook and not from_hook) then
 			return wm:attach_hook(res);
@@ -4260,8 +4260,11 @@ local function wnd_ws_attach(res, from_hook)
 	res.ws_attach = nil;
 	res.attach_time = CLOCK;
 
+-- this will only happen on assignment to non-active workspace
+	local rebuild_sbar = false;
 	if (wm.spaces[dstindex] == nil) then
 		wm.spaces[dstindex] = create_workspace(wm);
+		tiler_statusbar_update(wm);
 	end
 
 -- actual dimensions depend on the state of the workspace we'll attach,
@@ -4382,7 +4385,12 @@ local function wnd_ws_attach(res, from_hook)
 			end
 		end
 	end
-	wnd_titlebar_to_statusbar(res);
+
+-- and merge the new titlebar into the statusbar if on the right workspace,
+-- otherwise the merge-to-statusbar mode would indicate the wrong window
+	if (wm.space_ind == dstindex) then
+		wnd_titlebar_to_statusbar(res);
+	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
 		v(wm, res, space, space == wm:active_space());
