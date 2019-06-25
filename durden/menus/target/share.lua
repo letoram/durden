@@ -284,9 +284,6 @@ return {
 	label = "Remoting",
 	description = "Share the window contents with an external source",
 	kind = "action",
-	eval = function()
-		return valid_vid(active_display().selected.external);
-	end,
 	submenu = true,
 	handler = share_menu,
 },
