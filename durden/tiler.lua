@@ -4842,6 +4842,7 @@ local wnd_setup = function(wm, source, opts)
 		y = 0,
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
+		default_workspace = opts.default_workspace,
 
 -- external displayhint offsets to mask cropping actions
 		dh_pad_w = 0,

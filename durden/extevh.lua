@@ -131,7 +131,17 @@ local function default_reqh(wnd, source, ev)
 			end
 			client_log("segreq:name=" .. wnd.name
 				.. ":kind=" .. ev.segkind .. ":state=ok");
-			durden_launch(vid, "", "external", nil);
+
+-- inherit workspace if that is set
+			local opts;
+			if (gconfig_get("ws_child_default") == "parent") then
+				opts = {
+					default_workspace = wnd.default_workspace;
+				};
+			end
+
+-- inherit the attached workspace for the child (vid, prefix, title, wnd, wargs)
+			durden_launch(vid, "", "external", nil, opts);
 		else
 			client_log("segreq:name=" .. wnd.name
 				.. ":kind=" .. ev.segkind .. ":state=blocked");
