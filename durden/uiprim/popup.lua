@@ -166,7 +166,7 @@ local function menu_to_fmtstr(menu, options)
 
 	for i,v in ipairs(menu) do
 		local fmt_suffix = i > 1 and [[\n\r]] or ""
-		local prefix = menu.active and text_valid or text_invalid
+		local prefix = v.active and text_valid or text_invalid
 		table.insert(text_list, prefix .. fmt_suffix)
 		table.insert(text_list, v.label)
 		table.insert(sym_list, v.shortcut and v.shortcut or "")
@@ -203,10 +203,12 @@ local function cancel(ctx)
 	if not valid_vid(ctx.anchor) then
 		return
 	end
+
 	blend_image(ctx.anchor, 0, ctx.animation_out)
 	expire_image(ctx.anchor, ctx.animation_out)
-	if ctx.options.on_finish then
-		ctx.options.on_finish(ctx, ctx.menu[ctx.index]);
+
+	if not ctx.in_finish and ctx.options.on_finish then
+		ctx.options.on_finish(ctx);
 	end
 end
 
@@ -214,7 +216,21 @@ local function trigger(ctx)
 	if not ctx.menu[ctx.index].active then
 		return
 	end
-	if ctx.menu[ctx.index].handler then
+
+-- let the handler determine if we are done and should be closed or not
+	if ctx.options.on_finish then
+		if ctx.options.on_finish(ctx, ctx.menu[ctx.index]) then
+			return
+		end
+	end
+
+-- otherwise we can run it (and decide if we handle a new menu or not,
+-- and what method, i.e. replace current or reposition)
+	blend_image(ctx.anchor, 0, ctx.animation_out)
+	expire_image(ctx.anchor, ctx.animation_out)
+
+-- submenu spawn / positioning is advanced and up to the parent
+	if ctx.menu[ctx.index].handler and not ctx.menu[ctx.index].submenu then
 		ctx.menu[ctx.index].handler()
 	end
 end
@@ -369,18 +385,28 @@ function(menu, options)
 			end
 			res:set_index(last_i)
 		end,
+		button = function(ctx, vid, ind, act)
+			if (not act or ind > MOUSE_WHEELNX or ind < MOUSE_WHEELPY) then
+				return;
+			end
+			if (ind == MOUSE_WHEELNX or ind == MOUSE_WHEELNY) then
+				res:step_down();
+			else
+				res:step_up();
+			end
+		end,
 		click = function(ctx)
 			res:trigger()
 		end
 	};
-	mouse_addlistener(mh, {"motion", "click"})
+	mouse_addlistener(mh, {"motion", "click", "button"})
 
 -- two real options for a cursor, either we have a shader where we set
 -- the uniform to match the cursor position, or we
 	local cursor = color_surface(64, 64, 255, 255, 255);
 	link_image(cursor, res.anchor)
 	blend_image(cursor, 0.5)
-	force_image_blend(cursor, BLEND_MULTIPLY);
+	force_image_blend(cursor, BLEND_ADD);
 	image_inherit_order(cursor, true)
 	order_image(cursor, 2)
 	image_mask_set(cursor, MASK_UNPICKABLE)
@@ -392,7 +418,7 @@ function(menu, options)
 -- run border attach to allow a custom look and field, typically color
 -- surface with some shader arranged around
 	if options.border_attach then
-		options.border_attach(res, res.anchor)
+		options.border_attach(res, res.anchor, res.max_w, res.max_h)
 	end
 
 	local function closure()

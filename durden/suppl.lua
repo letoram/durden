@@ -365,7 +365,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 	end
 
 -- assume 'soft' for now
-	local shname = "dropshadow";
+	local shname = opts.shader and opts.shader or "dropshadow";
 
 	local time = opts.time and opts.time or 0;
 	local t = opts.t and opts.t or gconfig_get("shadow_t");
@@ -383,7 +383,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 
 -- allocate on first call
 	if not valid_vid(ctx.shadow) then
-		ctx.shadow = fill_surface(w + l + r, h + t + d, cr, cg, cb);
+		ctx.shadow = color_surface(w + l + r, h + t + d, cr, cg, cb);
 
 -- and handle OOM
 		if (not valid_vid(ctx.shadow)) then

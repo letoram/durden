@@ -7,3 +7,4 @@ system_load("uiprim/lbar.lua")();
 system_load("uiprim/bbar.lua")();
 system_load("uiprim/buttongrid.lua")();
 system_load("uiprim/bar.lua")();
+uiprim_popup_spawn = system_load("uiprim/popup.lua")();

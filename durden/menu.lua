@@ -701,7 +701,7 @@ function menu_build(set)
 				if (val or not menu.submenu) then
 					new_menu.kind = "action";
 					new_menu.handler = function()
-						dispatch_symbol(v);
+						dispatch_symbol(path);
 					end
 				end
 
