@@ -509,7 +509,7 @@ local function update_sbar_shadow(wm)
 		d = gconfig_get("sbar_dshadow"),
 		r = gconfig_get("sbar_rshadow"),
 		color = gconfig_get("sbar_shadow_color"),
-		shader = gconfig_get("sbar_shadow")
+		method = gconfig_get("sbar_shadow")
 	};
 
 	suppl_region_shadow(sb, sb.width, sb.height, opts);
@@ -4197,7 +4197,12 @@ end
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
-	local dstindex = wm.space_ind;
+	local dstindex;
+	if wm.space_default_ind then
+		dstindex = wm.space_default_ind;
+	else
+		dstindex = wm.space_ind;
+	end
 
 -- very special windows can refuse attaching at all
 	if (res.attach_block) then

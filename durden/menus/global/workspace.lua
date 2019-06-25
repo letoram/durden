@@ -215,6 +215,20 @@ return {
 		handler = swap_ws_menu
 	},
 	{
+		name = "spawn",
+		label = "Spawn",
+		kind = "value",
+		description = "Set spawn workspace for unassigned windows",
+		set = {"current", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
+		handler = function(ctx, val)
+			if (val == "current") then
+				active_display().space_default_ind = nil;
+			else
+				active_display().space_default_ind = tonumber(val);
+			end
+		end,
+	},
+	{
 		name = "migrate",
 		label = "Migrate Display",
 		kind = "action",

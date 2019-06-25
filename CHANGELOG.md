@@ -47,6 +47,10 @@ Custom menus/aliasmaps can now be built. These register in the menu root
 (/menus) and are intended for shortcut button grids, popup menus, radial menus
 and so on.
 
+* workspaces assignment:
+It is now possible to control which workspace new windows currently spawn at,
+see the /global/workspace/spawn.
+
 * visual:
 Add soft shadow controls to windows, ui elements and statusbar
 
