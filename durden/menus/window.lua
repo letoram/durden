@@ -98,6 +98,23 @@ local function gen_group_menu()
 	return res;
 end
 
+local function gen_wnd_menu()
+	local res = {};
+	for wnd in all_windows(nil, false) do
+		table.insert(res, {
+			name = wnd.name,
+			label = wnd.name,
+			kind = action,
+			description = wnd:get_name(),
+			submenu = true,
+			handler = function()
+				return get_path_for_set({wnd}, "/target");
+			end,
+		});
+	end
+	return res;
+end
+
 return {
 	{
 		name = "group",
@@ -119,6 +136,19 @@ return {
 		handler = function()
 			return gen_all_menu();
 		end
+	},
+	{
+		name = "name",
+		label = "Name",
+		description = "Target applied to a window by its unique name",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return #gen_wnd_menu() > 0;
+		end,
+		handler = function()
+			return gen_wnd_menu();
+		end,
 	},
 	{
 		name = "type",
