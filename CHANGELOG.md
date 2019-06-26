@@ -27,6 +27,10 @@ Registers into global/settings/statusbar and adds option for external clients
 to connect and attach custom buttons. This deprecates the statusbar IPC in
 favor of solving this externally.
 
+* tools/autostart added:
+This tools runs a set of paths when loaded, but not on script error or
+resets. It automatically ignores execution unless it was correctly shutdown.
+
 * triggers:
 added per-window option to bind multiple custom triggers on select,
 deselect and destroy
@@ -49,7 +53,7 @@ and so on.
 
 * workspaces assignment:
 It is now possible to control which workspace new windows currently spawn at,
-see the /global/workspace/spawn.
+see the /global/settings/workspaces/spawn path.
 
 * visual:
 Add soft shadow controls to windows, ui elements and statusbar
@@ -68,6 +72,8 @@ Minor / Fixes:
 
 * statusbar ws- button coloring now defaults to dynamic from hc
   palette
+
+* /windows/name added for individual explicit window addressing
 
 * started refactoring and splitting uiprim.lua
 
