@@ -4390,6 +4390,24 @@ local function wnd_ws_attach(res, from_hook)
 -- otherwise the merge-to-statusbar mode would indicate the wrong window
 	if (wm.space_ind == dstindex) then
 		wnd_titlebar_to_statusbar(res);
+
+-- animate to indicate that a new window spawned on the workspace in question
+-- (if the button and statusbar is visible that is), we do this simply by
+-- drawing a short-lived color overlay
+	else
+		if wm.sbar_ws[dstindex] and valid_vid(wm.sbar_ws[dstindex].bg) then
+			local props = image_surface_resolve(wm.sbar_ws[dstindex].bg);
+			local wanim = gconfig_get("animation");
+			if (props.opacity > 0 and wanim > 0) then
+				local r,g,b = suppl_hexstr_to_rgb(HC_PALETTE[1]);
+				local csurf = color_surface(props.width, props.height, r, g, b);
+				move_image(csurf, props.x, props.y);
+				order_image(csurf, props.order + 3);
+				blend_image(csurf, 0.3, wanim * 0.5);
+				blend_image(csurf, 0.0, wanim * 0.5);
+				expire_image(csurf, wanim);
+			end
+		end
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
