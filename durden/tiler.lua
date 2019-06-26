@@ -486,20 +486,6 @@ local function output_mouse_devent(btl, wnd)
 	target_input(wnd.external, btl);
 end
 
--- set leftmost button to match the layout mode of the workspace
-local function wm_update_mode(wm)
-	if (not wm.spaces[wm.space_ind]) then
-		return;
-	end
-
-	local modestr = wm.spaces[wm.space_ind].mode;
-	if (modestr == "tile") then
-		modestr = modestr .. ":" .. wm.spaces[wm.space_ind].insert;
-	end
-	tiler_debug(wm, string.format("mode:space=%d:mode=%s", wm.space_ind, modestr));
-	wm.sbar_ws["left"]:update(modestr);
-end
-
 -- different shadow routine here for the color and padding
 local function update_sbar_shadow(wm)
 	local sb = wm.statusbar;
@@ -567,16 +553,6 @@ local function tiler_statusbar_update(wm)
 		move_image(wm.anchor, 0, 0);
 		move_image(wm.order_anchor, 0, 0);
 		wm.statusbar:move(xpos, wm.effective_height + ytop);
-	end
-
--- regenerate buttons and labels
-	wm_update_mode(wm);
-
--- we just hide the layout button, it's always present even if not wanted
-	if (gconfig_get("sbar_modebutton")) then
-		wm.sbar_ws["left"]:show();
-	else
-		wm.sbar_ws["left"]:hide();
 	end
 
 -- same tactic to hiding the ws buttons
@@ -670,29 +646,6 @@ local function tiler_statusbar_build(wm)
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	wm.statusbar.owner = wm;
 	wm.sbar_ws = {};
-
--- add_button(left, pretile, label etc.)
-	wm.sbar_ws["left"] = wm.statusbar:add_button("left", "sbar_item_bg",
-		"sbar_item", "mode", pad, wm.font_resfn, nil, sbsz,
-		{
-			click = function()
-				local sp = wm:active_space();
-				if (not sp.in_float) then
-					sp:float();
-				else
-					if (wm.status_lclick) then
-						wm.status_lclick();
-					end
-				end
-			end,
-			rclick = function()
-				if (wm.spaces[wm.space_ind].in_float) then
-					if (wm.status_rclick) then
-						wm.status_rclick();
-					end
-				end
-			end
-		});
 
 -- add the left / right buttons from the gconfig, an open question
 -- here is how to approach the 'status indicator' for buttons that
@@ -5151,7 +5104,6 @@ local function tiler_switchws(wm, ind)
 		wm.space_last_ind = wm.space_ind;
 	end
 	wm.space_ind = ind;
-	wm_update_mode(wm);
 
 	if (nextsp.switch_hook) then
 		nextsp:switch_hook(true, not nd, nextbg, oldbg);
@@ -5166,11 +5118,12 @@ local function tiler_switchws(wm, ind)
 	nextsp.selected = nextsp.selected and
 		nextsp.selected or nextsp.children[1];
 
+-- undo nesting as it might not apply for the next selected
+	wm.statusbar:set_nested();
 	if (nextsp.selected) then
 		wnd_select(nextsp.selected);
 	else
 		wm.selected = nil;
-		wm.statusbar:set_nested();
 	end
 
 	tiler_statusbar_update(wm);
@@ -5204,7 +5157,6 @@ local function tiler_swapws(wm, ind2)
 	wm.spaces[ind2] = wm.spaces[ind1];
  	wm.spaces[ind1] = space;
 	wm.space_ind = ind1;
-	wm_update_mode(wm);
 
  -- now the swap is done with, need to update bar again
 	if (valid_vid(wm.spaces[ind1].label_id)) then

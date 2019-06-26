@@ -315,11 +315,11 @@ local defaults = {
 	sbar_lshadow = 0,
 	sbar_dshadow = 4,
 	sbar_rshadow = 0,
+	sbar_popup_pad = 4,
 	sbar_shadow = "soft",
 	sbar_shadow_color = {0x00, 0x00, 0x00},
 	sbar_pos = "top",
 	sbar_visible = "desktop", -- (desktop / hud / hidden)
-	sbar_modebutton = true, -- show the dynamic workspace mode button
 	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
 	sbar_numberprefix = true,
 	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
@@ -411,17 +411,21 @@ local function btn_str(v)
 end
 
 local function str_to_btn(dst, v)
-	local ign, rest = string.split_first(v, "=");
+	local str, rest = string.split_first(v, "=");
 	local dir, rest = string.split_first(rest, ":");
 	local key, rest = string.split_first(rest, ":");
 	local cmd = string.split_first(rest, ":");
 
 	if (#dir > 0 and #rest > 0 and #key > 0) then
+		local ind = string.sub(str, 10);
+
 		table.insert(dst, {
 			label = key,
 			command = cmd,
-			direction = dir
+			direction = dir,
+			ind = tonumber(ind)
 		});
+		return true;
 	end
 end
 
@@ -429,17 +433,32 @@ function gconfig_statusbar_rebuild(nosynch)
 --double negative, but oh well - save the current state as config
 	if (not nosynch) then
 		drop_keys("sbar_btn_%");
+		drop_keys("sbar_btn_alt_%");
+		drop_keys("sbar_btn_drag_%");
 		local keys_out = {};
+
 		for i,v in ipairs(gconfig_statusbar_buttons) do
 			keys_out["sbar_btn_" .. tostring(i)] = btn_str(v);
+			if (v.alt_command) then
+				keys_out["sbar_btn_alt_%" .. tostring(i)] = v.alt_command;
+			end
+			if (v.drag_command) then
+				keys_out["sbar_btn_drag_%" .. tostring(i)] = v.drag_command;
+			end
 		end
 		store_key(keys_out);
 	end
 
--- repopulate from the stored keys
 	gconfig_statusbar_buttons = {};
+	local ofs = 0;
 	for _,v in ipairs(match_keys("sbar_btn_%")) do
-		str_to_btn(gconfig_statusbar_buttons, v);
+		if (str_to_btn(gconfig_statusbar_buttons, v)) then
+			local ent = gconfig_statusbar_buttons[#gconfig_statusbar_buttons];
+			if (ent.ind) then
+				ent.alt_command = get_key("sbar_btn_alt_" .. tostring(ind));
+				ent.drag_command = get_key("sbar_btn_drag_" .. tostring(ind));
+			end
+		end
 	end
 
 -- will take care of synching against gconfig_statusbar,

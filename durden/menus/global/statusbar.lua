@@ -37,6 +37,55 @@ local function remove_button(dir)
 	return res;
 end
 
+local function alt_button(dir, group)
+	local res = {};
+	for i,v in ipairs(gconfig_statusbar_buttons) do
+		if (not dir or v.direction == string.lower(dir)) then
+			table.insert(res, {
+				name = tostring(i),
+				label = dir .. "_" .. tostring(i),
+				description = "Button Label: " .. v.label,
+				kind = "action",
+				handler = function()
+					dispatch_symbol_bind(
+						function(path)
+							i[group] = path;
+							gconfig_statusbar_rebuild();
+							for disp in all_tilers_iter() do
+								disp:tile_update();
+							end
+						end
+					);
+			end});
+		end
+	end
+end
+
+local function extend_button(dir)
+	return {
+		{
+			name = "alternate_click",
+			label = "Alternate Click",
+			description = "Path activated when an alternate (right) mouse button is used",
+			submenu = true,
+			kind = "action",
+			handler = function()
+				return alt_button(dir, "alt_command");
+			end,
+		},
+		{
+			name = "drop",
+			label = "Drop",
+			description = "Path activated when a window is dragged/dropped on the button",
+			submenu = true,
+			kind = "action",
+			handler = function()
+				return alt_button(dir, "drag_command");
+			end
+		}
+	};
+end
+
 local function statusbar_buttons(dir, lbl)
 	local hintstr = "(0x_byte seq | icon_name | string)";
 	return
@@ -50,6 +99,17 @@ local function statusbar_buttons(dir, lbl)
 		eval = function() return #remove_button(dir) > 0; end,
 		handler = function()
 			return remove_button(dir);
+		end
+	},
+	{
+		label = "Extend",
+		name = "extend",
+		kind = "action",
+		submenu = true,
+		description = "Add alternate button activation (drag, rclick)",
+		eval = function() return #remove_button(dir) > 0; end,
+		handler = function()
+			return extend_button(dir);
 		end
 	},
 	{
@@ -182,21 +242,6 @@ local statusbar_buttons_dir = {
 		set = {LBL_YES, LBL_NO},
 		handler = function(ctx, val)
 			gconfig_set("sbar_wsbuttons", val == LBL_YES);
-			for tiler in all_tilers_iter() do
-				tiler:tile_update();
-			end
-		end
-	},
-	{
-		name = "mode_button",
-		label = "Mode Button",
-		kind = "value",
-		description = "Control the presence of the dynamic mode- statusbar button",
-		initial = function()
-			return gconfig_get("sbar_modebutton") and LBL_YES or LBL_NO; end,
-		set = {LBL_YES, LBL_NO},
-		handler = function(ctx, val)
-			gconfig_set("sbar_modebutton", val == LBL_YES);
 			for tiler in all_tilers_iter() do
 				tiler:tile_update();
 			end
