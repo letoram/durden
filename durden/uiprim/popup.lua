@@ -186,15 +186,19 @@ local function set_index(ctx, i)
 -- with a shader setting start-end s,t and simply modulate the color
 -- there.
 	if ctx.menu[i].active then
-		blend_image(ctx.cursor, 0.5)
-		move_image(ctx.cursor, 0, ctx.line_pos[i])
 		local h = ctx.index == #ctx.menu
 			and ctx.max_h - ctx.line_pos[i] or (ctx.line_pos[i+1] - ctx.line_pos[i])
-		resize_image(ctx.cursor, ctx.max_w, h)
+
+		if (valid_vid(ctx.cursor)) then
+			blend_image(ctx.cursor, 0.5)
+			move_image(ctx.cursor, 0, ctx.line_pos[i])
+			resize_image(ctx.cursor, ctx.max_w, h)
+		end
+
 		if ctx.options.cursor_at then
 			ctx.options.cursor_at(ctx, ctx.cursor, 0, ctx.line_pos[i], ctx.max_w, h);
 		end
-	else
+	elseif valid_vid(ctx.cursor) then
 		hide_image(ctx.cursor)
 	end
 end
@@ -270,7 +274,7 @@ end
 --  cursor_at     - function(ctx : tbl, cursor: vid, x, y, width, height)
 --                  end
 --                  Updated when the cursor has moved (and on spawn),
---                  implement to change cursor appearance and size.
+--                  implement to override default cursor
 --
 --
 --  on_finish     - function(ctx, entry(=nil))
@@ -280,7 +284,7 @@ end
 -- returns table:
 -- attributes:
 --  anchor : vid
---  cursor : vid
+--  cursor : vid (unless cursor_at is set)
 --  max_w  : highest width recorded from text groups
 --  max_h  : highest height recorded from text groups
 --
@@ -401,16 +405,16 @@ function(menu, options)
 	};
 	mouse_addlistener(mh, {"motion", "click", "button"})
 
--- two real options for a cursor, either we have a shader where we set
--- the uniform to match the cursor position, or we
-	local cursor = color_surface(64, 64, 255, 255, 255);
-	link_image(cursor, res.anchor)
-	blend_image(cursor, 0.5)
-	force_image_blend(cursor, BLEND_ADD);
-	image_inherit_order(cursor, true)
-	order_image(cursor, 2)
-	image_mask_set(cursor, MASK_UNPICKABLE)
-	res.cursor = cursor
+	if (not options.cursor_at) then
+		local cursor = color_surface(64, 64, 255, 255, 255);
+		link_image(cursor, res.anchor)
+		blend_image(cursor, 0.5)
+		force_image_blend(cursor, BLEND_ADD);
+		image_inherit_order(cursor, true)
+		order_image(cursor, 2)
+		image_mask_set(cursor, MASK_UNPICKABLE)
+		res.cursor = cursor
+	end
 
 -- all the other resources are in place, size the anchor surface and
 -- register it as the mouse handler
