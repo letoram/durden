@@ -514,7 +514,8 @@ function durden_new_connection(source, status, norespawn)
 -- allocate a new endpoint? or wait?
 	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
 		gconfig_get("extcon_startdelay")) then
-		connection_log("ratelimit");
+		connection_log("status=rate_limit:adding_timer");
+
 		timer_add_periodic("extcon_activation",
 			gconfig_get("extcon_rlimit"), true,
 			function() durden_eval_respawn(false); end, true);
@@ -536,11 +537,12 @@ function durden_new_connection(source, status, norespawn)
 -- exceeding limits, ignore for now
 	if (extcon_wndcnt >= gconfig_get("extcon_wndlimit") and
 		gconfig_get("extcon_wndlimit") > 0) then
-		connection_log("external_limit");
+		connection_log(string.format("status=limit_block:external_limit=%d:count=%d",
+			gconfig_get("extcon_wndlimit"), extcon_wndcnt))
 		delete_image(source);
 	else
 		extcon_wndcnt = extcon_wndcnt + 1;
-		connection_log("new:count=" .. tostring(extcon_wndcnt));
+		connection_log("status=new:count=" .. tostring(extcon_wndcnt));
 -- allow 'per connpath' connection interception to modify wnd post creation
 -- but pre-attachment
 		local wargs = extevh_run_intercept(status.key);

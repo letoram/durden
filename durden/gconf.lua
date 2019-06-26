@@ -165,6 +165,7 @@ local defaults = {
 	ws_autodestroy = true,
 	ws_autoadopt = true,
 	ws_default = "tile",
+	ws_child_default = "parent",
 
 -- preview covers the generation / tracking of a downsampled / filtered
 -- copy of each workstation based on the current rendertarget. It's also used

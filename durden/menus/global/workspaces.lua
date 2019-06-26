@@ -73,6 +73,35 @@ local tile_menu = {
 	}
 };
 
+local spawn_menu = {
+	{
+		name = "destination",
+		label = "New",
+		kind = "value",
+		description = "Set spawn workspace for new, unassigned windows",
+		set = {"current", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
+		handler = function(ctx, val)
+			if (val == "current") then
+				active_display().space_default_ind = nil;
+			else
+				active_display().space_default_ind = tonumber(val);
+			end
+		end,
+	},
+	{
+		name = "child",
+		label = "Child",
+		kind = "value",
+		initial = function()
+			return gconfig_get("ws_child_default");
+		end,
+		set = {"default", "parent"},
+		handler = function(ctx, val)
+			gconfig_set("ws_child_default", val);
+		end
+	}
+};
+
 return {
 	{
 		name = "autodel",
@@ -121,5 +150,13 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = tab_menu
-	}
+	},
+	{
+		name = "spawn",
+		label = "Spawn",
+		kind = "action",
+		submenu = true,
+		description = "Window-workspace spawn controls",
+		handler = spawn_menu
+	},
 };
