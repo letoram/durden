@@ -7,6 +7,11 @@
 
 system_load("touchm.lua")();
 local iostatem_evlog = suppl_add_logfn("idevice");
+local idle_threshold = gconfig_get("idle_threshold");
+gconfig_listen("idle_threshold", "iostatem",
+function(key, val)
+	idle_threshold = val;
+end);
 
 local devstate = {
 	counter = 0,
@@ -96,6 +101,17 @@ function iostatem_input(iotbl)
 		local lbl = "unkn_bad_" .. badseq;
 		dev = iostatem_added(iotbl);
 	end
+
+-- some devices have triggers on return from idle, either for reconfiguration,
+-- querying the user for an action and so on. This is processed here.
+	if (dev.in_idle) then
+		dev.in_idle = false;
+		iostatem_evlog(string.format("return=idle:device=%d:name=%s", iotbl.devid, dev.name));
+		if (dev.idle_out_command) then
+			dispatch_symbol(dev.idle_out_command);
+		end
+	end
+	dev.idle_clock = 0;
 
 -- currently mouse state management is handled elsewhere (durden+tiler.lua)
 -- but we simulate a fake 'joystick' device here to allow meta + mouse to be
@@ -243,6 +259,19 @@ function iostatem_tick()
 	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
 	evc = 0;
 
+-- this counter is reset on each sample, so that we can set actions
+-- when a device returns from idle or when it enters into an idle state
+	for k,v in pairs(devices) do
+		v.idle_clock = v.idle_clock + 1;
+		if idle_clock == idle_threshold then
+			v.in_idle = true;
+			iostatem_evlog(string.format("kind=idle:device=%d:name=%s", k, v.name));
+			if v.idle_command then
+				dispatch_symbol(v.idle_command);
+			end
+		end
+	end
+
 	if (not devstate.counter or devstate.counter == 0) then
 		return;
 	end
@@ -312,7 +341,8 @@ function iostatem_added(iotbl)
 			lookup = label_lookup[iotbl.label]
 				and label_lookup[iotbl.label] or {default_lh, default_ah},
 			force_analog = false,
-			keyboard = (iotbl.keyboard and true or false)
+			keyboard = (iotbl.keyboard and true or false),
+			idle_clock = 0
 		};
 		dev = devices[iotbl.devid];
 
