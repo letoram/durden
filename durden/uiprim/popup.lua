@@ -163,12 +163,24 @@ local function menu_to_fmtstr(menu, options)
 
 	local text_valid = options.text_valid or "\\f,0\\#ffffff"
 	local text_invalid = options.text_invalid or "\\f,0\\#999999"
+	local text_menu = options.text_menu or "\f,0\\#aaaaaa"
 
 	for i,v in ipairs(menu) do
 		local fmt_suffix = i > 1 and [[\n\r]] or ""
-		local prefix = v.active and text_valid or text_invalid
+		local prefix
+		local suffix = ""
+
+		if not v.active then
+			prefix = text_invalid
+		elseif v.submenu then
+			prefix = text_menu
+			suffix = options.text_menu_suf and options.text_menu_suf or ""
+		else
+			prefix = text_valid
+		end
+
 		table.insert(text_list, prefix .. fmt_suffix)
-		table.insert(text_list, v.label)
+		table.insert(text_list, v.label .. suffix)
 		table.insert(sym_list, v.shortcut and v.shortcut or "")
 	end
 
@@ -262,6 +274,8 @@ end
 --  anchor        - parent vid to attach to
 --  text_valid    - string prefix to use for a line of valid output
 --  text_invalid  - string prefix to use for a line of inactive output
+--  text_menu     - string prefix to use for a line of a menu
+--  text_menu_suf - string suffix to use for a line of a menu
 --  animation_in  - time for fade / animate in
 --  animation_out - time for fade / animate out
 --  border_attach - function(ctx : tbl, src : vid, width, height)
