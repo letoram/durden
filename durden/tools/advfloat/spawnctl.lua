@@ -16,7 +16,9 @@ local function setup_cursor_pick(wm, wnd)
 	order_image(pending_vid, -1);
 	nudge_image(pending_vid,
 	mouse_state().size[1] * 0.75, mouse_state().size[2] * 0.75);
-	shader_setup(pending_vid, "ui", "regmark", "active");
+	local ctx = {anchor = pending_vid};
+	suppl_region_shadow(ctx, w+20, h+20, {shader = "rounded_border"});
+	nudge_image(ctx.shadow, -10, -10);
 end
 
 local function activate_pending()
@@ -73,12 +75,7 @@ local function wnd_attach(wm, wnd)
 			local w = x2 - x1;
 			local h = y2 - y1;
 			if (w > 64 and h > 64) then
-				wnd:resize(w, h);
--- get control of the 'spawn' animation used here, might fight with flair later
-				instant_image_transform(wnd.anchor);
-				instant_image_transform(wnd.canvas);
-				instant_image_transform(wnd.border);
-				wnd.titlebar:resize(wnd.titlebar.width, wnd.titlebar.height, 0);
+				wnd:resize(w, h, true);
 			end
 			wnd:move(x1, y1, false, true, 0);
 			wnd:show();
