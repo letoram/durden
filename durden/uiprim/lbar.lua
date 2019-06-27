@@ -24,8 +24,10 @@
 --
 
 local function inp_str(ictx, valid)
+	local prefix = active_display():font_resfn();
 	return {
-		valid and gconfig_get("lbar_textstr") or gconfig_get("lbar_alertstr"),
+		prefix .. (
+		valid and gconfig_get("lbar_textstr") or gconfig_get("lbar_alertstr")),
 		ictx.inp.view_str()
 	};
 end
@@ -42,7 +44,8 @@ local function update_caret(ictx, mask)
 			msg = string.rep("*", string.len(msg));
 		end
 
-		local w, h = text_dimensions({gconfig_get("lbar_textstr"),  msg});
+		local prefix = active_display():font_resfn();
+		local w, h = text_dimensions({prefix .. gconfig_get("lbar_textstr"),  msg});
 		move_image(ictx.caret, ictx.textofs+w, ictx.caret_y);
 	end
 end
