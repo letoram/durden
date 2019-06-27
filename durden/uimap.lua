@@ -12,11 +12,25 @@
 --
 local log = suppl_add_logfn("wm");
 
-local function position_popup(vid, x, y, w, h)
+local function position_popup(vid, x, y, w, h, anchor_vid)
+	local wm = active_display();
+
+	if (x + w > wm.width) then
+		x = x - (x + w - wm.width) - 20;
+	end
+
+	if (x < 0) then
+		x = 0;
+	end
+
+	if (y + h > wm.height) then
+		y = y - (y + h - wm.height) - 20;
+	end
+
 	move_image(vid, x, y);
 end
 
-function uimap_popup(menu, x, y)
+function uimap_popup(menu, x, y, anchor_vid)
 	local wm = active_display();
 	local ml = {
 		name = "grab_surface"
@@ -31,10 +45,10 @@ function uimap_popup(menu, x, y)
 -- now we can position the popup based on intended spawn
 			image_inherit_order(anchor, true);
 			order_image(anchor, 65534);
-			position_popup(anchor, x, y, w, h);
+			position_popup(anchor, x, y, w, h, anchor_vid);
 
 -- but set our own shadow/border/cursor thing, the offset calculations
--- aren't particularly nice though, and should probably also use wm.scale
+-- aren't particularly nice though, and should probably also use wm.scalef
 			shadow_h = h + 20;
 			local ssurf = color_surface(w + 20, h + 20, 0, 0, 0);
 			move_image(ssurf, -10, -10);
@@ -75,8 +89,10 @@ function uimap_popup(menu, x, y)
 -- and forward normal items (will just trigger handle and cancel)
 			return false;
 		end,
-		text_valid = prefix .. "\\#aaaaaa",
+		text_valid = prefix .. HC_PALETTE[1],
 		text_invalid = prefix .. "\\#666666",
+		text_menu = prefix .. HC_PALETTE[2],
+		text_menu_suf = " »",
 		animation_in = gconfig_get("animation") * 0.5,
 		animation_out = gconfig_get("animation") * 0.5,
 	});

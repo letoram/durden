@@ -370,6 +370,7 @@ local function reposition(source, bar, btn)
 	local ap = gconfig_get("sbar_pos");
 	local sprop = image_surface_resolve(source);
 	local bprop = image_surface_properties(btn.bg);
+	bprop.height = bprop.height + bar.owner.scalef * gconfig_get("sbar_popup_pad");
 
 -- align to the lower left unless overflow, then end at lower right
 	if (ap == "top") then
