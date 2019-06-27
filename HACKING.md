@@ -88,6 +88,7 @@ The larger states to consider, be sure to check with (when applicable):
  * vtab/htab (rearranges decorations)
  * float (hierarchies mostly ignored)
  * window with popups
+ * windows with 'alternates' defined
  * tile and autolayout mode
  * multiple screens with different densities
  * multiple slices of a window
@@ -99,17 +100,21 @@ As mentioned in the introduction, some of the code will be reworked in
 the near future. A few of the planned changes include:
 
  * Refactor out the use of 'active\_display().selected', the context
-   should always be provided as an arugment
+   should always be provided as an argument
  * Splitting up the larger suppl, tiler etc. script files
- * Extending menus and alerts with translations
+ * Extending menus and alerts with a translation helper that intercepts
+   the text-lookup in the menu and allow for substitutions
+ * Allow 'descriptions' for value-sets
  * Allowing for multiple- 'tiler.lua' and enforcing better separation,
    this is partially being done now with the VR- tool
+ * Connection point spawn / management / respawn / rate limit is very
+   confusing and builds on pointless global use, should be reworked
+ * All font-rendering etc. that uses the tiler scalef lookup should be
+   reworked to rely on the rendertarget density specifier
 
 The translations will be kept seperate and act as replacements for the
 label field in the menus and shouldn't impose much change at all as it
-can be kept as an extension to the normal navigation. Help description
-will be added through an additional field in the menu tables that will
-return a user-readable string.
+can be kept as an extension to the normal navigation.
 
 Filesystem Layout
 ------

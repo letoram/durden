@@ -12,20 +12,45 @@
 --
 local log = suppl_add_logfn("wm");
 
+local function position_popup(vid, x, y, w, h)
+	move_image(vid, x, y);
+end
+
 function uimap_popup(menu, x, y)
 	local wm = active_display();
 	local ml = {
 		name = "grab_surface"
 	};
 
+	local prefix = wm:font_resfn();
+	local shadow_h = 10;
+
 	local popup = uiprim_popup_spawn(menu, {
 		border_attach =
 		function(tbl, anchor, w, h)
+-- now we can position the popup based on intended spawn
 			image_inherit_order(anchor, true);
-			link_image(anchor, active_display().order_anchor);
-			move_image(anchor, x, y);
-			order_image(anchor, 2);
-			suppl_region_shadow(tbl, w, h, {shader = "border"});
+			order_image(anchor, 65534);
+			position_popup(anchor, x, y, w, h);
+
+-- but set our own shadow/border/cursor thing, the offset calculations
+-- aren't particularly nice though, and should probably also use wm.scale
+			shadow_h = h + 20;
+			local ssurf = color_surface(w + 20, h + 20, 0, 0, 0);
+			move_image(ssurf, -10, -10);
+			tbl.shid = shader_ui_lookup(ssurf, "ui", "popup", "active");
+			link_image(ssurf, anchor);
+			image_inherit_order(ssurf, true);
+			blend_image(ssurf, 1.0);
+			force_image_blend(ssurf, BLEND_NORMAL);
+			order_image(ssurf, -1);
+		end,
+		cursor_at = function(ctx, vid, xofs, yofs, max_w, h)
+			if (not ctx.shid) then
+				return;
+			end
+			shader_uniform(ctx.shid,
+				"range", "ff", (yofs + 10) / shadow_h, (yofs + 10 + h) / shadow_h);
 		end,
 -- all paths return true == we take control over invocation
 		on_finish =
@@ -50,8 +75,8 @@ function uimap_popup(menu, x, y)
 -- and forward normal items (will just trigger handle and cancel)
 			return false;
 		end,
-		text_valid = "\\f,0\\#aaaaaa",
-		text_invalid = "\\f,0\\#666666",
+		text_valid = prefix .. "\\#aaaaaa",
+		text_invalid = prefix .. "\\#666666",
 		animation_in = gconfig_get("animation") * 0.5,
 		animation_out = gconfig_get("animation") * 0.5,
 	});
