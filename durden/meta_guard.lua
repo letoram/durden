@@ -26,7 +26,7 @@ function meta_guard_reset(force)
 end
 
 function meta_guard(s1, s2)
-	if (s1 or s2) then
+	if (s1 or s2 or not gconfig_get("meta_guard")) then
 		mgc = 0;
 		active_display():message();
 		meta_guard = function() return true; end

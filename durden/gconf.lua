@@ -165,6 +165,7 @@ local defaults = {
 	ws_autodestroy = true,
 	ws_autoadopt = true,
 	ws_default = "tile",
+	ws_altmenu = "wsmenu",
 	ws_child_default = "parent",
 
 -- preview covers the generation / tracking of a downsampled / filtered
@@ -253,6 +254,7 @@ local defaults = {
 	meta_lock = "m2",
 	meta_stick_time = 0,
 	meta_dbltime = 10,
+	meta_guard = true,
 
 -- minimum amount of ticks from epoch (-1 disables entirely)
 -- before device- event notifications appears
