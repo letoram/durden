@@ -77,6 +77,8 @@ Minor / Fixes:
 
 * started refactoring and splitting uiprim.lua
 
+* allow disabling meta-guard (rebinding) via /input/keyboard/meta\_guard
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is

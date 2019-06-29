@@ -322,7 +322,9 @@ function dispatch_symbol_wnd(wnd, sym)
 
 -- fake "selecting" the window
 	local old_sel = wnd.wm.selected;
-	wnd.wm.selected = wnd;
+	local wm = wnd.wm;
+
+	wm.selected = wnd;
 
 -- need to run in the context of the display as any object creation gets
 -- tied to the output rendertarget
@@ -332,9 +334,9 @@ function dispatch_symbol_wnd(wnd, sym)
 
 -- might have been removed while running, so check that first
 	if (old_sel and old_sel.destroy) then
-		wnd.wm.selected = old_sel;
+		wm.selected = old_sel;
 	else
-		wnd.wm.selected = nil;
+		wm.selected = nil;
 	end
 end
 

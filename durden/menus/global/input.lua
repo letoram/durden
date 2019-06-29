@@ -590,6 +590,18 @@ local keyb_menu = {
 		end
 	},
 	{
+		name = "meta_guard",
+		label = "Meta Guard",
+		kind = "value",
+		description = "Enable / Disable the meta-guard on device-lost feature",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		eval = function() return gconfig_get("meta_guard"); end,
+		initial = function()
+			return gconfig_get("meta_guard") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("meta_guard")
+	},
+	{
 		name = "maps",
 		label = "Maps",
 		kind = "action",
