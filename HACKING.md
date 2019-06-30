@@ -102,9 +102,13 @@ the near future. A few of the planned changes include:
  * Refactor out the use of 'active\_display().selected', the context
    should always be provided as an argument
  * Splitting up the larger suppl, tiler etc. script files
+ * Separate out the decorations, statusbar and size logic from the
+   tiler-mgmt
  * Extending menus and alerts with a translation helper that intercepts
    the text-lookup in the menu and allow for substitutions
  * Allow 'descriptions' for value-sets
+ * Input routing split out from durden.lua
+ * Better database-key-value packing for UI buttons
  * Allowing for multiple- 'tiler.lua' and enforcing better separation,
    this is partially being done now with the VR- tool
  * Connection point spawn / management / respawn / rate limit is very

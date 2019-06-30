@@ -731,23 +731,25 @@ function suppl_append_color_menu(v, tbl, update_fun)
 	end
 end
 
-function suppl_button_default_mh(wnd, cmd)
-	return {
-		click = function(btn)
-			local old_sel = wnd.wm.selected;
-			wnd:select();
-			dispatch_symbol(cmd);
-			if (old_sel and old_sel.select) then
-				old_sel:select();
-			end
-		end,
-		over = function(btn)
-			btn:switch_state("alert");
-		end,
-		out = function(btn)
-			btn:switch_state(wnd.wm.selected == wnd and "active" or "inactive");
+function suppl_button_default_mh(wnd, cmd, altcmd)
+	local res =
+{
+	click = function(btn)
+		dispatch_symbol_wnd(wnd, cmd);
+	end,
+	over = function(btn)
+		btn:switch_state("alert");
+	end,
+	out = function(btn)
+		btn:switch_state(wnd.wm.selected == wnd and "active" or "inactive");
+	end
+};
+	if (altcmd) then
+		res.rclick = function()
+			dispatch_symbol_wnd(altcmd);
 		end
-	};
+	end
+	return res;
 end
 
 function suppl_valid_typestr(utype, lowv, highv, defaultv)

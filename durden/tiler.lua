@@ -629,7 +629,6 @@ local function gen_button_handler(cmd, alt_cmd)
 		end,
 
 		rclick = function(btn)
-			tiler_debug(active_display(), "status button rclick");
 			dispatch_symbol(alt_cmd and alt_cmd or cmd);
 		end
 	};
@@ -654,12 +653,18 @@ local function tiler_statusbar_build(wm)
 		wm.sbar_ws["custom"] = {};
 		for i,v in ipairs(wm.sbar_custom) do
 			local state, outlbl = suppl_valid_vsymbol(v.label);
-			table.insert(wm.sbar_ws["custom"],
-				wm.statusbar:add_button(v.direction, "sbar_item_bg",
+			local btn = wm.statusbar:add_button(
+				v.direction, "sbar_item_bg",
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
 				gen_button_handler(v.command, v.alt_command)
-			));
-			end
+			);
+
+-- unfortunately mouse "drop" doesn't trigger on the surface where
+-- something is being dropped but rather from the context where the
+-- drag was initiated
+			btn.on_drop = v.on_drop;
+			table.insert(wm.sbar_ws["custom"], btn);
+		end
 	end
 
 -- pre-allocate buffer slots, but keep hidden
@@ -4159,6 +4164,7 @@ local function wnd_ws_attach(res, from_hook)
 
 -- very special windows can refuse attaching at all
 	if (res.attach_block) then
+		tiler_debug(wm, "attach_block:name=" .. res.name);
 		return false;
 	end
 
@@ -4197,6 +4203,8 @@ local function wnd_ws_attach(res, from_hook)
 		if (res.alternate_parent and not res.alternate_parent.anchor) then
 			res.alternate_parent = nil;
 		else
+			tiler_debug(wm, "attach_alternate:parent=" ..
+				res.alternate_parent.name .. "name=" .. res.name);
 			return attach_alternate(res, res.alternate_parent);
 		end
 	end
@@ -4207,6 +4215,7 @@ local function wnd_ws_attach(res, from_hook)
 -- has done its possible positioning and sizing
 	if ((dstindex == wm.space_ind and not res.attach_temp)
 		and wm.attach_hook and not from_hook) then
+			tiler_debug(wm, "attach_hook:name=" .. res.name);
 			return wm:attach_hook(res);
 	end
 
