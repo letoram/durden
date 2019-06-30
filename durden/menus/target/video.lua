@@ -254,21 +254,6 @@ local advanced = {
 			end
 		end
 	end
-	},
-	{
-	name = "migrate",
-	label = "Migrate",
-	kind = "value",
-	description = "Request that the client connects to a different display server",
-	eval = function()
-		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
-	end,
-	validator = function(val)
-		return string.len(val) > 0 and string.len(val) < 31;
-	end,
-	handler = function(ctx, val)
-		target_devicehint(active_display().selected.external, val, true);
-	end
 	}
 };
 
