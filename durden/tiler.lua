@@ -613,26 +613,6 @@ end
 
 local function gen_button_handler(cmd, alt_cmd)
 	return {
-		click = function(btn)
-			local m1, m2 = dispatch_meta();
-			if (m1 and alt_cmd) then
-				dispatch_symbol(alt_cmd);
-			elseif (cmd) then
-				dispatch_symbol(cmd);
-			end
-		end,
-
-		over = function(btn)
-			btn:switch_state("alert");
-		end,
-
-		out = function(btn)
-			btn:switch_state("active");
-		end,
-
-		rclick = function(btn)
-			dispatch_symbol(alt_cmd and alt_cmd or cmd);
-		end
 	};
 end
 
@@ -658,7 +638,7 @@ local function tiler_statusbar_build(wm)
 			local btn = wm.statusbar:add_button(
 				v.direction, "sbar_item_bg",
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
-				gen_button_handler(v.command, v.alt_command)
+				mouse_handler_factory.statusbar_icon(wm, v.command, v.alt_command)
 			);
 
 -- unfortunately mouse "drop" doesn't trigger on the surface where
@@ -5057,9 +5037,10 @@ local function tiler_scalef(wm, newf, disptbl)
 		for k,v in pairs(disptbl) do
 			wm.disptbl[k] = v;
 		end
-		tiler_debug(wm, "scale:new=%f:ppcm=%f", newf, disptbl.ppcm and disptbl.ppcm or VPPCM);
+		tiler_debug(wm, string.format(
+			"scale:new=%f:ppcm=%f", newf, disptbl.ppcm and disptbl.ppcm or VPPCM));
 	else
-		tiler_debug(wm, "scale:new=%f", newf)
+		tiler_debug(wm, string.format("scale:new=%f", newf));
 	end
 
 	recalc_fsz(wm);
