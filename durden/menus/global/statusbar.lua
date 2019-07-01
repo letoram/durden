@@ -49,7 +49,7 @@ local function alt_button(dir, group)
 				handler = function()
 					dispatch_symbol_bind(
 						function(path)
-							v[group] = path;
+							v.alt_command = path;
 							gconfig_statusbar_rebuild();
 							for disp in all_tilers_iter() do
 								disp:tile_update();

@@ -478,8 +478,44 @@ local function build_titlebar(wnd)
 	return table;
 end
 
+local function build_statusbar_icon(wm, cmd, alt_cmd)
+	tiler_debug(wm, "sbar_icon:" ..
+		"cmd=" .. (cmd and cmd or "none"),
+		"alt_cmd=" .. (alt_cmd and alt_cmd or "none"));
+
+	local table = {
+		click =
+		function(btn)
+			local m1, m2 = dispatch_meta();
+			if (m1 and alt_cmd) then
+				dispatch_symbol(alt_cmd);
+			elseif (cmd) then
+				dispatch_symbol(cmd);
+			end
+		end,
+
+		over =
+		function(btn)
+			btn:switch_state("alert");
+		end,
+
+		out =
+		function(btn)
+			btn:switch_state("active");
+		end,
+
+		rclick =
+		function(btn)
+			dispatch_symbol(alt_cmd and alt_cmd or cmd);
+		end
+	};
+
+	return table;
+end
+
 return {
 	border = build_border,
 	canvas = build_canvas,
-	titlebar = build_titlebar
+	titlebar = build_titlebar,
+	statusbar_icon = build_statusbar_icon
 };

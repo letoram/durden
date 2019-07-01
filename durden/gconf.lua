@@ -442,10 +442,10 @@ function gconfig_statusbar_rebuild(nosynch)
 		for i,v in ipairs(gconfig_statusbar_buttons) do
 			keys_out["sbar_btn_" .. tostring(i)] = btn_str(v);
 			if (v.alt_command) then
-				keys_out["sbar_btn_alt_%" .. tostring(i)] = v.alt_command;
+				keys_out["sbar_btn_alt_" .. tostring(i)] = v.alt_command;
 			end
 			if (v.drag_command) then
-				keys_out["sbar_btn_drag_%" .. tostring(i)] = v.drag_command;
+				keys_out["sbar_btn_drag_" .. tostring(i)] = v.drag_command;
 			end
 		end
 		store_key(keys_out);
@@ -457,8 +457,8 @@ function gconfig_statusbar_rebuild(nosynch)
 		if (str_to_btn(gconfig_statusbar_buttons, v)) then
 			local ent = gconfig_statusbar_buttons[#gconfig_statusbar_buttons];
 			if (ent.ind) then
-				ent.alt_command = get_key("sbar_btn_alt_" .. tostring(ind));
-				ent.drag_command = get_key("sbar_btn_drag_" .. tostring(ind));
+				ent.alt_command = get_key("sbar_btn_alt_" .. tostring(ent.ind));
+				ent.drag_command = get_key("sbar_btn_drag_" .. tostring(ent.ind));
 			end
 		end
 	end
