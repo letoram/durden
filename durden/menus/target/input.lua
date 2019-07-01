@@ -107,9 +107,9 @@ local kbd_menu = {
 local function mouse_lockfun(rx, ry, x, y, wnd, ind, act)
 -- simulate the normal mouse motion in the case of constrained input
 	if (ind) then
-		wnd.mousebutton({tag = wnd}, ind, act, x, y);
+		wnd:mousebutton(ind, act, x, y);
 	else
-		wnd.mousemotion({tag = wnd}, x, y, rx, ry);
+		wnd:mousemotion(x, y, rx, ry);
 	end
 end
 
