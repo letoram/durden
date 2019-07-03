@@ -215,13 +215,21 @@ local function set_index(ctx, i)
 	end
 end
 
+local function drop(ctx)
+	if ctx.animation_out > 0 then
+		blend_image(ctx.anchor, 0, ctx.animation_out)
+		expire_image(ctx.anchor, ctx.animation_out)
+	else
+		delete_image(ctx.anchor);
+	end
+end
+
 local function cancel(ctx)
 	if not valid_vid(ctx.anchor) then
 		return
 	end
 
-	blend_image(ctx.anchor, 0, ctx.animation_out)
-	expire_image(ctx.anchor, ctx.animation_out)
+	drop(ctx);
 
 	if not ctx.in_finish and ctx.options.on_finish then
 		ctx.options.on_finish(ctx);
@@ -242,8 +250,7 @@ local function trigger(ctx)
 
 -- otherwise we can run it (and decide if we handle a new menu or not,
 -- and what method, i.e. replace current or reposition)
-	blend_image(ctx.anchor, 0, ctx.animation_out)
-	expire_image(ctx.anchor, ctx.animation_out)
+	drop(ctx);
 
 -- submenu spawn / positioning is advanced and up to the parent
 	if ctx.menu[ctx.index].handler and not ctx.menu[ctx.index].submenu then
@@ -342,14 +349,18 @@ function(menu, options)
 	local lmenu = {}
 	local active = #menu
 
-	for i=1,#menu do
-		lmenu[i] = tbl_copy(menu[i])
-		lmenu[i].active = true
-		if lmenu[i].eval ~= nil and lmenu[i].eval and lmenu[i].eval() ~= true then
-			lmenu[i].active = false
-			active = active - 1
+	for _,v in ipairs(menu) do
+		if not v.alias then
+			table.insert(lmenu, tbl_copy(v));
+			local i = #lmenu
+			lmenu[i].active = true
+			if lmenu[i].eval ~= nil and lmenu[i].eval and lmenu[i].eval() ~= true then
+				lmenu[i].active = false
+				active = active - 1
+			end
 		end
 	end
+
 	res.menu = lmenu
 
 -- no point in providing a menu that can't be selected

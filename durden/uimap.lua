@@ -82,7 +82,10 @@ function uimap_popup(menu, x, y, anchor_vid)
 -- block submenus for now
 			if (ent.submenu) then
 				log("tool=popup:kind=chain:item=" .. ent.name);
+				local menu = type(ent.handler) ==
+					"function" and ent.handler() or ent.handler;
 				ctx:cancel();
+				uimap_popup(menu, x, y, anchor_vid);
 				return true;
 			end
 
