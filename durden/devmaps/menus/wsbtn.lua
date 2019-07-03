@@ -2,7 +2,7 @@
 return {
 {"Stacked", "/global/workspace/layout/float"},
 {"Tiling", "/global/workspace/layout/tile_toggle"},
-{"Tab", "/global/workspace/tab"},
-{"Vtab", "/global/workspace/vtab"},
-{"Htab", "/global/workspace/htab"}
+{"Tabbed", "/global/workspace/layout/tab"},
+{"Vertical-tab", "/global/workspace/layout/vtab"},
+{"Column-tab", "/global/workspace/layout/htab"}
 };

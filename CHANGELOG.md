@@ -8,7 +8,11 @@ Display/region/ based sharing removed (except for snapshot/monitor)
 in favoring of a /target/share menu that consolidate all such options.
 
 * uiprim/sbar:
-statusbar custom button controls added
+statusbar custom button controls added, it is now possible to define
+alt-action (such as custom popup spawn) as well as drag-action.
+
+* workspace buttons now popup layout mode selector on altclick, and
+migrate window on drag-drop
 
  * uiprim/tbar:
 titlebar merge-to-status bar mode on select (if hidden)
@@ -76,6 +80,8 @@ Minor / Fixes:
 * /windows/name added for individual explicit window addressing
 
 * started refactoring and splitting uiprim.lua
+
+* started refactoring and splitting tiler.lua
 
 * allow disabling meta-guard (rebinding) via /input/keyboard/meta\_guard
 
