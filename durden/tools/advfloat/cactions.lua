@@ -99,16 +99,17 @@ local function creg_drag(wm, wnd, dx, dy, last)
 				v.region[4] * wm.height
 			};
 			local order = image_surface_resolve(wnd.anchor).order;
+			local w = v.screen_region[3] - v.screen_region[1];
+			local h = v.screen_region[4] - v.screen_region[2];
 			if (v.visible) then
-				v.temporary = color_surface(
-					v.screen_region[3] - v.screen_region[1],
-					v.screen_region[4] - v.screen_region[2],
-				255, 255, 255);
-
+				v.temporary = color_surface(w, h, 255, 255, 255);
 				blend_image(v.temporary, 0.5, gconfig_get("transition"));
 				order_image(v.temporary, order - 1);
-				move_image(v.temporary, v.region[1], v.region[2]);
+			else
+				v.temporary = null_surface(w, h);
+				show_image(v.temporary);
 			end
+			move_image(v.temporary, v.screen_region[1], v.screen_region[2]);
 		end
 	end
 

@@ -96,6 +96,9 @@ function uimap_popup(menu, x, y, anchor_vid)
 		animation_in = gconfig_get("animation") * 0.5,
 		animation_out = gconfig_get("animation") * 0.5,
 	});
+	if not popup then
+		return;
+	end
 
 -- big invisible surface that will absorb mouse events
 	local surf = null_surface(wm.width, wm.height);

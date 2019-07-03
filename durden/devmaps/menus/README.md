@@ -13,6 +13,10 @@ If the entry is a table of strings instead of a string, the first entry will
 be treated as the new label (allowing renaming) and the second as the menu
 path.
 
+Some menus are referenced as part of other uielements, the included wsbtn,
+for instance, is the default for right-click on statusbar workspace icons
+as per the gconfig(ws_popup) key.
+
 Example
 =======
         return {

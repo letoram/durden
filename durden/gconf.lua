@@ -167,6 +167,7 @@ local defaults = {
 	ws_default = "tile",
 	ws_altmenu = "wsmenu",
 	ws_child_default = "parent",
+	ws_popup = "wsbtn",
 
 -- preview covers the generation / tracking of a downsampled / filtered
 -- copy of each workstation based on the current rendertarget. It's also used

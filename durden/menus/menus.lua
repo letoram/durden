@@ -5,6 +5,14 @@ local window = system_load("menus/window.lua")();
 
 local menu_list = {};
 
+function menu_lookup_custom(name)
+	for k,v in ipairs(menu_list) do
+		if v.name == name then
+			return v:handler();
+		end
+	end
+end
+
 local function rescan_menu()
 -- save the first entry always
 	local ent = menu_list[1];

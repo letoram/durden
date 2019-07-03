@@ -640,6 +640,7 @@ local function tiler_statusbar_build(wm)
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
 				mouse_handler_factory.statusbar_icon(wm, v.command, v.alt_command)
 			);
+			btn.drag_command = v.drag_command;
 
 -- unfortunately mouse "drop" doesn't trigger on the surface where
 -- something is being dropped but rather from the context where the
@@ -653,13 +654,10 @@ local function tiler_statusbar_build(wm)
 	for i=1,10 do
 		wm.sbar_ws[i] = wm.statusbar:add_button("left", "sbar_item_bg",
 			"sbar_item", tostring(i), pad, wm.font_resfn, sbsz, nil,
-			{
-				click = function(btn)
-					wm:switch_ws(i);
-				end,
-				rclick = click
-			}
+				mouse_handler_factory.statusbar_wsicon(wm, i)
 		);
+		wm.sbar_ws[i].drag_command =
+			"/target/window/reassign/reassign_" .. tostring(i);
 		wm.sbar_ws[i]:hide();
 	end
 

@@ -135,15 +135,36 @@ local function try_swap(vids, wnd, candidates)
 	end
 end
 
-local function drop_swap(wnd)
-	local wnds = {};
+local function drop_swap(wnd, mode)
 	local x, y = mouse_xy();
+
+-- gather / repack the suspects
 	local items = pick_items(x, y, 8, true, active_display(true));
+	if not items or #items == 0 then
+		return;
+	end
+
 	local set = {};
-	if (#items) then
-		for i,v in ipairs(items) do
-			set[v] = true;
+	for i,v in ipairs(items) do
+		set[v] = true;
+	end
+
+-- first, statusbar buttons
+	for btn in wnd.wm.statusbar:all_buttons()	do
+		if set[btn.bg] then
+			if (btn.drag_command) then
+				dispatch_symbol_wnd(wnd, btn.drag_command);
+			end
+			return;
 		end
+	end
+
+	if mode ~= "tile" then
+		return;
+	end
+
+-- for tiling modes, we can also try to swap or merge based on meta
+	if (#items) then
 		try_swap(set, wnd, wnd.space:linearize());
 	end
 
@@ -335,9 +356,7 @@ local function build_canvas(wnd)
 
 	drop = function(ctx, vid)
 		if (wnd.in_drag_move) then
-			if (wnd.space.mode == "tile") then
-				drop_swap(wnd);
-			end
+			drop_swap(wnd, wnd.space.mode);
 
 -- wm global drag handlers
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
@@ -431,12 +450,10 @@ local function build_titlebar(wnd)
 	drop =
 	function(ctx)
 		local mode = wnd.space.mode;
+		drop_swap(wnd, mode);
+
 		if (mode == "float" or mode == "tile") then
 			mouse_switch_cursor("grabhint");
-
-			if (mode == "tile") then
-				drop_swap(wnd);
-			end
 
 			for k,v in ipairs(wnd.wm.on_wnd_drag) do
 				v(wnd.wm, wnd, 0, 0, true);
@@ -496,12 +513,12 @@ local function build_statusbar_icon(wm, cmd, alt_cmd)
 
 		over =
 		function(btn)
-			btn:switch_state("alert");
+			btn:switch_state("active");
 		end,
 
 		out =
 		function(btn)
-			btn:switch_state("active");
+			btn:switch_state("inactive");
 		end,
 
 		rclick =
@@ -513,9 +530,39 @@ local function build_statusbar_icon(wm, cmd, alt_cmd)
 	return table;
 end
 
+local function build_statusbar_wsicon(wm, i)
+	local table = {
+	click =
+	function(btn)
+		wm:switch_ws(i);
+	end,
+	rclick =
+	function(btn)
+		local ment = gconfig_get("ws_popup");
+		local menu = menu_lookup_custom(ment);
+		if not menu then
+			tiler_debug(wm, "wsbtn:kind=error:status=einval:message=redirect_click:name=" .. ment);
+			return btn:click();
+		end
+		local x, y = mouse_xy();
+		uimap_popup(menu, x, y, btn.bg);
+	end,
+	over =
+	function(btn)
+		btn:switch_state(wm.space_ind == i and "alert" or "active");
+	end,
+	out =
+	function(btn)
+		btn:switch_state(wm.space_ind == i and "active" or "inactive")
+	end
+	}
+	return table;
+end
+
 return {
 	border = build_border,
 	canvas = build_canvas,
 	titlebar = build_titlebar,
-	statusbar_icon = build_statusbar_icon
+	statusbar_icon = build_statusbar_icon,
+	statusbar_wsicon = build_statusbar_wsicon
 };
