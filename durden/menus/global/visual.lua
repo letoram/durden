@@ -84,8 +84,8 @@ return {
 		label = "Bars",
 		kind = "action",
 		submenu = true,
-		description = "Controls/Settings for titlebars and the statusbar",
-		handler = system_load("menus/global/shadow.lua")();
+		description = "Controls/Settings for titlebars, statusbar and launch bar",
+		handler = system_load("menus/global/bars.lua")();
 	},
 	{
 		name = "border",
