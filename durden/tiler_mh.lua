@@ -317,6 +317,8 @@ local function build_canvas(wnd)
 		if (not wnd.in_drag_move) then
 			local m1, m2 = dispatch_meta();
 			if (m1 or m2) then
+				wnd.x = wnd.x + wnd.ofs_x;
+				wnd.y = wnd.y + wnd.ofs_y;
 				wnd.in_drag_move = true;
 				mouse_switch_cursor("drag");
 			end

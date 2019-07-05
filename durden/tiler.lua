@@ -406,7 +406,7 @@ local function wnd_deselect(wnd, nopick)
 	end
 
 	local mwm = wnd.space.mode;
-	if (is_tab_mode(str)) then
+	if (is_tab_mode(mwm)) then
 		if (not nopick) then
 			hide_image(wnd.anchor);
 		end
@@ -2102,21 +2102,28 @@ local function wnd_repos(wnd)
 		return;
 	end
 
+-- figure out the animation time and interpolation span in order to have the
+-- same calculation and reset behavior for both the decorations and the canvas
 	local lm, lr, interp = wnd_animation_time(wnd, wnd.anchor, false, true);
+	wnd.ofs_x = 0;
+	wnd.ofs_y = 0;
+
 	if (wnd.centered and wnd.space.mode ~= "float") then
+
+-- this means that the anchor won't actually be at wnd.x, wnd.y, which affects
+-- the mode-switch from tile to something else and for temporary- drag
 		if (wnd.space.mode == "tile") then
-			move_image(wnd.anchor,
-				wnd.x + math.floor(0.5 * (wnd.max_w - wnd.width)),
-				wnd.y + math.floor(0.5 * (wnd.max_h - wnd.height)),
-				lm, interp
-			);
+			wnd.ofs_x = math.floor(0.5 * (wnd.max_w - wnd.width));
+			wnd.ofs_y = math.floor(0.5 * (wnd.max_h - wnd.height));
+			move_image(wnd.anchor, wnd.x + wnd.ofs_x, wnd.y + wnd.ofs_y, lm, interp);
 
 		elseif (is_tab_mode(wnd.space.mode)) then
 			move_image(wnd.anchor, 0, 0);
 		end
 
 		if (wnd.fullscreen) then
-			move_image(wnd.canvas, math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
+			move_image(wnd.canvas,
+				math.floor(0.5*(wnd.wm.width - wnd.effective_w)),
 				math.floor(0.5*(wnd.wm.height - wnd.effective_h)));
 		end
 	else
@@ -4484,6 +4491,10 @@ local wnd_setup = function(wm, source, opts)
 		max_h = wm.effective_height,
 		x = 0,
 		y = 0,
+
+-- local adjustements based on subposition (centered = true, wnd_reposition)
+		ofs_x = 0,
+		ofs_y = 0,
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		default_workspace = opts.default_workspace,
