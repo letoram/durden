@@ -931,7 +931,7 @@ return {
 		name = "off",
 		kind = "action",
 		label = "Disable Input",
-		descrption = "Disable all input processing",
+		description = "Disable all input processing",
 		handler = input_lock_on,
 		invisible = true
 	},
@@ -939,8 +939,23 @@ return {
 		name = "on",
 		kind = "action",
 		label = "Enable Input",
-		descrption = "Enable input processing",
+		description = "Enable input processing",
 		handler = input_lock_off,
 		invisible = true
+	},
+	{
+		name = "idle",
+		kind = "value",
+		label = "Idle Threshold",
+		initial = function()
+			local num = gconfig_get("idle_threshold");
+			return tostring(math.floor(1000 / CLOCKRATE * num));
+		end,
+		validator = gen_valid_num(0, 10000),
+		hint = "(0: disabled, n: seconds)",
+		description = "Change the amount of seconds of inactivity before a device is considered 'idle'",
+		handler = function(ctx, val)
+			gconfig_set("idle_threshold", math.floor(1000 / CLOCKRATE * tonumber(val)));
+		end
 	}
 };

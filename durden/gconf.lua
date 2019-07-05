@@ -241,6 +241,9 @@ local defaults = {
 -- default classifier for unknown touch devices
 	mt_classifier = "relmouse",
 
+-- time since last input from which a device is considered in an 'idle' state
+	idle_threshold = 2500,
+
 -- audio settings
 	global_gain = 1.0,
 	gain_fade = 10,
