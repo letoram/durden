@@ -373,7 +373,7 @@ local function build_canvas(wnd)
 	end,
 
 	press = function(ctx, vid, ...)
-		if (not wnd.in_drag_rz and not wnd.in_drag_move) then
+		if (wnd.mousepress and not wnd.in_drag_rz and not wnd.in_drag_move) then
 			wnd:mousepress(...);
 		end
 	end,
@@ -402,11 +402,15 @@ local function build_canvas(wnd)
 	end,
 
 	button = function(ctx, vid, ...)
-		wnd:mousebutton(...);
+		if wnd.mousebutton then
+			wnd:mousebutton(...);
+		end
 	end,
 
 	dblclick = function(ctx)
-		wnd:mousedblclick();
+		if wnd.mousedblclick then
+			wnd:mousedblclick();
+		end
 	end
 };
 
