@@ -3,6 +3,7 @@ local function gen_trigger_menu(event)
 		{
 			name = "add",
 			hidden = true,
+			label = "Add",
 			description = "Add a new trigger event",
 			kind = "value",
 			validator = function(val)
