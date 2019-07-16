@@ -30,6 +30,25 @@ local function position_popup(vid, x, y, w, h, anchor_vid)
 	move_image(vid, x, y);
 end
 
+local function vent_to_menu(ent)
+	local res = {
+	};
+
+	local set = type(ent.set) == "function" and ent.set() or ent.set;
+	for i,v in ipairs(set) do
+		table.insert(res, {
+			name = ent.name .. "_set_" .. tonumber(i),
+			kind = "action",
+			label = v,
+			handler = function(ctx)
+				ent.handler(ctx, v);
+			end
+		});
+	end
+
+	return res;
+end
+
 function uimap_popup(menu, x, y, anchor_vid)
 	local wm = active_display();
 	local ml = {
@@ -84,6 +103,14 @@ function uimap_popup(menu, x, y, anchor_vid)
 				log("tool=popup:kind=chain:item=" .. ent.name);
 				local menu = type(ent.handler) ==
 					"function" and ent.handler() or ent.handler;
+				ctx:cancel();
+				uimap_popup(menu, x, y, anchor_vid);
+				return true;
+			end
+
+-- value-sets can be provided as popups without needing to provide other IMEs
+			if (ent.kind == "value" and ent.set) then
+				local menu = vent_to_menu(ent);
 				ctx:cancel();
 				uimap_popup(menu, x, y, anchor_vid);
 				return true;
