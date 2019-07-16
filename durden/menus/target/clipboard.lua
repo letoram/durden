@@ -72,10 +72,11 @@ end
 local function clipboard_urls()
 	local res = {};
 	for k,v in ipairs(CLIPBOARD.urls) do
+		local short = string.shorten(v, 20);
 		table.insert(res, {
 			name = "url_" .. tostring(k),
-			label = string.shorten(url, 20),
-			description = url,
+			label = short,
+			description = v,
 			fmt = suppl_strcol_fmt(short, false),
 			select_fmt = suppl_strcol_fmt(short, true),
 			kind = "action",
