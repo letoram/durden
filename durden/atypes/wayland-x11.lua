@@ -101,7 +101,10 @@ local function apply_type_size(wnd, status)
 
 -- normal? then we just attach as any old window
 	else
-		wnd:ws_attach();
+		if (wnd.ws_attach) then
+			wnd:ws_attach();
+		end
+
 		if (status) then
 			resize(wnd, status);
 		end
@@ -109,6 +112,9 @@ local function apply_type_size(wnd, status)
 end
 
 function x11_event_handler(wnd, source, status)
+	wayland_debug(string.format(
+		"status=event:event=%s:name=%s", status.kind, wnd.name));
+
 	if (status.kind == "terminated") then
 		wayland_lostwnd(source);
 		wnd:destroy();
@@ -132,12 +138,14 @@ function x11_event_handler(wnd, source, status)
 				"x11:error_message=unknown:name=%s:raw=%s", wnd.name, status.message));
 		end
 
-		if (opts[1] == "type") then
+		if (opts[1] == "type" and opts[2]) then
+			wayland_debug(string.format("x11:set_type=%s:name=%s", opts[2], wnd.name));
 			wnd.surface_type = opts[2];
 			apply_type_size(wnd, wnd.defer_resize);
 			wnd.defer_size = nil;
 		else
-			wayland_debug(string.format("x11:error_message=unknown:name=%s", wnd.name));
+			wayland_debug(string.format(
+				"x11:error_message=unknown:command=%s:name=%s", opts[1], wnd.name));
 		end
 
 	elseif (status.kind == "segment_requested") then
@@ -151,9 +159,12 @@ function x11_event_handler(wnd, source, status)
 			if (wnd.surface_type) then
 				apply_type_size(wnd, status);
 			else
+				wayland_debug("x11:kind=status:message=no type defer_attach");
 				wnd.defer_resize = status;
 				return;
 			end
+		else
+			resize(wnd, status);
 		end
 	else
 		wayland_debug("x11:error_message=unhandled:event=" .. status.kind);
