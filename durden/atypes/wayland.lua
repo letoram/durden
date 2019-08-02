@@ -205,8 +205,10 @@ local function build_application_window(wnd, source, stat, opts, atype, handler)
 	local ad = active_display();
 	local neww, newh = ad:suggest_size();
 	local id, aid, cookie = accept_target(neww, newh);
+	wayland_debug(string.format("build_window:vid=%d:type=%s", id, atype));
 
 	if (not valid_vid(id)) then
+		wayland_debug("build_window:status=error:message=accept alloc failed");
 		return false;
 	end
 
@@ -228,19 +230,19 @@ local function build_application_window(wnd, source, stat, opts, atype, handler)
 	end
 	newwnd.wl_autossd = opts.auto_ssd;
 
--- chain to the handler, expose the window to the handler
-	target_updatehandler(id,
-		function(source, status)
-			handler(newwnd, source, status);
-		end
-	);
-
 -- since the 'registered' event won't get routed past the extevh, we need
 -- to manually apply the atype for the toplevel here - this does not attach/
 -- cascade a resize though
 	extevh_apply_atype(newwnd, atype, id, stat);
 	newwnd.source_audio = aid;
 	newwnd.cookie = cookie;
+
+-- chain to the handler, expose the window to the handler
+	target_updatehandler(id,
+		function(source, status)
+			handler(newwnd, source, status);
+		end
+	);
 
 -- keep separate track of the wayland windows so that we don't mix and match,
 -- a wlwnd shouldn't be able to reparent to one that isn't
