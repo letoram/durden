@@ -52,12 +52,7 @@ local odst;
 function iostatem_save()
 	odst = devstate;
 	if (not devstate.locked) then
-	devstate = {
-		iotbl = nil,
-		delay = def_delay,
-		period = def_period,
-		counter = def_delay
-	};
+		iostatem_reset_repeat();
 	end
 	return odst;
 end
@@ -106,7 +101,8 @@ function iostatem_input(iotbl)
 -- querying the user for an action and so on. This is processed here.
 	if (dev.in_idle) then
 		dev.in_idle = false;
-		iostatem_evlog(string.format("return=idle:device=%d:name=%s", iotbl.devid, dev.name));
+		iostatem_evlog(string.format(
+			"return=idle:device=%d:name=%s", iotbl.devid, dev.name));
 		if (dev.idle_out_command) then
 			dispatch_symbol(dev.idle_out_command);
 		end
@@ -230,10 +226,13 @@ local function set_delay(id, val)
 	def_delay = val < 0 and 1 or math.ceil(val / 1000 * CLOCKRATE);
 end
 
-
 function iostatem_reset_repeat()
-	devstate.iotbl = nil;
-	devstate.counter = devstate.delay;
+	devstate = {
+		iotbl = nil,
+		delay = def_delay,
+		period = def_period,
+		counter = def_delay
+	};
 end
 
 -- for the _current_ context, set delay in ms, period in ticks/ch
@@ -326,6 +325,7 @@ function iostatem_reset_flag()
 	for i,v in pairs(devices) do
 		v.lost = true;
 	end
+	iostatem_reset_repeat();
 end
 
 function iostatem_added(iotbl)
@@ -334,6 +334,7 @@ function iostatem_added(iotbl)
 	if (not dev) then
 -- locate last saved device settings:
 -- axis state, analog force, special bindings
+		local loglbl = "kind=added:device=" .. tostring(iotbl.devid);
 		devices[iotbl.devid] = {
 			devid = iotbl.devid,
 			label = iotbl.label and iotbl.label or "unknown",
@@ -363,6 +364,8 @@ function iostatem_added(iotbl)
 		else
 			dev.slot = 0;
 		end
+		iostatem_evlog(string.format("%s:label=%s:slot=%d",
+			loglbl, iotbl.label and iotbl.label or "missing", dev.slot));
 
 		touch_register_device(iotbl, true);
 	else
@@ -373,8 +376,13 @@ function iostatem_added(iotbl)
 			dev.lost = false;
 -- reset analog settings and possible load slot again
 			assign_slot(dev);
+
+-- this should practically not happen, i.e. a device we have an entry for,
+-- is marked as added yet has not been marked as lost
 		else
-			iostatem_evlog("warning:added:lost=no:name=" .. dev.label);
+			iostatem_evlog(string.format(
+				"added:lost=no:device=%d:status=warning:name=%s",
+				iotbl.devid, dev.label));
 		end
 	end
 

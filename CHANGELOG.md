@@ -62,6 +62,9 @@ see the /global/settings/workspaces/spawn path.
 * visual:
 Add soft shadow controls to windows, ui elements and statusbar
 
+* input/touch discover & idle gestures:
+Added 'gestures' for idle enter and idle return.
+
 Breaking:
 
 Minor / Fixes:

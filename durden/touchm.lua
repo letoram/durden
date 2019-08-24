@@ -1,46 +1,36 @@
--- Copyright: 2016-2017, Björn Ståhl
--- touch, tablet, multitouch support and routing.
--- each device is assigned a classifier that covers how multitouch
--- events should be mapped to other device behaviors or explicit
--- gestures.
-
---
--- On an unknown touch event entering, we should run a calibration
--- tool automatically, with the option to ignore/disable the device
--- or automatic activation.
---
--- The tool should query for:
---  [number of fingers]
---  actual range
---  pressure- sensitivity
---  preferred classifier (relmouse, absmouse, gesture, more advanced..)
---  if it also maps to any mouse event
---  and possibly disabilities in the user (e.g. parkinson)
---
--- good cases to try it out with is DS "second screen" touch input
--- and some vectorizer -> chinese OCR style input
---
+-- Copyright: 2016-2019, Björn Ståhl
+-- Description: Touch, tablet, multitouch support and routing.
+-- This unit hooks itself through iostatem and selectively takes control
+-- of devices that fits a preset profile (devmaps/touch/...). These profiles
+-- sets default parameters and state-machine ('classifier') which filters
+-- and interprets the incoming event stream.
 local devices = {};
 local profiles = {};
 local classifiers = {};
 local default_profile = nil;
+local idevice_log = suppl_add_logfn("idevice");
+local touchm_evlog = function(msg)
+	idevice_log("submodule=touch:" .. msg);
+end
+
+touchm_evlog("status=active");
 
 local function tryload(map)
 	local res = system_load("devmaps/touch/" .. map, 0);
 	if  (not res) then
-		warning(string.format("touchm, system_load on map %s failed", map));
+		touchm_evlog("kind=error:status=eexist:source=" .. map);
 		return;
 	end
 
 	local okstate, devtbl = pcall(res);
 	if (not okstate or not type(devtbl) == "table") then
-		warning(string.format("touchm, couldn't load/parse %s", map));
+		touchm_evlog("kind=error:status=einval:message=parsing error:source=" .. map);
 		return;
 	end
 
 	local res = {};
 	if (not devtbl.label or not devtbl.name) then
-		warning(string.format("touchm, map %s is missing label/name", map));
+		touchm_evlog("kind=error:status=einval:message=missing field:source=" .. map);
 		return;
 	end
 
@@ -61,7 +51,11 @@ local function tryload(map)
 		devtbl.submask or 0xfffff;
 	res.timeout = (devtbl.timeout and type(devtbl.timeout) == "number") and
 		devtbl.timeout or 10;
-	res.motion_block = devtbl.motion_block or false;
+	res.idle_base = devtbl.idle and devtbl.idle or 500;
+		res.motion_block = devtbl.motion_block or false;
+
+-- device start as idle
+	res.idle = res.idle_base;
 	res.warp_press = devtbl.warp_press or false;
 	res.touch_only = devtbl.touch_only or false;
 
@@ -83,7 +77,7 @@ local function tryload(map)
 		if (type(devtbl.activation) == "table" and #devtbl.activation == 4) then
 			res.activation = devtbl.activation;
 		else
-			warning(string.format("touchm, map %s has wrong activation field", map));
+			touchm_evlog("kind=error:status=einval:message=wrong activation:source=" .. map);
 		end
 	end
 
@@ -97,7 +91,7 @@ local function tryload(map)
 			if (type(v) == "string" and type(k) == "string") then
 				res.gestures[k] = v;
 			else
-				warning(string.format("touchm, gesture %s ignored\n", k));
+				touchm_evlog("kind=error:status=einval:message=bad gesture type:source=" .. map);
 			end
 		end
 	end
@@ -138,20 +132,64 @@ local function gen_key(prefix, thresh, dx, dy, nf)
 			return string.format("%s%d_%s", prefix, nf, dy<0 and "up" or "down");
 		end
 	end
+--FIXME: this would not generate a valid key!!!
 end
 
 local function run_drag(dev, dx, dy, nf)
 	local key = gen_key("drag", dev.drag_threshold, dx, dy, nf);
-	if (key and dev.gestures[key]) then
+	if (not key) then
+		return;
+	end
+
+	touchm_evlog("device=" .. dev.name .. ":gesture_key=" .. key);
+
+	if (dev.gestures[key]) then
 		dispatch_symbol(dev.gestures[key]);
 	end
 end
 
 local function run_swipe(dev, dx, dy, nf)
 	local key = gen_key("swipe", dev.swipe_threshold, dx, dy, nf);
-	if (key and dev.gestures[key]) then
+	if (not key) then
+		return;
+	end
+
+	touchm_evlog("device=" .. dev.name .. "gesture_key=" .. key);
+
+	if (dev.gestures[key]) then
 		dispatch_symbol(dev.gestures[key]);
 	end
+end
+
+local function memu_digital(devtbl, iotbl)
+-- warping is needed for a combination of a touch display that should
+-- only give gestures and "touch-press" but have normal behavior with
+-- a mouse or trackpad
+	local mx, my = mouse_xy();
+
+	if (devtbl.warp_press) then
+		mouse_absinput_masked(devtbl.last_x, devtbl.last_y, true);
+	end
+
+	if (devtbl.button_remap) then
+		local bi = devtbl.button_remap[iotbl.subid];
+		if (bi) then
+			mouse_button_input(bi, iotbl.active);
+		end
+
+-- if we don't have an explicit button map to use, use the ID and
+-- modify with an optional "how many fingers on pad" value (can be masked out)
+	elseif (iotbl.subid < MOUSE_AUXBTN) then
+		local bc = nbits(devtbl.ind_mask);
+		bc = bc > 0 and bc - 1 or bc;
+		local badd = bit.band(bc, devtbl.submask);
+		mouse_button_input(iotbl.subid + bc, iotbl.active);
+	end
+
+	if (devtbl.warp_press) then
+		mouse_absinput_masked(mx, my, true);
+	end
+	return iotbl;
 end
 
 -- aggregate samples with a variable number of ticks as sample period
@@ -165,37 +203,25 @@ local function memu_sample(devtbl, iotbl)
 		return;
 	end
 
+	if (devtbl.in_idle) then
+		devtbl.idle = 0;
+		touchm_evlog("device=" ..
+			tostring(iotbl.devid) .. ":gesture_key=idle_return");
+			devtbl.in_idle = false;
+		if devtbl.gestures["idle_return"] then
+			dispatch_symbol(devtbl.gestures["idle_return"]);
+		end
+	end
+
 -- digital is bothersome as some devices send the first button as
 -- finger on pad even if it has a 'real' button underneath. Then we
 -- have 'soft'buttons multitap, and the default behavior for the device
 -- in iostatem..
 	if (iotbl.digital) then
--- warping is needed for a combination of a touch display that should
--- only give gestures and "touch-press" but have normal behavior with
--- a mouse or trackpad
-		local mx, my = mouse_xy();
-		if (devtbl.warp_press) then
-			mouse_absinput_masked(devtbl.last_x, devtbl.last_y, true);
+		if (not devtbl.button_block) then
+			return memu_digital(devtbl, iotbl);
 		end
-
-		if (devtbl.button_remap) then
-			local bi = devtbl.button_remap[iotbl.subid];
-			if (bi) then
-				mouse_button_input(bi, iotbl.active);
-			end
--- if we don't have an explicit button map to use, use the ID and
--- modify with an optional "how many fingers on pad" value (can be masked out)
-		elseif (iotbl.subid < MOUSE_AUXBTN) then
-			local bc = nbits(devtbl.ind_mask);
-			bc = bc > 0 and bc - 1 or bc;
-			local badd = bit.band(bc, devtbl.submask);
-			mouse_button_input(iotbl.subid + bc, iotbl.active);
-		end
-
-		if (devtbl.warp_press) then
-			mouse_absinput_masked(mx, my, true);
-		end
-		return iotbl;
+		return;
 	end
 
 -- platform or caller filtering, to allow devices lika a PS4 that has a touchpad
@@ -349,8 +375,10 @@ local function memu_init(abs, prof, st)
 -- basic tracking we need
 	st.gest_mask = 0;
 	st.ind_mask = 0;
+	st.last_x = 0;
+	st.last_y = 0;
 	st.last_sample = CLOCK;
-	st.relative = abs;
+	st.relative = not abs;
 end
 
 local function memu_tick(v)
@@ -382,18 +410,30 @@ local function memu_tick(v)
 	end
 end
 
-classifiers.relmouse =
--- simple classifier that only takes 1-finger drag to mouse and
--- 2-3 finger drag/sweeps into account, to be complemented with
--- more competent ones
-	{function(...) memu_init(false, ...); end, memu_sample, memu_tick};
+classifiers.relmouse = {
+	function(...)
+		memu_init(false, ...);
+	end,
+-- note that for different classifiers, return from idle should be
+-- handled inside this function, doesn't matter now when there is only
+-- one handler, but for adding more.
+	memu_sample,
+	memu_tick
+};
 
-classifiers.absmouse =
-	{function(...) memu_init(true, ...); end, memu_sample, memu_tick};
+classifiers.absmouse = {
+	function(...)
+		memu_init(true, ...);
+	end,
+	memu_sample,
+	memu_tick
+};
 
 -- will only come here the first time for each device
 function touch_register_device(iotbl, eval)
+	local devstr = "kind=status:device=" .. tostring(iotbl.devid);
 	if (devices[iotbl.devid]) then
+		touchm_evlog(devstr .. ":message=ignore register, reason: known");
 		return;
 	end
 
@@ -405,6 +445,7 @@ function touch_register_device(iotbl, eval)
 			if (v and v.matchflt and (
 				devtbl.label == v.matchflt or string.match(devtbl.label, v.matchflt))) then
 				profile = v;
+				touchm_evlog(devstr .. ":matched=" .. devtbl.label);
 				break;
 			end
 		end
@@ -412,8 +453,10 @@ function touch_register_device(iotbl, eval)
 
 	if (not profile) then
 		if (eval) then
+			touchm_evlog(devstr .. ":message=no profile, ignored.");
 			return;
 		end
+		touchm_evlog(devstr .. ":message=no profile, assigning default");
 		profile = default_profile;
 	end
 
@@ -430,15 +473,19 @@ function touch_register_device(iotbl, eval)
 		cf = classifiers["relmouse"];
 	end
 
--- and register
+-- register and allocate the device as direct-forward to the profile
+-- callback. this saves a few indirect calls per sample.
 	if (cf) then
 		cf[1](profile, st);
 		durden_register_devhandler(iotbl.devid, cf[2], st);
+
+-- to re-use the same input path, we just re-inject the input table
 		durden_input(iotbl);
 		st.tick = cf[3];
+		st.idle = st.idle_base;
+
 	else
-		warning(string.format(
-			"touchm, no classifier loaded for %s", profile.classifier));
+		touchm_evlog("kind=warning:message=missing /unknown classifier");
 	end
 end
 
@@ -448,6 +495,18 @@ end
 
 local clock_fun = function(...)
 	for k,v in pairs(devices) do
+		v.idle = v.idle + 1;
+
+-- treat idle management as a gesture
+		if not v.in_idle and v.idle > v.idle_base then
+			v.in_idle = true;
+			touchm_evlog("device=" .. tostring(k) .. ":gesture_key=idle_enter");
+			if v.gestures["idle_enter"] then
+				dispatch_symbol(v.gestures[key]);
+			end
+		end
+
+-- profiles have an individual clock to for normal gestures
 		if (v.tick) then
 			v:tick();
 		end
@@ -477,7 +536,7 @@ function touchm_reload()
 		end
 	end
 
-	warning("touchm_reload(), no default profile found, touch disabled");
+	touchm_evlog("kind=disabled:message=no default profile");
 	touch_tick = function() end;
 	return false;
 end

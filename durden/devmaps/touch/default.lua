@@ -45,6 +45,9 @@ return {
 	motion_block = false,
 	warp_press = false,
 
+-- ignore all digital events on the device, only use touch for 'click'
+	button_block = false,
+
 -- reset touch- tracking after n ticks of no input samples
 	timeout = 10,
 
