@@ -33,7 +33,26 @@ local all_categories = {
 	"CLIPBOARD",
 	"CLIENT",
 	"TOOLS",
+	"WARNING",
+	"STDOUT"
 };
+
+local print_override = suppl_add_logfn("STDOUT");
+local warning_override = suppl_add_logfn("WARNING");
+
+print = function(...)
+	local tbl = {...};
+	local fmtstr = string.rep("%s", #tbl);
+	local msg = string.format(fmtstr, ...);
+	print_override(msg);
+end
+
+warning = function(...)
+	local tbl = {...};
+	local fmtstr = string.rep("%s", #tbl);
+	local msg = string.format(fmtstr, ...);
+	warning_override(msg);
+end
 
 local monitor_state = false;
 local function toggle_monitoring(on)

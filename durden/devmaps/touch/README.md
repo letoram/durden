@@ -45,8 +45,16 @@ return {
 	motion_block = false,
 	warp_press = false,
 
+-- some devices provide both 'touch' based press and digital input
+-- press events which can lead to ghost 'clicks', this feature ignores
+-- the digital inputs
+	button_block = false,
+
 -- reset touch- tracking after n ticks of no input samples
 	timeout = 10,
+
+-- interpret the device as idle after n ticks of no input samples
+	idle = 500,
 
 -- minimum weighted normalized distance to move for gesture to register
 	swipe_threshold = 0.2,
@@ -55,10 +63,14 @@ return {
 -- menu path to trigger on gestures, valid are:
 -- swipe(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 -- drag(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
+-- idle_enter when a device goes from being tracked as active to idle
+-- idle_return when a device goes from being tracked as idle to active
+-- match when a device emits samples for the first time and match a profile
+
 	gestures = {
-		swipe3_right = '!workspace/switch/next',
-		swipe3_left = '!workspace/switch/prev',
-		drag2_up = '!input/mouse/button/4',
-		drag2_down = '!input/mouse/button/5',
+		swipe3_right = '/global/workspace/switch/next',
+		swipe3_left = '/glbal/workspace/switch/prev',
+		drag2_up = '/global/input/mouse/button/4',
+		drag2_down = '/global/input/mouse/button/5',
 	}
 };
