@@ -566,6 +566,11 @@ local function gconfig_setup()
 	gconfig_statusbar_rebuild(true);
 end
 
+local mask_state = false;
+function gconfig_mask_temp(state)
+	mask_state = state;
+end
+
 -- shouldn't store all of default overrides in database, just from a
 -- filtered subset
 function gconfig_shutdown()
@@ -578,9 +583,11 @@ function gconfig_shutdown()
 		end
 	end
 
-	for i,v in ipairs(match_keys("durden_temp_%")) do
-		local k = string.split(v, "=")[1];
-		ktbl[k] = "";
+	if not mask_state then
+		for i,v in ipairs(match_keys("durden_temp_%")) do
+			local k = string.split(v, "=")[1];
+			ktbl[k] = "";
+		end
 	end
 	store_key(ktbl);
 end

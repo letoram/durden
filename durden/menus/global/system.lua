@@ -19,7 +19,10 @@ local exit_query = {
 	description = "Shutdown, but don't tell external connections to terminate",
 	kind = "action",
 	dangerous = true,
-	handler = function() shutdown("", EXIT_SILENT); end
+	handler = function()
+		gconfig_mask_temp(true);
+		shutdown("", EXIT_SILENT);
+	end
 }
 };
 
