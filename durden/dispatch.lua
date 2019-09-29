@@ -288,12 +288,23 @@ function dispatch_symbol_lock()
 	dispatch_queue = {};
 end
 
--- Setup menu navigation (interactively) in a way that we can hook rather
--- than activated a selected path or even path/key=value. There is a special
--- case for a tiler where the lbar is currently active (timers) as we want
--- to wait after the current one has been destroyed or the hook will fire
--- erroneously.
+local bindpath;
+function dispatch_bindtarget(path)
+	bindpath = path;
+end
+
+-- Setup menu navigation (interactively unless bindtarget is set) in a way that
+-- we can hook rather than activated a selected path or even path/key=value.
+-- There is a special case for a tiler where the lbar is currently active
+-- (timers) as we want to wait after the current one has been destroyed or the
+-- hook will fire erroneously.
 function dispatch_symbol_bind(callback, path, opts)
+	if (bindpath) then
+		callback(bindpath);
+		bindpath = nil;
+		return;
+	end
+
 	local menu = menu_resolve(path and path or "/");
 	dispatch_debug("bind:path=" .. tostring(path));
 
