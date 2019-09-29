@@ -30,6 +30,7 @@ function durden(argv)
 	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
+	system_load("icon.lua")(); -- generate and manage user icons
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("uiprim/uiprim.lua")(); -- ui primitives
 	system_load("menu.lua")(); -- menu subsystem
@@ -145,7 +146,7 @@ function durden(argv)
 
 	if (gconfig_get("first_run")) then
 		gconfig_set("first_run", false);
-		meta_guard_reset(true);
+		system_load("firstrun.lua")();
 	end
 
 -- for dealing wtih crash recovery windows or saved layout/role-
