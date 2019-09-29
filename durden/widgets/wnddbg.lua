@@ -72,6 +72,10 @@ local function probe(ctx, yh)
 			"geom: %d, %d, %d, %d", wnd.geom[1], wnd.geom[2], wnd.geom[3], wnd.geom[4]));
 	end
 
+	local aatr = image_surface_resolve(wnd.anchor);
+	table.insert(lines, string.format(
+		"pos: %d, %d - anchor: %d, %d", wnd.x, wnd.y, aatr.x, aatr.y));
+
 	if (wnd.atype) then
 		table.insert(lines, "atype: " .. wnd.atype);
 	end
