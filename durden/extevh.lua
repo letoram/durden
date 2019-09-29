@@ -164,6 +164,9 @@ end
 local defhtbl = {};
 defhtbl["input_label"] =
 function(wnd, source, tbl)
+-- reset or first call? there is a synchronization issue here in that the reset
+-- and update can come periodically. If that ever becomes an actual problem, using
+-- frame delivery as an indicator that the burst is over works.
 	if (not wnd.input_labels or #tbl.labelhint == 0) then
 		wnd.input_labels = {};
 		if (#tbl.labelhint == 0) then
@@ -178,7 +181,7 @@ function(wnd, source, tbl)
 		return;
 	end
 
-	local ent = {tbl.labelhint, tbl.idatatype, tbl.description};
+	local ent = {tbl.labelhint, tbl.idatatype, tbl.description, tbl.vsym};
 
 -- add the default as binding unless there's a collision
 	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
