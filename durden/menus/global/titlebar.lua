@@ -60,7 +60,6 @@ local function titlebar_buttons(dir, lbl)
 		widget = "special:icon",
 		description = "Add a new button used in all layout modes",
 		handler = function(ctx, val)
-			local st, val = suppl_valid_vsymbol(val);
 			button_query_path(active_display().selected, val, dir, "all");
 		end
 		},

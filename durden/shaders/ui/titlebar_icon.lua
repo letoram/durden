@@ -24,7 +24,7 @@ return {
 	},
 	states = {
 		suspended = {uniforms = { weights = {1.0, 0.0, 0.0, 0.2} } },
-		active = { uniforms = { weights = {1.0, 1.0, 1.0, 0.7} } },
+		active = { uniforms = { weights = {0.5, 0.5, 0.5, 0.7} } },
 		inactive = { uniforms = { weights = {1.0, 1.0, 1.0, 0.2} } },
 		alert = { uniforms = { weights = {1.0, 1.0, 1.0, 1.0} } },
 	}

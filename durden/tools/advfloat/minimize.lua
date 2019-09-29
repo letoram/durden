@@ -36,6 +36,7 @@ local function hide_tgt(wnd, tgt)
 						end
 					else
 						wnd:show();
+						wnd:select();
 					end
 				end
 			}

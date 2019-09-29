@@ -59,7 +59,7 @@ function gconfig_register(key, val)
 end
 
 function gconfig_set(key, val, force)
-if (type(val) ~= type(defaults[key])) then
+	if (type(val) ~= type(defaults[key])) then
 		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",
 			type(val), type(defaults[key]), key));
 		return;
