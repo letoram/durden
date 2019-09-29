@@ -79,9 +79,15 @@ local function set_uniform(dstid, name, typestr, vals, source)
 	return true;
 end
 
-local function load_from_file(relp, lim)
+local function load_from_file(relp, lim, defs)
 	local res = {};
 	if (open_rawresource(relp)) then
+		if defs then
+			for k,v in ipairs(defs) do
+				table.insert(res, "#define " .. v);
+			end
+		end
+
 		local line = read_rawresource();
 		while (line ~= nil and lim -1 ~= 0) do
 			table.insert(res, line);
@@ -104,12 +110,12 @@ local function setup_shader(shader, name, group)
 -- ugly non-blocking read (note, this does not cover variants)
 	if (not shader.vert and shader.vert_source) then
 		shader.vert = load_from_file(string.format(
-			"shaders/%s/%s", group, shader.vert_source), 1000);
+			"shaders/%s/%s", group, shader.vert_source), 1000, shader.vert_defs);
 	end
 
 	if (not shader.frag  and shader.frag_source) then
 		shader.frag = load_from_file(string.format(
-			"shaders/%s/%s", group, shader.frag_source), 1000);
+			"shaders/%s/%s", group, shader.frag_source), 1000, shader.vert_defs);
 	end
 
 	local dvf = (shader.vert and
@@ -147,13 +153,22 @@ local function preload_effect_shader(shdr, group, name)
 		if (not shdr.maps) then
 			shdr.maps = {};
 		else
+-- asynch- shader lookup maps
 			for i,v in ipairs(shdr.maps) do
 				if (type(v) == "string") then
-					shdr.maps[i] = load_image_asynch(
-						string.format("shaders/lut/%s", v),
+					if (v == ":source") then
+						shdr.maps[i] = function(src)
+							local surf = null_surface(1, 1);
+							image_sharestorage(src, surf);
+							return surf;
+						end
+					else
+						shdr.maps[i] = load_image_asynch(
+							string.format("shaders/lut/%s", v),
 -- defer shader application if the LUT can't be loaded?
-						function() end
-					);
+							function() end
+						);
+					end
 				end
 			end
 		end
@@ -252,8 +267,28 @@ local function esetup(shader, dst, group, name)
 		if (not valid_vid(outvid)) then
 			return invid;
 		end
--- FIXME: missing renderset->LUTs (which requires a null surface, detach +
--- hide on the invid + renderset and sharestorage on the null surface)
+
+-- for the passes that require lookup textures, asynch- preloaded or through
+-- a function, switch the invid to a multitextured frameset and assign the slots
+-- accordingly.
+		local tmp_vid = null_surface(1, 1);
+		if valid_vid(tmp_vid) then
+			if (#pass.maps > 0) then
+				image_framesetsize(invid, #pass.maps + 1, FRAMESET_MULTITEXTURE);
+				for i,v in ipairs(pass.maps) do
+					if type(v) == "function" then
+						v(dst, tmp_vid);
+					elseif valid_vid(v) then
+						image_sharestorage(v, tmp_vid);
+-- fallback to source store if the maps were setup wrong
+					else
+						image_sharestorage(dst, tmp_vid);
+					end
+					set_image_as_frame(pass.maps, tmp_vid, i);
+				end
+			end
+			delete_image(tmp_vid);
+		end
 
 -- sanity checks and resource loading/preloading
 		define_rendertarget(outvid, {invid},
