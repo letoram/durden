@@ -247,8 +247,16 @@ function(ctx, bar, source, status)
 -- we allow the button on any group.
 	local base = bar.height > bar.width and bar.width or bar.height;
 	resize_image(source, base, base);
+	local resolve = function()
+		local surf = null_surface(base, base);
+		if (valid_vid(source) and valid_vid(surf)) then
+			image_sharestorage(source, surf);
+		end
+		return surf;
+	end
+
 	ctx.button = bar:add_button(ctx.group, "sbar_msg_bg", "sbar_msg_text",
-		source, 0,
+		resolve, 0,
 -- set the scale- function resolver to nothing as we are all external
 		function()
 			return 1;

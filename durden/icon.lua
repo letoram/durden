@@ -74,6 +74,7 @@ local nametable = {
 		widths = {}
 	},
 	maximize = {
+		generate =
 		function(w)
 			shader_uniform(unit_circle, "color", "fff", 0.1, 0.6, 0.1);
 			return synthesize_icon(w, unit_circle);
@@ -81,6 +82,7 @@ local nametable = {
 		widths = {}
 	},
 	placeholder = {
+		generate =
 		function(w)
 			shader_uniform(unit_circle, "color", "fff", 1.0, 1.0, 1.0);
 			return synthesize_icon(w, unit_circle);

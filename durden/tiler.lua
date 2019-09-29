@@ -621,13 +621,16 @@ local function resolve_vsymbol(wm, label, base)
 	if not base or base <= 0 then
 		base = sbar_geth(wm, true);
 	end
-	warning("barsize:" .. tostring(base));
 
+-- in order for the titlebar group management to work, we can't just
+-- return the vid itself, but rather need to provide a factory function
 	if state then
 		if type(outlbl) == "function" then
-			local surf = null_surface(base, base);
-			image_sharestorage(outlbl(base), surf);
-			return surf;
+			return function()
+				local surf = null_surface(base, base);
+				image_sharestorage(outlbl(base), surf);
+				return surf;
+			end
 		else
 			return outlbl;
 		end
@@ -771,7 +774,6 @@ local function wnd_select(wnd, source, mouse)
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
 		end
-		return;
 	end
 
 -- format focus state (unless that's blocked, set_dispmask handles that)
@@ -779,7 +781,7 @@ local function wnd_select(wnd, source, mouse)
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
 -- deselect the current one
-	if (wm.selected and wm.selected.deselect) then
+	if (wm.selected and wm.selected.deselect and wm.selected ~= wnd) then
 		wm.selected:deselect();
 	end
 
@@ -2153,10 +2155,12 @@ end
 
 local function wnd_hide(wnd)
 	hide_image(wnd.anchor);
+	wnd.hidden = true;
 end
 
 local function wnd_show(wnd)
 	show_image(wnd.anchor);
+	wnd.hidden = false;
 end
 
 local function wnd_size_decor(wnd, w, h, animate)
@@ -3942,9 +3946,9 @@ local function wnd_ws_attach(res, from_hook)
 	end
 
 -- add buttons to the titlebar
-	for k,v in pairs(wm.buttons) do
-		local dst_group = (k ~= "all" and k);
-		for _,v in ipairs(v) do
+	local add_buttons =
+	function(dst_group, list)
+		for _,v in ipairs(list) do
 			local outlbl = resolve_vsymbol(wm, v.label, tbh);
 			res.titlebar:add_button(v.direction,
 				"titlebar_iconbg", "titlebar_icon", outlbl,
@@ -3955,6 +3959,10 @@ local function wnd_ws_attach(res, from_hook)
 			);
 		end
 	end
+-- we don't enumerate the table as there would be an iterator order problem
+	add_buttons(nil, wm.buttons.all);
+	add_buttons("float", wm.buttons.float);
+	add_buttons("tile", wm.buttons.tile);
 
 -- and merge the new titlebar into the statusbar if on the right workspace,
 -- otherwise the merge-to-statusbar mode would indicate the wrong window
@@ -4168,7 +4176,7 @@ local function wnd_recovertag(wnd, restore)
 end
 
 local function wnd_inputtable(wnd, iotbl, multicast)
-	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+	if (wnd.hidden or not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
 	end
 

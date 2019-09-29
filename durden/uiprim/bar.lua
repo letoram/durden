@@ -10,6 +10,27 @@
 -- durden- dpi then patch the font-size accordingly. Just having
 -- a relayout trigger on dpi swap should be enough these days.
 --
+--
+local function btn_clamp(btn, w, h)
+-- done with label, figure out new button size including padding and minimum
+	if (btn.minw and btn.minw > 0 and w < btn.minw) then
+		w = btn.minw;
+	end
+
+	if (btn.minh and btn.minh > 0 and h < btn.minh) then
+		h = btn.minh;
+	end
+
+	if (btn.maxw and btn.maxw > 0 and w > btn.maxw) then
+		w = btn.maxw;
+	end
+
+	if (btn.maxh and btn.maxh > 0 and w > btn.maxh) then
+		h = btn.maxh;
+	end
+	return w,h;
+end
+
 local function button_labelupd(btn, lbl, timeout, timeoutstr)
 	local txt, lineh, w, h, asc;
 	local fontstr, offsetf = btn.fontfn();
@@ -45,8 +66,6 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 			txt, lineh, w, h, asc = render_text(lbl);
 		end
 
-		btn.last_label_w = w;
-
 		if (not valid_vid(txt)) then
 			warning("error updating button label");
 			return;
@@ -55,10 +74,12 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 			delete_image(btn.lbl);
 		end
 		btn.lbl = txt;
-
+		btn.w, btn.h = btn_clamp(btn, w, h);
 -- just resize / relayout
-	else
-		if (lbl == nil) then
+	elseif type(lbl) == "function" then
+		btn.last_lbl = lbl;
+		lbl = lbl();
+		if (not valid_vid(lbl)) then
 			return;
 		end
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
@@ -66,40 +87,17 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		end
 		local props = image_storage_properties(lbl);
 		btn.lbl = lbl;
-		w = props.width;
-		h = props.height;
+		btn.w, btn.h = btn_clamp(btn, props.width, props.height);
+		resize_image(lbl, btn.w, btn.h);
+		offsetf = 0;
 	end
-
--- done with label, figure out new button size including padding and minimum
-	local padsz = 2 * btn.pad;
-	if (btn.minw and btn.minw > 0 and w < btn.minw) then
-		w = btn.minw;
-	else
-		w = w + padsz;
-	end
-
-	if (btn.minh and btn.minh > 0 and h < btn.minh) then
-		h = btn.minh;
-	else
-		h = h + padsz;
-	end
-
-	if (btn.maxw and btn.maxw > 0 and w > btn.maxw) then
-		w = btn.maxw;
-	end
-
-	if (btn.maxh and btn.maxh > 0 and w > btn.maxh) then
-		h = btn.maxh;
-	end
-
-	btn.w = w;
-	btn.h = h;
 
 -- finally make the visual changes
 	image_tracetag(btn.lbl, btn.lbl_tag);
 	reset_image_transform(btn.bg);
 	resize_image(btn.bg, btn.w, btn.h, btn.anim_time, btn.anim_func);
 	link_image(btn.lbl, btn.bg);
+	force_image_blend(btn.lbl, BLEND_FORCE);
 	image_mask_set(btn.lbl, MASK_UNPICKABLE);
 	image_clip_on(btn.lbl, CLIP_SHALLOW);
 
