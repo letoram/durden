@@ -4,5 +4,6 @@ return {
 {"Tiling", "/global/workspace/layout/tile_toggle"},
 {"Tabbed", "/global/workspace/layout/tab"},
 {"Vertical-tab", "/global/workspace/layout/vtab"},
-{"Column-tab", "/global/workspace/layout/htab"}
+{"Column-tab", "/global/workspace/layout/htab"},
+{"Global", "/global"}
 };
