@@ -648,7 +648,7 @@ function suppl_valid_name(val)
 end
 
 -- icon symbol reference or valid utf-8 codepoint
-function suppl_valid_vsymbol(val)
+function suppl_valid_vsymbol(val, base)
 	if (not val) then
 		return false;
 	end
@@ -665,7 +665,12 @@ function suppl_valid_vsymbol(val)
 	end
 
 	if (string.sub(val, 1, 5) == "icon_") then
-		print("fixme: global icon lookup not yet supported");
+		val = string.sub(val, 6);
+		if icon_known(val) then
+			return true, function(w)
+				return icon_lookup(val, w);
+			end
+		end
 		return false;
 	end
 

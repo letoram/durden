@@ -616,6 +616,26 @@ local function gen_button_handler(cmd, alt_cmd)
 	};
 end
 
+local function resolve_vsymbol(wm, label, base)
+	local state, outlbl = suppl_valid_vsymbol(label);
+	if not base or base <= 0 then
+		base = sbar_geth(wm, true);
+	end
+	warning("barsize:" .. tostring(base));
+
+	if state then
+		if type(outlbl) == "function" then
+			local surf = null_surface(base, base);
+			image_sharestorage(outlbl(base), surf);
+			return surf;
+		else
+			return outlbl;
+		end
+	end
+
+	return "[bad]";
+end
+
 local function tiler_statusbar_build(wm)
 	local sbsz = sbar_geth(wm, true);
 	if (wm.statusbar) then
@@ -634,7 +654,7 @@ local function tiler_statusbar_build(wm)
 	if (wm.sbar_custom) then
 		wm.sbar_ws["custom"] = {};
 		for i,v in ipairs(wm.sbar_custom) do
-			local state, outlbl = suppl_valid_vsymbol(v.label);
+			local outlbl = resolve_vsymbol(wm, v.label, sbsz);
 			local btn = wm.statusbar:add_button(
 				v.direction, "sbar_item_bg",
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
@@ -3925,16 +3945,14 @@ local function wnd_ws_attach(res, from_hook)
 	for k,v in pairs(wm.buttons) do
 		local dst_group = (k ~= "all" and k);
 		for _,v in ipairs(v) do
-			local state, outlbl = suppl_valid_vsymbol(v.label);
-			if (state) then
-				res.titlebar:add_button(v.direction,
-					"titlebar_iconbg", "titlebar_icon", outlbl,
-					gconfig_get("sbar_tpad") * wm.scalef,
-					wm.font_resfn, nil, nil,
-					suppl_button_default_mh(res, v.command),
-					{group = dst_group}
-				);
-			end
+			local outlbl = resolve_vsymbol(wm, v.label, tbh);
+			res.titlebar:add_button(v.direction,
+				"titlebar_iconbg", "titlebar_icon", outlbl,
+				gconfig_get("sbar_tpad") * wm.scalef,
+				wm.font_resfn, nil, nil,
+				suppl_button_default_mh(res, v.command),
+				{group = dst_group}
+			);
 		end
 	end
 
@@ -4309,7 +4327,11 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 		"display_hint:name=%s:vid=%d:hint_w=%d:hint_h=%d:flags=%d",
 		wnd.name, wnd.external, hw, hh, dm)
 	);
-	target_displayhint(wnd.external, hw, hh, dm, ...);
+
+	if (wnd.block_rz_hint) then
+	else
+		target_displayhint(wnd.external, hw, hh, dm, ...);
+	end
 end
 
 local function wnd_drop_overlay(wnd, key)
@@ -5113,6 +5135,10 @@ local function tiler_switchbg(wm, newbg, mh)
 end
 
 local counter = 0;
+local create_listeners = {};
+function tiler_create_listener(handler)
+	table.insert(create_listeners, handler);
+end
 
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
@@ -5256,6 +5282,10 @@ function tiler_create(width, height, opts)
 			gconfig_get("ws_preview_rate"), gconfig_get("ws_preview_metrics"),
 			gconfig_get("ws_preview_shader")
 		);
+	end
+
+	for _,v in ipairs(create_listeners) do
+		v(res);
 	end
 
 	return res;
