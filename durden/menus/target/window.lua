@@ -237,6 +237,20 @@ local moverz_menu = {
 	end
 },
 {
+	name = "to_cursor",
+	label = "To Cursor",
+	description = "(Float) move the window to the current cursor position",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "action",
+	handler = function(ctx, val)
+		local x, y = mouse_xy();
+		local wnd = active_display().selected;
+		wnd:move(x, y, false, true);
+	end
+},
+{
 	name = "set_width",
 	label = "Set(W)",
 	kind = "value",
