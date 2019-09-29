@@ -4,13 +4,13 @@ local function shared_reset(wnd)
 	end
 end
 
-local function gen_load_menu()
+local function gen_restore_menu()
 	local res = {};
 	local lst = glob_resource("*", APPL_STATE_RESOURCE);
 	for i,v in ipairs(lst) do
 		table.insert(res, {
 			label = v,
-			name = "load_" .. util.hash(v),
+			name = "restore_" .. util.hash(v),
 			kind = "action",
 			handler = function(ctx)
 				restore_target(active_display().selected.external, v);
@@ -80,12 +80,12 @@ return {
 		end
 	},
 	{
-		name = "force_load",
-		label = "Load",
+		name = "open",
+		label = "Open",
 		kind = "action",
 		hidden = true,
 		interactive = true,
-		description = "Browse for a file and send it to the client in open mode",
+		description = "Browse for a file and request that the client tries to open it",
 		handler = function()
 -- cache source and re-validate as the asynch- nature of the grab_ menu may
 -- have the source die while we are waiting
@@ -98,11 +98,10 @@ return {
 		end
 	},
 	{
-		name = "force_store",
-		label = "Store",
+		name = "save",
+		label = "Save",
 		kind = "action",
 		hidden = true,
-		description = "Select a place for the client to store data",
 		handler = function()
 			local source = active_display().selected.external;
 			grab_file(function(path)
@@ -113,27 +112,26 @@ return {
 		end
 	},
 	{
-		name = "load",
-		label = "Load",
+		name = "restore",
+		label = "Restore",
 		kind = "action",
 		submenu = true,
-		description = "Send a previous save state to the client",
+		description = "Restore client state from a previous snapshot",
 		eval = function()
 			return (#glob_resource("*", APPL_STATE_RESOURCE)) > 0;
 		end,
 		handler = function(ctx, v)
-			return gen_load_menu();
+			return gen_restore_menu();
 		end
 	},
 	{
-		name = "save",
-		label = "Save",
+		name = "snapshot",
+		label = "Snapshot",
 		kind = "value",
 		submenu = true,
 		initial = "",
-		description = "Allocate a state store and send to the client for writing",
+		description = "Request that the client makes a snapshot of its state",
 		validator = function(str) return str and string.len(str) > 0; end,
-		prefill = "testy_test",
 		handler = function(ctx, val)
 			snapshot_target(active_display().selected.external, val);
 		end,
