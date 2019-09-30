@@ -32,8 +32,7 @@ to connect and attach custom buttons. This deprecates the statusbar IPC in
 favor of solving this externally.
 
 * tools/autostart added:
-This tools runs a set of paths when loaded, but not on script error or
-resets. It automatically ignores execution unless it was correctly shutdown.
+This tool allows a series of paths to be automatically run on startup.
 
 * triggers:
 added per-window option to bind multiple custom triggers on select,
@@ -65,10 +64,19 @@ Add soft shadow controls to windows, ui elements and statusbar
 * input/touch discover & idle gestures:
 Added 'gestures' for idle enter and idle return.
 
+* first round of (non-text) icon management (caching, shared sets etc.) added
+
+* new tool: streamdeck
+This allows external mini displays (touchbars etc.) to be hooked up and
+act as restricted input devices as well as custom widget mappings
+
 Breaking:
 
 Minor / Fixes:
 * handover subsegment allocation now routes correctly
+
+* silent shutdown retains known window position and states, should
+  recover properly when started back up.
 
 * region selection closure management reworked
 
@@ -87,6 +95,8 @@ Minor / Fixes:
 * started refactoring and splitting tiler.lua
 
 * allow disabling meta-guard (rebinding) via /input/keyboard/meta\_guard
+
+* gconf.lua split up into config.lua (keys) and gconf.lua (mgmt code)
 
 # 0.5.0
   * tools/advfloat:
