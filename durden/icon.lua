@@ -143,6 +143,9 @@ function icon_lookup_u8(u8, display_rt)
 	local rt = set_context_attachment(display_rt);
 	last_u8 = render_text({"\\f,0", u8});
 	set_context_attachment(rt);
+	if not valid_vid(last_u8) then
+		return icon_lookup("placeholder", 32);
+	end
 	return last_u8;
 end
 
