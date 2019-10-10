@@ -274,6 +274,9 @@ function wayland_toplevel_handler(wnd, source, status)
 		wayland_debug("toplevel:parent=" .. tostring(status.parent));
 		set_parent(wnd, status.parent);
 
+	elseif (status.kind == "ident") then
+		wnd:set_title(status.message);
+
 	elseif (status.kind == "message") then
 		local opts = string.split(status.message, ":");
 		if (not opts or not opts[1]) then
