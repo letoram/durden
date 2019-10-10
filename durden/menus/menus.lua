@@ -178,6 +178,18 @@ return {
 	kind = "action",
 	handler = menu_list,
 	description = "Custom menu selectors (devmaps/menus)"
+},
+{
+	name = "bindtarget",
+	label = "Bindtarget",
+	kind = "value",
+	invisible = true,
+	validator = function(val)
+		return val ~= nil and #val > 0;
+	end,
+	handler = function(ctx, val)
+		dispatch_bindtarget(val);
+	end,
 }
 };
 end
