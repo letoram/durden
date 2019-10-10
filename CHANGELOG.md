@@ -98,6 +98,11 @@ Minor / Fixes:
 
 * gconf.lua split up into config.lua (keys) and gconf.lua (mgmt code)
 
+* /bindtarget=/some/path sets a 'consume on use' path that allows interactive
+  menu paths like key and button bindings to be automated
+
+* firstrun.lua added to setup custom defaults on first run/config reset
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is

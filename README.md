@@ -14,7 +14,7 @@ Authors and Contact
 Development is discussed on the IRC channel #arcan on the Freenode network
 (chat.freenode.org)
 
-2015-2018, Björn Ståhl
+2015-2019, Björn Ståhl
 
 Licensing
 =====
@@ -34,90 +34,125 @@ Hacking
 =====
 See the HACKING.md file for information on where/how to extend and modify.
 
-Starting / Configuring
-=====
-Make sure that arcan is built with support for builtin frameservers for
-terminal, decode, encode, remoting etc. else those features will be missing.
-Durden probes for available engine features and enables/disables access to
-these accordingly. You can simply check for binaries prefixed with afsrv_
+Installation
+============
+Durden requires a working installation of [arcan](https://github.com/letoram/arcan)
+so please refer to that project for low level details, which also may cover
+system keymap (the facilities provided in durden are higher level overrides).
 
+The arcan documentation also covers specifics on how to get X, wayland and
+other clients to work.
+
+Other than that, you need to link or copy the durden subdirectory of this
+repository to were arcan looks for applications, or use an absolute path,
+like:
+
+    arcan $HOME/durden/durden
+
+See also the starting section below, as well as the configuration sections
+further below.
+
+Starting
+=====
 distr/durden is a support script that can be run to try and automatically
 set everything up and start. It also takes care of relaunch/recover if the
 program terminated abnormally.
 
-If you have a system that uses the XDG_ set of directories, the script will
+If you have a system that uses the "XDG" set of directories, the script will
 build the directory tree in XDG\_DATA\_HOME/arcan, otherwise it will use
 $HOME/.arcan. To help debug issues, you can create a 'logs' folder in that
 directory and both engine output, Lua crash dumps and frameserver execution
 will be stored there.
 
-Most configuration should be able to be performed interactively from within
-the UI itself. Should this fail or you set things up in an unrecoverably
-broken way, you can shutdown arcan and then use the 'arcan_db' tool to
-access all configuration options:
+Configuration (runtime)
+=======================
+Most changes, from visuals to window management behavior and input device
+actions, can be done from within durden and the UI itself using the menu HUD.
+By default, this is accessed from META1+G for (global) and META1+T for
+current window (target).
+
+All actions in durden are mapped into a huge virtual filesystem tree.
+Keybindings, UI buttons etc. are all simply paths within this filesystem.
+
+These are covered in much more detail on the webpage, but the ones you might
+want to take extra note of is:
+
+    /global/input/bind/custom
+		/global/system/shutdown/yes
+		/global/open/terminal
+		/global/input/keyboard/maps/bind_sym
+		/global/input/keyboard/maps/bind_utf8
+
+Another thing to note is that at startup, after a crash or keyboard plug event,
+a fallback helper is activated. This triggers after a number of keypresses
+that does not activate a valid keybinding. It will then query for re-binding
+key functions, (meta keys, global menu, menu navigation) as a means for
+recovering from a broken or unknown keyboard.
+
+You can also reach most paths with a mouse by right- clicking on the active
+workspace indicator on the statusbar.
+
+Configuration (manual)
+=======================
+There are four ways of configuring durden without using the UI:
+
+1. The arcan\_db tool
+
+(See the manpage for more uses of this tool.)
+
+This works offline (without durden running) and only after first successful run.
+All current settings are stored in a database. This can be viewed, and changed,
+like this:
 
      arcan_db show_appl durden
 		 arcan_db add_appl_kv durden my_key
 
-Or clear all settings and revert to defaults:
+Or clear all settings and revert to defaults on the next run:
 
      arcan_db drop_appl durden
 
-## Manually
+This is also used to control which programs (targets) and sets of arguments
+(configuration) durden is allowed to run. This restriction is a safety/security
+measure. Something like:
 
-Both arcan and durden are packaged under void linux, thus it should be as easy
-as going:
+    arcan_db add_target test BINARY /usr/bin/test arg1
+		arcan_db add_config test default arg2 arg3
 
-    sudo xbps-install durden
-    durden
+Would be added to /global/open/target/test
 
-Install by adding or symlinking the durden subdirectory of the git repository
-to your home appl folder (/home/myuser/.arcan/appl/durden) or start arcan
-with an explicit path reference, e.g.
+2. Files
 
-     arcan /home/myuser/path/to/durden/durden
+The default settings used on an empty database is found in:
 
-Start arcan with the resource path set to whatever directory subtree you
-want to be able to access for assets when browsing for images, video etc.
+    durden/config.lua
 
-e.g. arcan -p $HOME -b :self durden
+You can also control what is being run at startup in:
 
-There are numerous other ways for setting this up, see the Arcan wiki and
-manpages for configuration options. If you're "lucky" (linux, normal "no-X"
-VT, build dependencies fullfilled and KMS/GBM on) the entire process should
-land in something like:
+    durden/autorun.lua
 
-     git clone https://github.com/letoram/arcan.git
-     git clone https://github.com/letoram/durden.git
-     cd arcan/external/git; bash ./clone.sh
-     cd ../../ ; mkdir build ; cd build
-     cmake -DVIDEO_PLATFORM=egl-dri -DSTATIC_SQLITE3=ON -DSTATIC_OPENAL=ON
-        -DSTATIC_FREETYPE=ON ../src
-     make
-     sudo make install
-     arcan path/to/durden/durden
+The first time durden is run, the following script will be run:
 
-Note that this will need to be run suid (which the install does) or as root due
-to rules the kernel imposes on 'drmMaster'. If suid, the engine will fork out a
-child and only direct device access will run privileged.
+    durden/firstrun.lua
 
-Default meta keys are META1: MENU and META2:RSHIFT, look into keybindings.lua
-for the currently mapped defaults. If you don't press any of the valid META +
-key bindings during the first n (20 or so) keypresses, it is assumed that your
-meta bindings are broken and you will be queried for new ones.
+Advanced input device configuration is in durden/devmaps for the various
+categories of devices.
 
-meta1+enter - now you should get a terminal window.
+3. Controls
 
-You should also make sure that meta1+g (unless rebound) gives you access to
-the global menu, and meta1+h gives you access to the target menu. You can view
-or modify the default keybindings in 'durden/keybindings.lua' or you can bind
-your own menu paths in global/input/bind/custom. This menu path will also show
-the currently custom bound keys.
+Everything can be accessed and controlled (while running) using a domain socket.
+This is enabled through the (global/settings/system/control=name) path.
 
-Also try double-tapping meta-2 and you should see the statusbar change color.
-This indicates that all normal bindings are ignored and input is forwarded
-raw to the selected window. This is important for clients that need access to
-keys you have bound to various key combinations, like Xarcan-, QEmu, and so on.
+If enabled, it will appear in durden/ipc/name. You can use the socat tool to
+interact with it and control everything as if using input in the UI directly.
+
+The commands accepted by this socket is any of (ls, readdir, eval, read, write, exec)
+to navigate the menu tree, as well as a 'monitor' command which lets you monitor
+subsystem activity.
+
+There is also a 'MONITOR' command that lets you monitor one or several subsystems.
+
+There is also a tool in arcan that can be built and run, arcan\_cfgfs, which
+allows the control socket to be mounted and treated like a filesystem.
 
 Troubleshooting
 ====
@@ -128,7 +163,7 @@ client behaviors, the window management policies and the features themselves.
 On top of this, there are a number of special cases, like VT switching, crash-
 recovery, display hot-plug, soft-reset and 'suspend-exec until program return'
 scenarios that all massage these different subsystems in ways that are hard to
-test.
+test automatically and for every configuration.
 
 If durden itself crashes, the recovery can be so fast that you won't notice,
 but the notification widget (if enabled) on the HUD will likely provide you
@@ -141,11 +176,6 @@ tools in the arcan source repository for live-inspecting the state of clients.
 You can also ask a client to provide a debug view for you, if it supports that
 feature, by going to /target/video/advanced/debug\_window - calling it multiple
 times may provide multiple levels of debug output.
-
-Durden also provides some special mechanisms, by going to
-global/settings/system/debug you can change the debuglevel which enables
-widgets that give more information, and special debug commands
-(global/system/debug).
 
 Then there are logging facilities for all the frameservers, durden itself (if
 run through the launcher script) and .lua snapshots on soft-crashes. These are
