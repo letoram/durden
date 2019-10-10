@@ -27,19 +27,23 @@ end
 -- In principle, an x11 surface can request a display global coordinate
 -- for reparenting and positioning popups and other 'override_redirect'
 -- surfaces with a grab.
+--
+-- Since this can be used for UI- redressing style nastyness, it should
+-- be an option if the user wants this or not.
+--
 local function popup_handler(wnd, source, status, wtype)
 	if (status.kind == "viewport") then
 		local pid = wayland_wndcookie(status.parent);
 		if (not pid) then
 			wayland_debug(string.format(
-				"x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d",
+				"x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d:anchor=global",
 				wtype, wnd.name, status.parent, status.rel_x, status.rel_y)
 			);
 			link_image(source, active_display().order_anchor);
 			order_image(source, 1);
 		else
 			wayland_debug(string.format(
-				"x11-%s:viewport:name=%s:parent=%s:x=%d:y=%d",
+				"x11-%s:viewport:name=%s:parent=%s:x=%d:y=%d:anchor=parent",
 				wtype, wnd.name, pid.name, status.rel_x, status.rel_y)
 			);
 			link_image(source, pid.canvas);
@@ -61,18 +65,23 @@ local function popup_handler(wnd, source, status, wtype)
 		resize_image(source, status.width, status.height);
 		order_image(source, 2);
 		show_image(source);
-		local mx, my = mouse_xy();
-		move_image(source, mx, my);
 	end
 end
 
+-- tray-icons are also a bit special, a separate window for
+-- _NET_SYSTEM_TRAY_S0 are needed along with a SYSTEM_TRAY_REQUEST_DOCK,
+-- then the icon itself comes from _NET_WM_ICON, and notifications go
+-- as 'balloon messages'.
+
 local function apply_type_size(wnd, status)
 	if (wnd.surface_type == "popup" or
+		wnd.surface_type == "dropdown" or
 		wnd.surface_type == "tooltip" or
 		wnd.surface_type == "menu") then
 -- destroy the 'container', won't be needed with popup, uncertain
 -- what the 'rules' say about the same surface mutating in type, but
--- assume for now that it doesn't.
+-- assume for now that it doesn't. Likely need different positioning
+-- constraints based on the different types
 		wayland_debug(string.format(
 			"x11:type=%s:name=%s", wnd.surface_type, wnd.name));
 		local newwnd = {name = wnd.name, surface_type = wnd.surface_type};
@@ -99,7 +108,8 @@ local function apply_type_size(wnd, status)
 		wnd.external = nil;
 		wnd:destroy();
 
--- normal? then we just attach as any old window
+	elseif (wnd.surface_type == "icon") then
+-- treat the rest as normal windows
 	else
 		if (wnd.ws_attach) then
 			wnd:ws_attach();
@@ -126,6 +136,8 @@ function x11_event_handler(wnd, source, status)
 		if (wnd.surface_type) then
 			viewport(wnd, status);
 		else
+			wayland_debug(string.format(
+				"status=deferred:event=%s:name=%s", status.kind, wnd.name));
 			wnd.last_viewport = status;
 		end
 
