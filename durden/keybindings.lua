@@ -61,6 +61,7 @@ tbl["m2_l"] = "/target/window/swap/right";
 tbl["m1_m2_TAB"] = "/global/workspace/layout/tile_toggle";
 tbl["m1_t"] = "/global/workspace/layout/tab";
 tbl["m1_m2_t"] = "/global/workspace/layout/vtab";
+tbl["m1_TAB"] = "/global/workspace/select/next";
 tbl["m1_r"] = "/target/window/move_resize/fullscreen";
 tbl["m1_m"] = "/target/window/swap/merge_collapse";
 tbl["m2_LEFT"] = "/target/window/move_resize/rel_x=-16";

@@ -49,6 +49,54 @@ local function switch_ws_menu()
 	return spaces;
 end
 
+local function select_menu()
+	local res = {};
+
+-- locate selected window (or revert to first), apply delta and wrap to range
+	local find_select = function(i)
+		local list = active_display():active_space():linearize();
+		local wnd = active_display().selected;
+		local item = list[1];
+		if wnd then
+			local ind = table.find_i(list, wnd);
+			if ind then
+				ind = ind + i;
+				ind = ind > #list and 1 or ind;
+				ind = ind < 1 and #list or ind;
+				item = list[ind];
+			end
+		end
+
+		if item and item.select then
+			item:select();
+		end
+	end
+
+	table.insert(res, {
+		name = "next",
+		kind = "action",
+		label = "Next",
+		description = "Cycle to the next window in order within the current workspace",
+		handler = function()
+			find_select(1);
+		end
+	});
+	table.insert(res, {
+		name = "prev",
+		kind = "action",
+		label = "Previous",
+		description = "Cycle to the previous window in order within the current workspace",
+		handler = function()
+			find_select(-1);
+		end
+	});
+
+-- likely doesn't make much sense exposing the specific windows etc. here
+-- too mutable to be bound, the main use here is float where the direction
+-- based approach isn't for everyone
+	return res;
+end
+
 local workspace_layout_menu = {
 	{
 		name = "float",
@@ -255,5 +303,16 @@ return {
 			return ui_scheme_menu("workspace",
 				active_display().spaces[active_display().space_ind]);
 		end
+	},
+	{
+		name = "select",
+		label = "Select",
+		kind = "action",
+		submenu = true,
+		description = "Change selected window within this workspace",
+		eval = function()
+			return #(active_display():active_space():linearize()) > 0;
+		end,
+		handler = select_menu
 	}
 };
