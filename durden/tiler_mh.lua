@@ -565,7 +565,83 @@ local function build_statusbar_wsicon(wm, i)
 	return table;
 end
 
+local function fallthrough(wm)
+	local m1, m2 = dispatch_meta();
+	return (wm.fallthrough_ioh and not m1 and not m2);
+end
+
+local function symaction(wm, sym)
+	local action = gconfig_get(sym);
+	tiler_logfun(string.format("action: %s, fallthrough: %s", action, tostring(fallthrough(wm))));
+	if not action or #action == 0 or fallthrough(wm) then
+		return;
+	end
+	dispatch_symbol(action);
+end
+
+local function build_background(wm)
+	local table = {
+	name = "workspace_background",
+	motion = function(ctx, vid, x, y, rx, ry)
+		if not fallthrough(wm) then
+			return;
+		end
+
+-- re-use the window coordinate bits so that we get the storage-
+-- relative coordinate scaling etc.
+		local fakewnd = {
+			last_ms = wm.last_ms,
+			external = wm:active_space().background_src,
+			canvas = vid
+		};
+		local mv = wm.convert_mouse_xy(fakewnd, x, y, rx, ry);
+		wm:fallthrough_ioh({
+			kind = "analog",
+			mouse = true,
+			devid = 0,
+			subid = 0,
+			samples = {mv[1], mv[2]}
+		});
+		wm:fallthrough_ioh({
+			kind = "analog",
+			mouse = true,
+			devid = 0,
+			subid = 1,
+			samples = {mv[3], mv[4]}
+		});
+	end,
+	button = function(ctx, vid, ind, pressed, x, y)
+		if (wm.selected) then
+			wm.selected:deselect();
+		end
+-- only forward if meta is not being held
+		if fallthrough(wm) then
+			wm:fallthrough_ioh(
+			{
+				kind = "digital", mouse = true, devid = 0,
+				active = pressed, subid = ind
+			});
+		end
+	end,
+	click = function(ctx, vid, ...)
+		symaction(wm, "float_bg_click");
+	end,
+	rclick = function(ctx, vid, ...)
+		symaction(wm, "float_bg_rclick");
+	end,
+	dblclick = function(ctx, vid, ...)
+		symaction(wm, "float_bg_dblclick");
+	end,
+	own = function(ctx, vid, ...)
+		local sp = wm:active_space();
+		return sp and sp.background == vid and sp.mode == "float";
+	end
+	};
+	return table;
+end
+
 return {
+	background = build_background,
 	border = build_border,
 	canvas = build_canvas,
 	titlebar = build_titlebar,

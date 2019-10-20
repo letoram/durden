@@ -181,7 +181,13 @@ function(wnd, source, tbl)
 		return;
 	end
 
-	local ent = {tbl.labelhint, tbl.idatatype, tbl.description, tbl.vsym};
+	local ent = {
+		label = tbl.labelhint,
+		datatype = tbl.idatatype,
+		description = tbl.description,
+		symbol = tbl.vsym and tbl.vsym or "",
+		input = ""
+	};
 
 -- add the default as binding unless there's a collision
 	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
@@ -193,7 +199,7 @@ function(wnd, source, tbl)
 -- keep track of the translated string as we might want to present it
 		if (not wnd.labels[sym]) then
 			wnd.labels[sym] = tbl.labelhint;
-			ent[4] = sym;
+			ent.input = sym;
 		end
 	end
 
