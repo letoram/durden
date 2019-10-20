@@ -7,6 +7,8 @@
 -- configuration values, see config.lua
 --
 
+local log = suppl_add_logfn("config");
+
 -- here for the time being, will move with internationalization
 LBL_YES = "yes";
 LBL_NO = "no";
@@ -60,11 +62,14 @@ end
 
 function gconfig_set(key, val, force)
 	if (type(val) ~= type(defaults[key])) then
-		warning(string.format("gconfig_set(), type (%s) mismatch (%s) for key (%s)",
-			type(val), type(defaults[key]), key));
+		log(string.format(
+			"key=%s:kind=error:type_in=%s:type_out=%s:value=%s",
+			key, type(val), type(defaults[key]), val
+		));
 		return;
 	end
 
+	log(string.format("key=%s:kind=set:new_value=%s", key, val));
 	defaults[key] = val;
 
 	if (force) then
