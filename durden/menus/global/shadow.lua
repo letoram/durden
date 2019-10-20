@@ -22,7 +22,7 @@ local res = {
 		end,
 		validator = gen_valid_num(0, 1),
 		handler = function(ctx, val)
-			gconfig_set("shadow_focus", val);
+			gconfig_set("shadow_focus", tonumber(val));
 		end
 	},
 	{
@@ -35,7 +35,7 @@ local res = {
 		end,
 		validator = gen_valid_num(0, 1),
 		handler = function(ctx, val)
-			gconfig_set("shadow_defocus", val);
+			gconfig_set("shadow_defocus", tonumber(val));
 		end
 	},
 	{
@@ -61,6 +61,14 @@ local res = {
 			gconfig_set("shadow_d", math.floor(tonumber(elem[3])));
 			gconfig_set("shadow_r", math.floor(tonumber(elem[4])));
 		end
+	},
+	{
+		name = "shader",
+		label = "Shader",
+		kind = "action",
+		submenu = true,
+		description = "Shader UI settings",
+		alias = "/global/settings/visual/shaders/ui/dropshadow"
 	},
 	{
 		name = "color",
