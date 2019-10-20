@@ -25,10 +25,12 @@ local function build_labelmenu()
 
 	local res = {};
 	for k,v in ipairs(wnd.input_labels) do
+
 		table.insert(res, {
-			name = "input_" .. v[1],
-			label = v[1],
-			description = v[1] .. ": " .. v[3],
+			name = "input_" .. v.label,
+			label = string.format("%s%s", v.label,
+				#v.symbol > 0 and "(" .. v.symbol .. ")" or ""),
+			description = string.format("%s - %s", v.label, v.description),
 			kind = "action",
 			handler = function()
 				run_input_label(wnd, v);

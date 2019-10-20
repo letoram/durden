@@ -57,6 +57,7 @@ system_load("tools/advfloat/cactions.lua")();
 system_load("tools/advfloat/minimize.lua")();
 system_load("tools/advfloat/spawnctl.lua")();
 system_load("tools/advfloat/bginput.lua")();
+system_load("tools/advfloat/bgicons.lua")();
 
 local workspace_menu = {
 {

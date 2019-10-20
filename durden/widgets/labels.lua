@@ -23,7 +23,7 @@ end
 
 local function on_click(ctx, lbl, i)
 	local wnd = active_display().selected;
-	lbl = table.find_key_i(wnd.input_labels, 1, lbl);
+	lbl = table.find_key_i(wnd.input_labels, "label", lbl);
 	if (not lbl) then
 		return;
 	end
@@ -43,9 +43,9 @@ local function on_motion(ctx, lbl, i)
 		return;
 	end
 
-	lbl = table.find_key_i(wnd.input_labels, 1, lbl);
+	lbl = table.find_key_i(wnd.input_labels, "label", lbl);
 	if (lbl) then
-		lbl = wnd.input_labels[lbl][3];
+		lbl = wnd.input_labels[lbl].label;
 		lbar:set_helper(lbl and lbl or "");
 	end
 end
@@ -58,9 +58,9 @@ local function probe(ctx, yh)
 
 -- preprocess / sort the list of known labels
 	local linear = {};
-	for k,v in pairs(wnd.input_labels) do
-		if (#v[1] > 0) then
-			table.insert(linear, v[1]);
+	for k,v in ipairs(wnd.input_labels) do
+		if (#v.label > 0) then
+			table.insert(linear, v.label);
 		end
 	end
 	table.sort(linear,

@@ -15,7 +15,6 @@ local ent_count = 1;
 local mouse_handler_factory = system_load("tiler_mh.lua")();
 
 local create_workspace = function() end
-local convert_mouse_xy = function(wnd, x, y, rx, ry) end
 
 local tiler_logfun = suppl_add_logfn("wm");
 local function tiler_debug(wm, msg)
@@ -1698,63 +1697,6 @@ local function workspace_save(ws, shallow)
 -- depth serialization and metastructure missing
 end
 
-local background_mh = {
-	name = "workspace_background",
-	motion = function(ctx, vid, x, y, rx, ry)
-		local wm = active_display();
-		if (not wm.fallthrough_ioh) then
-			return;
-		end
-
--- re-use the window coordinate bits so that we get the storage-
--- relative coordinate scaling etc.
-		local fakewnd = {
-			last_ms = wm.last_ms,
-			external = wm:active_space().background_src,
-			canvas = vid
-		};
-		local mv = convert_mouse_xy(fakewnd, x, y, rx, ry);
-		wm:fallthrough_ioh({
-			kind = "analog",
-			mouse = true,
-			devid = 0,
-			subid = 0,
-			samples = {mv[1], mv[2]}
-		});
-		wm:fallthrough_ioh({
-			kind = "analog",
-			mouse = true,
-			devid = 0,
-			subid = 1,
-			samples = {mv[3], mv[4]}
-		});
-	end,
--- click, rclick, dblclick? set gesture to true and attach the corresponding label
-	button = function(ctx, vid, ind, pressed, x, y)
-		local wm = active_display();
-		if (wm.selected) then
-			wm.selected:deselect();
-		end
-		if (wm.fallthrough_ioh) then
-			wm:fallthrough_ioh(
-			{
-				kind = "digital", mouse = true, devid = 0,
-				active = pressed, subid = ind
-			});
-		end
-	end,
-	click = function(ctx, vid, ...)
-	end,
-	rclick = function(ctx, vid, ...)
-	end,
-	dblclick = function(ctx, vid, ...)
-	end,
-	own = function(ctx, vid, ...)
-		local sp = active_display():active_space();
-		return sp and sp.background == vid and sp.mode == "float";
-	end
-};
-
 local function workspace_background(ws, bgsrc, generalize)
 	local wm = ws.wm;
 	if (not wm) then
@@ -3071,7 +3013,7 @@ local function wnd_title(wnd, title)
 	wnd.titlebar:update("center", 1, dsttbl);
 end
 
-convert_mouse_xy = function(wnd, x, y, rx, ry)
+local function tiler_convert_mousexy(wnd, x, y, rx, ry)
 -- note, this should really take viewport into account (if provided), when
 -- doing so, move this to be part of fsrv-resize and manual resize as this is
 -- rather wasteful.
@@ -3242,7 +3184,7 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 		return;
 	end
 
-	local mv = convert_mouse_xy(wnd, x, y, rx, ry);
+	local mv = wnd.wm.convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
 		mouse = true,
@@ -5207,6 +5149,7 @@ function tiler_create(width, height, opts)
 		update_scalef = tiler_scalef,
 		fallthrough_input = tiler_fallthrough_input,
 		cancellation = tiler_cancellation,
+		convert_mouse_xy = tiler_convert_mousexy,
 
 -- shared event handlers, primarily for effects and layouting
 		on_wnd_create = {},
@@ -5245,8 +5188,8 @@ function tiler_create(width, height, opts)
 	show_image({res.anchor, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
 
-	mouse_addlistener(background_mh,
-		{"button", "motion", "click", "dblclick"});
+	local mh = mouse_handler_factory.background(res);
+	mouse_addlistener(mh,  {"button", "motion", "click", "rclick"});
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);

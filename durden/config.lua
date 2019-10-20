@@ -18,12 +18,12 @@ return {
 
 -- quite expensive so need to be 'none' at start (or have a GPU probe stage)
 	shadow_style = "none",
-	shadow_focus = 1.0,
-	shadow_defocus = 0.2,
-	shadow_t = 0,
-	shadow_l = 0,
-	shadow_d = 0,
-	shadow_r = 0,
+	shadow_focus = 0.5,
+	shadow_defocus = 1.0,
+	shadow_t = 10,
+	shadow_l = 10,
+	shadow_d = 10,
+	shadow_r = 10,
 
 -- soft, fixed
 	shadow_style = "none",
@@ -189,6 +189,9 @@ return {
 -- used for keyboard- move step size in float mode
 	float_tile_sz = {16, 16},
 	float_tbar_override = false,
+	float_bg_rclick = "/global/tools/popup/menu=/menus/floatbg",
+	float_bg_click = "",
+	float_bg_dblclick = "",
 
 -- used for adding 'gaps' in the tile layout
 	tile_gap_w = 0,
