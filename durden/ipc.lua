@@ -34,6 +34,7 @@ local all_categories = {
 	"CLIENT",
 	"TOOLS",
 	"WARNING",
+	"CONFIG",
 	"STDOUT"
 };
 
@@ -70,7 +71,10 @@ local function toggle_monitoring(on)
 		notification = "NOTIFICATION:",
 		client = "CLIENT:",
 		clipboard = "CLIPBOARD:",
-		tools = "TOOLS:"
+		tools = "TOOLS:",
+		warnings = "WARNINGS:",
+		config = "CONFIG:",
+		stdout = "STDOUT:"
 	};
 
 -- see suppl_add_logfn for the function that constructs the logger,
