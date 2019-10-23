@@ -1,5 +1,6 @@
 local cps = {};
 local log = suppl_add_logfn("tools");
+local relayout_grid;
 
 local icon_shader = build_shader(nil,
 	[[
@@ -21,7 +22,7 @@ local icon_shader = build_shader(nil,
 
 		void main()
 		{
-			vec3 color = texture2D(map_tu0, texco);
+			vec4 color = texture2D(map_tu0, texco);
 			float vis = box(texco * 2.0 - 1.0, vec2(0.28)) - radius;
 			float step = fwidth(vis);
 			vis = smoothstep(step, -step, vis);
@@ -34,16 +35,12 @@ shader_uniform(icon_shader, "radius", "f", 0.90);
 
 local primary_handler;
 local function reset_cp(tbl, source, noreopen)
-	if (valid_vid(source)) then
-		delete_image(source);
-	end
-	log("name=streamdeck:kind=reset:cp=" .. tbl.name);
+	suppl_delete_image_if(source);
+	log("name=streamdeck:kind=reset:dev=" .. tbl.name);
 	tbl.buttons = {};
 
 -- everthing is anchored to the bg
-	if (valid_vid(tbl.bg)) then
-		delete_image(tbl.bg);
-	end
+	suppl_delete_image_if(tbl.bg);
 	tbl.bg = nil;
 	tbl.got_rt = BADID;
 	timer_delete("streamdeck_" .. tbl.name);
@@ -90,7 +87,6 @@ local function gen_tbar(ctx, dst)
 -- here, and no reliable tracking of the construction argument to
 -- the label of the titlebar icon (not entirely true but a bad idea
 -- to rely on it for the time being)
-	log("tbar: " .. tostring(#wnd.titlebar.buttons.left) .. " - " .. tostring(#wnd.titlebar.buttons.right));
 	for _,v in ipairs(wnd.titlebar.buttons.left) do
 		add_button(v, dst);
 	end
@@ -127,15 +123,16 @@ local function gen_labels(ctx, dst, raw)
 -- to raw icon label and let the caller figure out how to raster
 	for k,v in ipairs(wnd.input_labels) do
 		local sym;
-		local label = raw and v[1] or nil;
+		local label = raw and v.label or nil;
 
--- display symbol is, if provided, in v4
-		if v[4] then
-			sym = icon_lookup_u8(sym, active_display(true));
+-- display symbol is, if provided, defer this until we have a mechanism
+-- to judge if the font in question can deliver or not
+		if false and #v.symbol > 0 then
+			sym = icon_lookup_u8(v.symbol, active_display(true));
 
 -- but icons for common/known labels might also be present
-		elseif icon_known(v[1]) then
-			sym = icon_lookup(v[1], ctx.cell_w);
+		elseif icon_known(v.label) then
+			sym = icon_lookup(v.labsl, ctx.cell_w);
 		end
 
 -- 'show raw' means that we can always use the label at least
@@ -159,7 +156,6 @@ local function gen_custom(ctx, dst)
 
 	for i,v in ipairs(ctx.custom) do
 		local ok, hnd = suppl_valid_vsymbol(v[1], ctx.cell_w);
-		log("custom: " .. v[1] .. " to " .. v[2]);
 
 		if ok then
 			if type(hnd) == "function" then
@@ -256,9 +252,8 @@ local function build_buttonlist(tbl)
 		for _,v in ipairs(keys) do
 			if tbl.priorities[v[1]] and tbl.priorities[v[1]] == i then
 				log(string.format("name=streamdeck:kind=rebuild:" ..
-					"category=%s:priority=%d:cp=%s", v[1], i, tbl.name));
+					"category=%s:priority=%d:dev=%s", v[1], i, tbl.name));
 				tbl.dynamic = v[2](tbl, buttons) or tbl.dynamic;
-				log("dynamic: " .. tostring(tbl.dynamic));
 			end
 		end
 	end
@@ -309,7 +304,7 @@ local function project_cell(tbl, v, ent)
 		return;
 	end
 
-	local icon = valid_vid(v.vid);
+	local icon = valid_vid(ent.vid);
 	if icon then
 		image_sharestorage(ent.vid, v.icon);
 		show_image(v.icon);
@@ -318,7 +313,7 @@ local function project_cell(tbl, v, ent)
 	end
 
 -- set_label will deal with crop and relayout
-	v:set_label(ent.label);
+	v:set_label(ent.label, icon);
 end
 
 local function project_buttons(tbl)
@@ -373,8 +368,8 @@ local function project_buttons(tbl)
 	end
 end
 
-local function menu_for_path(tbl, path, root)
-	local menu, msg, val, enttbl = menu_resolve(path, nil, true);
+local function menu_for_path(tbl, path)
+	local menu, msg, val, enttbl = menu_resolve(table.concat(path, "/"));
 	local res = {};
 
 	table.insert(res, {
@@ -384,23 +379,30 @@ local function menu_for_path(tbl, path, root)
 			tbl:update();
 		end
 	});
-	if not menu or #menu == 0 then
+
+	if not menu or (menu.validator and not menu.validator(val)) then
 		return res;
 	end
 
+	if type(menu) ~= "table" then
+		menu = {menu};
+	end
+
 	for k,v in ipairs(menu) do
-		if v.kind == "action" then
+-- don't have a good way of mapping value fields yet (except perhaps
+-- sets then, those could still work)
+		if v.kind == "action" and (not v.eval or v.eval()) then
 			if v.submenu then
 				table.insert(res, {
-					label = v.label,
+					label = table.split(v.label, " "),
 					action = function()
-						tbl.menu_path = path .. "/" .. v.name;
+						table.insert(tbl.menu_path, v.name);
 						tbl:update();
 					end
 				});
 			else
 				table.insert(res, {
-					label = v.label,
+					label = table.split(v.label, " "),
 					action = v.action
 				});
 			end
@@ -415,7 +417,7 @@ local function relayout_menu(tbl)
 		return;
 	end
 
-	tbl.last_set = menu_for_path(tbl, tbl.menu_path, true);
+	tbl.last_set = menu_for_path(tbl, tbl.menu_path);
 	tbl.set_position = 1;
 
 	project_buttons(tbl);
@@ -424,13 +426,13 @@ end
 
 -- the meat of the whole unit, step the order of prioritised
 -- targets and allocate / render to grid
-local function relayout_grid(tbl)
--- this can come from a reset / non-active connection point
+relayout_grid = function(tbl)
+-- this can come from a reset / non-active device
 	if #tbl.buttons == 0 then
 		return;
 	end
 
-	log("name=streamdeck:kind=relayout:cp=" .. tbl.name);
+	log("name=streamdeck:kind=relayout:dev=" .. tbl.name);
 	tbl.dynamic = false;
 
 	local list = build_buttonlist(tbl);
@@ -444,8 +446,7 @@ local function relayout_grid(tbl)
 	update_rt(tbl);
 end
 
-local function update_lbl(btn, str)
-	local opa = image_surface_resolve(btn.icon).opacity;
+local function update_lbl(btn, str, icon)
 	if not str or #str == 0 then
 		hide_image(btn.label);
 		return;
@@ -467,13 +468,13 @@ local function update_lbl(btn, str)
 	local fmt_tbl = {};
 	fmt_tbl[1] = string.format(btn.format, btn.label_size);
 	if (type(str) == "table") then
-		if opa < 0.01 then
+		if icon then
+			str = table.concat(str, " ");
+		else
 			for i,v in ipairs(str) do
 				table.insert(fmt_tbl, v);
 				table.insert(fmt_tbl, "\\r\\n");
 			end
-		else
-			str = table.concat(str, " ");
 		end
 	else
 		fmt_tbl[2] = str;
@@ -492,8 +493,13 @@ local function update_lbl(btn, str)
 
 	local y = btn.h - btn.border - props.height;
 	local x = btn.w * 0.5 - props.width * 0.5;
-	if opa < 0.01 then
+
+-- if the icon isn't visible, center, otherwise put at bottom
+	if not icon then
 		y = btn.h * 0.5 - props.height * 0.5;
+	else
+-- either blend label with background over icon, or scale down
+-- icon to account for text size and have text at bottom
 	end
 
 	move_image(btn.label, x, y);
@@ -504,7 +510,7 @@ end
 -- then just moved to suppl so we can use it for other 'button grids' as
 -- well.
 local function build_button(w, h, border, fontstr, fontsz)
-	local cell_bg = color_surface(w, h, 0, 0, 0);
+	local cell_bg = color_surface(w, h, 128, 0, 0);
 	if not valid_vid(cell_bg) then
 		return;
 	end
@@ -559,14 +565,17 @@ local function build_button(w, h, border, fontstr, fontsz)
 	};
 end
 
-local function build_rendertarget(tbl, source)
+local function build_rendertarget(tbl, source, bind)
 	local w = tbl.cell_w * tbl.cols;
 	local h = tbl.cell_h * tbl.rows;
 
 -- first the composition buffer
 	local buf = alloc_surface(w, h);
 	if not valid_vid(buf) then
-		return reset_cp(tbl, source);
+		if bind then
+			reset_cp(tbl, source);
+		end
+		return;
 	end
 
 -- then the background image that will be used for the pipeline
@@ -582,13 +591,17 @@ local function build_rendertarget(tbl, source)
 -- on relayouting events and explicit frame updates.
 	define_rendertarget(buf,
 		{bg}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
-	rendertarget_bind(buf, source);
+
+	if bind then
+		rendertarget_bind(buf, source);
+	end
+
 	tbl.got_rt = buf;
 	tbl.bg = bg;
 	link_image(buf, source);
 	show_image(bg);
 	log(string.format(
-		"name=streamdeck:kind=rtbind:w=%d:h=%d:cp=%s", w, h, tbl.name));
+		"name=streamdeck:kind=rtbind:w=%d:h=%d:dev=%s", w, h, tbl.name));
 
 -- then a null surface for each grid cell, or as many as we can
 -- this is slightly 'problematic' as there are not that many nodes
@@ -599,7 +612,6 @@ local function build_rendertarget(tbl, source)
 -- this is where we assume uniformly shaped buttons, for certain
 -- cases, say, touchbar, we might want wider cells and cover other
 -- forms of allocation and traversal
-
 	local attachment = set_context_attachment(buf);
 	for i=1,tbl.rows*tbl.cols do
 		local button = build_button(
@@ -638,9 +650,8 @@ primary_handler = function(tbl, source, status, iotbl)
 			return reset_cp(tbl, source);
 		end
 
-		tbl.active = true;
-		log("name=streamdeck:kind=registered:cp=" .. tbl.name);
-		build_rendertarget(tbl, source);
+		log("name=streamdeck:kind=registered:dev=" .. tbl.name);
+		build_rendertarget(tbl, source, true);
 		tbl:update();
 
 -- the button presses
@@ -707,7 +718,7 @@ local function enable_hooks()
 	hooks_active = true;
 end
 
-local function add_cpoint(ctx, val)
+local function add_device(ctx, val)
 	local tbl = {
 		name = val,
 	};
@@ -726,6 +737,7 @@ local function add_cpoint(ctx, val)
 		background = nil,
 		tickrate = 1,
 		opacity = 0.5,
+		overlay_scale = 1,
 		custom = {},
 		got_rt = BADID,
 		priorities = {},
@@ -741,7 +753,7 @@ local function gen_destroy_menu()
 			name = v.name,
 			kind = "action",
 			label = v.name,
-			description = "Close the " .. v.name .. " connection point",
+			description = "Close the " .. v.name .. " device",
 			handler = function()
 -- since the table might be modified with the menu not rebuild, the index might
 -- have changed between building the closure and invoking it, so search
@@ -762,9 +774,7 @@ local function close_cpoint(name)
 	if not i then
 		return;
 	end
-	if valid_vid(cps[i].vid) then
-		delete_image(cps[i].vid);
-	end
+	suppl_delete_image_if(cps[i].vid);
 	timer_delete("streamdeck_" .. tbl.name);
 	table.remove(cps, i);
 end
@@ -845,6 +855,49 @@ local function gen_remove_custom(tbl)
 	return res;
 end
 
+local function gen_olay_menu(tbl)
+	local res = {};
+	table.insert(res, {
+		label = "Show",
+		name = "show",
+		kind = "action",
+		eval = function()
+			return not tbl.have_olay;
+		end,
+		handler = function()
+			local surf = null_surface
+		end
+	});
+	table.insert(res, {
+		label = "Scale",
+		name = "scale",
+		kind = "value",
+		description = "Set draw scale for the overlay surface",
+		validator = gen_valid_float(1, 4),
+		handler = function(ctx, val)
+			tbl.overlay_scale = tonumber(val);
+		end
+	});
+	table.insert(res, {
+		label = "Hide",
+		name = "hide",
+		kind = "action",
+		description = "Hide the screen overlay surface",
+		eval = function()
+			return tbl.have_olay;
+		end,
+		handler = function()
+			if valid_vid(tbl.have_olay) then
+				blend_image(tbl.have_olay, 0.0, gconfig_get("animation"));
+				expire_image(tbl.have_olay, gconfig_get("animation"));
+			end
+			mouse_drophandler(tbl.olay_mouse);
+			tbl.have_olay = nil;
+		end
+	});
+	return res;
+end
+
 local function gen_mode_menu(tbl)
 	return {
 		{
@@ -853,7 +906,7 @@ local function gen_mode_menu(tbl)
 			description = "Default mapping mode, buttons are populated dynamically based on group priority",
 			kind = "action",
 			handler = function()
-				log("name=streamdeck:kind=status:mode=dynamic:cp=" .. tbl.name);
+				log("name=streamdeck:kind=status:mode=dynamic:dev=" .. tbl.name);
 				tbl.update = relayout_grid;
 				tbl:update();
 			end
@@ -869,9 +922,9 @@ local function gen_mode_menu(tbl)
 					if not path or #path == 0 then
 						return;
 					end
-					log(string.format("name=streamdeck:kind=status:mode=dynamic:cp=%s:path=%s", cp, path));
+					log(string.format("name=streamdeck:kind=status:mode=dynamic:dev=%s:path=%s", cp, path));
 					tbl.update = relayout_menu;
-					tbl.menu_path = path;
+					tbl.menu_path = {path};
 					tbl:update();
 				end);
 			end
@@ -891,6 +944,48 @@ local function gen_map_menu(tbl)
 	return res;
 end
 
+local function window_setup(tbl)
+	log("name=streamdeck:kind=open:dev=" .. tbl.name);
+	enable_hooks();
+
+-- create a placeholder and piggyback on the external-receiver setup
+	local disp = null_surface(tbl.cell_w * tbl.cols, tbl.cell_h * tbl.rows);
+	build_rendertarget(tbl, disp);
+	tbl.window = active_display():add_window(disp, {scalemode = "stretch"});
+	image_sharestorage(tbl.got_rt, tbl.window.canvas);
+
+	tbl.window:add_handler("destroy",
+	function()
+		tbl.window = nil;
+		suppl_delete_image_if(disp);
+		suppl_delete_image_if(tbl.got_rt);
+		tbl.got_rt = BADID;
+		tbl.buttons = {};
+	end);
+
+	tbl.window:add_handler("mouse_button",
+	function(wnd, subid, btn)
+		if not btn then
+			return;
+		end
+		local col = math.floor(wnd.mouse[1] * tbl.cols);
+		local row = math.floor(wnd.mouse[2] * tbl.rows);
+		local button = tbl.buttons[(row * tbl.cols + col) + 1];
+		if not button then
+			return;
+		end
+
+		button = button.action;
+		if type(button) == "function" then
+			button(tbl, disp);
+		elseif type(button) == "string" then
+			dispatch_symbol(button);
+		end
+	end);
+
+	tbl:update();
+end
+
 local function gen_cpoint_menu(name, tbl)
 	local res = {};
 	table.insert(res, {
@@ -898,14 +993,25 @@ local function gen_cpoint_menu(name, tbl)
 		kind = "action",
 		label = "Open",
 		eval = function()
-			return not valid_vid(tbl.vid);
+			return not tbl.window and not valid_vid(tbl.vid);
 		end,
-		description = "Bind the connection point and start accepting connections",
+		description = "Bind the device to a connection point and listen for connections",
 		handler = function()
-			log("name=streamdeck:kind=open:cp=" .. tbl.name);
+			log("name=streamdeck:kind=open:dev=" .. tbl.name);
 			enable_hooks();
 			reset_cp(tbl, BADID);
 		end
+	});
+	table.insert(res,
+	{
+		name = "window",
+		kind = "action",
+		label = "Window",
+		eval = function()
+			return not tbl.window and not valid_vid(tbl.vid);
+		end,
+		description = "Bind the device to a window",
+		handler = function() window_setup(tbl); end
 	});
 	table.insert(res, {
 		name = "destroy",
@@ -914,7 +1020,7 @@ local function gen_cpoint_menu(name, tbl)
 		eval = function()
 			return valid_vid(tbl.vid);
 		end,
-		description = "Remove connection point definition and terminate any active connections",
+		description = "Remove device definition and terminate any active connections",
 		handler = function()
 			close_cpoint(name);
 		end
@@ -1032,13 +1138,13 @@ local function gen_cpoint_menu(name, tbl)
 	return res;
 end
 
-local function gen_cpoints_menu()
+local function gen_device_menu()
 	local res = {};
 	for k,v in ipairs(cps) do
 		table.insert(res, {
 			name = v.name,
 			label = v.name,
-			description = "Modify connection point '" .. v.name,
+			description = "Modify device '" .. v.name,
 			kind = "action",
 			submenu = true,
 			handler = gen_cpoint_menu(v.name, v)
@@ -1060,21 +1166,21 @@ local menu = {
 			end
 			return strict_fname_valid(val);
 		end,
-		description = "Bind a named connection point for the device handler",
+		description = "Define a new deck device",
 		hint = "(a-Z_0-9)",
-		handler = add_cpoint
+		handler = add_device
 	},
 	{
-		label = "Connection Points",
-		name = "cpoints",
+		label = "Devices",
+		name = "devices",
 		kind = "action",
 		submenu = true,
 		eval = function()
 			return #cps > 0;
 		end,
-		description = "Open/Close or change settings for defined connection points",
+		description = "Open/Destroy or Modify a device",
 		handler = function(ctx, val)
-			return gen_cpoints_menu();
+			return gen_device_menu();
 		end
 	},
 };
@@ -1083,7 +1189,7 @@ menus_register("global", "tools",
 {
 	name = "streamdeck",
 	label = "Stream Deck",
-	description = "Support for ElGato Stream- Deck like devices",
+	description = "Support for dynamic button display devices",
 	kind = "action",
 	submenu = true,
 	handler = menu

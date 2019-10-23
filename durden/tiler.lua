@@ -3060,7 +3060,6 @@ end
 local function wnd_mousebutton(wnd, ind, pressed, x, y)
 	if (wnd.wm.selected ~= wnd) then
 		return;
-
 -- collapse the entire tree on canvas- click
 	elseif (#wnd.popups > 0 and pressed) then
 		wnd:drop_popup(true);
@@ -3082,7 +3081,7 @@ local function wnd_mousebutton(wnd, ind, pressed, x, y)
 	local x, y = mouse_xy();
 	wnd_synch_mouse(wnd, x, y);
 	run_event(wnd, "mouse_button",
-		subid, pressed, x, y, wnd.mouse[1], wnd.mouse[2]);
+		ind, pressed, x, y, wnd.mouse[1], wnd.mouse[2]);
 end
 
 local function wnd_toggle_maximize(wnd)
