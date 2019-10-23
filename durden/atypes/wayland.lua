@@ -404,7 +404,9 @@ return {
 				target_flags(source, TARGET_ALLOWGPU);
 			end
 
--- client implements repeat on wayland, se we need to set it here
+-- client implements repeat on wayland, se we need to set it here, but
+-- quite frankly, just disable it to 0 0 and force server-side repeat
+-- is probably the better option.
 			message_target(source,
 				string.format("seat:rate:%d,%d",
 					gconfig_get("kbd_period"), gconfig_get("kbd_delay")));

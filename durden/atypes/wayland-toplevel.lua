@@ -274,6 +274,8 @@ function wayland_toplevel_handler(wnd, source, status)
 		wayland_debug("toplevel:parent=" .. tostring(status.parent));
 		set_parent(wnd, status.parent);
 
+-- wayland doesn't distinguish between registered immutable title and current
+-- identity, so we just map that directly to the window title
 	elseif (status.kind == "ident") then
 		wnd:set_title(status.message);
 
@@ -284,8 +286,10 @@ function wayland_toplevel_handler(wnd, source, status)
 			return;
 		end
 
-		if (opts[1] == "shell" and opts[2] == "xdg_top" and opts[3] ~= nil) then
-			if (not toplevel_lut[opts[3]]) then
+		if (opts[1] == "shell" and opts[2] == "xdg_top") then
+			if (not opts[3]) then
+-- no-op, first message sets this
+			elseif (not toplevel_lut[opts[3]]) then
 				wayland_debug(string.format(
 					"toplevel:error=unknown command:command=%s", opts[3]));
 			else
@@ -323,8 +327,8 @@ function wayland_toplevel_handler(wnd, source, status)
 -- don't really care right now, part otherwise is just to set the
 -- resolved factor to wnd:resize_effective
 		else
-			wayland_debug(
-				string.format("toplevel:error=unknown type:type=%s", opts[1]));
+			wayland_debug(string.format(
+				"toplevel:error=unknown type:raw=%s", status.message));
 		end
 
 	elseif (status.kind == "segment_request") then
