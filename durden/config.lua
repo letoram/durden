@@ -124,7 +124,7 @@ return {
 -- setting this to a higher value adds animation fade in/out
 	transition = 10,
 	animation = 10,
-	wnd_animation = 0,
+	wnd_animation = 10,
 
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
@@ -277,7 +277,7 @@ return {
 	bind_waittime = 30,
 	bind_repeat = 5,
 
--- sbar
+-- statusbar
 	sbar_tpad = 2, -- add some space to the text
 	sbar_bpad = 2,
 	sbar_sz = 12, -- dynamically recalculated on font changes
@@ -307,6 +307,9 @@ return {
 	tbar_bpad = 2,
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
+
+-- icons
+	icon_set = "default.lua",
 
 -- notification system
 	notifications_enable = true,

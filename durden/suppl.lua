@@ -278,6 +278,12 @@ function table.remove_vmatch(tbl, match)
 	return nil;
 end
 
+function suppl_delete_image_if(vid)
+	if valid_vid(vid) then
+		delete_image(vid);
+	end
+end
+
 function table.find_i(table, r)
 	for k,v in ipairs(table) do
 		if (v == r) then return k; end

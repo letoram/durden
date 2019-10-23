@@ -18,11 +18,12 @@
 --
 -- The third needs caching.
 --
+local setname = gconfig_get("icon_set");
 
 -- it is almost always useful having a circle primitive to
 -- build with, both for generating single colored round icons
 -- or to use as a mask together with resample_image
-local unit_circle = build_shader(
+icon_unit_circle = build_shader(
 	nil,
 	[[
 		uniform float radius;
@@ -39,7 +40,25 @@ local unit_circle = build_shader(
 	]],
 	"iconmgr_circle"
 );
-shader_uniform(unit_circle, "radius", "f", 0.5);
+
+icon_colorize = build_shader(
+	nil,
+	[[
+		uniform vec3 color;
+		uniform sampler2D map_tu0;
+		varying vec2 texco;
+
+		void main()
+		{
+			vec4 col = texture2D(map_tu0, texco);
+			float intens = col.r * col.g * col.b / 3.0f;
+			gl_FragColor = vec4(color * intens, col.a);
+		}
+	]],
+	"iconmgr_colorize"
+);
+
+shader_uniform(icon_unit_circle, "radius", "f", 0.5);
 local function synthesize_icon(w, shader)
 	local icon = alloc_surface(w, w);
 	if not valid_vid(icon) then
@@ -47,6 +66,13 @@ local function synthesize_icon(w, shader)
 	end
 	resample_image(icon, shader, w, w);
 	return icon;
+end
+
+function icon_synthesize(shader, w, argtbl)
+	for k,v in pairs(argtbl) do
+		shader_uniform(shader, k, unpack(v));
+	end
+	return synthesize_icon(w, shader);
 end
 
 -- The nametable mainly contains the active caches of vids based
@@ -57,38 +83,6 @@ end
 -- to generate the icon in question, the generate function is
 -- provided.
 local nametable = {
-	destroy = {
-		generate =
-		function(w)
-			shader_uniform(unit_circle, "color", "fff", 1.0, 0.1, 0.15);
-			return synthesize_icon(w, unit_circle);
-		end,
-		widths = {}
-	},
-	minimize = {
-		generate =
-		function(w)
-			shader_uniform(unit_circle, "color", "fff", 0.95, 0.7, 0.01);
-			return synthesize_icon(w, unit_circle);
-		end,
-		widths = {}
-	},
-	maximize = {
-		generate =
-		function(w)
-			shader_uniform(unit_circle, "color", "fff", 0.1, 0.6, 0.1);
-			return synthesize_icon(w, unit_circle);
-		end,
-		widths = {}
-	},
-	placeholder = {
-		generate =
-		function(w)
-			shader_uniform(unit_circle, "color", "fff", 1.0, 1.0, 1.0);
-			return synthesize_icon(w, unit_circle);
-		end,
-		widths = {}
-	}
 };
 
 -- take a vsym that passed validation from suppl_valid_vsym and
@@ -101,8 +95,9 @@ function icon_lookup(vsym, px_w)
 		vsym = "placeholder";
 	end
 	local ent = nametable[vsym];
+	print("lookup", vsym);
 
--- do we have a direct match?
+-- do we have a direct match since before?
 	if ent.widths[px_w] then
 		return ent.widths[px_w];
 	end
@@ -118,16 +113,38 @@ function icon_lookup(vsym, px_w)
 
 -- find one with the least error
 	local errv = px_w;
-	local vid = WORLDID;
-	for i,v in pairs(ent.widths) do
-		local dist = math.abs(px_w - i);
-		if dist < errv then
-			errv = dist;
-			vid = v;
+	local closest = 0;
+
+	for k,v in pairs(ent) do
+		if type(k) == "number" then
+			local dist = math.abs(px_w - i);
+			if dist < errv then
+				errv = dist;
+				closest = k;
+			end
 		end
 	end
 
-	return vid;
+-- apparently wasn't one for this specific size, fallback generator(s)?
+	if closest == 0 then
+		if ent.generator then
+			ent.widths[pw_w] = ent.generator(px_w);
+		end
+
+		return icon_lookup("placeholder", px_w);
+	end
+
+-- do we need to load or generate?
+	if not ent.widths[closest] then
+		if type(ent[closest]) == "string" then
+			ent.widths[closest] = load_image(string.format("icons/%s/%s"));
+		elseif type(ent[closest]) == "function" then
+			ent.widths[closest] = ent[closest]();
+		end
+	end
+
+-- or really panic so we don't return a broken vid
+	return valid_vid(vid) and vid or WORLDID;
 end
 
 -- use a unicode symbol reference (or nametable override)
@@ -151,4 +168,52 @@ end
 
 function icon_known(vsym)
 	return vsym ~= nil and #vsym > 0 and nametable[vsym] ~= nil;
+end
+
+-- the enforcement on location isn't strict here, traversal
+-- protection is implemented on a much lower level so this is fine
+nametable = system_load("icons/"  .. setname)();
+
+-- make sure we have some standard names
+if not nametable.destroy then
+	nametable.destroy = {
+		generate = function(w)
+			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 0.1, 0.15}});
+		end
+	};
+end
+
+-- make sure we always have these
+if not nametable.minimize then
+	nametable.minimize = {
+		generate = function(w)
+			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 0.94, 0.7, 0.01}});
+		end,
+		widths = {}
+	};
+end
+
+if not nametable.maximize then
+	nametable.maximize = {
+		generate = function(w)
+			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 0.1, 0.6, 0.1}});
+		end,
+		widths = {}
+	};
+end
+
+if not nametable.placeholder then
+	nametable.placeholder = {
+		generate =
+		function(w)
+			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 1.0, 1.0}});
+		end
+	};
+end
+
+-- and safeguard so we have the width cache table
+for _, v in pairs(nametable) do
+	if not v.widths then
+		v.widths = {};
+	end
 end
