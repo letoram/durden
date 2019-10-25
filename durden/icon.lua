@@ -68,7 +68,20 @@ local function synthesize_icon(w, shader)
 	return icon;
 end
 
-function icon_synthesize(shader, w, argtbl)
+function icon_synthesize_src(name, w, shader, argtbl)
+	local fn = string.format("icons/%s/%s", setname, name);
+	local img = load_image(fn);
+	if not valid_vid(img) then
+		return;
+	end
+	for k,v in pairs(argtbl) do
+		shader_uniform(shader, k, unpack(v));
+	end
+	resample_image(img, shader, w, w);
+	return img;
+end
+
+function icon_synthesize(w, shader, argtbl)
 	for k,v in pairs(argtbl) do
 		shader_uniform(shader, k, unpack(v));
 	end
