@@ -38,8 +38,8 @@ local all_categories = {
 	"STDOUT"
 };
 
-local print_override = suppl_add_logfn("STDOUT");
-local warning_override = suppl_add_logfn("WARNING");
+local print_override = suppl_add_logfn("stdout");
+local warning_override = suppl_add_logfn("warning");
 
 print = function(...)
 	local tbl = {...};
@@ -72,7 +72,7 @@ local function toggle_monitoring(on)
 		client = "CLIENT:",
 		clipboard = "CLIPBOARD:",
 		tools = "TOOLS:",
-		warnings = "WARNINGS:",
+		warning = "WARNING:",
 		config = "CONFIG:",
 		stdout = "STDOUT:"
 	};

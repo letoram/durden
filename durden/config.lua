@@ -309,7 +309,7 @@ return {
 	tbar_textstr = "\\#ffffff ",
 
 -- icons
-	icon_set = "default.lua",
+	icon_set = "default",
 
 -- notification system
 	notifications_enable = true,

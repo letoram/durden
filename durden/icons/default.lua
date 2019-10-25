@@ -21,14 +21,20 @@
 --
 -- 3. synthesized
 -- ["myicon"] = {
---   icon_unit_circle, {radius = {"f", 0.5}, color = {"fff", 1.0, 0.0, 0.0}})
+--   generator =
+--   function(px)
+--    return icon_synthesize(
+--    	icon_unit_circle, {radius = {"f", 0.5}, color = {"fff", 1.0, 0.0, 0.0}})
+--   end
+-- }
 --
+-- and they can be mixed, i.e. if there is no direct match for a certain px size,
+-- the generator will be invoked. This is to allow both a SDF based vector synth
+-- as well as hand drawn overrides
 --
 return {
 ["terminal"] =
 {
-	[24] = {
-		"terminal_24.png",
-	}
+	[24] = "terminal_24px.png",
 }
 };
