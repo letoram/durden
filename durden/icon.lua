@@ -95,7 +95,6 @@ function icon_lookup(vsym, px_w)
 		vsym = "placeholder";
 	end
 	local ent = nametable[vsym];
-	print("lookup", vsym);
 
 -- do we have a direct match since before?
 	if ent.widths[px_w] then
@@ -117,7 +116,7 @@ function icon_lookup(vsym, px_w)
 
 	for k,v in pairs(ent) do
 		if type(k) == "number" then
-			local dist = math.abs(px_w - i);
+			local dist = math.abs(px_w - k);
 			if dist < errv then
 				errv = dist;
 				closest = k;
@@ -126,21 +125,36 @@ function icon_lookup(vsym, px_w)
 	end
 
 -- apparently wasn't one for this specific size, fallback generator(s)?
-	if closest == 0 then
-		if ent.generator then
-			ent.widths[pw_w] = ent.generator(px_w);
-		end
+	if errv > 0 and ent.generator then
+		ent.widths[px_w] = ent.generator(px_w);
+	end
 
+-- no solution at all? return placeholder, this shouldn't infinitely
+-- recurse as we always override placeholder with our own definition that
+-- has a synthesis option
+	if closest == 0 then
 		return icon_lookup("placeholder", px_w);
 	end
 
 -- do we need to load or generate?
+	local vid = ent.widths[closest];
 	if not ent.widths[closest] then
 		if type(ent[closest]) == "string" then
-			ent.widths[closest] = load_image(string.format("icons/%s/%s"));
+			local fn = string.format("icons/%s/%s", setname, ent[closest]);
+			ent.widths[closest] = load_image(fn);
+
+-- or provide some visual indicator that the icon reference was bad
+			if (not valid_vid(ent.widths[closest])) then
+				ent.widths[closest] = icon_lookup("placeholder", px_w);
+			end
+
 		elseif type(ent[closest]) == "function" then
 			ent.widths[closest] = ent[closest]();
+		else
+-- missing handler / malformed
+			warning("icon_synth:bad_type=" .. type(ent[closest]));
 		end
+		vid = ent.widths[closest];
 	end
 
 -- or really panic so we don't return a broken vid
@@ -172,7 +186,7 @@ end
 
 -- the enforcement on location isn't strict here, traversal
 -- protection is implemented on a much lower level so this is fine
-nametable = system_load("icons/"  .. setname)();
+nametable = system_load(string.format("icons/%s.lua", setname))();
 
 -- make sure we have some standard names
 if not nametable.destroy then
@@ -202,14 +216,13 @@ if not nametable.maximize then
 	};
 end
 
-if not nametable.placeholder then
-	nametable.placeholder = {
-		generate =
-		function(w)
-			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 1.0, 1.0}});
-		end
-	};
-end
+-- reserve this one for ourselves so we always have a valid fallback
+nametable.placeholder = {
+	generate =
+	function(w)
+		return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 1.0, 1.0}});
+	end
+};
 
 -- and safeguard so we have the width cache table
 for _, v in pairs(nametable) do

@@ -670,11 +670,19 @@ function suppl_valid_vsymbol(val, base)
 		val = string.to_u8(string.sub(val, 4));
 	end
 
+-- do note that the icon_ setup actually returns a factory function,
+-- this may be called repeatedly to generate different sizes of the
+-- same icon reference
 	if (string.sub(val, 1, 5) == "icon_") then
 		val = string.sub(val, 6);
 		if icon_known(val) then
 			return true, function(w)
-				return icon_lookup(val, w);
+				local vid = icon_lookup(val, w);
+				local props = image_surface_properties(vid);
+				local new = null_surface(props.width, props.height);
+				image_sharestorage(vid, new);
+				show_image(new);
+				return new;
 			end
 		end
 		return false;

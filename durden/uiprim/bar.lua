@@ -78,7 +78,11 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- just resize / relayout
 	elseif type(lbl) == "function" then
 		btn.last_lbl = lbl;
-		lbl = lbl();
+
+-- subtle on the sharing mechanics here, the ownership of the returned
+-- vid should belong to the caller, as the linking and deleting will occur
+-- here
+		lbl = lbl(btn.minh);
 		if (not valid_vid(lbl)) then
 			return;
 		end
