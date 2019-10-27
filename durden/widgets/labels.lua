@@ -21,6 +21,7 @@ local function send_input(dst, lbl)
 	dst:input_table(iotbl);
 end
 
+-- this click handler
 local function on_click(ctx, lbl, i)
 	local wnd = active_display().selected;
 	lbl = table.find_key_i(wnd.input_labels, "label", lbl);
@@ -28,7 +29,7 @@ local function on_click(ctx, lbl, i)
 		return;
 	end
 
-	send_input(wnd, wnd.input_labels[lbl][1]);
+	send_input(wnd, wnd.input_labels[lbl].label);
 end
 
 local function on_motion(ctx, lbl, i)

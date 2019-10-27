@@ -51,7 +51,7 @@ icon_colorize = build_shader(
 		void main()
 		{
 			vec4 col = texture2D(map_tu0, texco);
-			float intens = col.r * col.g * col.b / 3.0f;
+			float intens = max(max(col.r, col.g), col.b);
 			gl_FragColor = vec4(color * intens, col.a);
 		}
 	]],
@@ -205,7 +205,7 @@ nametable = system_load(string.format("icons/%s.lua", setname))();
 if not nametable.destroy then
 	nametable.destroy = {
 		generate = function(w)
-			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 0.1, 0.15}});
+			return icon_synthesize(w, icon_unit_circle, {color = {"fff", 1.0, 0.1, 0.15}});
 		end
 	};
 end
@@ -214,7 +214,7 @@ end
 if not nametable.minimize then
 	nametable.minimize = {
 		generate = function(w)
-			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 0.94, 0.7, 0.01}});
+			return icon_synthesize(w, icon_unit_circle, {color = {"fff", 0.94, 0.7, 0.01}});
 		end,
 		widths = {}
 	};
@@ -223,7 +223,7 @@ end
 if not nametable.maximize then
 	nametable.maximize = {
 		generate = function(w)
-			return icon_synthesize(icon_unit_circle, w, {color = {"fff", 0.1, 0.6, 0.1}});
+			return icon_synthesize(w, icon_unit_circle, {color = {"fff", 0.1, 0.6, 0.1}});
 		end,
 		widths = {}
 	};
@@ -233,7 +233,7 @@ end
 nametable.placeholder = {
 	generate =
 	function(w)
-		return icon_synthesize(icon_unit_circle, w, {color = {"fff", 1.0, 1.0, 1.0}});
+		return icon_synthesize(w, icon_unit_circle, {color = {"fff", 1.0, 1.0, 1.0}});
 	end
 };
 

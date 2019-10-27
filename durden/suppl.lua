@@ -681,7 +681,6 @@ function suppl_valid_vsymbol(val, base)
 				local props = image_surface_properties(vid);
 				local new = null_surface(props.width, props.height);
 				image_sharestorage(vid, new);
-				show_image(new);
 				return new;
 			end
 		end
@@ -1217,7 +1216,7 @@ function merge_dispatch(m1, m2)
 end
 
 function shared_valid_str(inv)
-	return (not inv or string.len(inv) == 0);
+	return type(inv) == "string" and #inv > 0;
 end
 
 function shared_valid01_float(inv)
