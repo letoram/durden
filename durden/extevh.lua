@@ -203,6 +203,10 @@ function(wnd, source, tbl)
 		end
 	end
 
+-- we don't have a means of knowing 'when' the hints are over, as they can
+-- be part of a dynamically expanding set, so at least track the last time
+-- something was changed so that other handlers can take a look at that.
+	wnd.label_update = CLOCK;
 	table.insert(wnd.input_labels, ent);
 end
 

@@ -23,7 +23,7 @@
 -- ["myicon"] = {
 --   generator =
 --   function(px)
---    return icon_synthesize(
+--    return icon_synthesize(px,
 --    	icon_unit_circle, {radius = {"f", 0.5}, color = {"fff", 1.0, 0.0, 0.0}})
 --   end
 -- }
@@ -37,7 +37,7 @@ return {
 {
 	[24] = function()
 		return icon_synthesize_src("terminal_24px.png", 24,
-			icon_colorize, {color = {"fff", 1.0, 0.0, 0.0}});
+			icon_colorize, {color = {"fff", 0.0, 1.0, 1.0}});
 	end,
 }
 };

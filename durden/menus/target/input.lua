@@ -5,7 +5,7 @@ local function run_input_label(wnd, v)
 
 	local iotbl = {
 		kind = "digital",
-		label = v[1],
+		label = v.label,
 		translated = true,
 		active = true,
 		devid = 8,
@@ -25,7 +25,6 @@ local function build_labelmenu()
 
 	local res = {};
 	for k,v in ipairs(wnd.input_labels) do
-
 		table.insert(res, {
 			name = "input_" .. v.label,
 			label = string.format("%s%s", v.label,

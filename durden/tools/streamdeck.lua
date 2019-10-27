@@ -132,7 +132,7 @@ local function gen_labels(ctx, dst, raw)
 
 -- but icons for common/known labels might also be present
 		elseif icon_known(v.label) then
-			sym = icon_lookup(v.labsl, ctx.cell_w);
+			sym = icon_lookup(v.labsl, ctx.icon_w);
 		end
 
 -- 'show raw' means that we can always use the label at least
@@ -141,7 +141,7 @@ local function gen_labels(ctx, dst, raw)
 			table.insert(dst, { vid = sym, label = label, action =
 			function()
 				if wnd.input_table then
-					run_label(wnd, v[1]);
+					run_label(wnd, v.label);
 				end
 			end
 			});
@@ -155,12 +155,15 @@ local function gen_custom(ctx, dst)
 	end
 
 	for i,v in ipairs(ctx.custom) do
-		local ok, hnd = suppl_valid_vsymbol(v[1], ctx.cell_w);
+		local ok, hnd = suppl_valid_vsymbol(v[1], ctx.icon_w);
 
 		if ok then
+-- ugly little caveate, vsymbol actually creates a copy with its generator
+-- function, while the raw icon_ calls return a reference, so we need to
+-- make sure to delete the vid returned from the generator
 			if type(hnd) == "function" then
 				vid = hnd(ctx.cell_w);
-				table.insert(dst, {vid = hnd(ctx.cell_w), action = v[2]});
+				table.insert(dst, {delete_vid = true, vid = hnd(ctx.icon_w), action = v[2]});
 -- this can be either a string or 'text as icon' the choice is
 -- open if it should be set as vid or label. We have no good way of
 -- probing or controlling size, and it is a hazzle to figure out
@@ -308,6 +311,9 @@ local function project_cell(tbl, v, ent)
 	if icon then
 		image_sharestorage(ent.vid, v.icon);
 		show_image(v.icon);
+		if (ent.delete_vid) then
+			delete_image(ent.vid);
+		end
 	else
 		hide_image(v.icon);
 	end
@@ -334,7 +340,7 @@ local function project_buttons(tbl)
 -- back one page
 	if tbl.set_position > 1 then
 		project_cell(tbl, tbl.buttons[di], {
-			label = '...',
+			label = '..',
 			action = function()
 				tbl.set_position = tbl.set_position - #tbl.buttons + 1;
 -- will have both back and forward
@@ -342,6 +348,7 @@ local function project_buttons(tbl)
 					tbl.set_position = tbl.set_position + 1;
 				end
 				project_buttons(tbl);
+				update_rt(tbl);
 			end
 		});
 		di = di + 1;
@@ -356,11 +363,12 @@ local function project_buttons(tbl)
 -- write forward- page button or finished?
 	if tbl.last_set[ri+1] then
 		project_cell(tbl, tbl.buttons[di], {
-			label = '...',
+			label = '..',
 			action = function()
 				tbl.last_position = tbl.set_position;
 				tbl.set_position = ri;
 				project_buttons(tbl);
+				update_rt(tbl);
 			end
 		});
 	else
@@ -449,6 +457,16 @@ end
 local function update_lbl(btn, str, icon)
 	if not str or #str == 0 then
 		hide_image(btn.label);
+		local bw = btn.border + btn.border;
+		local props = image_storage_properties(btn.icon);
+		if (props.width < btn.w - bw) then
+			resize_image(btn.icon, props.width, props.height);
+			center_image(btn.icon, btn.bg, ANCHOR_C);
+		else
+			resize_image(btn.icon, btn.w - bw, btn.h - bw);
+			move_image(btn.icon, btn.border, btn.border);
+		end
+
 		return;
 	end
 
@@ -510,7 +528,7 @@ end
 -- then just moved to suppl so we can use it for other 'button grids' as
 -- well.
 local function build_button(w, h, border, fontstr, fontsz)
-	local cell_bg = color_surface(w, h, 128, 0, 0);
+	local cell_bg = color_surface(w, h, 0, 0, 0);
 	if not valid_vid(cell_bg) then
 		return;
 	end
@@ -579,7 +597,7 @@ local function build_rendertarget(tbl, source, bind)
 	end
 
 -- then the background image that will be used for the pipeline
-	local bg = color_surface(w, h, 0, 255, 0);
+	local bg = fill_surface(w, h, unpack(tbl.bgc));
 	if not valid_vid(bg) then
 		delete_image(buf);
 		return;
@@ -729,12 +747,12 @@ local function add_device(ctx, val)
 		border = 4,
 		cell_w = 72,
 		cell_h = 72,
+		icon_w = 24,
 		rows = 3,
 		cols = 5,
 		font_str = "\\f,%d" .. HC_PALETTE[1],
 		font_sz = 12,
 		density = 36.171,
-		background = nil,
 		tickrate = 1,
 		opacity = 0.5,
 		overlay_scale = 1,
@@ -742,6 +760,7 @@ local function add_device(ctx, val)
 		got_rt = BADID,
 		priorities = {},
 		buttons = {},
+		bgc = {0, 0, 0},
 		update = relayout_grid
 	});
 end
@@ -775,7 +794,7 @@ local function close_cpoint(name)
 		return;
 	end
 	suppl_delete_image_if(cps[i].vid);
-	timer_delete("streamdeck_" .. tbl.name);
+	timer_delete("streamdeck_" .. name);
 	table.remove(cps, i);
 end
 
@@ -922,7 +941,8 @@ local function gen_mode_menu(tbl)
 					if not path or #path == 0 then
 						return;
 					end
-					log(string.format("name=streamdeck:kind=status:mode=dynamic:dev=%s:path=%s", cp, path));
+					log(string.format(
+						"name=streamdeck:kind=status:mode=dynamic:dev=%s:path=%s", cp, path));
 					tbl.update = relayout_menu;
 					tbl.menu_path = {path};
 					tbl:update();
@@ -930,6 +950,66 @@ local function gen_mode_menu(tbl)
 			end
 		}
 	};
+end
+
+local function load_bg(tbl, val)
+	load_image_asynch(val, function(src, stat)
+		if stat.kind == "loaded" and valid_vid(tbl.bg) then
+			image_sharestorage(src, tbl.bg);
+			update_rt(tbl);
+		end
+		delete_image(src);
+	end)
+end
+
+local function gen_bg_menu(tbl)
+	local res = {};
+	table.insert(res, {
+		name = "image_browse",
+		label = "Image Browse",
+		interactive = true,
+		block_external = true,
+		description = "Browse for an image to set as background",
+		kind = "action",
+		handler = function()
+			dispatch_symbol_bind(
+			function(path)
+				if (path and #path > 0) then
+					load_bg(tbl, path);
+				end
+			end, "/browse/shared");
+		end
+	});
+	table.insert(res, {
+		name = "image",
+		label = "Image",
+		description = "Set static background image based on a shared-resource relative path",
+		kind = "value",
+		validator = function(val)
+			if not shared_valid_str(val) then
+				return;
+			end
+			return resource(val);
+		end,
+		handler = function(ctx, val)
+			load_bg(tbl, val);
+		end,
+	});
+	table.insert(res, {
+			name = "color",
+			label = "Color",
+			description = "Set background to a solid color",
+	});
+	suppl_append_color_menu(tbl.bgc, res[#res],
+		function(str, r, g, b)
+			tbl.bgc = {r, g, b};
+			local tmp = fill_surface(32, 32, r, g, b);
+			if (valid_vid(tbl.bg) and valid_vid(tmp)) then
+				image_sharestorage(tmp, tbl.bg);
+			end
+		end
+	);
+	return res;
 end
 
 local function gen_map_menu(tbl)
@@ -1076,6 +1156,24 @@ local function gen_cpoint_menu(name, tbl)
 		end
 	});
 	table.insert(res, {
+		name = "icon_w",
+		kind = "value",
+		label = "Width (icon)",
+		description = "Change the requested icon base dimension",
+		initial = function() return tostring(tbl.icon_w); end,
+		hint = "(8 <= n <= (cell_w - 2*border))",
+		validator = function(val)
+			local num = tonumber(val);
+			if not num then
+				return false;
+			end
+			return num >= 8 and num <= tbl.cell_w - tbl.border * 2;
+		end,
+		handler = function(ctx, val)
+			tbl.icon_w = tonumber(val);
+		end
+	});
+	table.insert(res, {
 		name = "cell_w",
 		kind = "value",
 		label = "Width (cell)",
@@ -1134,6 +1232,16 @@ local function gen_cpoint_menu(name, tbl)
 		handler = function()
 			return gen_remove_custom(tbl);
 		end
+	});
+	table.insert(res, {
+		name = "background",
+		label = "Background",
+		description = "Set the color or contents of the device background layer",
+		kind = "action",
+		submenu = true,
+		handler = function()
+			return gen_bg_menu(tbl);
+		end,
 	});
 	return res;
 end
@@ -1194,4 +1302,3 @@ menus_register("global", "tools",
 	submenu = true,
 	handler = menu
 });
-

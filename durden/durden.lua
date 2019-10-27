@@ -214,6 +214,9 @@ load_configure_mouse = function()
 		return vid;
 	end
 
+-- ideally we should switch this over to use the same icon setup and configuration
+-- as the normal icon controls now that they exist, should give SDF resampling etc.
+-- for a cheaper price and not use terrible scaling in mixed-DPI
 	local set = gconfig_get("mouse_cursorset");
 	if (gconfig_get("mouse_mode") == "native") then
 		mouse_setup_native(load_cursor("default", set), 0, 0);

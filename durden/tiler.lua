@@ -1221,6 +1221,7 @@ local function drop_fullscreen(space, swap)
 -- restore 'full-screen only' properties
 	space.hook_block = true;
 	local dw = space.selected;
+	blend_image(dw.titlebar.anchor, dw.fs_copy.tbar);
 	dw:set_titlebar(dw.fs_copy.show_titlebar);
 	dw:set_border(dw.fs_copy.show_border);
 
@@ -1443,9 +1444,18 @@ local function set_fullscreen(space)
 			show_border = dw.show_border,
 			show_titlebar = dw.show_titlebar,
 			width = dw.width,
-			height = dw.height
+			height = dw.height,
+			tbar = image_surface_properties(dw.titlebar.anchor).opacity
 		};
 	end
+
+-- shouldn't be needed due to the 'set titlebar' thing, but there are so
+-- many weird edge conditions on the 'merge titlebar to statusbar', client-
+-- set decorations, ... that this is just the most robust without serious
+-- digging
+	hide_image(dw.titlebar.anchor);
+
+-- not all clients provide a canvas surface that match
 	dw.centered = true;
 	dw.fullscreen = space.last_mode;
 	space.hook_block = true;
