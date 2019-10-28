@@ -136,16 +136,6 @@ return {
 	ws_child_default = "parent",
 	ws_popup = "wsbtn",
 
--- preview covers the generation / tracking of a downsampled / filtered
--- copy of each workstation based on the current rendertarget. It's also used
--- for features like brightness based transition speed scaling, ambience LEDs,
--- lockscreen and lbar background
-	ws_preview = false,
-	ws_preview_scale = 0.3,
-	ws_preview_shader = "noalpha",
-	ws_preview_rate = 5,
-	ws_preview_metrics = false,
-
 -- per window toggle, global default here
 	hide_titlebar = false,
 

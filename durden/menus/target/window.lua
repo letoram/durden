@@ -340,7 +340,7 @@ local function remove_button(wnd, dir, lbl)
 				table.insert(res, {
 					name = tostring(i),
 					label = group .. "_" .. tostring(i),
-					description = "Button Label: " .. v.lbl,
+					description = string.format("Button Label: %s", v.lbl),
 					kind = "action",
 					handler = function()
 						table.remove(list, i);
