@@ -365,6 +365,7 @@ local function wnd_destroy(wnd, message)
 		end
 	end
 
+-- reactivate the statusbar merging
 	if (wm.selected) then
 		wnd_titlebar_to_statusbar(wm.selected);
 	end
@@ -1783,6 +1784,92 @@ local function workspace_listener(ws, key, cbfun)
 	ws.listeners[key] = cbfun;
 end
 
+local function workspace_preview(space, width, height, n_contrib, rate)
+-- always return a vid, even if black
+	if not space then
+		return;
+	end
+
+-- filter out the n contributors with the largest surface area
+	local lst = space:linearize();
+	table.sort(lst, function(a, b)
+		return (a.width * a.height) > (b.width * b.height);
+	end);
+
+	local wset = {};
+	local n = n_contrib > #lst and #lst or n_contrib;
+	for i=1,n_contrib do
+		table.insert(wset, lst[i]);
+	end
+
+-- now build miniature border-less windows with the same surface,
+-- this is another one of those where a lower level mip would be nice
+	local wf = width / space.wm.width;
+	local hf = height / space.wm.height;
+
+	local set = {};
+-- use background if available
+	if (valid_vid(space.background)) then
+		local nsrf = null_surface(width, height);
+		if valid_vid(nsrf) then
+			show_image(nsrf);
+			image_sharestorage(space.background, nsrf);
+			table.insert(set, nsrf);
+		end
+	end
+
+-- then add the selection of miniatures
+	for _,v in ipairs(wset) do
+		local nsrf = null_surface(
+			math.clamp(v.width * wf, 1, width),
+			math.clamp(v.height * hf, 1, height)
+		);
+		if (valid_vid(nsrf)) then
+			image_sharestorage(v.canvas, nsrf);
+			show_image(nsrf);
+			move_image(nsrf, v.x * wf, v.y * hf);
+			order_image(nsrf, image_surface_resolve(v.canvas).order);
+			table.insert(set, nsrf);
+		end
+
+-- there is more interesting things that can be done here for sure,
+-- one paper (featur preserving downscaling) went into a 2-pass setup
+-- with first pass doing a box-filter, then using that to calculate
+-- a weight matrix used for convolution, as way of generating the
+-- icons but preserving identification attributes.
+		shader_setup(nsrf, "ui", "miniature", "active");
+	end
+
+	if #set == 0 then
+		return;
+	end
+
+-- build the rendertarget and step it, but flush rtgt on failure
+	local buf = alloc_surface(width, height);
+	if not valid_vid(buf) then
+		for _,v in ipairs(set) do
+			delete_image(v);
+		end
+		return;
+	end
+
+-- set the rendertarget and make sure it has contents and that we
+-- are not out of rendertargets (FBO allocation limit)
+	if not (define_rendertarget(buf, set,
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, rate)) then
+		for _,v in ipairs(set) do
+			delete_image(v);
+		end
+		delete_image(buf);
+		return;
+	else
+		rendertarget_forceupdate(buf);
+	end
+
+-- caller is responsible for cleanup
+	return buf;
+end
+
 create_workspace = function(wm, anim)
 	if (not wm) then
 		return;
@@ -1797,6 +1884,7 @@ create_workspace = function(wm, anim)
 		save = workspace_save,
 		linearize = linearize,
 		lost = workspace_lost,
+		preview = workspace_preview,
 
 -- different layout modes, patch here and workspace_set to add more
 		fullscreen = function(ws) workspace_set(ws, "fullscreen"); end,
@@ -1832,12 +1920,8 @@ create_workspace = function(wm, anim)
 	if (wm.background_name) then
 		res:set_background(wm.background_name);
 	end
-	res:activate(anim);
 
-	if (gconfig_get("ws_preview")) then
-		local scalef = gconfig_get("ws_preview_scale");
-		res.preview = alloc_surface(scalef * wm.width, scalef * wm.height);
-	end
+	res:activate(anim);
 	return res;
 end
 
@@ -5237,12 +5321,6 @@ function tiler_create(width, height, opts)
 	end
 
 	res:tile_update();
-	if (gconfig_get("ws_preview")) then
-		res:toggle_preview(true, gconfig_get("ws_preview_scale"),
-			gconfig_get("ws_preview_rate"), gconfig_get("ws_preview_metrics"),
-			gconfig_get("ws_preview_shader")
-		);
-	end
 
 	for _,v in ipairs(create_listeners) do
 		v(res);

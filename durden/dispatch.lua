@@ -343,11 +343,13 @@ function dispatch_symbol_wnd(wnd, sym)
 		dispatch_symbol(sym);
 	end)
 
--- might have been removed while running, so check that first
-	if (old_sel and old_sel.destroy) then
+-- the symbol might have actually destroyed the window or caused a change
+-- in selection, so not always save to revert, but might also wanted to
+-- run a command that changes selection relative to the target window.
+	if wm.selected == wnd and old_sel.select then
 		wm.selected = old_sel;
-	else
-		wm.selected = nil;
+	elseif old_sel.select then
+		old_sel:select();
 	end
 end
 

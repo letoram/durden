@@ -80,6 +80,7 @@ end
 local function gen_tbar(ctx, dst)
 	local wnd = active_display().selected;
 	if not wnd then
+		log("tbar:no_group");
 		return;
 	end
 
@@ -116,8 +117,11 @@ local function gen_labels(ctx, dst, raw)
 -- label set (or when it is completed even), no nice solution for that
 -- at the moment, so possibly need to go with a refresh timer
 	if not wnd or not wnd.input_labels then
+		log("wnd_lack_labels");
 		return;
 	end
+
+	ctx.last_label = CLOCK;
 
 -- filter if not raw and no vsymbol, otherwise bias on vsym then fallback
 -- to raw icon label and let the caller figure out how to raster
@@ -162,7 +166,6 @@ local function gen_custom(ctx, dst)
 -- function, while the raw icon_ calls return a reference, so we need to
 -- make sure to delete the vid returned from the generator
 			if type(hnd) == "function" then
-				vid = hnd(ctx.cell_w);
 				table.insert(dst, {delete_vid = true, vid = hnd(ctx.icon_w), action = v[2]});
 -- this can be either a string or 'text as icon' the choice is
 -- open if it should be set as vid or label. We have no good way of
@@ -215,18 +218,21 @@ local function gen_windows(ctx, dst)
 end
 
 local function gen_ws(ctx, dst)
--- The preview part is more complicated, as we need to sweep all alloced workspaces,
--- collect the n biggest windows and get icon or color representation, add
--- drawing hooks to the button allocation and in that hook draw/move/position.
--- This is not difficult on its own, but it'd be nicer having that as a normal
--- pager tool first and then just re-use the code here.
 	local tiler = active_display();
 
+-- most of the magic happens in space:preview which build a preview
+-- rendertarget, it is a bit too expensive to just let it roll on a refresh
+-- timer, but that setting should be kept elsewhere
 	for i=1,10 do
-		if tiler.spaces[i] and #tiler.spaces[i].children > 0 and i ~= tiler.space_ind then
+		local space = tiler.spaces[i];
+		if space and #space.children > 0 and i ~= tiler.space_ind then
 			local label = tiler.spaces[i].label or tostring(i);
+			local vid = space:preview(ctx.cell_w * 2, ctx.cell_h * 2, 5, 0);
+
 			table.insert(dst, {
 				label = label,
+				vid = vid,
+				delete_vid = true,
 				action = function()
 					dispatch_symbol("/global/workspace/switch/switch_" .. tostring(i));
 				end
@@ -270,20 +276,12 @@ local function update_rt(tbl)
 		return;
 	end
 
-	if not tbl.dynamic then
-		if not tbl.timer_suspended then
-			timer_suspend("streamdeck_" .. tbl.name);
-			tbl.timer_suspended = true;
-		end
-	elseif tbl.timer_suspended then
-		tbl.timer_suspended = false;
-		timer_resume("streamdeck_" .. tbl.name);
-	end
+-- reset the timer
+	tbl.left = tbl.force_rate;
 
 -- redraw, there is a possible optimization/early-out here if we add
 -- a method to query the tick.fract stamp of when the storage was last
 -- updated, and compared to our run here.
-	rendertarget_forceupdate(tbl.got_rt, rate);
 	rendertarget_forceupdate(tbl.got_rt);
 
 -- a forced update does not imply a readback request, so we have to
@@ -330,49 +328,93 @@ local function project_buttons(tbl)
 		for i,v in ipairs(tbl.buttons) do
 			project_cell(tbl, v, tbl.last_set[i]);
 		end
+		tbl.set_position = 1;
 		return;
 	end
 
--- write-dst, read-srv
-	local di = 1;
+-- the way pagination is done is quite complicated and costly as it incurs
+-- building the entire set everytime, for some entries, like workspace icons,
+-- this - stings -
+-- at the same time, infinite time between '..' invocations can happen,
+-- so caching the set is in itself not a good idea.
+
+-- four cases:
+-- 1. on first page, need to add '..' forward button
+-- 2. on middle page, need to add '..' forward and back
+-- 3. on last page, need to add '..'  back
+-- 4. on a page that is no longer valid, need to re-align
+--
+-- case 4, but set size is still too large
 	local ri = tbl.set_position;
+	local nb = #tbl.buttons;
+	local di = 1;
+	local have_back = false;
+	local have_fwd = false;
 
--- back one page
-	if tbl.set_position > 1 then
-		project_cell(tbl, tbl.buttons[di], {
-			label = '..',
-			action = function()
-				tbl.set_position = tbl.set_position - #tbl.buttons + 1;
--- will have both back and forward
-				if tbl.set_position > 1 then
-					tbl.set_position = tbl.set_position + 1;
-				end
-				project_buttons(tbl);
-				update_rt(tbl);
-			end
-		});
-		di = di + 1;
+-- 4 (will transform into 2 or 3)
+	if ri > #tbl.last_set then
+		nb = nb - 1;
+		ri = #tbl.last_set - nb;
 	end
 
-	for i=di,#tbl.buttons-1 do
-		project_cell(tbl, tbl.buttons[di], tbl.last_set[ri]);
-		di = di + 1;
-		ri = ri + 1;
-	end
+-- 1.
+	if ri == 1 then
+		have_back = false;
+		have_fwd = true;
+		nb = #tbl.buttons - 1;
 
--- write forward- page button or finished?
-	if tbl.last_set[ri+1] then
-		project_cell(tbl, tbl.buttons[di], {
-			label = '..',
-			action = function()
-				tbl.last_position = tbl.set_position;
-				tbl.set_position = ri;
-				project_buttons(tbl);
-				update_rt(tbl);
-			end
-		});
+-- 2.
+	elseif (#tbl.last_set - ri + 1) > (#tbl.buttons - 1) then
+		have_back = true;
+		have_fwd = true;
+		nb = #tbl.buttons - 2;
+		di = 2;
+
+-- 3.
 	else
-		project_cell(tbl, tbl.buttons[di], tbl.last_set[ri]);
+		have_back = true;
+		have_fwd = false;
+		nb = #tbl.buttons - 1;
+		di = 2;
+	end
+
+-- fill normal buttons
+	local count = 0;
+	for i=0,nb-1 do
+		project_cell(tbl, tbl.buttons[di+i], tbl.last_set[ri + i]);
+		if tbl.last_set[ri + i] then
+			count = count + 1;
+		end
+	end
+
+-- add back button
+	if have_back then
+		project_cell(tbl, tbl.buttons[1], {
+			label = '..',
+			action = function()
+				local nb = #tbl.buttons;
+
+-- back would land us in case 1. or 2?
+				if (tbl.set_position - (#tbl.buttons - 1) <= 1) then
+					tbl.set_position = 1;
+				else
+					tbl.set_position = tbl.set_position - (#tbl.buttons - 2);
+				end
+
+				tbl:update();
+			end
+		});
+	end
+
+	if have_fwd then
+-- write forward- page button or finished?
+		project_cell(tbl, tbl.buttons[di + count], {
+			label = '...',
+			action = function()
+				tbl.set_position = ri + count;
+				tbl:update();
+			end
+		});
 	end
 end
 
@@ -440,18 +482,26 @@ relayout_grid = function(tbl)
 		return;
 	end
 
+-- priorities might have changed, so reset dynamic state tracking
 	log("name=streamdeck:kind=relayout:dev=" .. tbl.name);
 	tbl.dynamic = false;
-
 	local list = build_buttonlist(tbl);
 	log("name=streamdeck:kind=status:size=" ..
 		tostring(#list) .. ":limit=" .. tostring(#tbl.buttons));
 
+-- remember new list so it is used in the reprojection
 	tbl.last_set = list;
-	tbl.set_position = 1;
 	project_buttons(tbl);
-
 	update_rt(tbl);
+
+-- kill any dangling 'delete me' so we don't hold onto RTs
+	if tbl.last_set then
+		for _,v in ipairs(tbl.last_set) do
+			if v.delete_vid and valid_vid(v.vid) then
+				delete_image(v.vid);
+			end
+		end
+	end
 end
 
 local function update_lbl(btn, str, icon)
@@ -516,11 +566,23 @@ local function update_lbl(btn, str, icon)
 	if not icon then
 		y = btn.h * 0.5 - props.height * 0.5;
 	else
--- either blend label with background over icon, or scale down
--- icon to account for text size and have text at bottom
+-- two options, either give the label a background, or rescale
+-- and reposition the icon, go with the latter
+		resize_image(btn.icon, btn.w - btn.border * 2, y - btn.border);
+		move_image(btn.icon, btn.border, btn.border);
 	end
 
 	move_image(btn.label, x, y);
+end
+
+local function load_bg(tbl, val)
+	load_image_asynch(val, function(src, stat)
+		if stat.kind == "loaded" and valid_vid(tbl.bg) then
+			image_sharestorage(src, tbl.bg);
+			update_rt(tbl);
+		end
+		delete_image(src);
+	end)
 end
 
 -- build the raw structure of an icon/ button (background, icon, label)
@@ -603,6 +665,11 @@ local function build_rendertarget(tbl, source, bind)
 		return;
 	end
 
+-- an image override might also be defined
+	if tbl.bg_source then
+		load_bg(tbl, tbl.bg_source);
+	end
+
 -- setup the rendertarget itself and connect to the frameserver,
 -- then tie the lifecycle of it to the frameserver vid as well.
 -- The rendertarget will not update by itself, but rather trigger
@@ -657,8 +724,38 @@ local function build_rendertarget(tbl, source, bind)
 -- instead of letting the rendertarget update on a clock basis, bind
 -- it to a tick timer with some preset rate, and let the update function
 -- enable / disable based on load.
-	timer_add_periodic("streamdeck_" .. tbl.name, 1,
-		false, function() update_rt(tbl); end, true);
+	timer_add_periodic("streamdeck_" .. tbl.name, 1, false,
+		function()
+
+-- check if the # of labels or the button state of a window has changed,
+-- as there are no stable event-hooks to use for those
+			local wnd = active_display().selected;
+			local label_update = wnd and tbl.last_label and
+				wnd.label_update and tbl.last_label < wnd.label_update;
+
+			if (label_update) then
+				tbl:update();
+				return;
+			end
+
+-- This will not cause (the expensive) reprojection of buttons, only
+-- stepping frames so that sampled icons etc. reflect something more
+-- recent. A big optimization here would be to also track and detect
+-- the number of dirty sources.
+			if (tbl.force_rate > 0) then
+				tbl.left = tbl.left - 1;
+				if tbl.left == 0 then
+					tbl:update();
+				end
+
+-- Dynamic will "only" cause resampling, still expensive but a lot less
+-- than full cell rebuild / reprojection
+			elseif tbl.dynamic then
+				update_rt(tbl);
+			end
+
+		end, true
+	);
 end
 
 primary_handler = function(tbl, source, status, iotbl)
@@ -745,6 +842,7 @@ local function add_device(ctx, val)
 		name = val,
 		vid = vid,
 		border = 4,
+		force_rate = 0,
 		cell_w = 72,
 		cell_h = 72,
 		icon_w = 24,
@@ -761,6 +859,7 @@ local function add_device(ctx, val)
 		priorities = {},
 		buttons = {},
 		bgc = {0, 0, 0},
+		set_position = 1,
 		update = relayout_grid
 	});
 end
@@ -874,49 +973,6 @@ local function gen_remove_custom(tbl)
 	return res;
 end
 
-local function gen_olay_menu(tbl)
-	local res = {};
-	table.insert(res, {
-		label = "Show",
-		name = "show",
-		kind = "action",
-		eval = function()
-			return not tbl.have_olay;
-		end,
-		handler = function()
-			local surf = null_surface
-		end
-	});
-	table.insert(res, {
-		label = "Scale",
-		name = "scale",
-		kind = "value",
-		description = "Set draw scale for the overlay surface",
-		validator = gen_valid_float(1, 4),
-		handler = function(ctx, val)
-			tbl.overlay_scale = tonumber(val);
-		end
-	});
-	table.insert(res, {
-		label = "Hide",
-		name = "hide",
-		kind = "action",
-		description = "Hide the screen overlay surface",
-		eval = function()
-			return tbl.have_olay;
-		end,
-		handler = function()
-			if valid_vid(tbl.have_olay) then
-				blend_image(tbl.have_olay, 0.0, gconfig_get("animation"));
-				expire_image(tbl.have_olay, gconfig_get("animation"));
-			end
-			mouse_drophandler(tbl.olay_mouse);
-			tbl.have_olay = nil;
-		end
-	});
-	return res;
-end
-
 local function gen_mode_menu(tbl)
 	return {
 		{
@@ -930,36 +986,28 @@ local function gen_mode_menu(tbl)
 				tbl:update();
 			end
 		},
+-- this is actually called from the custom menu buttons, just belong in this
+-- group too for testing / development and example to more relevant future
+-- mappings.
 		{
 			name = "menu",
 			label = "Menu",
 			description = "Map action entries from a menu path",
-			kind = "action",
+			kind = "value",
+			eval = function() return false; end,
+			validator = function(val)
+				return shared_valid_str(val);
+			end,
 			handler = function(ctx, val)
-				dispatch_symbol_bind(
-				function(path)
-					if not path or #path == 0 then
-						return;
-					end
-					log(string.format(
-						"name=streamdeck:kind=status:mode=dynamic:dev=%s:path=%s", cp, path));
-					tbl.update = relayout_menu;
-					tbl.menu_path = {path};
-					tbl:update();
-				end);
+				tbl.last_update = tbl.update;
+				tbl.update = relayout_menu;
+				tbl.menu_path = {val};
+				tbl:update();
 			end
 		}
+-- other interesting inputs to see here would be window selection based on
+-- contents, which wouldn't be that big of a stretch
 	};
-end
-
-local function load_bg(tbl, val)
-	load_image_asynch(val, function(src, stat)
-		if stat.kind == "loaded" and valid_vid(tbl.bg) then
-			image_sharestorage(src, tbl.bg);
-			update_rt(tbl);
-		end
-		delete_image(src);
-	end)
 end
 
 local function gen_bg_menu(tbl)
@@ -975,7 +1023,10 @@ local function gen_bg_menu(tbl)
 			dispatch_symbol_bind(
 			function(path)
 				if (path and #path > 0) then
-					load_bg(tbl, path);
+					tbl.bg_source = path;
+					if valid_vid(tbl.bg) then
+						load_bg(tbl, path);
+					end
 				end
 			end, "/browse/shared");
 		end
@@ -992,7 +1043,10 @@ local function gen_bg_menu(tbl)
 			return resource(val);
 		end,
 		handler = function(ctx, val)
-			load_bg(tbl, val);
+			tbl.bg_source = val;
+			if valid_vid(tbl.bg) then
+				load_bg(tbl, val);
+			end
 		end,
 	});
 	table.insert(res, {
@@ -1221,6 +1275,32 @@ local function gen_cpoint_menu(name, tbl)
 			end);
 		end
 	});
+-- disabled for the time being, some things needed in the menu system for
+-- this to be really useful (value- entries need stepping range controls, ...)
+	table.insert(res, {
+		name = "custom_menu",
+		kind = "value",
+		label = "Menu Button",
+		eval = function()
+			return false;
+		end,
+		description = "Add a button that triggers a custom menu",
+		widget = "special:icon",
+		validator = function(val)
+			return suppl_valid_vsymbol(val);
+		end,
+		handler = function(ctx, val)
+			dispatch_symbol_bind(
+			function(path)
+				if not path or #path == 0 then
+					return;
+				end
+				table.insert(tbl.custom, {val, path});
+				tbl:update();
+			end);
+		end
+
+	});
 	table.insert(res, {
 		name = "remove_custom",
 		kind = "action",
@@ -1242,6 +1322,18 @@ local function gen_cpoint_menu(name, tbl)
 		handler = function()
 			return gen_bg_menu(tbl);
 		end,
+	});
+	table.insert(res, {
+		name = "refresh",
+		kind = "value",
+		label = "Refresh",
+		description = "Force- set an approximate refresh timer regardless of contents",
+		hint = "(0 <= n < 100)",
+		validator = gen_valid_num(0, 100),
+		handler = function(ctx, val)
+			tbl.force_rate = tonumber(val);
+			tbl.left = tonumber(val);
+		end
 	});
 	return res;
 end
