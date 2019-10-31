@@ -179,6 +179,10 @@ local function menu_to_fmtstr(menu, options)
 			prefix = text_valid
 		end
 
+		if v.format then
+			prefix = prefix .. v.format
+		end
+
 		table.insert(text_list, prefix .. fmt_suffix)
 		table.insert(text_list, v.label .. suffix)
 		table.insert(sym_list, v.shortcut and v.shortcut or "")
@@ -354,9 +358,12 @@ function(menu, options)
 			table.insert(lmenu, tbl_copy(v));
 			local i = #lmenu
 			lmenu[i].active = true
-			if lmenu[i].eval ~= nil and lmenu[i].eval and lmenu[i].eval() ~= true then
+			if lmenu[i].eval ~= nil then
+				if lmenu[i].eval == false or
+					(type(lmenu[i].eval) == "function" and lmenu[i].eval() ~= true) then
 				lmenu[i].active = false
 				active = active - 1
+				end
 			end
 		end
 	end

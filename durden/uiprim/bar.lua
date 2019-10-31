@@ -235,6 +235,11 @@ local function button_tick(btn)
 	end
 end
 
+local function button_description(btn, descr)
+-- "on hover"
+	btn.description = descr;
+end
+
 -- [anchor] required vid to attach to for ordering / masking
 -- [bshname, lblshname] shaders in ui group to use
 -- [lbl] vid or text string to use asx label
@@ -269,7 +274,8 @@ function uiprim_button(anchor, bgshname,
 		show = button_show,
 		tick = button_tick,
 		update_mh = button_mh,
-		constrain = button_constrain
+		constrain = button_constrain,
+		set_description = button_description
 	};
 	res.lbl_tag = res.name .. "_label";
 
