@@ -70,6 +70,10 @@ Added 'gestures' for idle enter and idle return.
 This allows external mini displays (touchbars etc.) to be hooked up and
 act as restricted input devices as well as custom widget mappings
 
+* new tool: todo
+This tool allows for simple tracking of todo tasks that integrate with
+the notification system, status bars and so on.
+
 Breaking:
 
 Minor / Fixes:
