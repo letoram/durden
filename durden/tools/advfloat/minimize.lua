@@ -2,6 +2,11 @@
 gconfig_register("advfloat_hide", "statusbar-left");
 
 local function hide_tgt(wnd, tgt)
+-- prevent dual invocation (from ipc or wherever)
+	if wnd.minimize_btn then
+		return;
+	end
+
 	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
 		local old_show = wnd.show;
 		local btn;
@@ -9,6 +14,7 @@ local function hide_tgt(wnd, tgt)
 -- deal with window being destroyed while we're hidden
 		local on_destroy = function()
 			if (btn) then
+				wnd.minimize_btn = nil;
 				btn:destroy();
 			end
 		end;
@@ -25,6 +31,7 @@ local function hide_tgt(wnd, tgt)
 			{
 				click = function()
 					local props = image_surface_resolve(btn.bg);
+					wnd.minimize_btn = nil;
 					wnd.show = old_show;
 					wnd:drop_handler("destroy", on_destroy);
 					btn:destroy();
@@ -61,6 +68,7 @@ local function hide_tgt(wnd, tgt)
 -- safeguard against window being destroyed while hidden
 		wnd:add_handler("destroy", on_destroy);
 		wnd:deselect();
+		wnd.minimize_btn = btn;
 
 -- event handler registered? (flair tool)
 		if (#wm.on_wnd_hide > 0) then
