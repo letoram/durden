@@ -129,13 +129,13 @@ local function valid_portpass(val)
 	return true, tonumber(tbl[1]), tbl[2];
 end
 
-local function gen_share_menu(active)
-return {
+local function gen_sharemenu(label, proto, active)
+return
 {
-	name = "vnc",
-	label = "VNC/RDP",
+	name = proto,
+	label = label,
 	kind = "value",
-	description = "Share the window contents remotely, blocking input devices",
+	description = "Share the window contents remotely",
 	initial = function()
 		return tostring(gconfig_get("remote_port")) .. ":" .. gconfig_get("remote_pass");
 	end,
@@ -149,14 +149,20 @@ return {
 			_, port, pass = ctx.validator(val);
 		end
 
-		local argstr = string.format("protocol=vnc:port=%d:pass=%s", port, pass);
-		local name = "vnc" .. (active and "_act" or "_pass") .. "_" .. tostring(port);
+		local argstr = string.format("protocol=%s:port=%d:pass=%s", proto, port, pass);
+		local name = proto .. (active and "_act" or "_pass") .. "_" .. tostring(port);
 
 		local wnd = setup_sharing(argstr,
-			-1, true, "stream", active, "vnc" .. (active and "_active" or "_inactive"));
-	end,
-}
+			-1, true, "stream", active, proto .. (active and "_active" or "_inactive"));
+	end
 };
+end
+
+local function gen_share_menu(active)
+	return {
+		gen_sharemenu("VNC", "vnc", active),
+		gen_sharemenu("A12", "a12", active)
+	};
 end
 
 local function gen_recdst_menu(nosound)
