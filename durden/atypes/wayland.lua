@@ -266,8 +266,6 @@ end
 
 seglut["bridge-x11"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
-		show_titlebar = true,
-		show_border = true
 	}, "x11surface", x11_event_handler);
 end
 
