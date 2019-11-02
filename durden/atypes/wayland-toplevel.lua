@@ -407,6 +407,7 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 	local dw = wnd.dh_pad_w;
 	local dh = wnd.dh_pad_h;
 
+-- manually toggle this off/on to prevent cascades
 	if (wnd.space.mode == "float") then
 		wnd:displayhint(nefw + dw, nefh + dh, wnd.dispmask);
 -- for automatic modes, we just use the suggested max and subtract any decorations
@@ -471,7 +472,7 @@ return {
 -- all wayland windows connected to the same client need the same clipboard
 		clipboard_block = true,
 		font_block = true,
-		block_rz_hint = true,
+		block_rz_hint = false,
 -- all allocations go on the parent
 		allowed_segments = {},
 	},
