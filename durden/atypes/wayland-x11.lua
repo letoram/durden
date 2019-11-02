@@ -110,8 +110,11 @@ local function apply_type_size(wnd, status)
 
 	elseif (wnd.surface_type == "icon") then
 -- treat the rest as normal windows
+		wayland_debug("x11:message=eimpl:kind=icon");
 	else
 		if (wnd.ws_attach) then
+			wayland_debug(string.format(
+				"x11:type=%s:name=%s:status=attach_fwd", wnd.surface_type, wnd.name));
 			wnd:ws_attach();
 		end
 

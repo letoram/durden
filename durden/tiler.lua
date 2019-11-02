@@ -4372,6 +4372,8 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 	);
 
 	if (wnd.block_rz_hint) then
+		tiler_debug(wnd.wm, string.format(
+			"display_hint:name=%s:vid=%d:status=blocked", wnd.name, wnd.external));
 	else
 		target_displayhint(wnd.external, hw, hh, dm, ...);
 	end
