@@ -73,11 +73,12 @@ end
 -- then the icon itself comes from _NET_WM_ICON, and notifications go
 -- as 'balloon messages'.
 
-local function apply_type_size(wnd, status)
+local function apply_type_size(wnd, source, status)
 	if (wnd.surface_type == "popup" or
 		wnd.surface_type == "dropdown" or
 		wnd.surface_type == "tooltip" or
-		wnd.surface_type == "menu") then
+		wnd.surface_type == "menu" or
+		wnd.surface_type == "utility") then
 -- destroy the 'container', won't be needed with popup, uncertain
 -- what the 'rules' say about the same surface mutating in type, but
 -- assume for now that it doesn't. Likely need different positioning
@@ -156,7 +157,7 @@ function x11_event_handler(wnd, source, status)
 		if (opts[1] == "type" and opts[2]) then
 			wayland_debug(string.format("x11:set_type=%s:name=%s", opts[2], wnd.name));
 			wnd.surface_type = opts[2];
-			apply_type_size(wnd, wnd.defer_resize);
+			apply_type_size(wnd, source, wnd.defer_resize);
 			wnd.defer_size = nil;
 		else
 			wayland_debug(string.format(
@@ -172,7 +173,7 @@ function x11_event_handler(wnd, source, status)
 -- during the segment allocation stage for wayland/x11
 		if (wnd.ws_attach) then
 			if (wnd.surface_type) then
-				apply_type_size(wnd, status);
+				apply_type_size(wnd, source, status);
 			else
 				wayland_debug("x11:kind=status:message=no type defer_attach");
 				wnd.defer_resize = status;
