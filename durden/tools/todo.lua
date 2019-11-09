@@ -207,6 +207,8 @@ local function item_menu(item, current)
 		{
 			name = "description",
 			label = "Description",
+			hint = item.description,
+			initial = item.description,
 			description = "Change the long form item description",
 			kind = "value",
 			validator = shared_valid_str,

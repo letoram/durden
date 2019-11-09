@@ -3417,6 +3417,15 @@ local function wnd_addhandler(wnd, ev, fun)
 		warning("tried to add handler for unknown event: " .. ev);
 		return;
 	end
+
+-- enable frame delivery events
+	if (ev == "frame" and
+		#wnd.handlers.frame == 0 and valid_vid(wnd.external)) then
+		tiler_logfun(string.format(
+			"wnd=:%s:kind=status:message=frame enabled", wnd.name));
+		target_flags(wnd.external, TARGET_VERBOSE, true);
+	end
+
 	table.remove_match(wnd.handlers[ev], fun);
 	table.insert(wnd.handlers[ev], fun);
 end
@@ -3428,6 +3437,14 @@ local function wnd_drophandler(wnd, ev, fun)
 		return;
 	end
 	table.remove_match(wnd.handlers[ev], fun);
+
+-- enable frame delivery events
+	if (ev == "frame" and
+		#wnd.handlers.frame == 0 and valid_vid(wnd.external)) then
+		tiler_logfun(string.format(
+			"wnd=:%s:kind=status:message=frame disabled", wnd.name));
+		target_flags(wnd.external, TARGET_VERBOSE, false);
+	end
 end
 
 local function wnd_dispmask(wnd, val, noflush)
@@ -4528,7 +4545,8 @@ local wnd_setup = function(wm, source, opts)
 			deselect = {},
 			mouse_motion = {},
 			mouse_button = {},
-			mouse = {}
+			mouse = {},
+			frame = {}
 		},
 		run_event = run_event,
 

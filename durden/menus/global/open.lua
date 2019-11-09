@@ -146,28 +146,61 @@ local function run_uri(val, feedmode)
 end
 
 local function get_remstr(val)
-	local sp = string.split(val, "@");
-	if (sp == nil or #sp == 1) then
-		return "host=" .. val;
+	local proto = "a12";
+	local port = "6680";
+	local user = "";
+	local pass = "";
+	local host = "";
+
+-- empty string is possible when used as validator
+	if not val or #val == 0 then
+		return;
 	end
 
-	local base = "";
-	local cred = string.split(sp[1], ":");
-	if (cred and #cred == 2) then
-		base = string.format("user=%s:password=%s:", cred[1], cred[2]);
+-- grab protocol specifier
+	local first, rest = string.split_first(val, "://");
+	if first ~= "" then
+		if first == "a12" then
+		elseif first == "vnc" then
+		else
+			return nil;
+		end
+	end
+
+-- grab user credentials (optional)
+	first, rest = string.split_first(rest, "@");
+	if first ~= "" then
+
+	end
+
+-- see if there is a host:port or only host
+	first, rest = string.split_first(rest, ":");
+	if first ~= "" then
+		host = first;
+		port = rest;
+		local pnum = tonumber(port);
+		if not pnum or pnum <= 0 or pnum > 65535 then
+			return nil;
+		end
 	else
-		base = string.format("password=%s:", sp[1]);
+		host = rest;
 	end
 
-	local disp = string.split(sp[2], "+");
-	if (disp and #disp == 2 and tonumber(disp[2])) then
-		local num = tonumber(disp[2]);
-		base = string.format("%shost=%s:port=%d", base, disp[1], num);
-	else
-		base = string.format("%shost=%s", base, disp[1]);
+-- and build the final string
+	if #host == 0 then
+		return nil;
 	end
 
-	return base;
+	local res = string.format("protocol=%s:port=%s:host=%s", proto, port, host);
+	if #user > 0 then
+		res = "user=" .. string.sub(user, ":", "\t") .. ":" .. res;
+	end
+
+	if #pass > 0 then
+		res = "pass=" .. string.sub(pass, ":", "\t") .. ":" .. res;
+	end
+
+	return res;
 end
 
 local function launch(str, cfg, tag)
@@ -273,24 +306,28 @@ return {
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
 	description = "Connect to a remote desktop session",
-	hint = "(user:pass@host+port) | (pass@host+port)",
+	initial = "a12://",
+	hint = "(vnc:// or a12:// user:pass@host:port)",
+	validator = function(val)
+		return get_remstr(val) ~= nil;
+	end,
 	eval = function()
 		return string.match(FRAMESERVER_MODES, "remoting") ~= nil;
 	end,
 -- missing, hash url, allow hint-set on clipboard url grab
 	handler =
-function(ctx, val)
-	local vid = launch_avfeed(get_remstr(val), "remoting");
-	if (valid_vid(vid, TYPE_FRAMESERVER)) then
-		durden_devicehint(vid);
-		durden_launch(vid, "", "remoting");
-		extevh_default(vid, {
-			kind = "registered", segkind = "remoting", title = ""});
-	else
-		active_display():message(
-			"remoting frameserver failed, broken or out-of-resources");
+	function(ctx, val)
+		local vid = launch_avfeed(get_remstr(val), "remoting");
+		if (valid_vid(vid, TYPE_FRAMESERVER)) then
+			durden_devicehint(vid);
+			durden_launch(vid, "", "remoting");
+			extevh_default(vid, {
+				kind = "registered", segkind = "remoting", title = ""});
+		else
+			active_display():message(
+				"remoting frameserver failed, broken or out-of-resources");
+		end
 	end
-end
 },
 {
 	name = "decode",

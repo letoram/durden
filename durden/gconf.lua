@@ -113,7 +113,7 @@ local function str_to_btn(dst, v)
 	local str, rest = string.split_first(v, "=");
 	local dir, rest = string.split_first(rest, ":");
 	local key, rest = string.split_first(rest, ":");
-	local cmd = string.split_first(rest, ":");
+	local base, cmd = string.split_first(rest, ":");
 
 	if (#dir > 0 and #rest > 0 and #key > 0) then
 		local ind = string.sub(str, 10);

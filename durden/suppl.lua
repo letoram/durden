@@ -46,7 +46,7 @@ function string.split_first(instr, delim)
 		rest = rest and rest or "";
 		return first, rest;
 	else
-		return instr, "";
+		return "", instr;
 	end
 end
 
