@@ -24,6 +24,10 @@ suppl_recarg_hint = "(stored in output/name.mkv)";
 -- function is actually used both for record, stream and vnc, just different args.
 local function share_input(wnd, allow_input, source, status, iotbl)
 	if status.kind == "terminated" then
+		if #status.last_words > 0 then
+			notification_add(wnd.title, wnd.icon, "Sharing Died", status.last_words, 2);
+		end
+
 		delete_image(source);
 		wnd.share_sessions[source] = nil;
 
@@ -79,7 +83,7 @@ local function setup_sharing(argstr, srate, nosound, destination, allow_input, n
 		wnd.share_sessions = {};
 	end
 	wnd.share_sessions[surf] = name;
-	return wnd;
+	return wnd, surf;
 end
 
 local function gen_recdst_wnd(nosound)
@@ -129,7 +133,29 @@ local function valid_portpass(val)
 	return true, tonumber(tbl[1]), tbl[2];
 end
 
-local function gen_sharemenu(label, proto, active)
+local function merge_step(steptbl, stat)
+	local x2 = steptbl.x + steptbl.width;
+	local y2 = steptbl.y + steptbl.height;
+	if stat.x < steptbl.x then
+		steptbl.x = stat.x;
+	end
+	if stat.y < steptbl.y then
+		steptbl.y = stat.y;
+	end
+
+	local sx2 = stat.x + stat.width;
+	local sy2 = stat.y + stat.height;
+	if x2 < sx2 then
+		x2 = sx2;
+	end
+	if y2 < sy2 then
+		y2 = sy2;
+	end
+	steptbl.width = x2 - steptbl.x;
+	steptbl.height = y2 - steptbl.y;
+end
+
+local function gen_sharemenu(label, proto, active, defport, defpass)
 return
 {
 	name = proto,
@@ -137,13 +163,13 @@ return
 	kind = "value",
 	description = "Share the window contents remotely",
 	initial = function()
-		return tostring(gconfig_get("remote_port")) .. ":" .. gconfig_get("remote_pass");
+		return tostring(defport .. ":" .. defpass);
 	end,
 	hint = "(port:pass)",
 	validator = valid_portpass,
 	handler = function(ctx, val)
-		local port = gconfig_get("remote_port");
-		local pass = gconfig_get("remote_pass");
+		local port = defport;
+		local pass = defpass;
 
 		if #val > 0 then
 			_, port, pass = ctx.validator(val);
@@ -152,16 +178,70 @@ return
 		local argstr = string.format("protocol=%s:port=%d:pass=%s", proto, port, pass);
 		local name = proto .. (active and "_act" or "_pass") .. "_" .. tostring(port);
 
-		local wnd = setup_sharing(argstr,
-			-1, true, "stream", active, proto .. (active and "_active" or "_inactive"));
+-- note that this is 'on-demand' clocked
+		local wnd, buf = setup_sharing(argstr, 0, true,
+			"stream", active, proto .. (active and "_active" or "_inactive"));
+
+-- one optimization missing here still and that is that any dirty rectangle state
+-- is actually lost when the client updates due to the rendertarget indirection
+-- and readback not being able to track those kinds of details. The fix should be
+-- in the engine by modifying stepframe_target to accept a scissor region, and
+-- propagate the dirty- update details in the frame delivery event
+		local fun;
+		fun = function(wnd, stat, from_timer)
+			if not wnd.drop_handler then
+				return;
+			end
+
+-- already have an update queued, wait for that one, this will automatically rate-
+-- limit updates to the 25Hz click when saturated - might want this as a frame hook
+-- instead. merging is necessary or we will lose partial updates.
+			if wnd.pending_step and not from_timer then
+				merge_step(wnd.pending_step, stat);
+				return;
+			end
+
+			if valid_vid(buf, TYPE_EXTERNAL) then
+				rendertarget_forceupdate(buf);
+
+-- edge condition, we are producing frames too fast, set a timer and call into
+-- ourselves with the from_timer condition set
+				if (stepframe_target(buf, 1, false,
+					stat.x, stat.y, stat.width, stat.height) == false) then
+					if not from_timer then
+						wnd.pending_step = {
+							x = stat.x,
+							y = stat.y,
+							width = stat.width,
+							height = stat.height
+						};
+					end
+
+					timer_add_periodic("share_step_" .. wnd.name, 1, true, function()
+						fun(wnd, stat, true);
+					end, nil, true);
+				else
+					wnd.pending_step = nil;
+				end
+			else
+				wnd:drop_handler("frame", fun);
+			end
+		end
+
+-- registering a frame handler event incs the event-handler refcount and enables
+-- the TARGET_VERBOSE that is required to get frame delivery events, we then use
+-- those events as a clock to update the rendertarget.
+		if wnd and wnd.add_handler then
+			wnd:add_handler("frame", fun);
+		end
 	end
 };
 end
 
 local function gen_share_menu(active)
 	return {
-		gen_sharemenu("VNC", "vnc", active),
-		gen_sharemenu("A12", "a12", active)
+		gen_sharemenu("VNC", "vnc", active, 5900, "guest"),
+		gen_sharemenu("A12", "a12", active, 6680, "guest")
 	};
 end
 

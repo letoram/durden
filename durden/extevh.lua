@@ -215,6 +215,13 @@ function(wnd, source, stat)
 	if (wnd.shader_frame_hook) then
 		wnd:shader_frame_hook();
 	end
+
+-- tag with batch and with the incremental engine counter
+	client_log("frame");
+	wnd.last_frame = stat.framenumber;
+	wnd.last_frame_clock = CLOCK;
+
+	wnd:run_event("frame", stat);
 end
 
 defhtbl["alert"] =
@@ -435,6 +442,7 @@ function(wnd, source, stat)
 -- ignore 0- value (b64), we also (ab)use injected registered event to get
 -- the same path for internal launch via target/cfg where the guid can be
 -- tracked in the database.
+
 	local logged = false;
 	if (type(stat.guid) == "string") then
 		if (stat.guid == "AAAAAAAAAAAAAAAAAAAAAA==") then
@@ -604,5 +612,6 @@ function extevh_default(source, stat)
 	if (defhtbl[stat.kind]) then
 		defhtbl[stat.kind](wnd, source, stat);
 	else
+		client_log(string.format("source=%d:message=unhandled:kind=%s", source, stat.kind));
 	end
 end

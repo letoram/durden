@@ -103,10 +103,6 @@ return {
 -- limit subwindows per connection, also covers hidden windows (e.g. clipboard)
 	subwnd_limit = 10,
 
--- only enabled manually, only passive for now
-	remote_port = 5900,
-	remote_pass = "guest",
-
 -- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
 -- Performance footprint etc. but prevents certain features like selective
 -- desktop sharing and multiple displays.

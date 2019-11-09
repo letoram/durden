@@ -184,7 +184,7 @@ local moverz_menu = {
 	kind = "value",
 	validator = function(val) return tonumber(val) ~= nil; end,
 	handler = function(ctx, val)
-		active_display().selected:move(tonumber(val), 0, true);
+		active_display().selected:move(tonumber(val), 0, true, false, true);
 	end
 },
 {
@@ -197,7 +197,37 @@ local moverz_menu = {
 	kind = "value",
 	validator = function(val) return tonumber(val) ~= nil; end,
 	handler = function(ctx, val)
-		active_display().selected:move(0, tonumber(val), true);
+		active_display().selected:move(0, tonumber(val), true, false, true);
+	end
+},
+{
+	name = "rel_fx",
+	label = "Move(fH)",
+	description = "(Float) Move the window in the x axis, relative to screen size",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	hint = "(-0.2..0.2)",
+	validator = gen_valid_num(-0.2,0.2),
+	handler = function(ctx, val)
+		local disp = active_display();
+		disp.selected:move(disp.width * tonumber(val), 0, true, false, true);
+	end
+},
+{
+	name = "rel_fy",
+	label = "Move(fV)",
+	description = "(Float) Move the window in the y axis, relative to screen size",
+	eval = function()
+		return active_display().selected.space.mode == "float";
+	end,
+	kind = "value",
+	validator = gen_valid_num(-0.2,0.2),
+	hint = "(-0.2..0.2)",
+	handler = function(ctx, val)
+		local disp = active_display();
+		disp.selected:move(0, disp.width * tonumber(val), true, false, true);
 	end
 },
 {

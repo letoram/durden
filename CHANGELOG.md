@@ -105,6 +105,8 @@ Minor / Fixes:
 * /bindtarget=/some/path sets a 'consume on use' path that allows interactive
   menu paths like key and button bindings to be automated
 
+* target/window/move\_fx/fy added for display- size relative move
+
 * firstrun.lua added to setup custom defaults on first run/config reset
 
 # 0.5.0
