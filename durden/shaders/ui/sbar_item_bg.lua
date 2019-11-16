@@ -35,7 +35,7 @@ void main()
 #endif
 	vec4 fg = vec4(obj_col.r, obj_col.g, obj_col.b, 1.0);
 	gl_FragColor =
-		vec4(factor, factor, factor, 1.0) * vec4(mix(fg, col_bg, f));
+		vec4(factor, factor, factor, 0.3) * vec4(mix(fg, col_bg, f));
 }
 ]],
 	uniforms = {

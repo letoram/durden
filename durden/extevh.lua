@@ -340,7 +340,7 @@ function(wnd, source, stat)
 	local fun = function()
 		wnd.ephemeral_ext = stat.extensions;
 		dispatch_symbol_wnd(wnd,
-			"/target/state/force_" .. (stat.input and "load" or "store"));
+			"/target/state/" .. (stat.input and "open" or "save"));
 		wnd.ephemeral_ext = nil;
 	end
 

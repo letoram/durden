@@ -178,9 +178,11 @@ return
 		local argstr = string.format("protocol=%s:port=%d:pass=%s", proto, port, pass);
 		local name = proto .. (active and "_act" or "_pass") .. "_" .. tostring(port);
 
--- note that this is 'on-demand' clocked
-		local wnd, buf = setup_sharing(argstr, 0, true,
-			"stream", active, proto .. (active and "_active" or "_inactive"));
+-- note that this is 'on-demand' clocked for external sources
+		local wnd, buf = setup_sharing(argstr,
+			active_display().selected.external and 0 or -1, true,
+			"stream", active, proto .. (active and "_active" or "_inactive")
+		);
 
 -- one optimization missing here still and that is that any dirty rectangle state
 -- is actually lost when the client updates due to the rendertarget indirection

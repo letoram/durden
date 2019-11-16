@@ -234,26 +234,6 @@ local advanced = {
 	handler = function(ctx, val)
 		target_devicehint(active_display().selected.external, val, false);
 	end
-	},
-	{
-	name = "push_debug",
-	label = "Debug Window",
-	kind = "action",
-	description = "Send a debug- window to the client",
-	eval = function()
-		return valid_vid(
-			active_display().selected.external, TYPE_FRAMESERVER);
-	end,
-	handler = function(ctx, val)
-		local wnd = active_display().selected;
-		local vid = target_alloc(wnd.external, function() end, "debug");
-		if (valid_vid(vid)) then
-			local newwnd = durden_launch(vid, "debug", "");
-			if (newwnd) then
-				extevh_apply_atype(newwnd, wnd.atype, vid, {});
-			end
-		end
-	end
 	}
 };
 
