@@ -1,4 +1,4 @@
--- Copyright: 2015-2018, Björn Ståhl
+-- Copyright: 2015-2019, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Depends: display, shdrmgmt, lbar, suppl, mouse
@@ -609,11 +609,6 @@ local function tiler_statusbar_update(wm)
 	end
 
 	update_sbar_shadow(wm);
-end
-
-local function gen_button_handler(cmd, alt_cmd)
-	return {
-	};
 end
 
 local function resolve_vsymbol(wm, label, base)
@@ -4001,16 +3996,10 @@ local function wnd_ws_attach(res, from_hook)
 	local add_buttons =
 	function(dst_group, list)
 		for _,v in ipairs(list) do
-			local outlbl = resolve_vsymbol(wm, v.label, tbh);
-			res.titlebar:add_button(v.direction,
-				"titlebar_iconbg", "titlebar_icon", outlbl,
-				gconfig_get("sbar_tpad") * wm.scalef,
-				wm.font_resfn, nil, nil,
-				suppl_button_default_mh(res, v.command),
-				{group = dst_group}
-			);
+			res:add_titlebar_button(v.dir, v.label, v.command, v.alt_command, dst_group);
 		end
 	end
+
 -- we don't enumerate the table as there would be an iterator order problem
 	add_buttons(nil, wm.buttons.all);
 	add_buttons("float", wm.buttons.float);
@@ -4417,6 +4406,19 @@ local function wnd_drop_overlay(wnd, key)
 	end
 end
 
+local function wnd_tbar_btn(wnd, dir, vsym, action, altaction, dst_group)
+	local dir = dir and dir or "left";
+
+	local outlbl = resolve_vsymbol(wm, vsym, tbh);
+	wnd.titlebar:add_button(dir,
+		"titlebar_iconbg", "titlebar_icon", outlbl,
+		gconfig_get("sbar_tpad") * wnd.wm.scalef,
+		wnd.wm.font_resfn, nil, nil,
+		suppl_button_default_mh(wnd, action, altaction),
+		{group = dst_group}
+	);
+end
+
 local function wnd_set_vtable(wnd)
 -- visual attribute- functions
 	wnd.alert = wnd_alert
@@ -4440,6 +4442,7 @@ local function wnd_set_vtable(wnd)
 	wnd.set_crop = wnd_crop
 	wnd.append_crop = wnd_crop_append
 	wnd.identstr = wnd_identstr
+	wnd.add_titlebar_button = wnd_tbar_btn
 
 -- position/hierarchy/selection
 	wnd.reposition = wnd_repos

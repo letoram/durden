@@ -491,6 +491,12 @@ local function build_titlebar(wnd)
 	function(ctx)
 	end,
 
+	rclick =
+	function(ctx)
+		wnd:select();
+		dispatch_symbol(gconfig_get("tbar_rclick"));
+	end,
+
 	dblclick =
 	function(ctx)
 		if (wnd.space.mode == "float") then

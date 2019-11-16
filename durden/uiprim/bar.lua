@@ -566,8 +566,8 @@ local function bar_button(bar, align,
 	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts)
 	opts = opts and opts or {};
 
-	assert(bar.buttons[align] ~= nil);
-	assert(type(fontfn) == "function");
+	assert(bar.buttons[align] ~= nil, "unknown alignment");
+	assert(type(fontfn) == "function", "font resolver is not a function");
 
 -- autofill in the non-dominant axis
 	local fill = false;

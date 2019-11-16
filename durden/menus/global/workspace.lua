@@ -25,6 +25,29 @@ local function switch_ws_menu()
 
 	table.insert(spaces,
 	{
+		name = "new",
+		kind = "action",
+		label = "Free",
+		eval = function()
+			for i=1,10 do
+				if not active_display().spaces[i] then
+					return true;
+				end
+			end
+		end,
+		description = "Switch to the first free workspace index",
+		handler = function()
+			for i=1,10 do
+				if not active_display().spaces[i] then
+					active_display():switch_ws(i);
+					return;
+				end
+			end
+		end
+	});
+
+	table.insert(spaces,
+	{
 		name = "last",
 		kind = "action",
 		label = "Last Active",

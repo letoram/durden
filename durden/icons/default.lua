@@ -33,10 +33,10 @@
 -- as well as hand drawn overrides
 --
 return {
-["terminal"] =
+["cli"] =
 {
 	[24] = function()
-		return icon_synthesize_src("terminal_24px.png", 24,
+		return icon_synthesize_src("cli_24px.png", 24,
 			icon_colorize, {color = {"fff", 0.0, 1.0, 1.0}});
 	end,
 }

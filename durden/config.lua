@@ -293,6 +293,7 @@ return {
 	tbar_bpad = 2,
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
+	tbar_rclick = "/global/tools/popup/menu=/target",
 
 -- icons
 	icon_set = "default",

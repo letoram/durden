@@ -16,6 +16,7 @@ migrate window on drag-drop
 
  * uiprim/tbar:
 titlebar merge-to-status bar mode on select (if hidden)
+titlebar rclick now mappable (default, popup /target)
 
 * uiprim/popup:
 added basic popup component
