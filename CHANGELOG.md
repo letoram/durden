@@ -75,9 +75,14 @@ act as restricted input devices as well as custom widget mappings
 This tool allows for simple tracking of todo tasks that integrate with
 the notification system, status bars and so on.
 
-Breaking:
-
 Minor / Fixes:
+* removed the 'alternate' window feature (used with wayland toplevels and
+  terminal groups), the feature turned out way to complex and demanding in
+	the way it was implemented.
+
+* added 'invert light' shader that retains most of hue while inverting
+  dark/light colors
+
 * handover subsegment allocation now routes correctly
 
 * silent shutdown retains known window position and states, should

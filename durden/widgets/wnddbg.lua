@@ -92,11 +92,6 @@ local function probe(ctx, yh)
 		table.insert(lines, string.format("popups: %d", #wnd.popups));
 	end
 
-	if (#wnd.alternate > 0) then
-		table.insert(lines,
-			string.format("alternate-slots:%d{%d}", #wnd.alternate, wnd.alternate_ind));
-	end
-
 	if (wnd.guid) then
 		table.insert(lines, wnd.guid);
 	end

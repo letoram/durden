@@ -310,54 +310,6 @@ local moverz_menu = {
 }
 };
 
-local function gen_altsw(wnd)
-	local res = {};
-	if (wnd.alternate_ind and wnd.alternate[wnd.alternate_ind]) then
-		table.insert(res, {
-			name = "last",
-			label = "Last",
-			kind = "action",
-			description = "Select the last active alternate-slot client",
-			handler = function()
-				wnd:swap_alternate(wnd.alternate_ind);
-			end
-		});
-		table.insert(res, {
-			name = "step_p",
-			label = "Step+",
-			kind = "action",
-			description = "Select the next (index) alternate-slot client",
-			handler = function()
-				wnd:swap_alternate((wnd.alternate_ind + 1) >
-					#wnd.alternate and 1 or (wnd.alternate_ind + 1));
-			end
-		});
-		table.insert(res, {
-			name = "step_n",
-			label = "Step-",
-			kind = "action",
-			description = "Select the previous (index) alternate-slot client",
-			handler = function()
-				wnd:swap_alternate(wnd.alternate_ind > 1 and
-					(wnd.alternate_ind - 1) or #wnd.alternate);
-			end
-		});
-	end
-
-	for i=1,#wnd.alternate do
-		table.insert(res, {
-			name = tostring(i),
-			label = tostring(i),
-			kind = "action",
-			description = "Swap in a specific alternate-slot client",
-			handler = function()
-				wnd:swap_alternate(i);
-			end
-		});
-	end
-	return res;
-end
-
 -- remove is a bit complicated due to the presence of groups and
 -- the _default group and that we need to remove both from the active
 -- group (if that hits the chosen item) and from the current set
@@ -786,19 +738,6 @@ return {
 		handler = function()
 			return gen_wsmove(active_display().selected);
 		end
-	},
-	{
-		name = "alternate",
-		label = "Alternate-Switch",
-		kind = "action",
-		submenu = true,
-		description = "Alternate-client slot controls",
-		eval = function()
-			return #active_display().selected.alternate > 0;
-		end,
-		handler = function()
-			return gen_altsw(active_display().selected);
-		end,
 	},
 	{
 		name = "titlebar",
