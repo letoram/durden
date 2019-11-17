@@ -1,37 +1,3 @@
--- slightly more involved since we want to create a hidden window (so
--- still indexable etc.) without causing any relayouting and have it
--- attached to the right tiler. Can't switch to it yet since the window
--- is not yet fully qualified.
-local function group_attach(wnd, source)
-	local ddisp = nil;
-	local adisp = nil;
-
--- problem one: we need the display the window is on, not the wm
-	for d in all_displays_iter() do
-		local wnd = d.tiler:find_window(wnd.canvas);
-		if (wnd) then
-			ddisp = d;
-		end
-		if (not d.tiler.deactivated) then
-			adisp = d;
-		end
-	end
-
--- should never happen, but safeguard
-	if (not ddisp or not adisp) then
-		warning("group_attach on wnd without tiler");
-		delete_image(source);
-		return;
-	end
-
--- now we can fake default attachment to..
-	rendertarget_attach(ddisp.rt, source, RENDERTARGET_DETACH);
-	set_context_attachment(ddisp.rt);
-	local newwnd = wnd.wm:add_hidden_window(source, {
-		alternate = wnd
-	});
-end
-
 function terminal_build_argenv(group)
 	local bc = gconfig_get("term_bgcol");
 	local fc = gconfig_get("term_fgcol");

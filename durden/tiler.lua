@@ -226,18 +226,6 @@ local function wnd_destroy(wnd, message)
 		wm.deactivated.wnd = nil;
 	end
 
--- edge case: swap alternate and we shouldn't drop from parent
-	local ign_delink = false;
-
--- activate the next in line and give it our alternate set
-	if (wnd.alternate and #wnd.alternate > 0) then
-		local newwnd = wnd:swap_alternate();
-		if (newwnd) then
-			table.remove_match(newwnd.alternate, wnd);
-		end
-		ign_delink = true;
-	end
-
 -- doesn't always hit, we want to forward this information to any
 -- event handler as well since it might affect next-selected heuristics
 	local was_selected = wnd.wm.selected == wnd;
@@ -300,9 +288,7 @@ local function wnd_destroy(wnd, message)
 	end
 
 -- re-assign all children to parent
-	if (not ign_delink) then
-		moveup_children(wnd);
-	end
+	moveup_children(wnd);
 
 -- now we can run destroy hooks
 	run_event(wnd, "destroy", was_selected);
@@ -2591,9 +2577,6 @@ local function wnd_reassign(wnd, ind, ninv)
 	wnd.weight = 1.0;
 	wnd.vweight = 1.0;
 	link_image(wnd.anchor, newspace.anchor);
-	for _,v in ipairs(wnd.alternate) do
-		link_image(v.anchor, newspace.anchor);
-	end
 
 -- restore vid structure etc. to the default state
 
@@ -3484,9 +3467,6 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	end
 
 	reattach_full(wnd, tiler.rtgt_id);
-	for _,v in ipairs(wnd.alternate) do
-		reattach_full(v, tiler.rtgt_id);
-	end
 
 -- switch rendertarget
 -- change association with wm and relayout old one
@@ -3730,89 +3710,6 @@ local function wnd_swap(w1, w2, deep, force)
 	w2:recovertag();
 end
 
-local function synch_alternate(new, par)
-	for k,v in ipairs(par.children) do
-		v.parent = new;
-	end
-
-	for _, k in ipairs({
-		"space", "space_ind", "x", "y", "max_w", "max_h", "children",
-		"parent", "weight", "vweight", "wm", "alternate"
-	}) do
-		new[k] = par[k];
-	end
-	assert(new.space);
-	link_image(new.anchor, new.space.anchor);
-	move_image(new.anchor, new.x, new.y);
-end
-
-local function wnd_setalternate(res, ind)
-	if (not ind) then
-		ind = 1;
-	end
-
-	if (not res.alternate[ind]) then
-		tiler_debug(res.wm, "set_alternate, broken index: " .. tostring(ind));
-		return res;
-	end
-
-	if (res.alternate_parent) then
-		tiler_debug(res.wm, "set_alternate, wrong parent");
-		return res;
-	end
-
--- swap the alternate sets, copy/synch attachment and visibility properties,
--- hide the old window, show the new
-	local new = res.alternate[ind];
-	if (not valid_vid(new.anchor)) then
-		tiler_debug(res.wm, "set_alternate, dead index: " .. tostring(ind));
-		return res;
-	end
-
-	res.alternate[ind] = res;
-
--- reference parent-swap -> down.
-	local lind = table.find_i(res.parent.children, res);
-	if (lind) then
-		res.parent.children[lind] = new;
-	end
-
--- copy all relevant properties
-	synch_alternate(new, res);
-
--- zero-out the old
-	res.alternate = {};
-	res.children = {};
-	new.alternate_parent = nil;
-	new.alternate_ind = ind;
-
-	for i,v in ipairs(new.alternate) do
-		v.alternate_parent = new;
-	end
-
--- update visibility/selection
-	res:hide();
-
-	new:show();
-	if (res.wm.selected == res) then
-		new:select();
-	end
-
--- and rearrange/relayout
-	new.space:resize();
-
-	return new;
-end
-
-local function attach_alternate(res, parent)
--- find the slot where the alternate that is attached is hiding
-	for i=1,#parent.alternate do
-		if (parent.alternate[i] == res) then
-			return parent:swap_alternate(i);
-		end
-	end
-end
-
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
@@ -3851,22 +3748,6 @@ local function wnd_ws_attach(res, from_hook)
 					end
 				end
 			end
-		end
-	end
-
--- if this is an alternate for a pre-existing window, special rules apply
--- i.e. link/attach but don't add to normal tree structure etc.
-	if (res.alternate_parent) then
-		res.ws_attach = nil;
-
--- workaround a possible race where the alternate window had died before
--- we got to a state where attach is feasible
-		if (res.alternate_parent and not res.alternate_parent.anchor) then
-			res.alternate_parent = nil;
-		else
-			tiler_debug(wm, "attach_alternate:parent=" ..
-				res.alternate_parent.name .. "name=" .. res.name);
-			return attach_alternate(res, res.alternate_parent);
 		end
 	end
 
@@ -4409,7 +4290,7 @@ end
 local function wnd_tbar_btn(wnd, dir, vsym, action, altaction, dst_group)
 	local dir = dir and dir or "left";
 
-	local outlbl = resolve_vsymbol(wm, vsym, tbh);
+	local outlbl = resolve_vsymbol(wnd.wm, vsym, tbh);
 	wnd.titlebar:add_button(dir,
 		"titlebar_iconbg", "titlebar_icon", outlbl,
 		gconfig_get("sbar_tpad") * wnd.wm.scalef,
@@ -4486,7 +4367,6 @@ local function wnd_set_vtable(wnd)
 -- special windows
 	wnd.add_popup = wnd_popup
 	wnd.drop_popup = wnd_droppopup
-	wnd.swap_alternate = wnd_setalternate
 
 -- function hooks
 	wnd.displayhint = default_displayhint
@@ -4523,9 +4403,6 @@ local wnd_setup = function(wm, source, opts)
 
 -- hierarchies used for tile layout
 		children = {},
-
--- hidden swap-set
-		alternate = {},
 
 -- overlay surfaces drawn on top of the canvas, linked to its position,
 -- lifecycle, clipped to its size and likely blended etc.
@@ -4656,16 +4533,6 @@ local wnd_setup = function(wm, source, opts)
 		" ", gconfig_get("sbar_tpad") * wm.scalef, res.wm.font_resfn);
 	res:set_title("");
 
--- set itself as part of another window's alternate slot, windows that
--- share one hierarchical/visibility slot that can be swapped.
-	if (opts.alternate) then
-		local pwin = opts.alternate;
-		table.insert(pwin.alternate, res);
-		res.alternate_parent = pwin;
-		res.max_w = pwin.max_w;
-		res.max_h = pwin.max_h;
-	end
-
 -- order canvas so that it comes on top of the border for mouse events
 -- this is pending a rewrite of the border management that splits it out
 -- into separate surfaces instead
@@ -4689,11 +4556,10 @@ local wnd_setup = function(wm, source, opts)
 	res:recovertag(true);
 
 	tiler_debug(wm, string.format(
-		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s%s",
+		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s",
 		res.name, res.width, res.height,
-		tostring(res.show_titlebar), tostring(res.show_border),
-		opts.alternate and (":alternate=" .. opts.alternate.name) or "")
-	);
+		tostring(res.show_titlebar), tostring(res.show_border)
+	));
 
 	return res;
 end

@@ -188,10 +188,9 @@ local function float_reparent(wnd, parent)
 end
 
 local function tile_reparent(wnd, parent)
-	table.insert(parent.alternate, wnd);
-	wnd.alternate_parent = parent;
-	wnd.max_w = parent.max_w;
-	wnd.max_h = parent.max_h;
+-- one possible tactic here is to 'hide' the parent and swap-out the
+-- children, the way we used to have 'alternates' - and then have a
+-- way to restore (window deletion)
 end
 
 -- this is also triggered on_destroy for the toplevel window so the id
