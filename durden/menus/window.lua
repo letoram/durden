@@ -149,6 +149,26 @@ return {
 		end
 	},
 	{
+		name = "latest",
+		label = "Latest",
+		description = "Target action applied to the most recently created window",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return tiler_latest_window_name() ~= nil;
+		end,
+		handler = function()
+			local name = tiler_latest_window_name();
+			if not name then return;
+			end
+			for wnd in all_windows(nil, false) do
+				if wnd.name == name then
+					return get_path_for_set({wnd}, "/target");
+				end
+			end
+		end
+	},
+	{
 		name = "name",
 		label = "Name",
 		description = "Target applied to a window by its unique name",
