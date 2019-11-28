@@ -310,6 +310,71 @@ local moverz_menu = {
 }
 };
 
+local function setup_slice_wnd(cwin, wnd, dyn, w, h)
+	if not dyn then
+		return;
+	end
+
+	local lw = w / wnd.width;
+	local lh = h / wnd.height;
+
+-- This is in conflict with decoration cropping and similar viewport
+-- properties, something more uniform should probably be put together.
+-- If there are overlays present, we should composite those
+	local mh = function(wnd, rx, ry)
+		cwin.last_mh_x = rx;
+		cwin.last_mh_y = ry;
+		local props = image_surface_resolve(wnd.canvas);
+		local lx = (rx - props.x) / props.width;
+		local ly = (ry - props.y) / props.height;
+
+		local x1 = math.clamp(lx - lw * 0.5, 0);
+		local y1 = math.clamp(ly - lh * 0.5, 0);
+		local x2 = math.clamp(x1 + lw, 0, 1);
+		local y2 = math.clamp(y1 + lh, 0, 1);
+		x1 = math.clamp(x2 - lw, 0);
+		y1 = math.clamp(y2 - lh, 0);
+
+		image_set_txcos(cwin.canvas, {x1, y1, x2, y1, x2, y2, x1, y2});
+	end
+
+
+-- add meta+mwheel zoom, could also add tick-pan + zoom controls in cwin
+	local cbh = function(wnd, ind, pressed)
+		if not pressed or not dispatch_meta() then
+			return;
+		end
+
+		local sign = 1;
+		if ind == 4 then
+			sign = -1;
+		elseif ind == 5 then
+		else
+			return;
+		end
+		lw = math.clamp(lw + 0.05 * sign, 0.01, 1.0);
+		lh = math.clamp(lh + 0.05 * sign, 0.01, 1.0);
+		mh(wnd, cwin.last_mh_x, cwin.last_mh_y);
+	end
+
+	wnd:add_handler("mouse_motion", mh);
+	wnd:add_handler("mouse_button", cbh);
+	wnd:add_handler("destroy", function()
+		if cwin.destroy then
+			cwin:destroy();
+		end
+	end);
+
+	cwin:add_handler("destroy", function()
+		if wnd.drop_handler then
+			wnd:drop_handler("mouse_motion", mh);
+			wnd:add_handler("mouse_button", cbh);
+		end
+	end);
+
+	mh(wnd, wnd.x, wnd.y);
+end
+
 -- remove is a bit complicated due to the presence of groups and
 -- the _default group and that we need to remove both from the active
 -- group (if that hits the chosen item) and from the current set
@@ -469,6 +534,27 @@ local function gen_wsmove(wnd)
 			end
 		});
 	end
+	table.insert(res, {
+		name = "reassign_new",
+		label = "New",
+		kind = "action",
+		description = "Reassign the window to a new workspace",
+		eval = function()
+			for i=1,10 do
+				if not active_display().spaces[i] then
+					return true;
+				end
+			end
+		end,
+		handler = function()
+			for i=1,10 do
+				if not active_display().spaces[i] then
+					wnd:assign_ws(i);
+					return;
+				end
+			end
+		end
+	});
 	return res;
 end
 
@@ -756,6 +842,34 @@ return {
 		handler = border_table
 	},
 	{
+		name = "hide",
+		label = "Hide",
+		description = "Detach window from the window visibility/layouting hierarchy",
+		kind = "action",
+		eval = function()
+			return not active_display().selected.hidden;
+		end,
+		handler = function()
+			local wnd = active_display().selected;
+			wnd:hide();
+			wnd.space:resize();
+		end
+	},
+	{
+		name = "show",
+		label = "Show",
+		description = "Show a previously hidden window",
+		kind = "action",
+		eval = function()
+			return active_display().selected.hidden;
+		end,
+		handler = function()
+			local wnd = active_display().selected;
+			wnd:show();
+			wnd.space:resize();
+		end
+	},
+	{
 		name = "target_opacity",
 		label = "Opacity",
 		kind = "value",
@@ -899,21 +1013,31 @@ return {
 		end,
 	},
 	{
-		name = "slice_clone",
-		label = "Slice/Clone",
+		name = "slice",
+		label = "Slice",
 		kind = "value",
 		description = "Slice out a window canvas region into a new window",
-		set = {"Active", "Passive"},
+		set = {"Active", "Passive", "Active-Dynamic", "Passive-Dynamic"},
 		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
+			local dyn = val == "Active-Dynamic" or val == "Passive-Dynamic"
+			local act = val == "Active" or val == "Active-Dynamic"
+
 			suppl_wnd_slice(active_display().selected,
-			function(cwin)
-				if (valid_vid(wnd.external, TYPE_FRAMESERVER) and val == "Active") then
+			function(cwin, t, l, d, r, w, h)
+-- we got a window, link the external reference and make sure destroying
+-- this window won't break things
+				if (valid_vid(wnd.external, TYPE_FRAMESERVER) and act) then
 					cwin.external = wnd.external;
 					cwin.external_prot = true;
 				end
+
+-- if dynamic, we hook up a mouse-motion handler on the canvas and slide
+-- the crop region accordingly so that it is centered around the mouse
+-- cursor
+				setup_slice_wnd(cwin, wnd, dyn, w, h);
 			end);
 		end
 	},
