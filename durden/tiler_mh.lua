@@ -291,7 +291,7 @@ local function build_canvas(wnd)
 			end
 		end
 
-		wnd:run_event("mouse_motion", x, y, rx, ry);
+		wnd:run_event("mouse_motion", x, y);
 		wnd:mousemotion(x, y, rx, ry);
 	end,
 
@@ -542,6 +542,23 @@ local function build_statusbar_icon(wm, cmd, alt_cmd)
 	return table;
 end
 
+local function build_statusbar_addicon(wm)
+	return {
+	click =
+	function(btn)
+		dispatch_symbol("/global/workspace/switch/new");
+	end,
+	over =
+	function(btn)
+		btn:switch_state("active");
+	end,
+	out =
+	function(btn)
+		btn:switch_state("inactive")
+	end
+	};
+end
+
 local function build_statusbar_wsicon(wm, i)
 	local table = {
 	click =
@@ -652,5 +669,6 @@ return {
 	canvas = build_canvas,
 	titlebar = build_titlebar,
 	statusbar_icon = build_statusbar_icon,
-	statusbar_wsicon = build_statusbar_wsicon
+	statusbar_wsicon = build_statusbar_wsicon,
+	statusbar_addicon = build_statusbar_addicon
 };
