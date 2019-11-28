@@ -87,13 +87,13 @@ end
 menus_register("target", "window",
 {
 	kind = "action",
-	name = "hide",
-	label = "Hide",
-	description = "Hide or Minimize the window to a preset location",
+	name = "minimize",
+	label = "Minimize",
+	description = "Minimize the window to a preset location",
 	kind = "action",
 	eval = function()
 		return
-			gconfig_get("advfloat_hide") ~= "disabled" and
+			gconfig_get("advfloat_minimize") ~= "disabled" and
 				active_display().selected.space.mode == "float";
 	end,
 	handler = function()
