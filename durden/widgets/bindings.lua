@@ -36,7 +36,7 @@ end
 
 return {
 	name = "bindings",
-	paths = {"special:custom"},
+	paths = {"special:custom", "/global/input/bind"},
 	show = show,
 	probe = probe,
 	destroy = destroy
