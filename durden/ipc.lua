@@ -43,14 +43,14 @@ local warning_override = suppl_add_logfn("warning");
 
 print = function(...)
 	local tbl = {...};
-	local fmtstr = string.rep("%s", #tbl);
+	local fmtstr = string.rep("%s\t", #tbl);
 	local msg = string.format(fmtstr, ...);
 	print_override(msg);
 end
 
 warning = function(...)
 	local tbl = {...};
-	local fmtstr = string.rep("%s", #tbl);
+	local fmtstr = string.rep("%s\t", #tbl);
 	local msg = string.format(fmtstr, ...);
 	warning_override(msg);
 end
