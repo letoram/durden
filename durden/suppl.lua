@@ -437,7 +437,7 @@ function suppl_region_select(r, g, b, handler)
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
 
-local function defer_spawn(wnd, new, t, l, d, r, closure)
+local function defer_spawn(wnd, new, t, l, d, r, w, h, closure)
 -- window died before timer?
 	if (not wnd.add_handler) then
 		delete_image(new);
@@ -479,7 +479,7 @@ local function defer_spawn(wnd, new, t, l, d, r, closure)
 
 -- finally send to a possible source that wants to do additional modifications
 	if closure then
-		closure(cwin);
+		closure(cwin, t, l, d, r, w, h);
 	end
 end
 
@@ -511,10 +511,12 @@ local function slice_handler(wnd, x1, y1, x2, y2, closure)
 	local l = (x1 - props.x) / props.width;
 	local d = (py2 - y2) / props.height;
 	local r = (px2 - x2) / props.width;
+	local w = (x2 - x1);
+	local h = (y2 - y1);
 
 -- work-around the chaining-region-select problem with a timer
 	timer_add_periodic("wndspawn", 1, true, function()
-		defer_spawn(wnd, new, t, l, d, r, closure);
+		defer_spawn(wnd, new, t, l, d, r, w, h, closure);
 	end);
 end
 

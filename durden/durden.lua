@@ -734,6 +734,15 @@ function durden_regionsel_input(iotbl, fromim)
 		end
 	end
 
+	local m2_set = function()
+		local rt = active_display(true);
+		local mx, my = mouse_xy();
+		local items = pick_items(mx, my, 1, true, rt);
+		if (#items > 0) then
+			mouse_select_set(items[1]);
+		end
+	end
+
 	if (iotbl.translated and iotbl.active) then
 		local sym, lutsym = SYMTABLE:patch(iotbl);
 
@@ -744,13 +753,8 @@ function durden_regionsel_input(iotbl, fromim)
 		elseif (SYSTEM_KEYS["meta_1"] == sym) then
 			mouse_select_set();
 		elseif (SYSTEM_KEYS["meta_2"] == sym) then
-			local rt = active_display(true);
-			local mx, my = mouse_xy();
-			local items = pick_items(mx, my, 1, true, rt);
-			if (#items > 0) then
-				mouse_select_set(items[1]);
-			end
 -- keyboard mouse navigation, could probably be moved to some
+			m2_set();
 		elseif (SYSTEM_KEYS["left"] == sym) then
 			local mx, my = mouse_xy();
 			mouse_absinput(mx-8, my);
@@ -767,7 +771,14 @@ function durden_regionsel_input(iotbl, fromim)
 
 	elseif (iotbl.mouse and not mouse_blocked()) then
 		if (iotbl.digital) then
-			suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
+			if iotbl.subid == MOUSE_RBUTTON then
+				mouse_select_set();
+			elseif iotbl.subid == MOUSE_MBUTTON then
+				m2_set();
+-- possible uniform-extend on wheel?
+			else
+				suppl_region_stop(DURDEN_REGIONSEL_TRIGGER);
+			end
 		else
 			mouse_iotbl_input(iotbl);
 		end
