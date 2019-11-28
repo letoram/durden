@@ -234,6 +234,19 @@ local statusbar_buttons_dir = {
 		end
 	},
 	{
+		name = "new_ws",
+		label = "New Workspace",
+		description = "Control the visibility of the dynamic 'new workspace' button",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
+		handler = function(ctx, val)
+			gconfig_set("sbar_wsmeta", val == LBL_YES);
+			for tiler in all_tilers_iter() do
+				tiler:tile_update();
+			end
+		end
+	},
+	{
 		name = "ws_buttons",
 		label = "Workspace Buttons",
 		kind = "value",

@@ -1,6 +1,5 @@
 -- this menu is applied as a context menu to the workspace- buttons in the statusbar
 return {
-{"New", "/global/workspace/switch/new"},
 {"Stacked", "/global/workspace/layout/float"},
 {"Tiling", "/global/workspace/layout/tile_toggle"},
 {"Tabbed", "/global/workspace/layout/tab"},

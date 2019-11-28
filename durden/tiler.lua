@@ -13,10 +13,9 @@ local WND_RESERVED = 10;
 local ent_count = 1;
 
 local mouse_handler_factory = system_load("tiler_mh.lua")();
-
 local create_workspace = function() end
-
 local tiler_logfun = suppl_add_logfn("wm");
+
 local function tiler_debug(wm, msg)
 	msg = msg and msg or "bad message";
 	tiler_logfun(wm.name .. ":" .. msg);
@@ -24,6 +23,15 @@ end
 
 local function is_tab_mode(str)
 	return str == "tab" or str == "vtab" or str == "htab" or str == "hrtab";
+end
+
+-- shared between all tiler instances
+local latest_wnd_name;
+function tiler_latest_window_name(set)
+	if set then
+		latest_wnd_name = set;
+	end
+	return latest_wnd_name;
 end
 
 -- returns:
@@ -216,6 +224,11 @@ local function wnd_destroy(wnd, message)
 	local wm = wnd.wm;
 	if (wnd.delete_protect) then
 		return;
+	end
+
+-- wnd-create - wnd-destroy behavior
+	if latest_wnd_name == wnd.name then
+		latest_wnd_name = nil;
 	end
 
 	if (message and type(message) == "string" and #message > 0) then
@@ -550,6 +563,8 @@ local function tiler_statusbar_update(wm)
 	local use_prefix = gconfig_get("sbar_numberprefix");
 	local r, g, b = suppl_hexstr_to_rgb(prefcolor);
 
+	local ws_count = 0;
+
 	for i=1,10 do
 -- change base color based on index?
 		local hccolor = HC_PALETTE[((i-1) % #HC_PALETTE) + 1];
@@ -561,6 +576,7 @@ local function tiler_statusbar_update(wm)
 -- buttons are always 'there' but can be hidden or not
 		if (wm.spaces[i] ~= nil and not hide_ws) then
 			wm.sbar_ws[i]:show();
+			ws_count = 1;
 			local lbltbl = use_prefix and {prefcolor, tostring(i)} or {};
 
 -- shader defines what of the 'background' actually gets this color,
@@ -592,6 +608,13 @@ local function tiler_statusbar_update(wm)
 			wm.sbar_ws[i]:hide();
 		end
 		wm.sbar_ws[i]:switch_state(i == wm.space_ind and "active" or "inactive");
+	end
+
+-- the reserved slot for workspace create button
+	if (ws_count < 10 and gconfig_get("sbar_wsmeta")) then
+		wm.sbar_ws[11]:show();
+	else
+		wm.sbar_ws[11]:hide();
 	end
 
 	update_sbar_shadow(wm);
@@ -644,6 +667,7 @@ local function tiler_statusbar_build(wm)
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
 				mouse_handler_factory.statusbar_icon(wm, v.command, v.alt_command)
 			);
+			btn:switch_state("inactive");
 			btn.drag_command = v.drag_command;
 
 -- unfortunately mouse "drop" doesn't trigger on the surface where
@@ -664,6 +688,13 @@ local function tiler_statusbar_build(wm)
 			"/target/window/reassign/reassign_" .. tostring(i);
 		wm.sbar_ws[i]:hide();
 	end
+
+	wm.sbar_ws[11] = wm.statusbar:add_button("left", "sbar_item_bg",
+		"sbar_item", "+", pad, wm.font_resfn, sbsz, nil,
+		mouse_handler_factory.statusbar_addicon(wm)
+	);
+	wm.sbar_ws[11].drag_command = "/target/window/reassign/reassign_new";
+	wm.sbar_ws[11]:switch_state("inactive");
 
 -- fill slot with system messages for the time being, need something
 -- more clever here later (ie. dock titlebar, notification area, ...)
@@ -743,8 +774,18 @@ local function wnd_select(wnd, source, mouse)
 
 -- special cases, wm deactivated from being plugged out, or window
 -- not attached or explicitly prohibited from being selected
-	if (wm.deactivated or not wnd.space or wnd.select_block) then
+	if (wm.deactivated or not wnd.space) then
 		return;
+	end
+
+-- a window can forward selection to another, this does not protect
+-- against circular dependencies and those would live lock
+	if (wnd.select_redirect) then
+		if wnd.select_redirect.select then
+			return wnd.select_redirect:select(source, mouse);
+		else
+			wnd.select_redirect = nil;
+		end
 	end
 
 -- may be used to reactivate locking after a lbar or similar action
@@ -2977,7 +3018,8 @@ local function wnd_crop(wnd, t, l, d, r, mask, nopad)
 	else
 		wnd.ignore_crop = false;
 		wnd.dh_pad_w = l + r;
-		wnd.dh_pad_h = t + d;
+
+-- missing coordinate calculations for zoom etc.wnd.dh_pad_h = t + d;
 	end
 
 	wnd:resize(wnd.width, wnd.height, false, mask);
@@ -3231,15 +3273,16 @@ local function wnd_mousepress(wnd)
 end
 
 local function wnd_mousemotion(wnd, x, y, rx, ry)
--- filter out until the popup releases input focus
-	if (wnd.input_focus) then
+-- popups, drag resize or internal-only windows are stop conditions
+	if (wnd.input_focus or
+		wnd.in_drag_move or wnd.in_drag_rz or
+		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
 	end
 
+-- with mouse grab @ center only send the relative samples
+-- and only of they have changed
 	if (wnd.mouse_lock_center) then
-		if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-			return;
-		end
 		local rt = {
 			kind = "analog",
 			mouse = true,
@@ -3248,13 +3291,19 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 			subid = 0;
 			samples = {rx}
 		};
-		target_input(wnd.external, rt);
+		if rx ~= 0 then
+			target_input(wnd.external, rt);
+		end
+
 		rt.subid = 1;
 		rt.samples = {ry};
-		target_input(wnd.external, rt);
+		if ry ~= 0 then
+			target_input(wnd.external, rt);
+		end
 		return;
 	end
 
+-- apply coordinate transforms to reach surface-local coordinates
 	local mv = wnd.wm.convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
@@ -3271,13 +3320,8 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 		samples = {mv[3], mv[4]}
 	};
 
-	if (wnd.in_drag_move or wnd.in_drag_rz or
-		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		return;
-	end
-
--- with rate limited mouse events (those 2khz gaming mice that likes
--- to saturate things even when not needed), we accumulate relative samples
+-- with rate limited mouse events (those 2khz gaming mice that likes to saturate
+-- things even when not needed), we accumulate relative samples and flush on timer
 	if (not wnd.rate_unlimited) then
 		local ep = EVENT_SYNCH[wnd.external] and EVENT_SYNCH[wnd.external].pending;
 		if (ep) then
@@ -3288,10 +3332,13 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 		elseif EVENT_SYNCH[wnd.external] then
 			EVENT_SYNCH[wnd.external].pending = {iotbl, iotbl2};
 		end
-	else
-		target_input(wnd.external, iotbl);
-		target_input(wnd.external, iotbl2);
+		return;
 	end
+
+-- finally send samples for axis, there are some legacy details to verify first,
+-- but this should really come in the 4/samples per packet format instead of two
+	target_input(wnd.external, iotbl);
+	target_input(wnd.external, iotbl2);
 end
 
 local function wnd_mousehover(wnd)
@@ -3304,7 +3351,6 @@ local function wnd_mousehover(wnd)
 		gconfig_get("mouse_focus_event") == "hover") then
 		wnd:select(nil, true);
 	end
--- good place for tooltip hover hint
 end
 
 local function wnd_mouseover(wnd)
@@ -3931,7 +3977,7 @@ local function get_window_name(wnd, optname)
 	if (optname and not wnd_names[optname]) then
 		wnd_names[optname] = true;
 		wnd.name = optname;
-		return;
+		return wnd.name;
 	end
 
 	repeat
@@ -3939,6 +3985,7 @@ local function get_window_name(wnd, optname)
 		ent_count = ent_count + 1;
 	until wnd_names[wnd.name] == nil;
 	wnd_names[wnd.name] = true;
+	return wnd.name;
 end
 
 local function recover_restore(wnd)
@@ -4117,6 +4164,7 @@ local function wnd_synch_overlays(wnd)
 		local xofs = wnd.crop_values and wnd.crop_values[2] or 0;
 		local yofs = wnd.crop_values and wnd.crop_values[1] or 0;
 
+-- missing coordinate calculations for zoom etc.
 		move_image(v.vid, v.xofs - xofs, v.yofs - yofs);
 
 		if (v.stretch) then
@@ -4483,7 +4531,7 @@ local wnd_setup = function(wm, source, opts)
 	wnd_set_vtable(res);
 
 -- this can be overridden / broken due to window restoration
-	get_window_name(res);
+	tiler_latest_window_name(get_window_name(res));
 
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
