@@ -34,7 +34,7 @@ end
 local function popup_handler(wnd, source, status, wtype)
 	if (status.kind == "viewport") then
 		local pid = wayland_wndcookie(status.parent);
-		if (not pid) then
+		if (not pid or not valid_vid(pid.canvas)) then
 			wayland_debug(string.format(
 				"x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d:anchor=global",
 				wtype, wnd.name, status.parent, status.rel_x, status.rel_y)

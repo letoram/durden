@@ -75,7 +75,8 @@ local function default_reqh(wnd, source, ev)
 -- early out if the type is not permitted
 	if (wnd.allowed_segments and
 		not table.find_i(wnd.allowed_segments, ev.segkind)) then
-		client_log("segreq:name=" .. wnd.name .. ":kind=clipboard:state=rejected");
+		client_log("segreq:name=" .. wnd.name ..
+			":kind=" .. ev.segkind .. ":state=rejected");
 		return;
 	end
 
@@ -134,9 +135,11 @@ local function default_reqh(wnd, source, ev)
 
 -- inherit workspace if that is set
 			local opts;
-			if (gconfig_get("ws_child_default") == "parent") then
+			if (gconfig_get("ws_child_default") == "parent" or
+				gconfig_get("tile_insert_child") == "child") then
 				opts = {
-					default_workspace = wnd.default_workspace;
+					default_workspace = wnd.default_workspace,
+					attach_parent = wnd
 				};
 			end
 
@@ -399,15 +402,18 @@ function extevh_apply_atype(wnd, atype, source, stat)
 
 -- project / overlay archetype specific toggles and settings
 	wnd.actions = atbl.actions;
+
 	if (atbl.props) then
 		for k,v in pairs(atbl.props) do
 			wnd[k] = v;
 		end
 	end
 
-	wnd.bindings = atbl.bindings and atbl.bindings or {};
-	wnd.dispatch = atbl.dispatch and atbl.dispatch or {};
-	wnd.labels = atbl.labels and atbl.labels or {};
+-- make copies of these so custom overrides/extensions won't be shared
+	wnd.bindings = table.copy(atbl.bindings);
+	wnd.dispatch = table.copy(atbl.dispatch);
+	wnd.labels = table.copy(atbl.labels);
+
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
 	wnd.atype = atype;
 
@@ -553,7 +559,7 @@ function extevh_register_guid(guid, source, handler)
 		client_log("guid_override:kind=error:message=EEXIST:source=" .. source ..":guid=" .. guid);
 		return;
 	else
-		client_log("guid_override:kind=registered:source=" .. source .. "guid=" .. guid);
+		client_log("guid_override:kind=registered:source=" .. source .. ":guid=" .. guid);
 		guid_handler_table[guid] = handler;
 	end
 end

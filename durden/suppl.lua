@@ -240,6 +240,23 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
+function table.copy(tbl)
+	if not tbl or not type(tbl) == "table" then
+		return {};
+	end
+
+	local res = {};
+	for k,v in pairs(tbl) do
+		if type(v) == "table" then
+			res[k] = table.copy(v);
+		else
+			res[k] = v;
+		end
+	end
+
+	return res;
+end
+
 function table.remove_match(tbl, match)
 	if (tbl == nil) then
 		return;

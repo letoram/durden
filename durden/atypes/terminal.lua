@@ -34,7 +34,7 @@ local res = {
 		autocrop = true,
 		font_block = true,
 		filtermode = FILTER_NONE,
-		allowed_segments = {"tui"}
+		allowed_segments = {"tui", "handover"}
 	},
 };
 
