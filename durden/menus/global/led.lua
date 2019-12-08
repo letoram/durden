@@ -51,9 +51,12 @@ return function()
 
 -- name/label are already set for us
 	for k,v in pairs(devs) do
+		v.label = v.label;
 		v.kind = "action";
 		v.submenu = true;
-		v.handler = get_led_menu(v);
+		v.handler = function()
+			return get_led_menu(v);
+		end
 	end
 	return devs;
 end

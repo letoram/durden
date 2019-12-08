@@ -72,6 +72,7 @@ function ledm_added(tbl)
 		devid = tbl.devid,
 		role = "passive",
 		label = tbl.label,
+		name = tostring(tbl.devid)
 	});
 end
 
