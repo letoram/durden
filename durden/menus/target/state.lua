@@ -144,7 +144,8 @@ return {
 	{
 	name = "push_debug",
 	label = "Debug Window",
-	kind = "action",
+	kind = "value",
+	set = {"builtin", "client"},
 	description = "Send a debug- window to the client",
 	eval = function()
 		return valid_vid(
@@ -152,7 +153,8 @@ return {
 	end,
 	handler = function(ctx, val)
 		local wnd = active_display().selected;
-		local vid = target_alloc(wnd.external, function() end, "debug");
+		local vid = target_alloc(wnd.external,
+			function() end, "debug", val == "builtin");
 		if (valid_vid(vid)) then
 			local newwnd = durden_launch(vid, "debug", "");
 			if (newwnd) then
