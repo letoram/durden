@@ -143,7 +143,7 @@ return {
 	},
 	{
 	name = "push_debug",
-	label = "Debug Window",
+	label = "Debug",
 	kind = "value",
 	set = {"builtin", "client"},
 	description = "Send a debug- window to the client",
@@ -155,12 +155,18 @@ return {
 		local wnd = active_display().selected;
 		local vid = target_alloc(wnd.external,
 			function() end, "debug", val == "builtin");
-		if (valid_vid(vid)) then
-			local newwnd = durden_launch(vid, "debug", "");
-			if (newwnd) then
-				extevh_apply_atype(newwnd, wnd.atype, vid, {});
-			end
+		if not valid_vid(vid) then
+			return;
 		end
+
+		local newwnd = durden_launch(vid, "debug", "");
+		if (not newwnd) then
+			return;
+		end
+
+		extevh_apply_atype(newwnd, wnd.atype, vid, {});
+		newwnd.allowed_segments = table.copy(newwnd.allowed_segments);
+		table.insert(newwnd.allowed_segments, "handover");
 	end
 	}
 };
