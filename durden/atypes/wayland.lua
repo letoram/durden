@@ -27,6 +27,24 @@ function wayland_gotwnd(source, wnd)
 	wlwnds[source] = wnd;
 end
 
+function wayland_debug_wnd()
+	local wnd = active_display().selected;
+	local vid = target_alloc(wnd.bridge.external, function() end, "debug");
+	if not valid_vid(vid) then
+		return;
+	end
+
+	local newwnd = durden_launch(vid, "debug", "");
+	if (not newwnd) then
+		return;
+	end
+
+-- let the debug window spawn new terminals
+	extevh_apply_atype(newwnd, "tui", vid, {});
+	newwnd.allowed_segments = table.copy(newwnd.allowed_segments);
+	table.insert(newwnd.allowed_segments, "handover");
+end
+
 local function subsurf_handler(cl, source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
@@ -349,7 +367,7 @@ local wayland_settings = {
 	handler = function(ctx, val)
 		gconfig_set("wl_decorations", val);
 	end
-}
+},
 };
 
 menus_register("global", "settings",
@@ -357,10 +375,12 @@ menus_register("global", "settings",
 	name = "wayland",
 	label = "Wayland",
 	kind = "action",
+-- disable for now, code isn't that robust
+	eval = function()
+		return false;
+	end,
 	submenu = true,
 	description = "Global settings for all wayland clients",
--- disable for now, code isn't all too robust
-	eval = function() return false; end,
 	handler = wayland_settings
 });
 
@@ -395,8 +415,15 @@ return {
 		preroll = function(wnd, source, tbl)
 
 -- (TOREM) the bridge need privileged GPU access in order to bind display
+-- also get the actual display table of the current display in order for some
+-- fullscreen clients (X games) to get the correct RANDR info.
 			target_displayhint(source,
-				wnd.max_w, wnd.max_h, 0, active_display().disptbl);
+				active_display().width, active_display().height, 0, WORLDID);
+
+-- ideally we should update this when the spawn target changes, but there is
+-- currently no plumbing for this, and the spawn-size estimation is also
+-- incorrect.
+			wayland_debug("kind=bridge_connected:vid=" .. tostring(source));
 
 			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
 				target_flags(source, TARGET_ALLOWGPU);

@@ -39,6 +39,8 @@ local function popup_handler(wnd, source, status, wtype)
 				"x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d:anchor=global",
 				wtype, wnd.name, status.parent, status.rel_x, status.rel_y)
 			);
+-- so some applications ignore the hierarchy of windows and just positions
+-- within the same coordinate space as the client
 			link_image(source, active_display().order_anchor);
 			order_image(source, 1);
 		else
@@ -127,7 +129,7 @@ end
 
 function x11_event_handler(wnd, source, status)
 	wayland_debug(string.format(
-		"status=event:event=%s:name=%s", status.kind, wnd.name));
+		"status=event:source=%d:name=%s:event=%s", source, wnd.name, status.kind));
 
 	if (status.kind == "terminated") then
 		wayland_lostwnd(source);
@@ -141,17 +143,19 @@ function x11_event_handler(wnd, source, status)
 			viewport(wnd, status);
 		else
 			wayland_debug(string.format(
-				"status=deferred:event=%s:name=%s", status.kind, wnd.name));
+				"status=deferred:source=%d:event=%s:name=%s", source, status.kind, wnd.name));
 			wnd.last_viewport = status;
 		end
 
 	elseif (status.kind == "message") then
+			wayland_debug(status.message);
+
 -- our regular dispatch table of 'special hacks'
 		local opts = string.split(status.message, ":");
 
 		if (not opts or not opts[1]) then
 			wayland_debug(string.format(
-				"x11:error_message=unknown:name=%s:raw=%s", wnd.name, status.message));
+				"x11:error_message=unknown:source=%d:name=%s:raw=%s", source, wnd.name, status.message));
 		end
 
 		if (opts[1] == "type" and opts[2]) then
@@ -159,6 +163,9 @@ function x11_event_handler(wnd, source, status)
 			wnd.surface_type = opts[2];
 			apply_type_size(wnd, source, wnd.defer_resize);
 			wnd.defer_size = nil;
+		elseif (opts[1] == "pair" and opts[2] and opts[3]) then
+			wayland_debug(string.format(
+				"x11:source=%d:wayland=%s:x11=%s",source, opts[2], opts[3]));
 		else
 			wayland_debug(string.format(
 				"x11:error_message=unknown:command=%s:name=%s", opts[1], wnd.name));
@@ -198,7 +205,14 @@ return {
 		handler = x11_menu,
 	},
 	init = function(atype, wnd, source)
-		wnd:add_handler("resize", function(wnd, neww, newh, efw, efh)
+		wnd:add_handler("move",
+		function(wnd, x, y)
+			wayland_debug(string.format("kind=move-x11:source=%d:x=%d:y=%d", wnd.external, x, y));
+			target_input(wnd.external, string.format("kind=move:x=%d:y=%d", x, y));
+		end);
+		wnd:add_handler("resize",
+		function(wnd, neww, newh, efw, efh)
+			wayland_debug(string.format("kind=resize-x11:neww=%.0f:newh=%.0f", neww, newh));
 			target_displayhint(wnd.external, neww, newh);
 		end);
 	end,
