@@ -439,6 +439,17 @@ local toplevel_menu = {
 				wnd:set_crop(0, 0, 0, 0);
 			end
 		end
+	},
+	{
+		name = "debug",
+		label = "Debug Bridge",
+		kind = "action",
+		description = "Send a debug window to the bridge client",
+		validator = function()
+			local wnd = active_display().selected;
+			return wnd.bridge and valid_vid(wnd.bridge.external, TYPE_FRAMESERVER);
+		end,
+		handler = wayland_debug_wnd,
 	}
 };
 

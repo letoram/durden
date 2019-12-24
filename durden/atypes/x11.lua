@@ -1,11 +1,34 @@
 --
 -- X11- bridge, for use with Xarcan.
 --
+
+local toplevel_menu = {
+	{
+		name = "debug",
+		label = "Debug Bridge",
+		kind = "action",
+		description = "Send a debug window to the bridge client",
+		validator = function()
+			local wnd = active_display().selected;
+			return wnd.bridge and valid_vid(wnd.bridge.external, TYPE_FRAMESERVER);
+		end,
+		handler = wayland_debug_wnd,
+	}
+};
+
 return {
 	atype = "bridge-x11",
 	default_shader = {"simple", "noalpha"},
 	actions =
 	{
+		{
+			name = "x11",
+			label = "X11",
+			description = "X11 specific window management options",
+			submenu = true,
+			kind = "action",
+			handler = toplevel_menu
+		}
 	},
 -- props will be projected upon the window during setup (unless there
 -- are overridden defaults)

@@ -80,6 +80,10 @@ local function probe(ctx, yh)
 		table.insert(lines, "atype: " .. wnd.atype);
 	end
 
+	if (valid_vid(wnd.external)) then
+		table.insert(lines, "source: " .. tostring(wnd.external));
+	end
+
 	local lst = {};
 	for k,_ in pairs(wnd.overlays) do
 		table.insert(lst, k);

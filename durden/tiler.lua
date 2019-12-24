@@ -39,8 +39,8 @@ end
 local function wnd_animation_time(wnd, source, decor, position)
 	local _, lm, _, ls = reset_image_transform(source);
 
--- if the window is just attached, don't animate by normal means
-	if (wnd.attach_time == CLOCK) then
+-- if the window is just attached, or being dragged around, then early out
+	if (wnd.attach_time == CLOCK or wnd.in_drag_rz) then
 		return 0, 0, INTERP_SMOOTHSTEP;
 	end
 
@@ -50,10 +50,11 @@ local function wnd_animation_time(wnd, source, decor, position)
 		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
 
--- only float / tile modes work for animation, and we don't want to
--- have the interactive drag etc. trigger animations
-	if (not wnd.autocrop and ( wnd.space.mode == "tile" or
-		(wnd.space.mode == "float" and not wnd.in_drag_rz))) then
+-- only float / tile modes work for animation, and autocropped windows don't
+-- work with animation as we don't have a universal texture coordinate animation
+-- system
+	if (not wnd.autocrop and
+		( wnd.space.mode == "tile" or (wnd.space.mode == "float"))) then
 		return at - lm, at - ls, INTERP_SMOOTHSTEP;
 	end
 
@@ -2766,7 +2767,6 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 
 -- shouldn't be needed anymore as reposition gets called
 	move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
-
 	wnd:recovertag();
 end
 
@@ -3850,7 +3850,10 @@ local function wnd_ws_attach(res, from_hook)
 	else
 	end
 
--- same goes for hierarchical position
+-- same goes for hierarchical position, but here there are other controls
+-- with the main ones being attachment workspace and originating parent,
+-- but first, let an assigned layouter try (all modes should really be
+-- implemented as a layouter though).
 	local insert = space.layouter and space.layouter.added(space,res);
 	if (not insert) then
 		if (not wm.selected or wm.selected.space ~= space) then
@@ -4031,6 +4034,7 @@ local function recover_restore(wnd)
 		end
 	end
 
+-- this is a deferred attribute as recover clients can come in any order
 	wnd.desired_parent = res["parent"];
 	wnd:set_title();
 
@@ -4467,6 +4471,7 @@ local wnd_setup = function(wm, source, opts)
 			destroy = {},
 			register = {},
 			resize = {},
+			move = {},
 			gained_relative = {},
 			lost_relative = {},
 			select = {},
@@ -4511,6 +4516,7 @@ local wnd_setup = function(wm, source, opts)
 		centered = true,
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		default_workspace = opts.default_workspace,
+		attach_parent = opts.attach_parent,
 
 -- external displayhint offsets to mask cropping actions
 		dh_pad_w = 0,
