@@ -8,7 +8,7 @@ local clients = {};
 local last_click = nil;
 local log = suppl_add_logfn("tools");
 
--- external connection point that accepts a primary ICON segment,
+-- external connection point that (by defaults) accepts a primary ICON segment,
 -- treates anything spawned from that as a 'popup' and only in
 -- response to input on the segment itself, (media | application | tui)
 -- all receiving basic fonts, fixed height, restricted width.
@@ -27,7 +27,8 @@ menus_register("global", "settings/statusbar/buttons",
 }
 );
 
-menus_register("global", "settings/statusbar/buttons/left",
+local function register_entry(dir)
+menus_register("global", "settings/statusbar/buttons/" .. dir,
 {
 	name = "add_external",
 	label = "Add External",
@@ -36,22 +37,14 @@ menus_register("global", "settings/statusbar/buttons/left",
 	hint = "(a-Z_0-9)",
 	validator = strict_fname_valid,
 	handler = function(ctx, val)
-		open_cp(val, "left");
+		open_cp(val, dir, true);
 	end
 });
+end
 
-menus_register("global", "settings/statusbar/buttons/right",
-{
-	name = "add_external",
-	label = "Add External",
-	kind = "value",
-	description = "Open an external connection-point for docking icons into the tray",
-	hint = "(a-Z_0-9)",
-	validator = strict_fname_valid,
-	handler = function(ctx, val)
-		open_cp(val, "right");
-	end
-});
+register_entry("left");
+register_entry("right");
+register_entry("center");
 
 local function gen_submenu_for_cp(v)
 	return {
@@ -66,6 +59,28 @@ local function gen_submenu_for_cp(v)
 				delete_image(v.vid);
 			end
 		end,
+	},
+	{
+		name = "type",
+		label = "Type",
+		kind = "value",
+		set = {"Icon", "Terminal", "Regular"},
+		handler = function(ctx, val)
+			v.allowed_types = val == "Icon" and {"icon"} or
+				{"tui", "terminal", "application", "multimedia"};
+		end
+	},
+	{
+		name = "size",
+		label = "Size",
+		kind = "value",
+		description = "Set the maximum size (% of base dimension) allocated",
+		initial = tostring(v.size_pct) .. "%",
+		hint = ("5..75"),
+		validator = gen_valid_num(5, 75),
+		handler = function(ctx, val)
+			v.size_pct = tonumber(val);
+		end
 	},
 	{
 		name = "kill",
@@ -105,21 +120,49 @@ end
 local function setup_default(name, new_vid, dir)
 	cps[name] = {
 		vid = new_vid,
-		group = dir
+		group = dir,
+		size_pct = 5,
+		allowed_types = {"icon"},
 	};
 end
 
-local function send_fonts(dst)
+local function send_fonts(dst, term)
 -- send the default UI font config
-	local main = gconfig_get("font_def");
-	local fallback = gconfig_get("font_fb");
-	local sz = gconfig_get("font_sz");
-	local hint = gconfig_get("font_hint");
+	if term then
+		main = gconfig_get("term_font");
+		fallback = gconfig_get("font_fb");
+		sz = gconfig_get("term_font_sz");
+		hint = gconfig_get("term_font_hint");
+	else
+		main = gconfig_get("font_def");
+		fallback = gconfig_get("font_fb");
+		sz = gconfig_get("font_sz");
+		hint = gconfig_get("font_hint");
+	end
+
 	target_fonthint(dst, main, sz * FONT_PT_SZ, hint, false);
 	target_fonthint(dst, fallback, sz * FONT_PT_SZ, hint, true);
 end
 
-open_cp = function(name, dir)
+local function size_for_ctx(ctx, bar)
+-- Treat it like the message area (no border or any of that jazz),
+-- we allow the button on any group.
+	local base_w = bar.height > bar.width and bar.width or bar.height;
+	local base_h = base_w;
+
+-- for non-icon types we use a preset percentage
+	if (ctx.type ~= "icon") then
+		if bar.height > bar.width then
+			base_h = ctx.cp.size_pct * 0.01 * bar.height;
+		else
+			base_w = ctx.cp.size_pct * 0.01 * bar.width;
+		end
+	end
+
+	return base_w, base_h;
+end
+
+open_cp = function(name, dir, init)
 -- did we allocate successfully?
 	local new_vid = target_alloc(name,
 		function(source, status)
@@ -136,7 +179,10 @@ open_cp = function(name, dir)
 	image_tracetag(new_vid, "adopt_destroy");
 	log("name=traybtn:kind=listening:source="
 		.. tostring(new_vid) .. ":cp=" .. name);
-	setup_default(name, new_vid, dir);
+
+	if (init) then
+		setup_default(name, new_vid, dir);
+	end
 end
 
 local handlers = {
@@ -144,12 +190,14 @@ local handlers = {
 
 handlers["registered"] =
 function(ctx, bar, source, status)
-	if (status.segkind ~= "icon") then
+	if (not table.find_i(ctx.cp.allowed_types, status.segkind)) then
 		log("name=traybtn:kind=error:source=" .. tostring(source) .. ":message="
 			.."registered with bad segkind:id=" .. status.segkind);
 		ctx:destroy();
 		return;
 	end
+
+	ctx.type = status.segkind;
 
 	log("name=traybtn:kind=status:source="
 		.. tostring(source) .. ":message=registered");
@@ -168,27 +216,19 @@ end
 
 handlers["preroll"] =
 function(ctx, bar, source, status)
--- pick the thickness and go square, no matter the direction, but also
--- set a display that match a smaller version of the bar.
-
 	local dtbl = {};
 	for k,v in pairs(bar.owner.disptbl) do
 		dtbl[k] = v;
 	end
 
--- vertical bar?
-	if (bar.height > bar.width) then
-		dtbl.height = dtbl.height * 0.5;
-		target_displayhint(source, bar.width, bar.width, 0, dtbl);
-
--- nope, horizontal or square(?!) - later case just bias a direction
-	else
-		dtbl.width = dtbl.width * 0.5;
-		target_displayhint(source, bar.height, bar.height, 0, dtbl);
-	end
+-- so this should really be updated if the bar size change, no good
+-- hooks for that at the moment, possibly the relayout on the bar
+	local w, h = size_for_ctx(ctx, bar);
+	target_flags(source, TARGET_LIMITSIZE, w, h);
+	target_displayhint(source, w, h, 0, dtbl);
 
 -- and some 'icons' is actually text, like a date / user / ...
-	send_fonts(source);
+	send_fonts(source, ctx.type == "terminal" or ctx.type == "tui");
 end
 
 handlers["terminated"] =
@@ -243,12 +283,11 @@ function(ctx, bar, source, status)
 		return;
 	end
 
--- Treat it like the message area (no border or any of that jazz),
--- we allow the button on any group.
-	local base = bar.height > bar.width and bar.width or bar.height;
-	resize_image(source, base, base);
+	local base_w, base_h = size_for_ctx(ctx, bar);
+	resize_image(source, base_w, base_h);
+
 	local resolve = function()
-		local surf = null_surface(base, base);
+		local surf = null_surface(base_w, base_h);
 		if (valid_vid(source) and valid_vid(surf)) then
 			image_sharestorage(source, surf);
 		end
@@ -262,13 +301,15 @@ function(ctx, bar, source, status)
 			return 1;
 		end,
 -- and the suggested icon size is on the button base
-		base, base,
+		base_w, base_h,
 -- lastly forward mouse handler with the proper context
 		button_mh(ctx, source), {}
 	);
 	ctx.button.owner = ctx;
-	log(string.format("name=traybtn:kind=resized-first:source=%d:base=%d"
-		.. ":width=%d:height=%d", source, base, status.width, status.height));
+	log(string.format("name=traybtn:kind=resized-first:source=%d"
+		.. ":base_w=%d:base_h=%d:width=%d:height=%d", source,
+		base_w, base_h, status.width, status.height)
+	);
 	ctx.button:update(source);
 	bar:relayout();
 end
@@ -501,6 +542,7 @@ local function free_tray_button(ctx)
 end
 
 cp_handler = function(ctx, source, status)
+
 	local bar = ctx.statusbar and ctx.statusbar or active_display().statusbar;
 	if (not bar) then
 		delete_image(source);
@@ -510,6 +552,7 @@ cp_handler = function(ctx, source, status)
 
 	if (not clients[source]) then
 		clients[source] = {
+			cp = ctx,
 			vid = source,
 			group = ctx.group,
 			destroy = free_tray_button
