@@ -218,12 +218,8 @@ load_configure_mouse = function()
 -- as the normal icon controls now that they exist, should give SDF resampling etc.
 -- for a cheaper price and not use terrible scaling in mixed-DPI
 	local set = gconfig_get("mouse_cursorset");
-	if (gconfig_get("mouse_mode") == "native") then
-		mouse_setup_native(load_cursor("default", set), 0, 0);
-	else
 -- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
-		mouse_setup(load_cursor("default", set), 65535, 1, true, false);
-	end
+	mouse_setup(load_cursor("default", set), 65535, 1, true, false);
 
 -- preload cursor states
 	mouse_add_cursor("drag", load_cursor("drag", set), 0, 0); -- 7, 5
