@@ -435,7 +435,6 @@ Mouse API
 It setup using one of the following methods:
 
     mouse_setup(cvid, clayer, pickdepth, cachepick, hidden)
-    mouse_setup_native(cvid, hot_x, hot_y)
     mouse_add_cursor(label, img, hot_x, hot_y)
 
 Its state machine is updated by one of the following methods:

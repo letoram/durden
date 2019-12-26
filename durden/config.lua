@@ -129,6 +129,8 @@ return {
 	ws_autoadopt = true,
 	ws_default = "tile",
 	ws_altmenu = "wsmenu",
+
+-- [parent] or [current]
 	ws_child_default = "parent",
 	ws_popup = "wsbtn",
 
@@ -183,15 +185,17 @@ return {
 	tile_gap_w = 0,
 	tile_gap_h = 0,
 
+-- control child window creation in [normal or child]
+--
+-- normal inserts in tile mode based on currently selected window and
+-- workspace insertion mode, child sets it as a child to the spawning
+-- window. 'child' also forces ws_child_default = parent.
+	tile_insert_child = "child",
+
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
 -- scaling parameters, SDL on OSX for instance.
 	mouse_hardlock = false,
-
--- "native' or "nonnative", while native is more energy- efficient as mouse
--- motion do not contribute to a full refresh, it may be bugged on some
--- platforms and have problems with multiple monitors right now.
-	mouse_mode = "nonnative",
 	mouse_scalef = 1.0,
 
 -- default classifier for unknown touch devices
