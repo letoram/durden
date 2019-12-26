@@ -159,7 +159,7 @@ return {
 			return;
 		end
 
-		local newwnd = durden_launch(vid, "debug", "");
+		local newwnd = durden_launch(vid, "debug", "", nil, {attach_parent = wnd});
 		if (not newwnd) then
 			return;
 		end

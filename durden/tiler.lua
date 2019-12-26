@@ -3855,10 +3855,23 @@ local function wnd_ws_attach(res, from_hook)
 -- but first, let an assigned layouter try (all modes should really be
 -- implemented as a layouter though).
 	local insert = space.layouter and space.layouter.added(space,res);
+	local insert_parent = wm.selected;
+
+-- default insertion policy
 	if (not insert) then
-		if (not wm.selected or wm.selected.space ~= space) then
+		local as_child = gconfig_get("tile_insert_child") == "child";
+		if as_child and res.attach_parent then
+			table.insert(res.attach_parent.children, res);
+			res.parent = res.attach_parent;
+
+-- redirect to custom space (crash recovery for instance)
+		elseif (not insert_parent or wm.selected.space ~= space) then
 			table.insert(space.children, res);
 			res.parent = space;
+
+-- no, use default insertion mode, pick a tree hierarchy regardless of workspace
+-- layout mode, as a tree is typically useful - 'h' -> new as sibling to current
+-- window, 'v' as child.
 		elseif (space.insert == "h") then
 			if (wm.selected.parent) then
 				local ind = table.find_i(wm.selected.parent.children, wm.selected);
@@ -4610,9 +4623,10 @@ local wnd_setup = function(wm, source, opts)
 	res:recovertag(true);
 
 	tiler_debug(wm, string.format(
-		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s",
+		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s:parent=%s",
 		res.name, res.width, res.height,
-		tostring(res.show_titlebar), tostring(res.show_border)
+		tostring(res.show_titlebar), tostring(res.show_border),
+		res.attach_parent and res.attach_parent.name or "none"
 	));
 
 	return res;

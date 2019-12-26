@@ -76,6 +76,9 @@ This tool allows for simple tracking of todo tasks that integrate with
 the notification system, status bars and so on.
 
 Minor / Fixes:
+* added controls to insert subwindows as new windows or relative to their
+  parents, (global/settings/workspaces/tiled/subwindow=normal,child)
+
 * removed the 'alternate' window feature (used with wayland toplevels and
   terminal groups), the feature turned out way to complex and demanding in
 	the way it was implemented.

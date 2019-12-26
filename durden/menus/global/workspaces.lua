@@ -70,6 +70,16 @@ local tile_menu = {
 		handler = function(ctx, val)
 			gconfig_set("tile_gap_h", tonumber(val));
 		end
+	},
+	{
+		label = "Subwindow Spawn",
+		name = "subwindow",
+		kind = "value",
+		set = {"normal", "child"},
+		description = "Control if child windows are inserted relative to their parent or follow normal spawn rules",
+		handler	= function(ctx, val)
+			gconfig_set("tile_insert_child", val);
+		end
 	}
 };
 
