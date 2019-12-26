@@ -625,6 +625,7 @@ function suppl_color_menu(cb, lookup)
 				string.upper(string.sub(v[1], 1, 1)) .. string.upper(string.sub(v[1], 2)),
 			kind = "value",
 			hint = "(r g b)(0..255)",
+			widget = "special:colorpick_r8g8b8",
 			validator = suppl_valid_typestr("fff", 0, 255, 0),
 			initial = function()
 				local r, g, b = lookup(v[1]);
@@ -715,6 +716,7 @@ end
 
 local function append_color_menu(r, g, b, tbl, update_fun)
 	tbl.kind = "value";
+	tbl.widget = "special:colorpick_r8g8b8";
 	tbl.hint = "(r g b)(0..255)";
 	tbl.initial = string.format("%.0f %.0f %.0f", r, g, b);
 	tbl.validator = suppl_valid_typestr("fff", 0, 255, 0);
@@ -1392,7 +1394,6 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 -- but with special treatment for floating widgets
 	local start = fi+1;
 	local ctr = 0;
-
 
 -- the layouting algorithm here is a bit clunky. The algorithms evolved
 -- from the advfloat autolayouter should really be generalized into a
