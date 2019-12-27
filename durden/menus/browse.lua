@@ -51,8 +51,9 @@ local function match_ext(v, tbl)
 		return false;
 	end
 
-	if (tbl[string.lower(ext)]) then
-		return tbl[ext];
+	local ent = tbl[string.lower(ext)];
+	if ent then
+		return ent;
 	else
 		return tbl["*"];
 	end
