@@ -256,6 +256,49 @@ local function migrate_ws_bydsp()
 	return res;
 end
 
+local function gen_wnd_menu(space, key)
+	local lst = space:linearize();
+	local res = {};
+	for i,v in ipairs(lst) do
+		if not key or v[key] then
+			table.insert(res, {
+				name = v.name,
+				label = v.name,
+				description = v.title,
+				kind = "action",
+				submenu = true,
+				handler = function()
+					return menu_path_for_set({v}, "/target");
+				end
+			});
+		end
+	end
+	return res;
+end
+
+local function ws_wnd_menu(space)
+	return {
+		{
+			name = "all",
+			label = "All",
+			kind = "action",
+			submenu = true,
+			handler = function()
+				return gen_wnd_menu(space);
+			end
+		},
+		{
+			name = "hidden",
+			label = "Hidden",
+			kind = "action",
+			submenu = true,
+			handler = function()
+				return gen_wnd_menu(space, "hidden");
+			end
+		}
+	};
+end
+
 return {
 	{
 		name = "bg",
@@ -325,6 +368,19 @@ return {
 		handler = function()
 			return ui_scheme_menu("workspace",
 				active_display().spaces[active_display().space_ind]);
+		end
+	},
+	{
+		name = "windows",
+		label = "Windows",
+		kind = "action",
+		submenu = true,
+		description = "Control the windows currently attached to the active workspace",
+		eval = function()
+			return #active_display():active_space():linearize() > 0;
+		end,
+		handler = function()
+			return ws_wnd_menu(active_display():active_space());
 		end
 	},
 	{
