@@ -89,7 +89,7 @@ local function default_reqh(wnd, source, ev)
 		end
 
 		client_log("segreq:name=" .. wnd.name .. ":state=handover");
-		durden_launch(hover, "", "external");
+		durden_launch(hover, "", "external", nil, {attach_parent = wnd});
 
 -- special handling, cursor etc. maybe we should permit subtype handler override
 	elseif (ev.segkind == "cursor") then

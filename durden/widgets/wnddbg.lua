@@ -17,9 +17,10 @@ local function probe(ctx, yh)
 	local sprops = image_storage_properties(wnd.canvas);
 
 	table.insert(lines, string.format(
-		"store: %d * %d, present: %d * %d",
+		"store: %d * %d, present: %d * %d, opacity: %.3f",
 		sprops.width, sprops.height,
-		props.width, props.height
+		props.width, props.height,
+		props.opacity
 	));
 
 	if (wnd.maximized) then

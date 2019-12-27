@@ -1246,6 +1246,7 @@ local function drop_fullscreen(space, swap)
 	space.hook_block = true;
 	local dw = space.selected;
 	blend_image(dw.titlebar.anchor, dw.fs_copy.tbar);
+	dw.titlebar:show("fullscreen");
 	dw:set_titlebar(dw.fs_copy.show_titlebar);
 	dw:set_border(dw.fs_copy.show_border);
 
@@ -1473,11 +1474,7 @@ local function set_fullscreen(space)
 		};
 	end
 
--- shouldn't be needed due to the 'set titlebar' thing, but there are so
--- many weird edge conditions on the 'merge titlebar to statusbar', client-
--- set decorations, ... that this is just the most robust without serious
--- digging
-	hide_image(dw.titlebar.anchor);
+	dw.titlebar:hide("fullscreen");
 
 -- not all clients provide a canvas surface that match
 	dw.centered = true;
@@ -3797,71 +3794,76 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
--- Can be intercepted by a hook handler that regulates placement but we avoid
--- it if we are attaching after recovery or if the window spawns in a
--- non-active workspace. A proper hook handler then re-runs attachment when it
--- has done its possible positioning and sizing
-	if ((dstindex == wm.space_ind and not res.attach_temp)
-		and wm.attach_hook and not from_hook) then
-			tiler_debug(wm, "attach_hook:name=" .. res.name);
-			return wm:attach_hook(res);
-	end
-
-	res.ws_attach = nil;
-	res.attach_time = CLOCK;
-
--- this will only happen on assignment to non-active workspace
-	local rebuild_sbar = false;
-	if (wm.spaces[dstindex] == nil) then
-		wm.spaces[dstindex] = create_workspace(wm);
-		tiler_statusbar_update(wm);
-	end
-
--- actual dimensions depend on the state of the workspace we'll attach,
--- which in turn can have complicated layouting etc. rules so first
--- attach.
-	local space = wm.spaces[dstindex];
-	res.space_ind = dstindex;
-	res.space = space;
-	link_image(res.anchor, space.anchor);
-
-	tbh = tbar_geth(res);
-	res.pad_top = res.pad_top + tbh;
-
--- this should be improved by allowing w/h/x/y overrides based on
--- history for the specific source or the class it belongs to
-	if (space.mode == "float") then
-		local props = image_storage_properties(res.canvas);
-		res.width = props.width;
-		res.height = props.height;
-		if (res.defer_x) then
-			res.x = res.defer_x;
-			res.y = res.defer_y;
-			res.defer_x = nil;
-			res.defer_y = nil;
-		else
-			res.x, res.y = mouse_xy();
-			res.x = res.x - res.pad_left - res.pad_right;
-			res.y = res.y - res.pad_top - res.pad_bottom;
+	local as_child = gconfig_get("tile_insert_child") == "child";
+	if (as_child and res.attach_parent) then
+			dstindex = res.attach_parent.space_ind;
 		end
-		res.max_w = wm.effective_width;
-		res.max_h = wm.effective_height;
-		move_image(res.anchor, res.x, res.y);
-	else
-	end
 
--- same goes for hierarchical position, but here there are other controls
--- with the main ones being attachment workspace and originating parent,
--- but first, let an assigned layouter try (all modes should really be
--- implemented as a layouter though).
-	local insert = space.layouter and space.layouter.added(space,res);
-	local insert_parent = wm.selected;
+	-- Can be intercepted by a hook handler that regulates placement but we avoid
+	-- it if we are attaching after recovery or if the window spawns in a
+	-- non-active workspace. A proper hook handler then re-runs attachment when it
+	-- has done its possible positioning and sizing - example of this is the
+	-- draw-to-spawn mode.
+		if ((dstindex == wm.space_ind and not res.attach_temp)
+			and wm.attach_hook and not from_hook) then
+				tiler_debug(wm, "attach_hook:name=" .. res.name);
+				return wm:attach_hook(res);
+		end
 
--- default insertion policy
-	if (not insert) then
-		local as_child = gconfig_get("tile_insert_child") == "child";
-		if as_child and res.attach_parent then
-			table.insert(res.attach_parent.children, res);
+		res.ws_attach = nil;
+		res.attach_time = CLOCK;
+
+	-- this will only happen on assignment to non-active workspace
+		local rebuild_sbar = false;
+		if (wm.spaces[dstindex] == nil) then
+			wm.spaces[dstindex] = create_workspace(wm);
+			tiler_statusbar_update(wm);
+		end
+
+	-- actual dimensions depend on the state of the workspace we'll attach,
+	-- which in turn can have complicated layouting etc. rules so first
+	-- attach.
+		local space = wm.spaces[dstindex];
+		res.space_ind = dstindex;
+		res.space = space;
+		link_image(res.anchor, space.anchor);
+
+		tbh = tbar_geth(res);
+		res.pad_top = res.pad_top + tbh;
+
+	-- this should be improved by allowing w/h/x/y overrides based on
+	-- history for the specific source or the class it belongs to
+		if (space.mode == "float") then
+			local props = image_storage_properties(res.canvas);
+			res.width = props.width;
+			res.height = props.height;
+			if (res.defer_x) then
+				res.x = res.defer_x;
+				res.y = res.defer_y;
+				res.defer_x = nil;
+				res.defer_y = nil;
+			else
+				res.x, res.y = mouse_xy();
+				res.x = res.x - res.pad_left - res.pad_right;
+				res.y = res.y - res.pad_top - res.pad_bottom;
+			end
+			res.max_w = wm.effective_width;
+			res.max_h = wm.effective_height;
+			move_image(res.anchor, res.x, res.y);
+		else
+		end
+
+	-- same goes for hierarchical position, but here there are other controls
+	-- with the main ones being attachment workspace and originating parent,
+	-- but first, let an assigned layouter try (all modes should really be
+	-- implemented as a layouter though).
+		local insert = space.layouter and space.layouter.added(space,res);
+		local insert_parent = wm.selected;
+
+	-- default insertion policy
+		if (not insert) then
+			if as_child and res.attach_parent then
+				table.insert(res.attach_parent.children, res);
 			res.parent = res.attach_parent;
 
 -- redirect to custom space (crash recovery for instance)
