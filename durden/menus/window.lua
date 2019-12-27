@@ -1,5 +1,5 @@
 
-local function get_path_for_set(set, path)
+function menu_path_for_set(set, path)
 	local nents = {};
 
 -- first build a list of possible paths based on the context of
@@ -47,7 +47,7 @@ local function get_path_for_set(set, path)
 			else
 				if (newtbl.submenu == true) then
 					newtbl.handler = function()
-						return get_path_for_set(set, path .. "/" .. newtbl.name);
+						return menu_path_for_set(set, path .. "/" .. newtbl.name);
 					end
 				else
 					newtbl.handler = function()
@@ -73,7 +73,7 @@ local function gen_menu_for_group(k)
 		end
 	end
 
-	return get_path_for_set(set, "/target");
+	return menu_path_for_set(set, "/target");
 end
 
 local function gen_all_menu(subtype)
@@ -81,7 +81,7 @@ local function gen_all_menu(subtype)
 	for wnd in all_windows(subtype, false) do
 		table.insert(set, wnd);
 	end
-	return get_path_for_set(set, "/target");
+	return menu_path_for_set(set, "/target");
 end
 
 local function gen_group_menu()
@@ -119,7 +119,7 @@ local function gen_wnd_menu()
 			description = wnd:get_name(),
 			submenu = true,
 			handler = function()
-				return get_path_for_set({wnd}, "/target");
+				return menu_path_for_set({wnd}, "/target");
 			end,
 		});
 	end
@@ -163,7 +163,7 @@ return {
 			end
 			for wnd in all_windows(nil, false) do
 				if wnd.name == name then
-					return get_path_for_set({wnd}, "/target");
+					return menu_path_for_set({wnd}, "/target");
 				end
 			end
 		end
