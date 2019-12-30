@@ -118,6 +118,10 @@ Minor / Fixes:
 
 * firstrun.lua added to setup custom defaults on first run/config reset
 
+* dropped the vr-viewer tool in favor of an upcoming way of allowing lwa
+  clients that use the vr-subsystem so that safespaces can be used nested
+	at minimal cost.
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
