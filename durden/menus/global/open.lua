@@ -42,7 +42,7 @@ local function setup_group_cp(wnd, group)
 					durden_new_connection(source, status);
 				end
 			);
-			return {alternate = wnd};
+			return {attach_parent = wnd};
 		end
 	);
 
