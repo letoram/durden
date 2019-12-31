@@ -4281,9 +4281,13 @@ local function wnd_guid(wnd, guid)
 	end
 end
 
-local function default_displayhint(wnd, hw, hh, dm, ...)
+local function default_displayhint(wnd, hw, hh, dm, tbl, ...)
 	if (not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		return;
+	end
+
+	if not tbl then
+		tbl = get_disptbl(wnd, wnd.wm.disptbl);
 	end
 
 	hw = math.clamp(hw, 0, MAX_SURFACEW);
@@ -4329,7 +4333,7 @@ local function default_displayhint(wnd, hw, hh, dm, ...)
 		tiler_debug(wnd.wm, string.format(
 			"display_hint:name=%s:vid=%d:status=blocked", wnd.name, wnd.external));
 	else
-		target_displayhint(wnd.external, hw, hh, dm, ...);
+		target_displayhint(wnd.external, hw, hh, dm, tbl, ...);
 	end
 end
 
