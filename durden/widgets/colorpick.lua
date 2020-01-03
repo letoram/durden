@@ -18,7 +18,7 @@ void main()
 }
 ]];
 
-local frag2 = [[
+local frag_2 = [[
 /* conversion of IQs palette demo
  * License: MIT
  * Copyright (C) 2015 Inigo Quilez */
@@ -50,6 +50,7 @@ void main()
 
 -- we do this as a generate+readback thing
 local function probe(ctx, yh, ident)
+	ctx.ident = ident;
 	return 1;
 end
 
@@ -60,15 +61,10 @@ local function build_colorimage(w, h)
 	local cellw = math.ceil(w / nelem);
 
 -- temporary rendertarget to image
-	local v1 = null_surface(cellw, y);
-	local v2 = null_surface(cellw, y);
+	local v1 = null_surface(cellw, h);
+	local v2 = null_surface(cellw, h);
 	if (not valid_vid(v2)) then
 		delete_image(v1);
-		return;
-	end
-	local v3 = null_surface(cellw, y);
-	if (not valid_vid(v3)) then
-		delete_image(v2);
 		return;
 	end
 
@@ -81,50 +77,112 @@ local function build_colorimage(w, h)
 	end
 
 -- build intermediate buffer
-	show_image({v1, v2, v3});
+	show_image({v1, v2});
 	local buf = alloc_surface(w, h, true);
 	if not valid_vid(buf) then
 		delete_image(v1);
 		delete_image(v2);
-		delete_image(v3);
 		return;
 	end
+
+	move_image(v2, cellw, 0);
 
 -- offscreen render to buffer
 	image_shader(v1, shader_1);
 	image_shader(v2, shader_2);
-	show_image({v1, v2, v3});
+	show_image({v1, v2});
 	define_rendertarget(buf,
-		{v1, v2, v3}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
+		{v1, v2}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
 	rendertarget_forceupdate(buf);
 
 -- save the contents but delete all other resources
-	rendertarget_detach(buf, v1);
+	rendertarget_attach(active_display(true), v1, RENDERTARGET_DETACH);
 	image_sharestorage(buf, v1);
+	image_shader(v1, "DEFAULT");
 	delete_image(buf);
 
 	return v1;
 end
 
+local function color_to_ident(r, g, b, ident)
+	return string.format("%d %d %d", r, g, b);
+end
+
 local shader;
 local function show(ctx, anchor, ofs, yh)
-	local w = math.clamp(yh * 3.0, 0, active_display().width);
-	local vid = build_colorimage(w, yh);
-	if not valid_vid(vid) then
+	local w = math.clamp(yh * 6.0, 0, active_display().width);
+	local surf = build_colorimage(w, yh);
+	if not valid_vid(surf) then
 		return 0, 0;
-	end
-
-	local buf = alloc_surface(w, yh, true);
-	if not valid_vid(buf) then
-		return 0;
 	end
 
 -- attach so we autoclean
 	show_image(surf);
 	link_image(surf, anchor);
 	image_inherit_order(surf, true);
+	image_tracetag(surf, "color_swatch");
+
+-- this is suprisingly complex, so the mouse handler calculates the surface-
+-- local coordinates for the selected pixel, and the click action triggers
+-- an update of a FBO with readback into a callback where the value can be
+-- sampled and set to the input bar
+	local buf = alloc_surface(2, 2);
+	local ref = null_surface(2, 2);
+	local hint = null_surface(320, 320);
+	image_tracetag(buf, "color_dst");
+	image_tracetag(ref, "color_pick");
+	image_tracetag(hint, "color_preview");
+	show_image({hint, ref});
+	image_inherit_order(hint, true);
+	link_image(hint, surf, ANCHOR_UR);
+	link_image(buf, surf);
+
+	image_sharestorage(surf, ref);
+	image_sharestorage(surf, hint);
+
+	local lx = 0;
+	local ly = 0;
+	local props = image_surface_resolve(surf);
+	local store_props = image_storage_properties(surf);
+	local sx = (props.width / store_props.width) / props.width;
+	local sy = (props.height / store_props.height) / props.height;
+
+	define_calctarget(buf, {ref}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
+		function(tbl, w, h)
+			local r, g, b = tbl:get(0, 0, 3);
+			local lbar = tiler_lbar_isactive(true);
+			if lbar then
+				lbar.inp:set_str(color_to_ident(r, g, b, ctx.ident));
+			end
+		end
+	);
 
 -- add the clickhandler that lets us actually get the color
+	ctx.mouseh = {
+	name = "colorpick",
+	own = function(ctx, val)
+		return val == surf;
+	end,
+
+-- this is buggy due to an engine issue, if we translate x,y to surface
+-- coordinates, the x/y of the anchor will not resolve correctly due to the
+-- ANCHOR_ so wait for that to be fixed
+	motion = function(ctx, vid, x, y)
+		lx = x / props.width;
+		ly = y / props.height;
+		local txcos = {lx, ly, lx + sx, ly, lx + sx, ly + sy, lx, ly + sy};
+		image_set_txcos(ref, txcos);
+		image_set_txcos(hint, txcos);
+	end,
+	click = function()
+		if valid_vid(buf) and valid_vid(ref) then
+			rendertarget_forceupdate(buf);
+			stepframe_target(buf);
+		end
+	end,
+	};
+
+	mouse_addlistener(ctx.mouseh, {"motion", "click"});
 
 	return w, yh;
 end
