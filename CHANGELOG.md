@@ -118,6 +118,8 @@ Minor / Fixes:
 
 * firstrun.lua added to setup custom defaults on first run/config reset
 
+* added color picker widget
+
 * dropped the vr-viewer tool in favor of an upcoming way of allowing lwa
   clients that use the vr-subsystem so that safespaces can be used nested
 	at minimal cost.

@@ -126,6 +126,7 @@ return
 		label = "Color",
 		kind = "value",
 		hint = "(r g b)[0..255]",
+		widget = "special:colorpick_r8g8b8",
 		initial = function()
 			local bc = gconfig_get("titlebar_color");
 			return string.format("%.0f %.0f %.0f", bc[1], bc[2], bc[3]);
