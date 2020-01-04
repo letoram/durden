@@ -841,20 +841,17 @@ local function wnd_select(wnd, source, mouse)
 	ms = mouse_state();
 	ms.hover_ign = true;
 
--- there is an option for letting the mouse cursor warp to last
--- known position on selection when it is not initiated by the mouse
--- cursor itself (so keyboard or similar)
-	local props = image_surface_resolve(wnd.canvas);
-	if (gconfig_get("mouse_remember_position") and not ms.in_handler) then
-		local px = 0.0;
-		local py = 0.0;
+-- warp to last known position, but disable if we just attached as there
+-- won't be a reference coordinate saved yet and the warp coordinates will
+-- resolve wrongly if the canvas is animated
+	if (CLOCK ~= wnd.attach_clock and
+		gconfig_get("mouse_remember_position") and not ms.in_handler) then
+		local props = image_surface_resolve(wnd.canvas);
+		local rx = wnd.x + wnd.mouse[1] * props.width;
+		local ry = wnd.y + wnd.mouse[2] * props.height;
+		tiler_debug(wm, string.format("select_warp:x=%f:y=%f", rx, ry));
 
-		if (wnd.mouse) then
-			px = wnd.mouse[1];
-			py = wnd.mouse[2];
-		end
-		mouse_absinput_masked(
-			props.x + px * props.width, props.y + py * props.height, true);
+		mouse_absinput_masked(rx, ry, true);
 		wnd_mouseactivate(wnd);
 		ms.hide_count = ms.hide_base;
 -- won't generate normal over event
@@ -3757,6 +3754,8 @@ end
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
 	local dstindex;
+	res.attach_clock = CLOCK;
+
 	if wm.space_default_ind then
 		dstindex = wm.space_default_ind;
 	else
@@ -4553,6 +4552,8 @@ local wnd_setup = function(wm, source, opts)
 		border_width = wnd_border_width,
 	};
 
+-- default mouse position to center
+	res.mouse = {0.5, 0.5};
 	wnd_set_vtable(res);
 
 -- this can be overridden / broken due to window restoration
@@ -4970,6 +4971,9 @@ local function tiler_input_lock(wm, dst, source)
 end
 
 -- based on the current mode, present a client size that would make sense
+-- this doesn't really work for tiling either as there are a bunch of other
+-- variables there, the other tactic is to mark the window as 'hidden' until
+-- mapped, but have a dry-run where it is not
 local function tiler_suggest_size(wm)
 	return 300, 300;
 end
