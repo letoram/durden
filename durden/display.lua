@@ -595,6 +595,11 @@ function display_set_backlight(name, ctrl, ind)
 	led_intensity(ctrl, ind, 255.0 * disp.backlight);
 end
 
+local function modestr(tbl)
+	return string.format(
+		"%d*%d (%f+%f mm)", tbl.width, tbl.height, tbl.phy_width_mm, tbl.phy_height_mm);
+end
+
 local function display_added(id)
 	local modes = video_displaymodes(id);
 
@@ -606,6 +611,11 @@ local function display_added(id)
 
 -- map resolved display modes, assume [1] is the preferred one
 	if (modes and #modes > 0 and modes[1].width > 0) then
+		for i,v in ipairs(modes) do
+			display_debug(string.format(
+				"status=modedata:id=%s:mode=%d:modestr=%s", id, i, modestr(v)));
+		end
+
 		dw = modes[1].width;
 		dh = modes[1].height;
 		local wmm = modes[1].phy_width_mm;
@@ -617,11 +627,14 @@ local function display_added(id)
 		if (wmm > 0 and hmm > 0) then
 			ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
 		end
+	else
+		display_debug("status=error:id="..tostring(id)..":message=no modes on display");
 	end
 
 	local ddisp;
 	ddisp = display_add(get_name(id), dw, dh, ppcm, id);
 	if (not ddisp) then
+		display_debug("status=error:id="..tostring(id)..":message=display_add failed");
 		return;
 	end
 
