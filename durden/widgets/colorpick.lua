@@ -57,15 +57,32 @@ end
 local shader_1;
 local shader_2;
 local function build_colorimage(w, h)
-	local nelem = 2;
+	local nelem = 3;
 	local cellw = math.ceil(w / nelem);
+	local space = active_display():active_space():preview(cellw, h, 5, 0);
+	if not space then
+		nelem = nelem - 1;
+		cellw = math.ceil(w / nelem);
+	else
+		show_image(space);
+	end
 
 -- temporary rendertarget to image
 	local v1 = null_surface(cellw, h);
 	local v2 = null_surface(cellw, h);
+
 	if (not valid_vid(v2)) then
 		delete_image(v1);
+		if valid_vid(space) then
+			delete_image(space);
+		end
 		return;
+	end
+
+-- build a tree so we don't need to position / cleanup all
+	link_image(v2, v1, ANCHOR_UR);
+	if valid_vid(space) then
+		link_image(space, v2, ANCHOR_UR);
 	end
 
 	if not shader_1 then
@@ -76,23 +93,24 @@ local function build_colorimage(w, h)
 		shader_2 = build_shader(nil, frag_2, "colorpick_2");
 	end
 
+	local set = {v1, v2};
+	if valid_vid(space) then
+		table.insert(set, space);
+	end
+
 -- build intermediate buffer
-	show_image({v1, v2});
+	show_image(set);
 	local buf = alloc_surface(w, h, true);
 	if not valid_vid(buf) then
 		delete_image(v1);
-		delete_image(v2);
 		return;
 	end
-
-	move_image(v2, cellw, 0);
 
 -- offscreen render to buffer
 	image_shader(v1, shader_1);
 	image_shader(v2, shader_2);
-	show_image({v1, v2});
-	define_rendertarget(buf,
-		{v1, v2}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
+
+	define_rendertarget(buf, set, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0);
 	rendertarget_forceupdate(buf);
 
 -- save the contents but delete all other resources

@@ -102,6 +102,7 @@ local spawn_menu = {
 		name = "child",
 		label = "Child",
 		kind = "value",
+		description = "Control if child windows should derive from its parent or as a new window",
 		initial = function()
 			return gconfig_get("ws_child_default");
 		end,
