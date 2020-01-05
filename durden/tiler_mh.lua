@@ -573,6 +573,8 @@ local function build_statusbar_wsicon(wm, i)
 			tiler_debug(wm, "wsbtn:kind=error:status=einval:message=redirect_click:name=" .. ment);
 			return btn:click();
 		end
+		menu = table.copy(menu);
+		menu.preset = i;
 		local x, y = mouse_xy();
 		uimap_popup(menu, x, y, btn.bg);
 	end,

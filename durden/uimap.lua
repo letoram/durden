@@ -49,7 +49,7 @@ local function vent_to_menu(ent)
 	return res;
 end
 
-function uimap_popup(menu, x, y, anchor_vid)
+function uimap_popup(menu, x, y, anchor_vid, closure)
 	local wm = active_display();
 	local ml = {
 		name = "grab_surface"
@@ -88,15 +88,20 @@ function uimap_popup(menu, x, y, anchor_vid)
 -- all paths return true == we take control over invocation
 		on_finish =
 		function(ctx, ent)
+			mouse_droplistener(ml);
 			dispatch_symbol_unlock(true);
 			active_display():set_input_lock();
+
+-- let the activation be intercepted
+			if closure and not closure(ent) then
+				return;
+			end
 
 			if not ent then
 				log("tool=popup:kind=cancelled");
 				return;
 			end
 			log("tool=popup:kind=selected:item=" .. ent.name);
-			mouse_droplistener(ml);
 
 -- block submenus for now
 			if (ent.submenu) then
@@ -109,11 +114,21 @@ function uimap_popup(menu, x, y, anchor_vid)
 			end
 
 -- value-sets can be provided as popups without needing to provide other IMEs
-			if (ent.kind == "value" and ent.set) then
-				local menu = vent_to_menu(ent);
-				ctx:cancel();
-				uimap_popup(menu, x, y, anchor_vid);
-				return true;
+			if (ent.kind == "value") then
+				if (ent.set or type(ent.preset) == "table") then
+					local menu = vent_to_menu(ent);
+					ctx:cancel();
+					uimap_popup(menu, x, y, anchor_vid);
+					return true;
+
+-- inject the preset
+				elseif ent.preset then
+					ctx:cancel();
+					if not ent.validator or ent.validator(ent.present) then
+						ent:handler(ent.preset);
+					end
+					return true;
+				end
 			end
 
 -- and forward normal items (will just trigger handle and cancel)
