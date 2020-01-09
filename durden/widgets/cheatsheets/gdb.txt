@@ -47,3 +47,9 @@ info var [regex] -- globals
 target [pid],[host],[file]
 set follow-fork-mode child
 set follow-exec-mode new
+
+--- Function Tracing ----
+set logging on
+set confirm off
+rbreak .
+OR (intel) record btrace

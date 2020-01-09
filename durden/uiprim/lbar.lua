@@ -685,10 +685,17 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		in_preview = opts.in_preview,
 		on_accept = opts.on_accept,
 		on_create = opts.on_create,
+		on_entry = opts.on_entry,
 		wm = wm,
--- if not set, default to true
-		force_completion = opts.force_completion == false and false or true
 	};
+
+-- if not set, default to true
+	if (opts.force_completion == false) then
+		res.force_completion = false;
+	else
+		res.force_completion = true;
+	end
+
 	wm.input_ctx = res;
 
 	local bg_mh = {

@@ -22,6 +22,7 @@ end
 
 local function grab_file(handler, open)
 	dispatch_symbol_bind(
+-- callback (on entry)
 		function(path)
 			if (not path) then
 				return;
@@ -36,8 +37,17 @@ local function grab_file(handler, open)
 				handler(path);
 			end
 		end,
+-- base path
 		"/browse/shared",
-		{ show_invisible = false; }
+-- menu options
+		{ show_invisible = false,
+			force_completion = open and true or false,
+			on_entry = function(ctx, path)
+				if (#path > 0) then
+					handler(path);
+				end
+			end
+		}
 	);
 end
 
@@ -92,6 +102,7 @@ return {
 			local source = active_display().selected.external;
 			grab_file(function(path)
 				if valid_vid(source, TYPE_FRAMESERVER) then
+					print("open path", path);
 					restore_target(source, path, SHARED_RESOURCE);
 				end
 			end, true);
@@ -107,6 +118,7 @@ return {
 			local source = active_display().selected.external;
 			grab_file(function(path)
 				if valid_vid(source, TYPE_FRAMESERVER) then
+					print("send path", path);
 					snapshot_target(source, path, SHARED_RESOURCE);
 				end
 			end, false);

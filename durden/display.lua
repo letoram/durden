@@ -500,7 +500,6 @@ function display_manager_shutdown()
 	local ktbl = {};
 
 	for i,v in ipairs(displays) do
-		print("display", v.name, v.shader)
 		local pref = "disp_" .. string.hexenc(v.name) .. "_";
 
 		if (v.ppcm_override) then
