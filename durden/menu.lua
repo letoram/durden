@@ -473,8 +473,16 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 			tgt = v;
 		end
 	end
+
+-- may happen if 'force_completion' is false
 	if (tgt == nil) then
+		if (ctx.on_entry) then
+			ctx:on_entry(instr);
+		end
 		cpath:reset();
+		if (menu_hook) then
+			menu_hook = nil;
+		end
 		return;
 	end
 
@@ -903,6 +911,12 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 
 	local menu_helper = gconfig_get("menu_helper");
 	local last_i;
+
+-- project some options from ctx to lbar
+	if ctx.force_completion ~= nil then
+		lbar_opts.force_completion = ctx.force_completion;
+		lbar_opts.on_entry = ctx.on_entry;
+	end
 
 -- on_item is used to update selection state (could also be used to
 -- preview everything immediately rather than on selection)

@@ -338,8 +338,8 @@ function(wnd, source, stat)
 		return
 	end
 
--- client wants input as soon as possible, if not focus, then set alert
--- and when focus is obtained, trigger
+-- client wants input as soon as possible, if not focus,
+-- set alert and when focus is obtained, trigger
 	local fun = function()
 		wnd.ephemeral_ext = stat.extensions;
 		dispatch_symbol_wnd(wnd,
