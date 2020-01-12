@@ -207,8 +207,13 @@ return {
 	init = function(atype, wnd, source)
 		wnd:add_handler("move",
 		function(wnd, x, y)
-			wayland_debug(string.format("kind=move-x11:source=%d:x=%d:y=%d", wnd.external, x, y));
-			target_input(wnd.external, string.format("kind=move:x=%d:y=%d", x, y));
+			local rx = x + wnd.pad_left;
+			local ry = y + wnd.pad_top;
+
+			wayland_debug(string.format(
+				"kind=move-x11:source=%d:x=%d:y=%d", wnd.external, rx, ry));
+-- need to send where the anchor is, not where the current position is
+			target_input(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
 		end);
 		wnd:add_handler("resize",
 		function(wnd, neww, newh, efw, efh)
