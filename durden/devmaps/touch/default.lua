@@ -29,9 +29,6 @@ return {
 	scale_x = 3.0,
 	scale_y = 2.5,
 
--- mask to disable certain button indices for digital events
-	submask = 0xffff,
-
 -- ignore samples between state changes for a number of ticks
 	default_cooldown = 2,
 

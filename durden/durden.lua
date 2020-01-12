@@ -427,6 +427,10 @@ function durden_adopt(vid, kind, title, parent, last)
 		return false;
 	end
 
+-- fake trigger the meta guard as we likely come from a working reset/
+-- silent restart where the feature is just an annoyance
+	meta_guard(true, true);
+
 -- need to re-attach so they don't end up racing to the wrong display
 	local ap = display_attachment();
 	if (ap ~= nil) then
@@ -637,13 +641,6 @@ function durden_display_state(action, id, state)
 	end
 end
 
-local input_devhs = {};
--- for some complex or hybrid devices, we want the option of
--- being able to take priority in manipulating or mutating iotbl state
-function durden_register_devhandler(devid, func, ctx)
-	input_devhs[devid] = {func, ctx};
-end
-
 function durden_normal_input(iotbl, fromim)
 -- we track all iotbl events in full debug mode
 	if (iotbl.kind == "status") then
@@ -652,16 +649,12 @@ function durden_normal_input(iotbl, fromim)
 	end
 
 	ievcount = ievcount + 1;
-	local devh = input_devhs[iotbl.devid];
-	if (devh) then
-		if (not devh[1](devh[2], iotbl)) then
-			return;
-		end
-	end
 
 -- iostate manager takes care of mapping or translating 'game' devices,
 -- device added/removed events, stateful "per window" tracking and
--- "autofire" or "repeat" injections but ignores mice and keyboard devices.
+-- "autofire" or "repeat" injections. It may also route to registered
+-- input tools. Any processed results might injected back, and that's
+-- the 'fromim' tag.
 	if (not fromim) then
 		if (iostatem_input(iotbl)) then
 			return;
