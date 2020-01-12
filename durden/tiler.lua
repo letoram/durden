@@ -2204,6 +2204,8 @@ local function wnd_repos(wnd)
 	else
 		move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
 	end
+
+	run_event(wnd, "move", wnd.x, wnd.y);
 end
 
 local function wnd_hide(wnd)
@@ -2759,7 +2761,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 	tiler_debug(wnd.wm, string.format(
 		"position:x=%.0f:y=%.0f:time=%d:method=%d", wnd.x, wnd.y, lm, interp));
 
--- shouldn't be needed anymore as reposition gets called
+	run_event(wnd, "move", wnd.x, wnd.y);
 	move_image(wnd.anchor, wnd.x, wnd.y, lm, interp);
 	wnd:recovertag();
 end
