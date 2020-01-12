@@ -24,6 +24,6 @@ return {
 	gestures = {
 -- idle_return, popup helper menu to select / control modes
 		["doubletap"] = "/global",
-		["idle_return"] = "/global/tools/dterm",
+--		["idle_return"] = "/global/tools/dterm",
 	}
 };

@@ -5,7 +5,6 @@
 -- toggle on a per window (save/restore) basis etc.
 --
 
-system_load("touchm.lua")();
 local iostatem_evlog = suppl_add_logfn("idevice");
 local idle_threshold = gconfig_get("idle_threshold");
 gconfig_listen("idle_threshold", "iostatem",
@@ -278,7 +277,6 @@ end
 -- returns a table of iotbls, process with ipairs and forward to
 -- normal input dispatch
 function iostatem_tick()
-	touch_tick();
 	rol_avg = rol_avg * (CLOCK - 1) / CLOCK + evc / CLOCK;
 	evc = 0;
 
