@@ -76,11 +76,14 @@ end
 -- as 'balloon messages'.
 
 local function apply_type_size(wnd, source, status)
+	image_tracetag(wnd.external, "x11_" .. wnd.surface_type);
+
 	if (wnd.surface_type == "popup" or
 		wnd.surface_type == "dropdown" or
 		wnd.surface_type == "tooltip" or
 		wnd.surface_type == "menu" or
-		wnd.surface_type == "utility") then
+		wnd.surface_type == "utility" or
+		wnd.surface_type == "notification") then
 -- destroy the 'container', won't be needed with popup, uncertain
 -- what the 'rules' say about the same surface mutating in type, but
 -- assume for now that it doesn't. Likely need different positioning
@@ -108,13 +111,36 @@ local function apply_type_size(wnd, source, status)
 			popup_handler(newwnd, source, status, newwnd.surface_type);
 		end
 
+-- never attach the window, but don't delete the external vid
 		wnd.external = nil;
 		wnd:destroy();
 
 	elseif (wnd.surface_type == "icon") then
--- treat the rest as normal windows
 		wayland_debug("x11:message=eimpl:kind=icon");
+		wnd:destroy();
+
+-- missing safety bit - this should only work if a previous x surface
+-- from the same bridge had input focus before us
+	elseif (wnd.surface_type == "dnd") then
+
+		mouse_cursortag(wnd, "window",
+			function(srcwnd, accept, dstwnd)
+				wayland_debug("x11:message=eimpl:kind=dnd_apply");
+			end, wnd.external
+		);
+
+		target_updatehandler(wnd.external,
+		function(source, status)
+			if status.kind == "terminated" then
+				mouse_cursortag_drop(false, dstwnd);
+			end
+		end);
+
+		wnd.external = nil;
+		wnd:destroy();
+
 	else
+-- treat the rest as normal windows
 		if (wnd.ws_attach) then
 			wayland_debug(string.format(
 				"x11:type=%s:name=%s:status=attach_fwd", wnd.surface_type, wnd.name));
