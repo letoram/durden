@@ -57,6 +57,20 @@ function iostatem_save()
 	return odst;
 end
 
+-- this takes over responsibility for input processing of a particular
+-- device, [func] is expected to return a valid iotable for forwarding
+-- or null to stop the chain.
+function iostatem_register_handler(devid, name, func)
+	if (not devices[devid]) then
+		iostatem_evlog(string.format(
+			"register:status=einval:devid=%d:name=%s", devid, name));
+		return;
+	end
+
+	iostatem_evlog(string.format("register:device=%d:name=%s", devid, name));
+	devices[devid].handler = func;
+end
+
 function iostatem_debug()
 	local res =
 		string.format("st: %d, ctr: %d, dly: %d, rate: %d, inavg: %.2f, cin: %.2f",
@@ -108,6 +122,16 @@ function iostatem_input(iotbl)
 		end
 	end
 	dev.idle_clock = 0;
+
+-- forward to any possible device handler before continuing, keyboard/mouse
+-- are a bit different here in that the device handlers may be allowed to
+-- translate to one of these, so their processing is kept here.
+	if (dev.handler) then
+		iotbl = dev.handler(iotbl);
+		if not iotbl then
+			return
+		end
+	end
 
 -- currently mouse state management is handled elsewhere (durden+tiler.lua)
 -- but we simulate a fake 'joystick' device here to allow meta + mouse to be
@@ -356,7 +380,8 @@ function iostatem_added(iotbl)
 
 -- notification may need an initial cutoff due to the startup storm
 		if cutoff >= 0 and CLOCK > cutoff then
-			notification_add("Device", nil, "Discovered", devices[iotbl.devid].label, 1);
+			notification_add("Device",
+				nil, "Discovered", devices[iotbl.devid].label, 1);
 		end
 
 		if (label_lookup[iotbl.label]) then

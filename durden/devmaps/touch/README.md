@@ -29,9 +29,6 @@ return {
 	scale_x = 3.0,
 	scale_y = 2.5,
 
--- mask to disable certain button indices for digital events
-	submask = 0xffff,
-
 -- ignore samples between state changes for a number of ticks
 	default_cooldown = 2,
 
@@ -47,10 +44,20 @@ return {
 
 -- some devices provide both 'touch' based press and digital input
 -- press events which can lead to ghost 'clicks', this feature ignores
--- the digital inputs
+-- all the digital inputs
 	button_block = false,
 
--- reset touch- tracking after n ticks of no input samples
+-- some drivers give button presses for various gestures such as
+-- double-tap, remap these to their gestures (or some unknown one
+-- like ignore) to mask these
+	button_gesture = {[1] = "doubletap"},
+
+-- some devices that aren't detected as touch properly need to have
+-- their axis mapping specified explicitly
+  axis_map = {[0] = 0, [1] = 1},
+
+-- reset touch- tracking after n ticks of no input samples, also used
+-- to evaluate 'n' for tap\_n and longpress gestures
 	timeout = 10,
 
 -- interpret the device as idle after n ticks of no input samples
@@ -63,6 +70,8 @@ return {
 -- menu path to trigger on gestures, valid are:
 -- swipe(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 -- drag(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
+-- tap(n) where (n) is the number of taps within the timeout period
+-- longpress
 -- idle_enter when a device goes from being tracked as active to idle
 -- idle_return when a device goes from being tracked as idle to active
 -- match when a device emits samples for the first time and match a profile

@@ -40,6 +40,8 @@ local function tryload(map)
 
 -- used for touch-device plugging
 	res.matchflt = devtbl.matchflt;
+	res.matchstr = devtbl.matchstr;
+
 	res.mt_eval = (devtbl.mt_eval and type(devtbl.mt_eval) == "number") and
 		devtbl.mt_eval or 10;
 	res.swipe_threshold = (devtbl.swipe_threshold and
@@ -96,7 +98,13 @@ local function tryload(map)
 		end
 	end
 
-	if (devtbl.button_remap) then
+	if (type(devtbl.axis_remap) == "table") then
+		res.axis_remap = devtbl.axis_remap;
+	else
+		res.axis_remap = {};
+	end
+
+	if (type(devtbl.button_remap) == "table") then
 		res.button_remap = {};
 		for k,v in ipairs(devtbl.button_remap) do
 			if (type(v) == "number") then
@@ -120,23 +128,29 @@ local function nbits(v)
 end
 
 -- get prefix%d_dir, only l/r/u/d down, no diags..
-local function gen_key(prefix, thresh, dx, dy, nf)
+local function gen_key(dev, prefix, thresh, dx, dy, nf)
 	local adx = math.abs(dx);
 	local ady = math.abs(dy);
+
+-- now we can set an oscillator for the gesture, or figure out the
+-- vector in the non-masked axis
 	if (adx > ady) then
 		if (adx - ady > thresh) then
+			dev.dy_tmp_factor = 0;
+			dev.dydt = 0;
 			return string.format("%s%d_%s", prefix, nf, dx<0 and "left" or "right");
 		end
 	else
 		if (ady - adx > thresh) then
+			dev.dx_tmp_factor = 0;
+			dev.dxdt = 0;
 			return string.format("%s%d_%s", prefix, nf, dy<0 and "up" or "down");
 		end
 	end
---FIXME: this would not generate a valid key!!!
 end
 
 local function run_drag(dev, dx, dy, nf)
-	local key = gen_key("drag", dev.drag_threshold, dx, dy, nf);
+	local key = gen_key(dev, "drag", dev.drag_threshold, dx, dy, nf);
 	if (not key) then
 		return;
 	end
@@ -149,7 +163,7 @@ local function run_drag(dev, dx, dy, nf)
 end
 
 local function run_swipe(dev, dx, dy, nf)
-	local key = gen_key("swipe", dev.swipe_threshold, dx, dy, nf);
+	local key = gen_key(dev, "swipe", dev.swipe_threshold, dx, dy, nf);
 	if (not key) then
 		return;
 	end
@@ -166,15 +180,33 @@ local function memu_digital(devtbl, iotbl)
 -- only give gestures and "touch-press" but have normal behavior with
 -- a mouse or trackpad
 	local mx, my = mouse_xy();
+	touchm_evlog(string.format(
+		"device=%d:button=%d:pressed=%d",
+		iotbl.devid, iotbl.subid, iotbl.active and 1 or 0));
+
+-- the button mask is used to not fire button presses on first touch
+-- but rather require either a 'tap' gesture or motion then 'click'
+--
+-- though button-mask may filter out 'presses' and keep the releases,
+-- mouse_button_input is supposed to allow those through
+		if (devtbl.button_mask) then
+		return;
+	end
 
 	if (devtbl.warp_press) then
 		mouse_absinput_masked(devtbl.last_x, devtbl.last_y, true);
 	end
 
+	iotbl.subid = iotbl.subid ~= 0 and iotbl.subid or 1;
 	if (devtbl.button_remap) then
 		local bi = devtbl.button_remap[iotbl.subid];
 		if (bi) then
+			touchm_evlog(string.format(
+				"device=%d:remap_src=%d:remap_dst=%d",
+				iotbl.devid, iotbl.subid, bi)
+			);
 			mouse_button_input(bi, iotbl.active);
+			iotbl = nil;
 		end
 
 -- if we don't have an explicit button map to use, use the ID and
@@ -182,13 +214,26 @@ local function memu_digital(devtbl, iotbl)
 	elseif (iotbl.subid < MOUSE_AUXBTN) then
 		local bc = nbits(devtbl.ind_mask);
 		bc = bc > 0 and bc - 1 or bc;
-		local badd = bit.band(bc, devtbl.submask);
+
+-- there might be edge cases here where there are n>1 fingers on the display,
+-- and then timeout or hang or reset, leaving the button hanging - if that
+-- becomes an issue, keep a list of the button states (or query from the
+-- mouse script)
+		touchm_evlog(string.format(
+			"device=%d:button=%d:active=%d",
+			iotbl.devid, iotbl.subid + bc,
+			iotbl.active and 1 or 0)
+		);
 		mouse_button_input(iotbl.subid + bc, iotbl.active);
+		iotbl = nil;
 	end
 
+-- and warp back to where we were, since this is mouse emulation we
+-- might have a rodent there as well that we are messing with
 	if (devtbl.warp_press) then
 		mouse_absinput_masked(mx, my, true);
 	end
+
 	return iotbl;
 end
 
@@ -199,12 +244,23 @@ local function memu_sample(devtbl, iotbl)
 -- poorly documented hack, subid is indexed higher for touch to handle
 -- devices that emit both emulated mouse and touch events
 	local ind = iotbl.subid - 128;
-	if (ind < 0 and not iotbl.digital) then
-		return;
+	if (not iotbl.digital) then
+
+-- to work around this for devices that doesn't get classified as touch,
+-- we explicit map analog axes to touch indices
+		if ind < 0 then
+			ind = devtbl.axis_remap[iotbl.subid];
+		end
+
+-- still 'fake mouse'? then leave and drop the sample
+		if (not ind or ind < 0) then
+			return;
+		end
 	end
 
+	devtbl.idle = 0;
+
 	if (devtbl.in_idle) then
-		devtbl.idle = 0;
 		touchm_evlog("device=" ..
 			tostring(iotbl.devid) .. ":gesture_key=idle_return");
 			devtbl.in_idle = false;
@@ -220,6 +276,11 @@ local function memu_sample(devtbl, iotbl)
 	if (iotbl.digital) then
 		if (not devtbl.button_block) then
 			return memu_digital(devtbl, iotbl);
+		else
+			touchm_evlog(string.format(
+				"device=%d:status=ignored:button=%d:pressed=%s",
+				iotbl.devid, iotbl.subid, iotbl.active and 1 or 0)
+			);
 		end
 		return;
 	end
@@ -227,6 +288,8 @@ local function memu_sample(devtbl, iotbl)
 -- platform or caller filtering, to allow devices lika a PS4 that has a touchpad
 -- but also analog axes that we want to handle 'the normal way'
 	if (not devtbl.touch and devtbl.touch_only) then
+		touchm_evlog(string.format(
+			"device=%d:status=forward_notouch", subid.devid));
 		return iotbl;
 	end
 
@@ -323,6 +386,10 @@ local function memu_sample(devtbl, iotbl)
 	local dy = (y - devtbl.last_y) * devtbl.scale_y;
 	local nb = nbits(devtbl.ind_mask);
 
+-- release the button mask so that the next 'tap' would register
+-- as a button for the absmouse classifier
+	devtbl.button_mask = false;
+
 -- track the maximum number of fingers on the pad during a timeslot
 -- to detect drag+tap or distinguish between 2/3 finger swipe
 	if (devtbl.max_ind < nb) then
@@ -338,6 +405,8 @@ local function memu_sample(devtbl, iotbl)
 	if (nb == 1 and not devtbl.motion_block) then
 		local ad = active_display();
 		if (devtbl.abs) then
+			touchm_evlog(string.format(
+				"absinput=%f:%f", ad.width * x, ad.width * y));
 			mouse_absinput(ad.width * x, ad.height * y);
 		else
 			if (devtbl.cooldown == 0) then
@@ -351,8 +420,8 @@ local function memu_sample(devtbl, iotbl)
 			devtbl.mt_enter = CLOCK;
 		end
 
-		devtbl.dxdt = devtbl.dxdt + dx;
-		devtbl.dydt = devtbl.dydt + dy;
+		devtbl.dxdt = devtbl.dx_tmp_factor * (devtbl.dxdt + dx);
+		devtbl.dydt = devtbl.dy_tmp_factor * (devtbl.dydt + dy);
 	end
 end
 
@@ -407,31 +476,68 @@ local function memu_tick(v)
 		v.ind_mask = 0;
 		v.dragged = false;
 		v.mt_enter = nil;
+		v.button_mask = true;
+		v.dx_tmp_factor = 1;
+		v.dy_tmp_factor = 1;
+		v.got_tap = false;
 	end
 end
 
 classifiers.relmouse = {
+	["init"] =
 	function(...)
 		memu_init(false, ...);
 	end,
--- note that for different classifiers, return from idle should be
--- handled inside this function, doesn't matter now when there is only
--- one handler, but for adding more.
-	memu_sample,
-	memu_tick
+	["sample"] = memu_sample,
+	["tick"] = memu_tick
 };
 
 classifiers.absmouse = {
+	["init"] =
 	function(...)
 		memu_init(true, ...);
 	end,
-	memu_sample,
-	memu_tick
+	["sample"] = memu_sample,
+	["tick"] = memu_tick
 };
 
--- will only come here the first time for each device
+local function pair_device_profile(dev, prof)
+	if (not prof) then
+		return;
+	end
+
+	touchm_evlog(string.format(
+		"compare:%s:%s:%s", dev.label, prof.matchflt, prof.matchstr));
+
+	if (prof.matchstr) then
+		return dev.label == prof.matchstr;
+	end
+
+	if (prof.matchflt) then
+		return string.match(dev.label, prof.matchflt);
+	end
+end
+
+local function apply_classifier(cf, profile, devtbl, devid)
+	cf.init(profile, devtbl);
+	devtbl.tick = cf.tick;
+	devtbl.idle = devtbl.idle_base;
+
+	iostatem_register_handler(devid, "touch",
+		function(iotbl)
+			cf.sample(devtbl, iotbl);
+		end
+	);
+end
+
+-- normally a device class like this would be added by adding a listener
+-- to the iostatem change, and then see if device/label match what it can
+-- handle, but touch is treated as a primitive type, and we don't know for
+-- every platform whether an aggregate device supports this or not so we
+-- trigger on first unhandled touch sample inside of iostatem_input
 function touch_register_device(iotbl, eval)
 	local devstr = "kind=status:device=" .. tostring(iotbl.devid);
+
 	if (devices[iotbl.devid]) then
 		touchm_evlog(devstr .. ":message=ignore register, reason: known");
 		return;
@@ -441,9 +547,8 @@ function touch_register_device(iotbl, eval)
 	local devtbl = iostatem_lookup(iotbl.devid);
 	local profile = nil;
 	if (devtbl and devtbl.label) then
-		for k,v in ipairs(profiles) do
-			if (v and v.matchflt and (
-				devtbl.label == v.matchflt or string.match(devtbl.label, v.matchflt))) then
+		for _,v in ipairs(profiles) do
+			if (pair_device_profile(devtbl, v)) then
 				profile = v;
 				touchm_evlog(devstr .. ":matched=" .. devtbl.label);
 				break;
@@ -460,8 +565,9 @@ function touch_register_device(iotbl, eval)
 		profile = default_profile;
 	end
 
-	local st = {};
-	devices[iotbl.devid] = st;
+-- set table that wiill maintain state for the device
+	devices[iotbl.devid] = {};
+	local devtbl = st;
 
 -- grab the matching classifier
 	if (classifiers[profile.classifier]) then
@@ -473,24 +579,21 @@ function touch_register_device(iotbl, eval)
 		cf = classifiers["relmouse"];
 	end
 
--- register and allocate the device as direct-forward to the profile
--- callback. this saves a few indirect calls per sample.
-	if (cf) then
-		cf[1](profile, st);
-		durden_register_devhandler(iotbl.devid, cf[2], st);
-
--- to re-use the same input path, we just re-inject the input table
-		durden_input(iotbl);
-		st.tick = cf[3];
-		st.idle = st.idle_base;
-
-	else
+	if not cf then
 		touchm_evlog("kind=warning:message=missing /unknown classifier");
+		return;
 	end
+
+	apply_classifier(cf, profile, devices[iotbl.devid], iotbl.devid);
+
+-- reinject input so the sample gets used as well
+	durden_input(iotbl);
 end
 
--- sweep devices and store ranging values
 function touch_shutdown()
+-- sweep devices and store ranging values, need some kind of profile-key
+-- to store under, and only store autoranged devices and calibration
+-- profiles
 end
 
 local clock_fun = function(...)
