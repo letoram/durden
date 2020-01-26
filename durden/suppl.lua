@@ -240,6 +240,25 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
+-- take the entries in ref and apply to src if they match type
+-- with ref, otherwise use the value in ref
+function table.merge(dst, src, ref, on_error)
+	for k,v in pairs(ref) do
+		if src[k] and type(src[k]) == type(v) then
+			v = src[k];
+		elseif src[k] then
+-- type mismatch is recoverable error
+			on_error(k);
+		end
+
+		if type(k) == "table" then
+			dst[k] = table.copy(v);
+		else
+			dst[k] = v;
+		end
+	end
+end
+
 function table.copy(tbl)
 	if not tbl or not type(tbl) == "table" then
 		return {};
@@ -1457,7 +1476,7 @@ function suppl_add_logfn(prefix)
 				handler(exp_msg);
 			else
 				table.insert(queue, exp_msg);
-				if (#queue > 20) then
+				if (#queue > 200) then
 					table.remove(queue, 1);
 				end
 			end
