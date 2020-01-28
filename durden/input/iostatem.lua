@@ -5,7 +5,7 @@
 -- toggle on a per window (save/restore) basis etc.
 --
 
-local iostatem_evlog = suppl_add_logfn("idevice");
+local iostatem_evlog, iostatem_fmt = suppl_add_logfn("idevice");
 local idle_threshold = gconfig_get("idle_threshold");
 gconfig_listen("idle_threshold", "iostatem",
 function(key, val)
@@ -38,6 +38,11 @@ local function default_ah(sub)
 	return "AXIS" .. tostring(sub + 1), 1;
 end
 
+local device_listeners = {};
+function iostatem_listen_events(callback)
+	table.insert(device_listeners, callback);
+end
+
 -- slotted grab is used to reroute all PLAYERn_*** translated inputs to
 -- be routed to a specific window, ignoring active focus
 function iostatem_slotgrab(new)
@@ -61,12 +66,12 @@ end
 -- or null to stop the chain.
 function iostatem_register_handler(devid, name, func)
 	if (not devices[devid]) then
-		iostatem_evlog(string.format(
+		iostatem_evlog(iostatem_fmt(
 			"register:status=einval:devid=%d:name=%s", devid, name));
 		return;
 	end
 
-	iostatem_evlog(string.format("register:device=%d:name=%s", devid, name));
+	iostatem_evlog(iostatem_fmt("register:device=%d:name=%s", devid, name));
 	devices[devid].handler = func;
 end
 
@@ -114,7 +119,7 @@ function iostatem_input(iotbl)
 -- querying the user for an action and so on. This is processed here.
 	if (dev.in_idle) then
 		dev.in_idle = false;
-		iostatem_evlog(string.format(
+		iostatem_evlog(iostatem_fmt(
 			"return=idle:device=%d:name=%s", iotbl.devid, dev.name));
 		if (dev.idle_out_command) then
 			dispatch_symbol(dev.idle_out_command);
@@ -286,7 +291,7 @@ function iostatem_tick()
 		v.idle_clock = v.idle_clock + 1;
 		if idle_clock == idle_threshold then
 			v.in_idle = true;
-			iostatem_evlog(string.format("kind=idle:device=%d:name=%s", k, v.name));
+			iostatem_evlog(iostatem_fmt("kind=idle:device=%d:name=%s", k, v.name));
 			if v.idle_command then
 				dispatch_symbol(v.idle_command);
 			end
@@ -369,26 +374,34 @@ function iostatem_added(iotbl)
 		};
 		dev = devices[iotbl.devid];
 
--- resolve a better label (normal has 16-char cutoff)
-		local cutoff = gconfig_get("device_notification");
+-- hack to expand label
 		local devtbl = inputanalog_query(iotbl.devid);
 		if (devtbl and devtbl.label and #devtbl.label > 0) then
 			devices[iotbl.devid].label = devtbl.label;
 		end
 
 -- notification may need an initial cutoff due to the startup storm
+		local cutoff = gconfig_get("device_notification");
 		if cutoff >= 0 and CLOCK > cutoff then
 			notification_add("Device",
 				nil, "Discovered", devices[iotbl.devid].label, 1);
 		end
 
+-- used for game devices to tag with PLAYERn and BUTTONm, this is
+-- a somewhat old interface and might be better just going for normal
+-- labelhints these days
 		if (label_lookup[iotbl.label]) then
 			assign_slot(dev);
 		else
 			dev.slot = 0;
 		end
-		iostatem_evlog(string.format("%s:label=%s:slot=%d",
+		iostatem_evlog(iostatem_fmt("%s:label=%s:slot=%d",
 			loglbl, iotbl.label and iotbl.label or "missing", dev.slot));
+
+-- send to any registered listeners so they can grab the device
+		for _,v in ipairs(device_listeners) do
+			v(devices[iotbl.devid]);
+		end
 
 		touch_register_device(iotbl, true);
 	else
@@ -403,7 +416,7 @@ function iostatem_added(iotbl)
 -- this should practically not happen, i.e. a device we have an entry for,
 -- is marked as added yet has not been marked as lost
 		else
-			iostatem_evlog(string.format(
+			iostatem_evlog(iostatem_fmt(
 				"added:lost=no:device=%d:status=warning:name=%s",
 				iotbl.devid, dev.label));
 		end

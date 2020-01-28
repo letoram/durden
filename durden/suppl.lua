@@ -1461,7 +1461,7 @@ local prefixes = {
 };
 function suppl_add_logfn(prefix)
 	if (prefixes[prefix]) then
-		return prefixes[prefix];
+		return prefixes[prefix][1], prefixes[prefix][2];
 	end
 
 -- nest one level so we can pull the scope down with us
@@ -1470,17 +1470,22 @@ function suppl_add_logfn(prefix)
 		local queue = {};
 		local handler = nil;
 
-		prefixes[prefix] = function(msg)
-			local exp_msg = CLOCK .. ":" .. msg .. "\n";
-			if (handler) then
-				handler(exp_msg);
-			else
-				table.insert(queue, exp_msg);
-				if (#queue > 200) then
-					table.remove(queue, 1);
+		prefixes[prefix] =
+		{
+			function(msg)
+				local exp_msg = CLOCK .. ":" .. msg .. "\n";
+				if (handler) then
+					handler(exp_msg);
+				else
+					table.insert(queue, exp_msg);
+					if (#queue > 200) then
+						table.remove(queue, 1);
+					end
 				end
-			end
-		end
+			end,
+-- return a formatter as well so we can nop-out logging when not needed
+			string.format,
+		};
 
 -- and register a global function that can be used to set the singleton
 -- that the queue flush to or messages gets immediately forwarded to
@@ -1499,5 +1504,5 @@ function suppl_add_logfn(prefix)
 	end
 
 	logscope();
-	return prefixes[prefix];
+	return prefixes[prefix][1], prefixes[prefix][2];
 end
