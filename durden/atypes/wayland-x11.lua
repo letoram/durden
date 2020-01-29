@@ -233,8 +233,16 @@ return {
 	init = function(atype, wnd, source)
 		wnd:add_handler("move",
 		function(wnd, x, y)
-			local rx = x + wnd.pad_left;
-			local ry = y + wnd.pad_top;
+			if (wnd.in_drag_move) then
+				return;
+			end
+
+-- multiple factors affect the final position, since wnd.canvas is possible
+-- being animated we can't just resolve that one, and the trick of creating
+-- a null-surface, copy transform, instant transform then resolve is pricey
+			local space = image_surface_resolve(wnd.space.anchor);
+			local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
+			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
 
 			wayland_debug(string.format(
 				"kind=move-x11:source=%d:x=%d:y=%d", wnd.external, rx, ry));
@@ -243,9 +251,15 @@ return {
 		end);
 		wnd:add_handler("resize",
 		function(wnd, neww, newh, efw, efh)
-			wayland_debug(string.format("kind=resize-x11:neww=%.0f:newh=%.0f", neww, newh));
+			wayland_debug(string.format(
+				"kind=resize-x11:name=%s:neww=%.0f:newh=%.0f", wnd.name, neww, newh));
 			target_displayhint(wnd.external, neww, newh);
 		end);
+		wnd:add_handler("destroy",
+			function()
+				wayland_debug(string.format("kind=destroy-x11:name=%s", wnd.name));
+			end
+		);
 	end,
 	props = {
 		kbd_period = 0,
