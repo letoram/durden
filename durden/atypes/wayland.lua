@@ -344,6 +344,7 @@ local function wayland_buildwnd(wnd, source, stat)
 -- use the 'launch' function to create and register the window then install our
 -- own handler
 	wayland_debug(string.format("request:kind=%s", stat.segkind));
+	image_tracetag(source, "wl_" .. stat.segkind);
 
 	if (seglut[stat.segkind]) then
 		seglut[stat.segkind](wnd, source, stat);
