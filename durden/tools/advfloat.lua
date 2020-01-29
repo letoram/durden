@@ -30,18 +30,6 @@ local floatmenu = {
 		gconfig_set("advfloat_spawn", val);
 	end
 },
-{
-	kind = "value",
-	name = "icons",
-	label = "Icons",
-	description = "Control how the tool should manage icons",
-	eval = function() return false; end,
-	set = {"disabled", "global", "workspace"},
-	initial = gconfig_get("advfloat_icon"),
-	handler = function(ctx, val)
-		gconfig_set("advfloat_icon", val);
-	end
-}
 };
 
 menus_register("global", "settings/wspaces",
@@ -57,7 +45,6 @@ system_load("tools/advfloat/cactions.lua")();
 system_load("tools/advfloat/minimize.lua")();
 system_load("tools/advfloat/spawnctl.lua")();
 system_load("tools/advfloat/bginput.lua")();
-system_load("tools/advfloat/bgicons.lua")();
 
 local workspace_menu = {
 {
