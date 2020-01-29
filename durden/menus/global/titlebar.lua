@@ -43,10 +43,26 @@ local function titlebar_buttons(dir, lbl)
 		name = "remove",
 		kind = "action",
 		submenu = true,
-		description = "Remove a button",
+		description = "Remove a specific button (new windows)",
 		eval = function() return #remove_button(dir) > 0; end,
 		handler = function()
 			return remove_button(dir);
+		end
+		},
+		{
+		label = "Remove All",
+		name = "remove_all",
+		kind = "action",
+		description = "Remove all buttons (new windows)",
+		handler = function()
+			local groups = {};
+			for group, list in pairs(gconfig_buttons) do
+				table.insert(groups, group);
+			end
+			for _,group in ipairs(groups) do
+				gconfig_buttons[group] = {};
+				gconfig_buttons_rebuild();
+			end
 		end
 		},
 		{
