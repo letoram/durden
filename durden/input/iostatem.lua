@@ -352,19 +352,23 @@ function iostatem_reset_flag()
 	for i,v in pairs(devices) do
 		v.lost = true;
 	end
+
+-- force aw platform input rescan
 	iostatem_reset_repeat();
+	inputanalog_query(nil, nil, true);
 end
 
 function iostatem_added(iotbl)
 	local dev = devices[iotbl.devid];
+	print(iotbl.extlabel);
 
 	if (not dev) then
 -- locate last saved device settings:
 -- axis state, analog force, special bindings
 		local loglbl = "kind=added:device=" .. tostring(iotbl.devid);
-		devices[iotbl.devid] = {
+		local dev = {
 			devid = iotbl.devid,
-			label = iotbl.label and iotbl.label or "unknown",
+			label = iotbl.extlabel,
 -- we only switch analog sampling on / off
 			lookup = label_lookup[iotbl.label]
 				and label_lookup[iotbl.label] or {default_lh, default_ah},
@@ -372,12 +376,15 @@ function iostatem_added(iotbl)
 			keyboard = (iotbl.keyboard and true or false),
 			idle_clock = 0
 		};
-		dev = devices[iotbl.devid];
+		devices[iotbl.devid] = dev;
 
--- hack to expand label
-		local devtbl = inputanalog_query(iotbl.devid);
-		if (devtbl and devtbl.label and #devtbl.label > 0) then
-			devices[iotbl.devid].label = devtbl.label;
+-- safeguard against missing label field
+		if not dev.label or #dev.label == 0 then
+			if iotbl.label and #iotbl.label > 0 then
+				dev.label = iotbl.label;
+			else
+				dev.label = "unknown_" .. tostring(iotbl.devid);
+			end
 		end
 
 -- notification may need an initial cutoff due to the startup storm
@@ -502,6 +509,7 @@ local function tryload(map)
 		return;
 	end
 
+-- there is no real way around not being able to apply every device profile
 	if (string.match(API_ENGINE_BUILD, flt)) then
 		label_lookup[id] = {handler, (ahandler and type(ahandler) == "function")
 			and ahandler or default_ah};

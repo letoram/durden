@@ -14,7 +14,7 @@ alt-action (such as custom popup spawn) as well as drag-action.
 * workspace buttons now popup layout mode selector on altclick, and
 migrate window on drag-drop
 
- * uiprim/tbar:
+* uiprim/tbar:
 titlebar merge-to-status bar mode on select (if hidden)
 titlebar rclick now mappable (default, popup /target)
 
@@ -26,6 +26,10 @@ When activating global/target/launch to start a trusted application you
 can also supply an application tag. This helps automation as you can now
 specify that tag as part of /windows/by-tag etc. when there are no UUIDs
 or other values to take advantage of.
+
+* tools/dial added:
+This tool implements basic gestures, commands and mapping for rotary devices
+like the 'Surface Dial'.
 
 * tools/extbtn added:
 Registers into global/settings/statusbar and adds option for external clients
@@ -62,8 +66,9 @@ see the /global/settings/workspaces/spawn path.
 * visual:
 Add soft shadow controls to windows, ui elements and statusbar
 
-* input/touch discover & idle gestures:
-Added 'gestures' for idle enter and idle return.
+* input/touch improvements:
+New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter'
+improved relative mouse emulation to better handle click-select
 
 * first round of (non-text) icon management (caching, shared sets etc.) added
 

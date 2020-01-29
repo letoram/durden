@@ -2,6 +2,13 @@ local remap_tbl = {};
 remap_tbl[0] = 0;
 remap_tbl[1] = 0;
 
+-- special buttons:
+-- 32 - presence
+-- 33 - eraser presence
+--  1 - pen buttoN
+--  0 - pen on surface
+-- eraser-button : doesn't respond (kernel level)
+
 return {
 	label = "Elan Surface GO Pen",
 	name = "elan_9038_pen",

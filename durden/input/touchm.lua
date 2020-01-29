@@ -92,9 +92,6 @@ local function pair_device_profile(dev, prof)
 		return;
 	end
 
-	touchm_evlog(string.format(
-		"compare:%s:%s:%s", dev.label, prof.matchflt, prof.matchstr));
-
 	if (prof.matchstr) then
 		return dev.label == prof.matchstr;
 	end
@@ -148,7 +145,6 @@ function touch_register_device(iotbl, eval)
 
 	if (not profile) then
 		if (eval) then
-			touchm_evlog(devstr .. ":message=no profile, ignored.");
 			return;
 		end
 		touchm_evlog(devstr .. ":message=no profile, assigning default");
