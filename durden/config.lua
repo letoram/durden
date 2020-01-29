@@ -218,7 +218,7 @@ return {
 	meta_lock = "m2",
 	meta_stick_time = 0,
 	meta_dbltime = 10,
-	meta_guard = true,
+	meta_guard = false,
 
 -- minimum amount of ticks from epoch (-1 disables entirely)
 -- before device- event notifications appears
