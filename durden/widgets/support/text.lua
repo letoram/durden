@@ -35,11 +35,18 @@ local function setup_mh(ctx, w, h, vid, heights, ofs)
 	end
 
 	local mh = {
-		name = "input_widget_" .. tostring(ofs),
+		name = "input_widget_" .. ctx.name .. "_" .. tostring(ofs),
 
 -- the lasti here in up-scope comes from the find_index call from motion
 		click = function(mctx, vid, x, y)
 			local lbl = ctx.group_cache[ofs][lasti];
+
+-- debugging trick, dangling mouse handler, traceback will contain name
+			if not ctx.group_cache then
+				ctx[ctx.name] = nil;
+				ctx[ctx.name]();
+			end
+
 			if (valid_vid(ctx.cursor)) then
 				blend_image(ctx.cursor, ctx.cursor_opa * 3, 5);
 				blend_image(ctx.cursor, ctx.cursor_opa, 5);
