@@ -358,7 +358,7 @@ local function bar_relayout_horiz(bar)
 -- currently don't handle left/right not fitting, return min-sz. also
 -- Center area is fill-fair at the moment, no weights are considered.
 	local relay = function(afn)
-		local lx = 0;
+		local lx = bar.sidepad;
 		for k,v in ipairs(bar.buttons.left) do
 			local w, h = v:dimensions();
 			local yp = h ~= bar.height and math.floor(0.5 * (bar.height) - h) or 0;
@@ -368,7 +368,7 @@ local function bar_relayout_horiz(bar)
 			lx = lx + w;
 		end
 
-		local rx = bar.width;
+		local rx = bar.width - bar.sidepad;
 		for k,v in ipairs(bar.buttons.right) do
 			local w, h = v:dimensions();
 			rx = rx - w;
@@ -862,6 +862,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		shader = shdrtgt,
 		width = width,
 		height = height,
+		sidepad = gconfig_get("titlebar_sidepad"),
 
 -- split the bar into three groups, left and right take priority,
 -- while the center area act as 'fill'.
