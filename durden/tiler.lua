@@ -22,7 +22,7 @@ local function tiler_debug(wm, msg)
 end
 
 local function is_tab_mode(str)
-	return str == "tab" or str == "vtab" or str == "htab" or str == "hrtab";
+	return str == "tab" or str == "vtab" or str == "htab";
 end
 
 -- shared between all tiler instances
@@ -3942,7 +3942,7 @@ local function wnd_ws_attach(res, from_hook)
 	local add_buttons =
 	function(dst_group, list)
 		for _,v in ipairs(list) do
-			res:add_titlebar_button(v.dir, v.label, v.command, v.alt_command, dst_group);
+			res:add_titlebar_button(v.direction, v.label, v.command, v.alt_command, dst_group);
 		end
 	end
 
@@ -4977,6 +4977,7 @@ end
 -- variables there, the other tactic is to mark the window as 'hidden' until
 -- mapped, but have a dry-run where it is not
 local function tiler_suggest_size(wm)
+	local space = wm:active_space();
 	return 300, 300;
 end
 
