@@ -346,10 +346,12 @@ function dispatch_symbol_wnd(wnd, sym)
 -- the symbol might have actually destroyed the window or caused a change
 -- in selection, so not always save to revert, but might also wanted to
 -- run a command that changes selection relative to the target window.
-	if wm.selected == wnd and old_sel.select then
-		wm.selected = old_sel;
-	elseif old_sel.select then
-		old_sel:select();
+	if old_sel then
+		if wm.selected == wnd and old_sel.select then
+			wm.selected = old_sel;
+		elseif old_sel.select then
+			old_sel:select();
+		end
 	end
 end
 
