@@ -1268,21 +1268,26 @@ function shared_valid01_float(inv)
 	return val and (val >= 0.0 and val <= 1.0) or false;
 end
 
-function gen_valid_num(lb, ub)
+-- validator returns a function that checks if [val] is tolerated or not,
+-- but also ranging values to allow other components to provide a selection UI
+function gen_valid_num(lb, ub, step)
+	local range = ub - lb;
+	local step_sz = step ~= nil and step or range * 0.01;
+
 	return function(val)
 		if (not val) then
 			warning("validator activated with missing val");
-			return false;
+			return false, lb, ub, step_sz;
 		end
 
 		if (string.len(val) == 0) then
-			return false;
+			return false, lb, ub, step_sz;
 		end
 		local num = tonumber(val);
 		if (num == nil) then
-			return false;
+			return false, lb, ub, step_sz;
 		end
-		return not(num < lb or num > ub);
+		return not(num < lb or num > ub), lb, ub, step_sz;
 	end
 end
 
