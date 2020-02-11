@@ -360,7 +360,6 @@ end
 
 function iostatem_added(iotbl)
 	local dev = devices[iotbl.devid];
-	print(iotbl.extlabel);
 
 	if (not dev) then
 -- locate last saved device settings:
