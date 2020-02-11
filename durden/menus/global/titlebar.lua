@@ -7,7 +7,8 @@ local function remove_button(dir)
 				table.insert(res, {
 					name = tostring(i),
 					label = group .. "_" .. tostring(i),
-					description = "Button Label: " .. v.label,
+					description = string.format(
+						"label:%s - path: %s", v.label, v.command and v.command or ""),
 					kind = "action",
 					handler = function()
 						table.remove(gconfig_buttons[group], i);
