@@ -155,8 +155,9 @@ function uimap_popup(menu, x, y, anchor_vid, closure)
 	ml.own = function(ctx, vid)
 		return vid == surf;
 	end;
-	ml.button = function(ctx, index, active, ...)
-		if (active) then
+
+	ml.button = function(ctx, vid, index, active)
+		if (active and index < MOUSE_WHEELPY) then
 			log("tool=popup:kind=send_cancel");
 			popup:cancel();
 		end
