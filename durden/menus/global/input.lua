@@ -136,6 +136,18 @@ local mouse_menu = {
 		handler = gen_mbutton_menu,
 	},
 	{
+		name = "ping",
+		label = "Ping",
+		description = "Trigger the mouse reveal animation",
+		kind = "action",
+		handler = function()
+			local hook = mouse_state().reveal_hook;
+			if hook then
+				hook();
+			end
+		end
+	},
+	{
 		name = "debounce",
 		label = "Debounce",
 		description = "Configure mouse button 'debouncing' (accidental clicks)",
