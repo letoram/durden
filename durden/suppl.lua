@@ -473,6 +473,39 @@ function suppl_region_select(r, g, b, handler)
 	DURDEN_REGIONSEL_TRIGGER = handler;
 end
 
+local ffmts =
+{
+	jpg = "image", jpeg = "image", png = "image", bmp = "image",
+	ogg = "audio", m4a = "audio", flac = "audio", mp3 = "audio",
+	mp4 = "video", wmv = "video", mkv = "video", avi = "video",
+	flv = "video", mpg = "video", mpeg = "video", mov = "video",
+	webm = "video", ["*"] = "file",
+};
+
+local function match_ext(v, tbl)
+	if (tbl == nil) then
+		return true;
+	end
+
+	local ext = string.match(v, "^.+(%..+)$");
+	ext = ext ~= nil and string.sub(ext, 2) or ext;
+	if (ext == nil or string.len(ext) == 0) then
+		return false;
+	end
+
+	local ent = tbl[string.lower(ext)];
+	if ent then
+		return ent;
+	else
+		return tbl["*"];
+	end
+end
+
+-- filename to classifier [media, image, audio]
+function suppl_ext_type(fn)
+	return match_ext(fn, ffmts);
+end
+
 local function defer_spawn(wnd, new, t, l, d, r, w, h, closure)
 -- window died before timer?
 	if (not wnd.add_handler) then
@@ -685,7 +718,7 @@ end
 
 -- allows empty string in order to 'unset'
 function suppl_valid_name(val)
-	if string.match(val, "%W") then
+	if not string or #val == 0 or string.match(val, "%W") then
 		return false;
 	end
 
