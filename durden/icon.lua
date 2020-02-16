@@ -65,6 +65,7 @@ local function synthesize_icon(w, shader)
 		return;
 	end
 	resample_image(icon, shader, w, w);
+	image_tracetag(icon, "iconmgr_synth");
 	return icon;
 end
 
@@ -159,6 +160,9 @@ function icon_lookup(vsym, px_w)
 -- or provide some visual indicator that the icon reference was bad
 			if (not valid_vid(ent.widths[closest])) then
 				ent.widths[closest] = icon_lookup("placeholder", px_w);
+			else
+				image_tracetag(ent.widths[closest],
+					"icon_" .. setname .. "_" .. ent[closest]);
 			end
 
 		elseif type(ent[closest]) == "function" then

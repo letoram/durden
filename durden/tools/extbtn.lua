@@ -61,16 +61,6 @@ local function gen_submenu_for_cp(v)
 		end,
 	},
 	{
-		name = "type",
-		label = "Type",
-		kind = "value",
-		set = {"Icon", "Terminal", "Regular"},
-		handler = function(ctx, val)
-			v.allowed_types = val == "Icon" and {"icon"} or
-				{"tui", "terminal", "application", "multimedia"};
-		end
-	},
-	{
 		name = "size",
 		label = "Size",
 		kind = "value",
@@ -98,7 +88,8 @@ local function gen_submenu_for_cp(v)
 		end,
 	}
 -- other options here: limit connections, specify destination display,
--- allow specific behavior, allow handover to client spawn
+-- allow specific behavior, allow handover to client spawn, font and
+-- color configuration, ...
 	};
 end
 
@@ -121,8 +112,8 @@ local function setup_default(name, new_vid, dir)
 	cps[name] = {
 		vid = new_vid,
 		group = dir,
-		size_pct = 5,
-		allowed_types = {"icon"},
+		size_pct = 10,
+		allowed_types = {"icon", "tui", "terminal"},
 	};
 end
 
@@ -169,6 +160,7 @@ open_cp = function(name, dir, init)
 			return cp_handler(cps[name], source, status)
 		end
 	);
+	target_flags(new_vid, TARGET_BLOCKADOPT);
 
 	if (not valid_vid(new_vid)) then
 -- otherwise, schedule a fire-once timer to try again until a certain time
@@ -270,6 +262,13 @@ function(ctx, bar, source, status)
 -- if we allow 'global mapping', register that one
 end
 
+handlers["viewport"] =
+function(ctx, bar, source, status)
+	if (status.anchor_w > 0) then
+		target_displayhint(source, status.anchor_w, status.anchor_h);
+	end
+end
+
 handlers["resized"] =
 function(ctx, bar, source, status)
 -- resize after initial size set, should be permitted or ignored?
@@ -294,8 +293,10 @@ function(ctx, bar, source, status)
 		return surf;
 	end
 
+
+	local pad = gconfig_get("sbar_tpad") * active_display().scalef;
 	ctx.button = bar:add_button(ctx.group, "sbar_msg_bg", "sbar_msg_text",
-		resolve, 0,
+		resolve, pad,
 -- set the scale- function resolver to nothing as we are all external
 		function()
 			return 1;
@@ -308,7 +309,7 @@ function(ctx, bar, source, status)
 	ctx.button.owner = ctx;
 	log(string.format("name=traybtn:kind=resized-first:source=%d"
 		.. ":base_w=%d:base_h=%d:width=%d:height=%d", source,
-		base_w, base_h, status.width, status.height)
+		0, base_h, status.width, status.height)
 	);
 	ctx.button:update(source);
 	bar:relayout();

@@ -240,6 +240,10 @@ function string.utf8back(src, ofs)
 	return ofs;
 end
 
+function table.set_unless_exists(tbl, key, val)
+	tbl[key] = tbl[key] and tbl[key] or val;
+end
+
 -- take the entries in ref and apply to src if they match type
 -- with ref, otherwise use the value in ref
 function table.merge(dst, src, ref, on_error)
