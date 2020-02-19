@@ -1,4 +1,4 @@
--- Copyright: 2016-2019, Björn Ståhl
+-- Copyright: 2016-2020, Björn Ståhl
 -- Description: Touch, tablet, multitouch support and routing.
 -- This unit hooks itself through iostatem and selectively takes control
 -- of devices that fits a preset profile (devmaps/touch/...). These profiles
@@ -64,6 +64,9 @@ local function tryload(map)
 		touch_only = false,
 		autorange = true,
 		activation = {0.0, 0.0, 1.0, 1.0},
+		swap_xy = false,
+		invert_x = false,
+		invert_y = false,
 		scale_x = 1.0,
 		scale_y = 1.0,
 		range = {0, 0, VRESW, VRESH},

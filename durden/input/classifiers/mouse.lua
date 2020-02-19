@@ -209,6 +209,20 @@ local function memu_sample(devtbl, iotbl)
 	local x = (iotbl.x - devtbl.range[1]) / devtbl.range[3];
 	local y = (iotbl.y - devtbl.range[2]) / devtbl.range[4];
 
+-- and account for rotated state
+	if devtbl.swap_xy then
+		local z = x;
+		x = y;
+		y = z;
+	end
+
+	if devtbl.invert_x then
+		x = 1.0 - x;
+	end
+
+	if devtbl.invert_y then
+		y = 1.0 - y;
+	end
 -- track sample for auto-reset
 	devtbl.last_sample = CLOCK;
 
