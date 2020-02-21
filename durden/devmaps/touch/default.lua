@@ -52,6 +52,11 @@ return {
 	swipe_threshold = 0.2,
 	drag_threshold = 0.2,
 
+-- options for various rotated screens, inversions are applied after swap
+	swap_xy = false,
+	invert_x = false,
+	invert_y = false,
+
 -- menu path to trigger on gestures, valid are:
 -- swipe(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 -- drag(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
