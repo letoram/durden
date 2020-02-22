@@ -76,6 +76,51 @@ local function query_dispmenu(ind, name)
 	end
 end
 
+local function backlight_menu(disp)
+	return {
+		{
+		name = "set",
+		label = "Backlight",
+		kind = "value",
+		hint = "(0..1)",
+		initial = disp.backlight,
+		definition = "Control display backlight strength",
+		eval = function() return disp.ledctrl ~= nil; end,
+		validator = function(val)
+			local num = tonumber(val);
+			return num and (num >= 0 and num <= 1.0);
+		end,
+		handler = function(ctx, val)
+			disp.backlight = tonumber(val);
+			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
+		end
+		},
+		{
+		name = "step_p",
+		label = "+10%",
+		description = "Increment backlight intensity by approximately 10%",
+		kind = "action",
+		definition = "Control display backlight strength",
+		handler = function(ctx)
+			disp.backlight = math.clamp(disp.backlight + 0.1, 0.0, 1.0);
+			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
+		end
+		},
+		{
+		name = "step_n",
+		label = "-10%",
+		description = "Decrement backlight intensity by approximately 10%",
+		kind = "action",
+		definition = "Control display backlight strength",
+		handler = function(ctx)
+			disp.backlight = math.clamp(disp.backlight - 0.1, 0.0, 1.0);
+			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
+		end
+		},
+	};
+end
+
+
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -165,23 +210,6 @@ local function gen_disp_menu(disp)
 		handler = function() return query_dispmenu(disp.id, disp.name); end
 		},
 		{
-		name = "backlight",
-		label = "Backlight",
-		kind = "value",
-		hint = "(0..1)",
-		initial = disp.backlight,
-		definition = "Control display backlight strength",
-		eval = function() return disp.ledctrl ~= nil; end,
-		validator = function(val)
-			local num = tonumber(val);
-			return num and (num >= 0 and num <= 1.0);
-		end,
-		handler = function(ctx, val)
-			disp.backlight = tonumber(val);
-			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
-		end
-		},
-		{
 		name = "orient",
 		label = "Orientation",
 		kind = "action",
@@ -189,6 +217,17 @@ local function gen_disp_menu(disp)
 		eval = function() return not display_simple() and disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
+		},
+		{
+		name = "backlight",
+		label = "Backlight",
+		kind = "action",
+		description = "Set or step display backlight controls",
+		submenu = true,
+		handler = function()
+			return backlight_menu(disp);
+		end,
+		eval = function() return disp.ledctrl ~= nil; end,
 		},
 		{
 		name = "background",

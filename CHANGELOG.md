@@ -67,8 +67,9 @@ see the /global/settings/workspaces/spawn path.
 Add soft shadow controls to windows, ui elements and statusbar
 
 * input/touch improvements:
-New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter'
-improved relative mouse emulation to better handle click-select
+New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter' improved
+relative mouse emulation to better handle click-select refactored some of the
+code to more easilly accomodate custom classifiers
 
 * first round of (non-text) icon management (caching, shared sets etc.) added
 
@@ -128,6 +129,9 @@ Minor / Fixes:
 * dropped the vr-viewer tool in favor of an upcoming way of allowing lwa
   clients that use the vr-subsystem so that safespaces can be used nested
 	at minimal cost.
+
+* display backlight controls changed into a submenu, added options for
+  stepping
 
 # 0.5.0
   * tools/advfloat:
