@@ -1467,6 +1467,8 @@ local function set_fullscreen(space)
 			show_titlebar = dw.show_titlebar,
 			width = dw.width,
 			height = dw.height,
+			x = dw.x,
+			y = dw.y,
 			tbar = image_surface_properties(dw.titlebar.anchor).opacity
 		};
 	end
@@ -1499,6 +1501,8 @@ local function set_fullscreen(space)
 	move_image(dw.anchor, 0, 0);
 	dw.max_w = dw.wm.width;
 	dw.max_h = dw.wm.height;
+	dw.x = 0;
+	dw.y = 0;
 
 -- and send relayout / fullscreen hints that match the size of the WM
 	dw:resize(dw.wm.width, dw.wm.height);
