@@ -94,6 +94,8 @@ end
 
 function ui_scheme_menu(scope, tgt)
 	local res = {};
+
+-- load / parse on demand
 	if (not schemes) then
 		scan_schemes();
 		if (not schemes) then
@@ -106,6 +108,7 @@ function ui_scheme_menu(scope, tgt)
 			name = v.name,
 			label = v.label,
 			kind = "action",
+			scheme = v,
 			handler = function()
 				if (scope == "global") then
 					local lst = {};

@@ -1,7 +1,6 @@
 UI Schemes
 ============
-Warning: a bad profile may leave the system useless, be careful, especially
-with modifications to default.lua.
+Warning: a bad profile may leave the system useless.
 
 These are presets of menu-paths that can be activated as part of some trigger,
 such as a workspace switch or macro keybinding. Although they can be set to
