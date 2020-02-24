@@ -3,5 +3,6 @@ return {
 {"CLI Group", "/global/open/terminal_group"},
 {"Open", "/global/open/target"},
 {"System", "/global/system"},
-{"Settings", "/global/settings"}
+{"Settings", "/global/settings"},
+{"Input", "/global/input"},
 };
