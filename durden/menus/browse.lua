@@ -40,25 +40,6 @@ local function decwnd(fn, path)
 	end
 end
 
-local function match_ext(v, tbl)
-	if (tbl == nil) then
-		return true;
-	end
-
-	local ext = string.match(v, "^.+(%..+)$");
-	ext = ext ~= nil and string.sub(ext, 2) or ext;
-	if (ext == nil or string.len(ext) == 0) then
-		return false;
-	end
-
-	local ent = tbl[string.lower(ext)];
-	if ent then
-		return ent;
-	else
-		return tbl["*"];
-	end
-end
-
 local function setup_preview(state, dst)
 	local w = state.last_w;
 	local ofs = state.last_ofs;
@@ -214,37 +195,26 @@ end
 -- with some context- option where we can chose the destination, and
 -- an option for decode frameserver to 'probe' if it is a supported
 -- format or not.
-
-local imghnd = {
+local handlers = {
+["image"] = {
 	run = imgwnd,
 	col = HC_PALETTE[1],
 	selcol = HC_PALETTE[1],
 	preview = gconfig_get("browser_preview") == "none" and nil or
 	function(...) return prepare_preview(asynch_image, ...); end
-};
-
-local audhnd = {
+},
+["audio"] = {
 	run = decwnd,
 	col = HC_PALETTE[2],
 	selcol = HC_PALETTE[2]
-};
-
-local dechnd = {
+},
+["video"] = {
 	run = decwnd,
 	col = HC_PALETTE[3],
 	selcol = HC_PALETTE[3],
 	preview = gconfig_get("browser_preview") == "none" and nil or
 	function(...) return prepare_preview(asynch_decode, ...); end
-};
-
-local ffmts =
-{
-	jpg = imghnd, jpeg = imghnd, png = imghnd, bmp = imghnd,
-	ogg = audhnd, m4a = audhnd, flac = audhnd, mp3 = audhnd,
-	mp4 = dechnd, wmv = dechnd, mkv = dechnd, avi = dechnd,
-	flv = dechnd, mpg = dechnd, mpeg = dechnd, mov = dechnd,
-	webm = dechnd, ["*"] = defhnd,
-};
+}};
 
 -- These menus act like normal menus, but they install separate
 -- handlers that override preview behavior, add additional input/
@@ -265,10 +235,11 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			end
 		};
 	elseif (descr == "file") then
-		local exth = match_ext(v, ffmts);
+		local exth = handlers[suppl_ext_type(v, ffmts)];
 		if (not exth) then
 			return;
 		end
+
 		local res = {
 			label = v,
 			name = v,

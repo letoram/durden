@@ -204,18 +204,80 @@ local workspace_layout_menu = {
 };
 
 local function load_bg(fn)
-	local space = active_display().spaces[active_display().space_ind];
-	if (not space) then
-		return;
+	local space = active_display():active_space();
+	local kind = suppl_ext_type(fn);
+
+	if (kind == "video") then
+-- normal dumb decode
+		local decvid = launch_decode(fn, "loop:noaudio",
+		function(source, status)
+			if status.kind == "terminated" then
+				delete_image(source);
+			end
+		end);
+
+-- forward to tiler workspace handler
+		if (valid_vid(decvid)) then
+			target_flags(decvid, TARGET_BLOCKADOPT);
+			space:set_background(decvid);
+
+-- undecided, but should possibly also suspend/resume playback on workspace
+-- visibility, if so, add a hook on the workspace and suspend/resume target
+			if (valid_vid(space.background)) then
+				link_image(decvid, space.background);
+			else
+				delete_image(decvid);
+			end
+		end
+	else
+		space:set_background(fn);
 	end
-	space:set_background(fn);
 end
 
-local function set_ws_background()
+local function query_bg_media()
 	dispatch_symbol_bind(
 	function(path)
 		load_bg(path);
 	end, "/browse/shared");
+end
+
+local function set_ws_background()
+	local res = {
+		{
+			name = "browse",
+			label = "Browse",
+			kind = "action",
+			handler = query_bg_media,
+			description = "Browse for an image or video to set as the workspace background",
+		},
+		{
+			name = "external",
+			label = "External",
+			kind = "value",
+			validator = suppl_valid_name,
+			eval = function()
+				return false;
+			end,
+			description = "Open an external connection point to serve as background",
+			handler = function(ctx, val)
+			end
+		},
+		{
+			name = "color",
+			label = "Color",
+			kind = "value",
+			description = "Pick a color to set as the background"
+		}
+	};
+
+	suppl_append_color_menu({0, 0, 0}, res[#res],
+	function(str, r, g, b)
+		local col = fill_surface(4, 4, r, g, b);
+		active_display():active_space():set_background(col);
+		delete_image(col);
+	end);
+
+	return res;
 end
 
 local function swap_ws_menu()
@@ -304,7 +366,8 @@ return {
 		name = "bg",
 		label = "Background",
 		kind = "action",
-		description = "Select a background image for the current workspace",
+		submenu = true,
+		description = "Workspace background image controls",
 		handler = set_ws_background,
 	},
 	{

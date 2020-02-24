@@ -3,8 +3,10 @@
 -- certain actions like right-click for popup.
 
 local inputh = function(wm, iot)
-	if (valid_vid(wm:active_space().background_src, TYPE_FRAMESERVER)) then
-		target_input(wm:active_space().background_src, iot);
+	local space = wm:active_space();
+	if (space and space.background_src_input and
+		valid_vid(space.background_src, TYPE_FRAMESERVER)) then
+		target_input(space.background_src, iot);
 	end
 end
 
@@ -35,7 +37,7 @@ menus_register("target", "window",
 				wnd.space.set_background = background_hook;
 			end
 
-			wnd.space:set_background(wnd.external);
+			wnd.space:set_background(wnd.external, nil, true);
 
 -- disable 'focus hints' for the window as otherwise some clients will block io
 			wnd.dispstat_block_old = wnd.dispstat_block;

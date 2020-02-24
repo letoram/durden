@@ -406,9 +406,16 @@ local function wnd_deselect(wnd, nopick)
 	end
 
 	local mwm = wnd.space.mode;
+
+-- no pick argument only happens on deactivate
 	if (is_tab_mode(mwm)) then
 		if (not nopick) then
 			hide_image(wnd.anchor);
+			hide_image(wnd.canvas);
+			hide_image(wnd.border);
+			if (wnd.shadow) then
+				hide_image(wnd.shadow);
+			end
 		end
 	end
 
@@ -811,6 +818,7 @@ local function wnd_select(wnd, source, mouse)
 -- for tabbed modes, the titlebar and the 'tabs' are decoupled and
 -- we hide/show the entire window based on active tab
 	if (is_tab_mode(wnd.space.mode)) then
+		show_image(wnd.canvas);
 		show_image(wnd.anchor);
 	end
 
@@ -1316,10 +1324,6 @@ local function set_htab(space, repos)
 		return;
 	end
 
-	if (space.layouter and space.layouter.resize(space, lst)) then
-		return;
-	end
-
 	space.mode_hook = drop_tab;
 	space.switch_hook = switch_tab;
 	space.reassign_hook = reassign_tab;
@@ -1339,8 +1343,10 @@ local function set_htab(space, repos)
 		if (not repos) then
 			v:resize(v.max_w, v.max_h);
 		end
+		v.ofs_x = lpad + rpad + tbarw;
+		v.ofs_y = 0;
 		move_image(v.anchor, 0, 0);
-		move_image(v.canvas, lpad + rpad + tbarw, 0);
+		move_image(v.canvas, v.ofs_x, v.ofs_y);
 		hide_image(v.anchor);
 		hide_image(v.border);
 		v.titlebar:switch_group("htab", true);
@@ -1729,7 +1735,7 @@ local function workspace_save(ws, shallow)
 -- depth serialization and metastructure missing
 end
 
-local function workspace_background(ws, bgsrc, generalize)
+local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
 	local wm = ws.wm;
 	if (not wm) then
 		return;
@@ -1768,9 +1774,14 @@ local function workspace_background(ws, bgsrc, generalize)
 			blend_image(ws.background, 0.0, ttime);
 		end
 		blend_image(ws.background, 1.0, ttime);
+
+-- if the background is an application and we want input forwarding,
+-- set it as the workspace background_src and it will receive the nofocus
+-- input
 		if (valid_vid(src)) then
 			image_sharestorage(src, ws.background);
-			if (valid_vid(src, TYPE_FRAMESERVER)) then
+			ws.background_src_input = bgsrc_input;
+			if (bgsrc_input and valid_vid(src, TYPE_FRAMESERVER)) then
 				ws.background_src = src;
 			end
 		end
