@@ -49,7 +49,8 @@ local function vent_to_menu(ent)
 	return res;
 end
 
-function uimap_popup(menu, x, y, anchor_vid, closure)
+function uimap_popup(menu, x, y, anchor_vid, closure, opts)
+	opts = opts and opts or {};
 	local wm = active_display();
 	local ml = {
 		name = "grab_surface"
@@ -145,6 +146,11 @@ function uimap_popup(menu, x, y, anchor_vid, closure)
 		return;
 	end
 
+	if opts.block_cancel then
+		popup.cancel = function()
+		end
+	end
+
 -- big invisible surface that will absorb mouse events
 	local surf = null_surface(wm.width, wm.height);
 	show_image(surf);
@@ -157,9 +163,27 @@ function uimap_popup(menu, x, y, anchor_vid, closure)
 	end;
 
 	ml.button = function(ctx, vid, index, active)
-		if (active and index < MOUSE_WHEELPY) then
+		if (not active) then
+			return;
+		end
+
+		if (index < MOUSE_WHEELPY) then
 			log("tool=popup:kind=send_cancel");
-			popup:cancel();
+
+			if (popup.wheel_event and index == MOUSE_LBUTTON) then
+				popup:trigger();
+			else
+				popup:cancel();
+			end
+
+-- if wheel navigation has been used, have the left mouse button mean accept
+		elseif index == MOUSE_WHEELPY then
+			popup.wheel_event = true;
+			popup:step_up();
+
+		elseif index == MOUSE_WHEELNY then
+			popup.wheel_event = true;
+			popup:step_down();
 		end
 	end;
 	mouse_addlistener(ml, {"button"});
