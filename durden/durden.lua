@@ -148,8 +148,9 @@ function durden(argv)
 		mouse_block();
 	end
 
+-- init script, force-write to db
 	if (gconfig_get("first_run")) then
-		gconfig_set("first_run", false);
+		gconfig_set("first_run", false, true);
 		system_load("firstrun.lua")();
 	end
 
@@ -695,6 +696,7 @@ function durden_normal_input(iotbl, fromim)
 		end
 
 		mouse_iotbl_input(iotbl);
+		timer_reset_idle();
 		return;
 	end
 
