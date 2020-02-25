@@ -9,11 +9,13 @@
 local mgc = 0;
 local threshold = 40;
 local mg;
+local allow_guard = gconfig_get("meta_guard")
 
 -- Called when meta key has been rebound from the UI
 function meta_guard_reset(force)
 	if (force) then
 		mgc = threshold + 1;
+		allow_guard = true;
 		if (mg) then
 			mg();
 		else
@@ -26,7 +28,7 @@ function meta_guard_reset(force)
 end
 
 function meta_guard(s1, s2)
-	if (s1 or s2 or not gconfig_get("meta_guard")) then
+	if (s1 or s2 or not allow_guard) then
 		mgc = 0;
 		active_display():message();
 		meta_guard = function() return true; end
@@ -61,6 +63,7 @@ function meta_guard(s1, s2)
 		mgc = 0;
 		active_display():message();
 		suppl_binding_queue(false);
+		allow_guard = gconfig_get("meta_guard");
 
 		return false;
 	else
