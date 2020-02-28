@@ -1,7 +1,7 @@
 --
 -- Keyboard dispatch
 --
-local tbl = system_load("keybindings.lua")();
+local tbl = {};
 
 -- state tracking table for locking/unlocking, double-tap tracking, and sticky
 local mtrack = {
@@ -74,7 +74,45 @@ function dispatch_locked()
 	return mtrack.ignore ~= false and mtrack.ignore ~= nil;
 end
 
+local function load_keys()
+	for k,v in pairs(SYSTEM_KEYS) do
+		local km = get_key("sysk_" .. k);
+		if (km ~= nil) then
+			SYSTEM_KEYS[k] = tostring(km);
+		end
+	end
+
+	for _, v in ipairs(match_keys("custom_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		if (pos and stop) then
+			local key = string.sub(v, 8, pos - 1);
+			local val = string.sub(v, stop + 1);
+			if (val and string.len(val) > 0) then
+				tbl[key] = val;
+			end
+		end
+	end
+end
+
+-- allow an external call to ignore all defaults and define new tables
+-- primarily intended for swittching ui schemas
+function dispatch_binding_table(newtbl)
+	if newtbl and type(newtbl) == "table" and #newtbl > 0 then
+		tbl = {};
+		for k,v in pairs(newtbl) do
+			tbl[k] = v;
+		end
+	else
+		tbl = system_load("keybindings.lua")();
+	end
+
+-- still apply any custom overrides
+	load_keys();
+end
+
 function dispatch_load(locktog)
+	dispatch_binding_table()
+
 	gconfig_listen("meta_stick_time", "dispatch.lua",
 	function(key, val)
 		mtrack.mstick = val;
@@ -94,24 +132,6 @@ function dispatch_load(locktog)
 	mtrack.mstick = gconfig_get("meta_stick_time");
 	mtrack.mlock = gconfig_get("meta_lock");
 	mtrack.locktog = locktog;
-
-	for k,v in pairs(SYSTEM_KEYS) do
-		local km = get_key("sysk_" .. k);
-		if (km ~= nil) then
-			SYSTEM_KEYS[k] = tostring(km);
-		end
-	end
-
-	for _, v in ipairs(match_keys("custom_%")) do
-		local pos, stop = string.find(v, "=", 1);
-		if (pos and stop) then
-			local key = string.sub(v, 8, pos - 1);
-			local val = string.sub(v, stop + 1);
-			if (val and string.len(val) > 0) then
-				tbl[key] = val;
-			end
-		end
-	end
 end
 
 function dispatch_list()

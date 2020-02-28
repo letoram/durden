@@ -73,7 +73,7 @@ function gconfig_set(key, val, force)
 	defaults[key] = val;
 
 	if (force) then
-		store_key(defaults[key], tostring(val));
+		store_key(key, tostring(val));
 	end
 
 	if (listeners[key]) then
