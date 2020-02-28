@@ -168,7 +168,6 @@ local function config()
 	local run_stage;
 	run_stage = function()
 		local stage = table.remove(stages, 1);
-		print("run_stage", stage);
 		if not stage then
 			return;
 		end

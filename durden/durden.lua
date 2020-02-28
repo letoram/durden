@@ -46,7 +46,6 @@ function durden(argv)
 	system_load("tiler.lua")(); -- window management
 	system_load("uimap.lua")(); -- map uiprim/* to tiler etc.
 
-	system_load("input/touchm.lua")(); -- touch device controls
 	system_load("input/iostatem.lua")(); -- device detection, repeat rate, ..
 
 	system_load("ledm.lua")(); -- led controllers
@@ -56,6 +55,7 @@ function durden(argv)
 
 	system_load("extevh.lua")(); -- handlers for external events
 	system_load("input/rotary.lua")(); -- rotary device controls
+	system_load("input/touchm.lua")(); -- touch device controls
 
 	kbd_repeat(0, 0);
 
@@ -831,6 +831,7 @@ function durden_shutdown()
 	SYMTABLE:store_translation();
 	CLIPBOARD:save("clipboard_data.lua");
 	display_manager_shutdown();
+	iostatem_shutdown();
 	gconfig_shutdown();
 end
 

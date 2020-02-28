@@ -102,7 +102,6 @@ return {
 			local source = active_display().selected.external;
 			grab_file(function(path)
 				if valid_vid(source, TYPE_FRAMESERVER) then
-					print("open path", path);
 					restore_target(source, path, SHARED_RESOURCE);
 				end
 			end, true);
@@ -118,7 +117,6 @@ return {
 			local source = active_display().selected.external;
 			grab_file(function(path)
 				if valid_vid(source, TYPE_FRAMESERVER) then
-					print("send path", path);
 					snapshot_target(source, path, SHARED_RESOURCE);
 				end
 			end, false);
