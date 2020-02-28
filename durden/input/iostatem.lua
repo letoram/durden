@@ -324,7 +324,6 @@ function iostatem_tick()
 end
 
 function iostatem_shutdown()
-	touch_shutdown();
 end
 
 -- find the lowest -not-in-used- slot ID by alive devices

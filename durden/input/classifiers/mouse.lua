@@ -199,10 +199,7 @@ local function memu_sample(devtbl, iotbl)
 
 -- update range
 	if (devtbl.autorange) then
-		devtbl.range[1] = iotbl.x < devtbl.range[1] and iotbl.x or devtbl.range[1];
-		devtbl.range[2] = iotbl.y < devtbl.range[2] and iotbl.y or devtbl.range[2];
-		devtbl.range[3] = iotbl.x > devtbl.range[3] and iotbl.x or devtbl.range[3];
-		devtbl.range[4] = iotbl.y > devtbl.range[4] and iotbl.y or devtbl.range[4];
+		touchm_update_range(devtbl, iotbl);
 	end
 
 -- convert to normalized coordinates
@@ -309,17 +306,11 @@ local function memu_sample(devtbl, iotbl)
 		local ad = active_display();
 		if (devtbl.cooldown == 0) then
 			if (devtbl.abs) then
---				touchm_evlog(string.format(
---					"device=%d:absinput=%f:%f", iotbl.devid, ad.width * x, ad.width * y));
 				mouse_absinput(ad.width * x, ad.height * y);
 			else
---				touchm_evlog(string.format(
---				"device=%d:relinput=%f:%f", iotbl.devid, ad.width * x, ad.width * y));
-					mouse_input(ad.width * dx, ad.height * dy);
+				mouse_input(ad.width * dx, ad.height * dy);
 			end
 		else
---			touchm_evlog(string.format(
---				"ignore:cooldown=%d:device=%d", devtbl.cooldown, iotbl.devid));
 		end
 -- track multi-finger gestures motion separate, this is reset in
 -- per timeslot and can be used for magnitude in multi-finger drag
@@ -343,7 +334,8 @@ local function memu_init(abs, prof)
 	prof.dy_tmp_factor = 1;
 	prof.last_sample = CLOCK;
 	prof.buttons_held = {};
-	prof.relative = not abs;
+	touchm_evlog(string.format("init, abs=%s", tostring(abs)));
+	prof.abs = abs;
 end
 
 local function memu_tick(v)
@@ -387,13 +379,17 @@ relmouse = {
 		memu_init(false, ...);
 	end,
 	sample = memu_sample,
-	tick = memu_tick
+	tick = memu_tick,
+	gestures = {},
+	menu = nil
 },
 absmouse = {
 	init =
 	function(...)
 		memu_init(true, ...);
 	end,
-	init = memu_sample,
-	tick = memu_tick
+	sample = memu_sample,
+	tick = memu_tick,
+	gestures = {},
+	menu = nil
 }};

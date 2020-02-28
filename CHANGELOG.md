@@ -27,9 +27,9 @@ can also supply an application tag. This helps automation as you can now
 specify that tag as part of /windows/by-tag etc. when there are no UUIDs
 or other values to take advantage of.
 
-* tools/dial added:
+* input/rotary added:
 This tool implements basic gestures, commands and mapping for rotary devices
-like the 'Surface Dial'.
+like the 'Surface Dial' and 'Griffin PowerMate'.
 
 * tools/extbtn added:
 Registers into global/settings/statusbar and adds option for external clients
@@ -38,6 +38,11 @@ favor of solving this externally.
 
 * tools/autostart added:
 This tool allows a series of paths to be automatically run on startup.
+
+* tools/profile\_picker added:
+This tool is the first step towards better initial configuration. It triggers
+on startup and installs UI schemas for default inputs, colors and security
+profiles.
 
 * triggers:
 added per-window option to bind multiple custom triggers on select,
@@ -67,9 +72,10 @@ see the /global/settings/workspaces/spawn path.
 Add soft shadow controls to windows, ui elements and statusbar
 
 * input/touch improvements:
-New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter' improved
+New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter'. improved
 relative mouse emulation to better handle click-select refactored some of the
-code to more easilly accomodate custom classifiers
+code to more easilly accomodate custom classifiers. Some device profile based
+values can now be changed through the path /global/input/touch.
 
 * first round of (non-text) icon management (caching, shared sets etc.) added
 
@@ -102,7 +108,8 @@ Minor / Fixes:
 * more subsystems expose logging over the monitor ipc
 
 * /global/displays/color can be used to change the default clear
-  color when there is no wallpaper
+  color when there is no wallpaper. A single color background can also
+	be generated through /global/workspace/background.
 
 * statusbar ws- button coloring now defaults to dynamic from hc
   palette
