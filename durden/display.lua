@@ -717,6 +717,45 @@ function display_all_mode(mode)
 	end
 end
 
+local function set_view_range(disp, x, y, factor)
+	disp.zoom.level = math.clamp(factor, 1.0, 100.0);
+
+-- just normal mapping again
+	if disp.zoom.level == 1.0 then
+		image_set_txcos_default(disp.rt);
+		map_video_display(disp.rt, disp.id, display_maphint(disp));
+		return;
+	end
+
+	disp.zoom.x = math.clamp(x, 0.0, 1.0);
+	disp.zoom.y = math.clamp(y, 0.0, 1.0);
+
+-- just uniform
+	local base = 1.0 / factor;
+	local s1 = disp.zoom.x * base;
+	local t1 = disp.zoom.y * base;
+	local s2 = s1 + base;
+	local t2 = t1 + base;
+
+-- optional step, align against sampling grid s1 - (math.fmod s1, base)
+
+-- clamp against edge
+	if (s2 > 1.0) then
+		s1 = s1 - (s2 - 1.0);
+		s2 = 1.0;
+	end
+
+	if (t2 > 1.0) then
+		t1 = t1 - (t2 - 1.0);
+		t2 = 1.0;
+	end
+
+-- and synch
+	local txcos = {s1, t1, s2, t1, s2, t2, s1, t2};
+	image_set_txcos(disp.rt, txcos);
+	map_video_display(disp.rt, disp.id, display_maphint(disp));
+end
+
 function display_manager_init(alloc_fn)
 	wm_alloc_function = alloc_fn;
 
@@ -738,6 +777,13 @@ function display_manager_init(alloc_fn)
 -- a virtual-display and bind a tiler to that, then allow a display to
 -- grab the orphaned virtual one.
 	ddisp.tiler = wm_alloc_function(ddisp);
+	ddisp.view_range = set_view_range;
+	ddisp.zoom = {
+		level = 1.0,
+		x = 0,
+		y = 0
+	};
+
 	displays[1] = ddisp;
 
 	displays.simple = gconfig_get("display_simple");

@@ -120,6 +120,75 @@ local function backlight_menu(disp)
 	};
 end
 
+local function resolve_xy(disp)
+	if (disp.zoom.origo == "mouse") then
+		local mx, my = mouse_xy();
+		local ad = active_display();
+		local lx = math.clamp(mx, 0.001, ad.width) / ad.width;
+		local ly = math.clamp(my, 0.001, ad.height) / ad.height;
+		return lx, ly;
+	else
+		return disp.zoom.x, disp.zoom.y;
+	end
+end
+
+local function gen_zoom_menu(disp)
+	return {
+		{
+			name = "cursor",
+			kind = "action",
+			label = "Cursor",
+			description = "Use the last known cursor position as origo",
+			handler = function(ctx, val)
+				disp.zoom.origo = "mouse";
+				local x, y = resolve_xy(disp);
+				disp:view_range(x, y, disp.zoom.level);
+			end,
+		},
+		{
+			name = "autopan",
+			kind = "action",
+			label = "Autopan",
+			description = "Have the zoom region follow the mouse cursor",
+	-- this came with a late change to mouse.lua in upstream arcan, so not
+	-- always applicable, keep it here for the time being
+			experimental = true,
+			eval = function()
+--				return mouse_cursorhook ~= nil;
+			end,
+			handler = function(ctx, val)
+				mouse_cursorhook(function()
+					autopan(disp)
+				end)
+			end
+		},
+		{
+			name = "factor",
+			kind = "value",
+			label = "Factor",
+			validator = gen_valid_float(0, 100),
+			description = "Set the magnification level",
+			initial = disp.zoom.level,
+			handler = function(ctx, val)
+				local x, y = resolve_xy(disp);
+				disp:view_range(x, y, tonumber(val));
+			end
+		},
+-- the cursor needs to be accounted for
+		{
+			name = "step",
+			kind = "value",
+			label = "Step",
+			validator = gen_valid_float(-10, 10),
+			description = "Step magnification relative to the current factor",
+			initial = disp.zoom.level,
+			handler = function(ctx, val)
+				local x, y = resolve_xy(disp);
+					disp:view_range(x, y, tonumber(val) + disp.zoom.level);
+			end
+		}
+	};
+end
 
 local function gen_disp_menu(disp)
 	return {
@@ -153,6 +222,17 @@ local function gen_disp_menu(disp)
 				["Standby"] = DISPLAY_STANDBY
 			};
 			video_display_state(disp.id, set[val]);
+		end
+		},
+		{
+		label = "Zoom",
+		name = "zoom",
+		kind = "action",
+		description = "Large portions of the screen",
+		submenu = true,
+		handler =
+		function()
+			return gen_zoom_menu(disp);
 		end
 		},
 		{
