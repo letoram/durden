@@ -80,7 +80,7 @@ local function backlight_menu(disp)
 	return {
 		{
 		name = "set",
-		label = "Backlight",
+		label = "Set",
 		kind = "value",
 		hint = "(0..1)",
 		initial = disp.backlight,
