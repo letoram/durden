@@ -308,5 +308,8 @@ return {
 	notifications_enable = true,
 
 -- LWA specific settings, only really useful for development / debugging
-	lwa_autores = true
+	lwa_autores = true,
+
+-- cleared after running the first time
+	first_run = true
 };
