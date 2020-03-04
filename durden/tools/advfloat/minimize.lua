@@ -26,8 +26,33 @@ local function hide_tgt(wnd, tgt)
 -- actual button:
 -- click: migrate+reveal
 -- rclick: not-yet: select+popup
+
+		local resolve_icon = function(minh)
+			if not valid_vid(wnd.canvas) then
+				return;
+			end
+
+			local nsrf = null_surface(minh, minh);
+			if not valid_vid(nsrf) then
+				return;
+			end
+
+-- prefer icon segment if provided, otherwise fallback to canvas/contents
+			if valid_vid(wnd.icon) then
+				image_sharestorage(wnd.icon, nsrf);
+			else
+				image_sharestorage(wnd.canvas, nsrf);
+			end
+
+-- other option would be to render a label with wnd:get_name() with a cap
+-- on length and on-hover show hint or on-hover show canvas - or a combination
+-- (render_text with vvid,minh,minh)
+			return nsrf;
+		end
+
+		local cbase = wm.statusbar.base;
 		btn = wm.statusbar:add_button(str, "sbar_item_bg",
-			"sbar_item", wnd:get_name(), pad, wm.font_resfn, nil, nil,
+			"sbar_item", resolve_icon, pad, wm.font_resfn, cbase, cbase,
 			{
 				click = function()
 					local props = image_surface_resolve(btn.bg);
