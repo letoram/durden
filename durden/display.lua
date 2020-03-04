@@ -239,7 +239,7 @@ local function set_best_mode(disp, desw, desh)
 -- same resolution? take the matching refresh, not the highest as that would
 -- excluding have a device- profile override
 		if (ea == eb) then
-			return math.abs(disp.refresh - a.refresh) < math.abs(disp.refresh - b.refresh);
+			return math.abs(disp.refresh - a.refresh) > math.abs(disp.refresh - b.refresh);
 		end
 
 		return ea < eb;
@@ -596,7 +596,8 @@ end
 
 local function modestr(tbl)
 	return string.format(
-		"%d*%d (%f+%f mm)", tbl.width, tbl.height, tbl.phy_width_mm, tbl.phy_height_mm);
+		"%d*%d (%.2f+%.2f mm) @ %.2f hz",
+			tbl.width, tbl.height, tbl.phy_width_mm, tbl.phy_height_mm, tbl.refresh);
 end
 
 local function display_added(id)
