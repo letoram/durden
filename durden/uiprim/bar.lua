@@ -89,7 +89,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
 			delete_image(btn.lbl);
 		end
-		local props = image_storage_properties(lbl);
+		local props = image_surface_properties(lbl);
 		btn.lbl = lbl;
 		btn.w, btn.h = btn_clamp(btn, props.width, props.height);
 		resize_image(lbl, btn.w, btn.h);
@@ -322,6 +322,8 @@ local function bar_resize(bar, neww, newh, time, bar_parent)
 	local domupd = newh ~= bar.height;
 	bar.width = neww;
 	bar.height = newh;
+	bar.base = neww < newh and neww or newh;
+
 	resize_image(bar.anchor, bar.width, bar.height, time, INTERP_SMOOTHSTEP);
 
 	bar.anim_time = time;
@@ -489,6 +491,7 @@ local function btn_insert(bar, align,
 		button_destroy(btn);
 		bar:relayout();
 	end
+
 	btn.update = chain_upd(bar, btn.update, "update");
 	btn.hide = chain_upd(bar, btn.hide, "hide");
 	btn.show = chain_upd(bar, btn.show, "show");
@@ -572,7 +575,7 @@ local function bar_button(bar, align,
 -- autofill in the non-dominant axis
 	local fill = false;
 	if (not minh) then
-		minh = bar.height;
+		minh = bar.base;
 		fill = true;
 	end
 
