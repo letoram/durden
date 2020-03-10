@@ -79,6 +79,9 @@ values can now be changed through the path /global/input/touch.
 
 * first round of (non-text) icon management (caching, shared sets etc.) added
 
+* displays/current/zoom added:
+Bind to keyboard for zooming in/out around the mouse cursor position
+
 * new tool: streamdeck
 This allows external mini displays (touchbars etc.) to be hooked up and
 act as restricted input devices as well as custom widget mappings
@@ -88,12 +91,18 @@ This tool allows for simple tracking of todo tasks that integrate with
 the notification system, status bars and so on.
 
 Minor / Fixes:
+* display resolution picker should now bias towards the highest refresh
+rate when there are multiple to chose from at the desired resolution
+
 * added controls to insert subwindows as new windows or relative to their
-  parents, (global/settings/workspaces/tiled/subwindow=normal,child)
+parents, (global/settings/workspaces/tiled/subwindow=normal,child)
 
 * removed the 'alternate' window feature (used with wayland toplevels and
-  terminal groups), the feature turned out way to complex and demanding in
-	the way it was implemented.
+terminal groups), the feature turned out way to complex and demanding in
+the way it was implemented.
+
+* float/minimize prefers client provided icon or canvas contents as statusbar
+icon rather than a longer text representation
 
 * added 'invert light' shader that retains most of hue while inverting
   dark/light colors
@@ -107,12 +116,11 @@ Minor / Fixes:
 
 * more subsystems expose logging over the monitor ipc
 
-* /global/displays/color can be used to change the default clear
-  color when there is no wallpaper. A single color background can also
-	be generated through /global/workspace/background.
+* /global/displays/color can be used to change the default clear color
+when there is no wallpaper. A single color background can also be
+generated through /global/workspace/background.
 
-* statusbar ws- button coloring now defaults to dynamic from hc
-  palette
+* statusbar ws- button coloring now defaults to dynamic from hc palette
 
 * /windows/name added for individual explicit window addressing
 
@@ -134,11 +142,11 @@ Minor / Fixes:
 * added color picker widget
 
 * dropped the vr-viewer tool in favor of an upcoming way of allowing lwa
-  clients that use the vr-subsystem so that safespaces can be used nested
-	at minimal cost.
+clients that use the vr-subsystem so that safespaces can be used nested
+at minimal cost.
 
 * display backlight controls changed into a submenu, added options for
-  stepping
+stepping
 
 # 0.5.0
   * tools/advfloat:
