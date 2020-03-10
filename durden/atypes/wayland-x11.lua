@@ -48,7 +48,7 @@ local function popup_handler(wnd, source, status, wtype)
 				"x11-%s:viewport:name=%s:parent=%s:x=%d:y=%d:anchor=parent",
 				wtype, wnd.name, pid.name, status.rel_x, status.rel_y)
 			);
-			link_image(source, pid.canvas);
+			link_image(source, active_display().order_anchor);
 			order_image(source, 1);
 		end
 		move_image(source, status.rel_x, status.rel_y);
@@ -116,11 +116,17 @@ local function apply_type_size(wnd, source, status)
 		wnd:destroy();
 
 	elseif (wnd.surface_type == "icon") then
+-- this could be set to just wnd.icon and that should propagate throughout,
+-- crux is how to limit the size and transfer it to a decent size / update
+-- create so a misbehaving icon doesn't break everything, for now just rm it
+--
+-- then we should also allow a special systray window (_NET_SYSTEM_TRAY_S0)
 		wayland_debug("x11:message=eimpl:kind=icon");
 		wnd:destroy();
 
 -- missing safety bit - this should only work if a previous x surface
--- from the same bridge had input focus before us
+-- from the same bridge had input focus before us, and we need more work
+-- to actually 'drop' it on a non-X surface
 	elseif (wnd.surface_type == "dnd") then
 
 		mouse_cursortag(wnd, "window",
@@ -138,7 +144,6 @@ local function apply_type_size(wnd, source, status)
 
 		wnd.external = nil;
 		wnd:destroy();
-
 	else
 -- treat the rest as normal windows
 		if (wnd.ws_attach) then
@@ -189,9 +194,14 @@ function x11_event_handler(wnd, source, status)
 			wnd.surface_type = opts[2];
 			apply_type_size(wnd, source, wnd.defer_resize);
 			wnd.defer_size = nil;
+
 		elseif (opts[1] == "pair" and opts[2] and opts[3]) then
 			wayland_debug(string.format(
 				"x11:source=%d:wayland=%s:x11=%s",source, opts[2], opts[3]));
+
+		elseif (opts[1] == "fullscreen" and opts[2]) then
+			wayland_debug(string.format(
+				"x11:source=%d:fullscreen=%s", source, opts[2]));
 		else
 			wayland_debug(string.format(
 				"x11:error_message=unknown:command=%s:name=%s", opts[1], wnd.name));
@@ -245,7 +255,9 @@ return {
 			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
 
 			wayland_debug(string.format(
-				"kind=move-x11:source=%d:x=%d:y=%d", wnd.external, rx, ry));
+				"kind=move-x11:source=%d:x=%d:y=%d:ofs=%d,%d:pad_lr=%d:%d:space_xy=%d,%d",
+				wnd.external, rx, ry, wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
+
 -- need to send where the anchor is, not where the current position is
 			target_input(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
 		end);
@@ -258,6 +270,10 @@ return {
 		wnd:add_handler("destroy",
 			function()
 				wayland_debug(string.format("kind=destroy-x11:name=%s", wnd.name));
+-- since we link to the space order anchor, it won't be destroyed with the window
+				if (valid_vid(source)) then
+					delete_image(source);
+				end
 			end
 		);
 	end,
