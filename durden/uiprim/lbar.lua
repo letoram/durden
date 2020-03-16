@@ -1,6 +1,7 @@
--- Copyright: 2015-2018, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
+--
 -- Description: lbar- is an input dialog- style bar intended for durden that
 -- supports some completion as well. It is somewhat messy as it grew without a
 -- real idea of what it was useful for then turned out to become really
@@ -14,21 +15,25 @@
 -- but is now just ugly.
 --
 -- the worst 'sin' is all the mixed/nested contexts, rough estimate:
--- ictx (mapped to wm.input_ctx, wm matching active_display that should have
---       an active_lbar for the chaining)
--- ictx.inp (input state management for the text input)
+--
+-- ictx = mapped to wm.input_ctx:
+--       wm matching active_display that may have an active lbar already (chain)
+--
+-- ictx.inp = input state management for the text input, this uses the readline
+--            implementation from suppl.lua - but we first do our own input mgmt
+--            before forwarding
+--
 -- ictx.cb_ctx = comp_ctx which is actually provided for the input callbacks
 --
 -- where ictx.get_cb is the more important one here as it triggers the menu
 -- update but also when something has been input and selected correctly
 --
-
 local function inp_str(ictx, valid)
 	local prefix = active_display():font_resfn();
 	return {
 		prefix .. (
 		valid and gconfig_get("lbar_textstr") or gconfig_get("lbar_alertstr")),
-		ictx.inp.view_str()
+		ictx.inp:view_str()
 	};
 end
 
@@ -63,12 +68,20 @@ local function destroy(wm, ictx)
 	mouse_droplistener(ictx.bg_mh);
 	active_lbar = nil;
 
+-- if the statusbar is attached to the HUD (that we are on), reanchor it to the
+-- desktop so it doesn't get destroyed, then hide it so that it is not visible
 	if (gconfig_get("sbar_visible") == "hud") then
 		wm.statusbar:reanchor(wm.order_anchor, 2, wm.width, wm.statusbar.height);
 		wm.statusbar:hide();
+
+-- if the statusbar is hidden entirely, force-hide it here again as the option
+-- might have changed in-flight
 	elseif (wm.hidden_sb) then
 		wm.statusbar:hide();
 	else
+
+-- or make it visible again, the reason we hide it on hud activation is the
+-- blend-layer shining through and mixing with the widgets
 		wm.statusbar:show();
 	end
 
@@ -81,6 +94,9 @@ local function destroy(wm, ictx)
 	blend_image(ictx.text_anchor, 0.0, time, INTERP_EXPOUT);
 	blend_image(ictx.anchor, 0.0, time, INTERP_EXPOUT);
 
+-- the 'time == 0' tend to be if animations are disabled entirely, or if
+-- we want to switch immediately to a different kind of bar - the use of
+-- PENDING_FADE here should be refactored entirely
 	if (time > 0) then
 		PENDING_FADE = ictx.anchor;
 		expire_image(ictx.anchor, time + 1);
@@ -91,11 +107,12 @@ local function destroy(wm, ictx)
 		delete_image(ictx.anchor);
 	end
 
+-- now other components are free to grab input from the window manager
 	wm.input_ctx = nil;
 	wm:set_input_lock();
 end
 
-local function accept_cancel(wm, accept, nofwd)
+local function accept_cancel(wm, accept, nofwd, m1)
 	local ictx = wm.input_ctx;
 	local inp = ictx.inp;
 	if (ictx.on_accept) then
@@ -104,9 +121,11 @@ local function accept_cancel(wm, accept, nofwd)
 
 	destroy(wm, ictx);
 
+-- the [nofwd] option is used to reset / trigger without causing
+-- the outer component to activate some cancellation action
 	if (not accept) then
 		if (ictx.on_cancel and not nofwd) then
-			ictx:on_cancel();
+			ictx:on_cancel(m1);
 		end
 		return;
 	end
@@ -240,12 +259,13 @@ local function update_completion_set(wm, ctx, set)
 			crop = true;
 		end
 
--- outside display? show ->, if that's our index, slide page. could/should
--- use a better symbol for this, but there's no way of querying whether a
--- a glyph is available or not.
+-- outside display? show ->, if that's our index, slide page. Tacitly assume
+-- that the normal arrow glyphs are indeed present in the way that even the
+-- builtin- pixel font accepts.
 		if (i ~= ctx.inp.cofs and ofs + w > ctxw - 10) then
-			msgs = {txt_fmt, "->"};
+			msgs = {txt_fmt, gconfig_get("lbar_nextsym")};
 			exit = true;
+			ctx.last_cell = i
 
 			if (i == ctx.inp.csel) then
 				return slide_window(i);
@@ -390,41 +410,103 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 	lbar_istr(wm, ictx, res);
 end
 
+local function lbar_readline_input(wm, ictx, sym, m1)
+-- ctrl+p to up
+	if sym == "p" or sym == "UP" then
+		sym = ictx.cancel
+		return true, sym, true
+	end
+
+-- ctrl+a to home
+	if sym == "a" then
+		ictx.inp:caret_home()
+		return
+	end
+
+-- ctrl+e to end
+	if sym == "e" then
+		ictx.inp:caret_end()
+		return
+	end
+
+-- ctrl+e to clear
+	if sym == "l" then
+		ictx.inp:clear()
+		update_completion_set(wm, ictx, ictx.inp.set)
+		return
+end
+
+-- try to step a page forward
+	if sym == "k" then
+		ictx.inp.csel = ictx.inp.csel + 2
+		if ictx.last_cell then
+			ictx.inp.csel = ictx.last_cell
+			ictx.inp.clastc = ictx.last_cell - ictx.inp.cofs
+			update_completion_set(wm, ictx, ictx.inp.set)
+		end
+		return
+	end
+
+	return false, sym, m1
+end
+
 -- used on spawn to get rid of crossfade effect
 PENDING_FADE = nil;
 function lbar_input(wm, sym, iotbl, lutsym, meta)
 	local ictx = wm.input_ctx;
 	local m1, m2 = dispatch_meta();
 
+-- some old wm:input_lock handler, just ignore here
 	if (meta) then
 		return;
 	end
 
+-- and only trigger on rising edge
 	if (not iotbl.active) then
 		return;
 	end
 
-	if (m1 and (sym == ictx.cancel or sym == ictx.accept or
-		sym == ictx.caret_left or sym == ictx.caret_right or
-		sym == ictx.step_n or sym == ictx.step_p)) then
-		if (ictx.meta_handler and
-			ictx:meta_handler(sym, iotbl, lutsym, meta)) then
-			return;
+-- also remap control to modifier for readline-esque behaviors
+	if iotbl.modifiers and iotbl.modifiers > 0 then
+		local ms = decode_modifiers(iotbl.modifiers, "_")
+
+		if ms == "lctrl" or ms == "rctrl" then
+			local cont
+			cont, sym, m1 = lbar_readline_input(wm, ictx, sym, m1)
+			if not cont then
+				return
 			end
 		end
+	end
 
-		if (sym == ictx.cancel or sym == ictx.accept) then
-			return accept_cancel(wm, sym == ictx.accept);
-		end
+-- first allow whatever thing that is using the lbar to override the
+-- meta + accept/l/r/n/p in order to implement more advanced actions
+--
+-- this was dropped from not being used and making certain operations even more
+-- complicated, primary one being page left/right
+--
+--if (m1 and (sym == ictx.cancel or sym == ictx.accept or
+--		sym == ictx.caret_left or sym == ictx.caret_right or
+--		sym == ictx.step_n or sym == ictx.step_p)) then
+--		if (ictx.meta_handler and ictx:meta_handler(sym, iotbl, lutsym, meta)) then
+--			return
+--		end
+--	end
 
-		if ((sym == ictx.step_n or sym == ictx.step_p)) then
-			if (ictx.inp and ictx.inp.csel) then
-				ictx.inp.csel = (sym == ictx.step_n) and
-					(ictx.inp.csel+1) or (ictx.inp.csel-1);
-			end
-			update_completion_set(wm, ictx, ictx.inp.set);
-			return;
+-- meta held means commit and relaunch at our current position,
+-- this is problematic due to a. caching and b. path mutating
+	if (sym == ictx.cancel or sym == ictx.accept) then
+		return accept_cancel(wm, sym == ictx.accept, false, m1);
+	end
+
+	if ((sym == ictx.step_n or sym == ictx.step_p)) then
+		if (ictx.inp and ictx.inp.csel) then
+			ictx.inp.csel = (sym == ictx.step_n) and
+				(ictx.inp.csel+1) or (ictx.inp.csel-1);
 		end
+		update_completion_set(wm, ictx, ictx.inp.set);
+		return;
+	end
 
 -- special handling, if the user hasn't typed anything, map caret
 -- manipulation to completion navigation as well)
@@ -436,11 +518,12 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			end
 
 			if (string.len(ictx.inp.msg) < ictx.inp.caretpos and
-				sym == ictx.inp.caret_right) then
+				sym == ictx.caret_right) then
 				ictx.inp.csel = ictx.inp.csel + 1;
 				upd = true;
+
 			elseif (ictx.inp.caretpos == 1 and ictx.inp.chofs == 1 and
-				sym == ictx.inp.caret_left) then
+				sym == ictx.caret_left) then
 				ictx.inp.csel = ictx.inp.csel - 1;
 				upd = true;
 			end
@@ -451,20 +534,33 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			end
 		end
 
-	-- note, inp ulim can be used to force a sliding view window, not
-	-- useful here but still implemented.
-		ictx.inp = suppl_text_input(ictx.inp, iotbl, sym,
+-- note, inp ulim can be used to force a sliding view window, not
+-- useful here but still implemented.
+		local keys = {
+			k_left   = SYSTEM_KEYS["left"],
+			k_right  = SYSTEM_KEYS["right"],
+			k_home   = SYSTEM_KEYS["home"],
+			k_end    = SYSTEM_KEYS["end"],
+			k_delete = SYSTEM_KEYS["delete"],
+			k_erase  = SYSTEM_KEYS["erase"]
+		};
+
+-- forward to the read/edit-line like tool
+		ictx.inp = suppl_text_input(
+			ictx.inp, iotbl, sym,
 			function(inp, sym, caret)
 				lbar_ih(wm, ictx, inp, sym, caret);
-			end
+			end,
+			{
+				bindings = keys
+			}
 		);
 		ictx.ucount = 0;
 		ictx.ulim = 10;
 
-	-- unfortunately the haphazard lbar design makes filtering / forced reverting
-	-- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't
-	-- permit, -> tbl with set? change completion view
-
+-- unfortunately the haphazard lbar design makes filtering / forced reverting
+-- to a previous state a bit clunky, get_cb -> nil? nothing, -> false? don't
+-- permit, -> tbl with set? change completion view
 		local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.inp.set, ictx.inp);
 	if (res == false) then
 --		ictx.inp:undo();
@@ -612,26 +708,34 @@ end
 function tiler_lbar(wm, completion, comp_ctx, opts)
 	opts = opts == nil and {} or opts;
 	local time = gconfig_get("transition");
+
+-- hack around animation-out when something suddenly triggers a new lbar
+-- during an ongoing fade'
 	if (valid_vid(PENDING_FADE)) then
 		delete_image(PENDING_FADE);
 		time = 0;
 	end
+
 	PENDING_FADE = nil;
 	if (active_lbar) then
 		warning("tried to spawn multiple lbars");
 		active_lbar:destroy();
 	end
 
+-- the bg is mainly input capture
 	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
 	image_tracetag(bg, "lbar_bg");
 	shader_setup(bg, "ui", "lbarbg");
 	image_tracetag(bg, "lbar_bg");
 
+--actual completion bar, gconfig- controled base color
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 	local bar = color_surface(wm.width, barh, unpack(gconfig_get("lbar_bg")));
 	shader_setup(bar, "ui", "lbar");
 	image_tracetag(bar, "lbar_text");
 
+-- the wm order anchor is a null surface expected to be in the Z order above
+-- the last visibile desktop item
 	link_image(bg, wm.order_anchor);
 	link_image(bar, bg);
 	image_inherit_order(bar, true);
@@ -643,7 +747,11 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	order_image(bar, 3);
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);
 
-	local car = color_surface(wm.scalef * gconfig_get("lbar_caret_w"),
+-- caret, size in pixels and scaled based on relative to base- density -
+-- when we get a surface based on tui- instead this could be moved to simply
+-- using the cursor attribute and move that around
+	local car = color_surface(
+		wm.scalef * gconfig_get("lbar_caret_w"),
 		wm.scalef * gconfig_get("lbar_caret_h"),
 		unpack(gconfig_get("lbar_caret_col"))
 	);
@@ -654,24 +762,33 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 
 	move_image(bar, 0, math.floor(0.5*(wm.height-barh)));
 
+-- grab all input that gets routed through the WM
 	wm:set_input_lock(lbar_input, "bbar");
+
 	local res = {
 		anchor = bg,
 		text_anchor = bar,
 		mask_text = opts.password_mask,
--- we cache these per context as we don't want them changing mid- use
+
+-- we cache these per context as we don't want them changing mid- use,
+-- which can practically happen if binding is activated, even though suppl_input
+-- also tracks these bindings, we want them here for the overloaded navigation
+-- we have based on caret realative state
 		accept = SYSTEM_KEYS["accept"],
 		cancel = SYSTEM_KEYS["cancel"],
 		step_n = SYSTEM_KEYS["next"],
 		step_p = SYSTEM_KEYS["previous"],
 		caret_left = SYSTEM_KEYS["left"],
 		caret_right = SYSTEM_KEYS["right"],
+
 		textstr = gconfig_get("lbar_textstr"),
 		set_label = lbar_label,
 		set_helper = lbar_helper,
 		get_cb = completion,
 		cb_ctx = comp_ctx,
 		destroy = lbar_destroy,
+
+-- own caret tracking, should probably just be moved to using suppl_input
 		cofs = 1,
 		csel = 1,
 		ucount = 0,
@@ -679,6 +796,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
+
+-- hooks for implementing separate behavior, biggest use is file- browser like
+-- behavior where previews need to be loaded, cached and aligne based on actual
+-- item state
 		on_step = opts.on_step,
 		on_destroy = opts.on_destroy,
 		on_item = opts.on_item,
@@ -689,7 +810,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		wm = wm,
 	};
 
--- if not set, default to true
+-- if not set, default to true, determines if results should be forwarded to the
+-- caller as they are typed or based on the selected item (if any)
 	if (opts.force_completion == false) then
 		res.force_completion = false;
 	else
@@ -721,6 +843,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	mouse_addlistener(bg_mh, {"click", "rclick", "button"});
 	res.bg_mh = bg_mh;
 
+-- arbitrary overrides hack, see menu.lua but used for previews
 	if (opts.overlay) then
 		for k,v in pairs(opts.overlay) do
 			res[k] = v;
@@ -743,8 +866,13 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		res:on_create(opts.restore);
 	end
 
-	lbar_input(wm, "", {active = true,
-		kind = "digital", translated = true, devid = 0, subid = 0});
+-- send a fake, empty keypress to seed input state
+	lbar_input(wm, "", {
+		active = true,
+		kind = "digital",
+		translated = true,
+		devid = 0, subid = 0
+	});
 	lbar_istr(wm, res, true);
 
 -- don't want this one running here as there might be actions bound that
@@ -757,6 +885,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		wm.statusbar:hide();
 	end
 
+-- label is suggested context indicator, used for hint in value input
 	if (opts.label) then
 		res:set_label(opts.label);
 	end
