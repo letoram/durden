@@ -1140,10 +1140,151 @@ function suppl_binding_queue(arg)
 	end
 end
 
--- will return ctx (initialized if nil in the first call), to track state
--- between calls iotbl matches the format from _input(iotbl) and sym should be
--- the symbol table lookup. The redraw(ctx, caret_only) will be called when
--- the caller should update whatever UI component this is used in
+local function text_input_sym(ctx, sym)
+
+end
+
+local function text_input_table(ctx, io, sym)
+-- first check if modifier is held, and apply normal 'readline' translation
+	if not io.active then
+		return;
+	end
+
+-- then check if the symbol matches our default overrides
+	if sym and ctx.bindings[sym] then
+		ctx.bindings[sym](ctx);
+		return;
+	end
+
+-- last normal text input
+	local keych = io.utf8;
+	if (keych == nil or keych == '') then
+		return ctx;
+	end
+
+	ctx.oldmsg = ctx.msg;
+	ctx.oldpos = ctx.caretpos;
+	ctx.msg, nch = string.insert(ctx.msg, keych, ctx.caretpos, ctx.nchars);
+
+	ctx.caretpos = ctx.caretpos + nch;
+	ctx:update_caret();
+end
+
+local function text_input_view(ctx)
+	local rofs = string.utf8ralign(ctx.msg, ctx.chofs + ctx.ulim);
+	local str = string.sub(ctx.msg, string.utf8ralign(ctx.msg, ctx.chofs), rofs-1);
+	return str;
+end
+
+local function text_input_caret_str(ctx)
+	return string.sub(ctx.msg, ctx.chofs, ctx.caretpos - 1);
+end
+
+-- should really be more sophisticated, i.e. a push- function that deletes
+-- everything after the current undo index, a back function that moves the
+-- index upwards, a forward function that moves it down, and possible hist
+-- get / set.
+local function text_input_undo(ctx)
+	if (ctx.oldmsg) then
+		ctx.msg = ctx.oldmsg;
+		ctx.caretpos = ctx.oldpos;
+--				redraw(ctx);
+	end
+end
+
+local function text_input_set(ctx, str)
+	ctx.msg = (str and #str > 0) and str or "";
+	ctx.caretpos = string.len( ctx.msg ) + 1;
+	ctx.chofs = ctx.caretpos - ctx.ulim;
+	ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
+	ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
+	ctx:update_caret();
+end
+
+-- caret index has changed to some arbitrary position,
+-- make sure the visible window etc. is updated to match
+local function text_input_caretalign(ctx)
+	if (ctx.caretpos - ctx.chofs + 1 > ctx.ulim) then
+		ctx.chofs = string.utf8lalign(ctx.msg, ctx.caretpos - ctx.ulim);
+	end
+	ctx:draw();
+end
+
+local function text_input_chome(ctx)
+	ctx.caretpos = 1;
+	ctx.chofs    = 1;
+	ctx:update_caret();
+end
+
+local function text_input_cend(ctx)
+	ctx.caretpos = string.len( ctx.msg ) + 1;
+	ctx.chofs = ctx.caretpos - ctx.ulim;
+	ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
+	ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
+	ctx:update_caret();
+end
+
+local function text_input_cleft(ctx)
+	ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
+
+	if (ctx.caretpos < ctx.chofs) then
+		ctx.chofs = ctx.chofs - ctx.ulim;
+		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
+		ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
+	end
+
+	ctx:update_caret();
+end
+
+local function text_input_cright(ctx)
+	ctx.caretpos = string.utf8forward(ctx.msg, ctx.caretpos);
+
+	if (ctx.chofs + ctx.ulim <= ctx.caretpos) then
+		ctx.chofs = ctx.chofs + 1;
+	end
+
+	ctx:update_caret();
+end
+
+local function text_input_cdel(ctx)
+	ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
+	ctx:update_caret();
+end
+
+local function text_input_cerase(ctx)
+	if (ctx.caretpos < 1) then
+		return;
+	end
+
+	ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
+	if (ctx.caretpos <= ctx.chofs) then
+		ctx.chofs = ctx.caretpos - ctx.ulim;
+		ctx.chofs = ctx.chofs < 0 and 1 or ctx.chofs;
+	end
+
+	ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
+	ctx:update_caret();
+end
+
+local function text_input_clear(ctx)
+	ctx.caretpos = 1;
+	ctx.msg = "";
+	ctx:update_caret();
+end
+
+--
+-- Setup an input field for readline- like text input.
+-- This function can be used both to feed input and to initialize the context
+-- for the first time. It does not perform any rendering or allocation itself,
+-- that is deferred to the caller via the draw(ctx) callback.
+--
+-- All relevant offsets [chofs : start drawing @] [caret : current cursor @]
+-- are aligned positions and the string being built is represented in utf8.
+--
+-- example use:
+-- ctx = suppl_text_input(NULL, input_table, resolved_symbol, draw_function, opts)
+-- ctx:input(tbl, sym) OR suppl_text_input(ctx, ...)
+--
 function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 	ctx = ctx == nil and {
 		caretpos = 1,
@@ -1151,122 +1292,59 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		chofs = 1,
 		ulim = VRESW / gconfig_get("font_sz"),
 		msg = "",
-		undo = function(ctx)
-			if (ctx.oldmsg) then
-				ctx.msg = ctx.oldmsg;
-				ctx.caretpos = ctx.oldpos;
---				redraw(ctx);
-			end
-		end,
-		caret_left   = SYSTEM_KEYS["left"],
-		caret_right  = SYSTEM_KEYS["right"],
-		caret_home   = SYSTEM_KEYS["home"],
-		caret_end    = SYSTEM_KEYS["end"],
-		caret_delete = SYSTEM_KEYS["delete"],
-		caret_erase  = SYSTEM_KEYS["erase"]
+
+-- mainly internal use or for complementing render hooks via the redraw
+		draw = redraw and redraw or function() end,
+		view_str = text_input_view,
+		caret_str = text_input_caret_str,
+		set_str = text_input_set,
+		update_caret = text_input_caretalign,
+		caret_home = text_input_chome,
+		caret_end = text_input_cend,
+		caret_left = text_input_cleft,
+		caret_right = text_input_cright,
+		erase = text_input_cerase,
+		delete = text_input_cdel,
+		clear = text_input_clear,
+
+		undo = text_input_undo,
+		input = text_input_table,
 	} or ctx;
 
-	ctx.view_str = function()
-		local rofs = string.utf8ralign(ctx.msg, ctx.chofs + ctx.ulim);
-		local str = string.sub(ctx.msg, string.utf8ralign(ctx.msg, ctx.chofs), rofs-1);
-		return str;
-	end
+	local bindings = {
+		k_left = "LEFT",
+		k_right = "RIGHT",
+		k_home = "HOME",
+		k_end = "END",
+		k_delete = "DELETE",
+		k_erase = "ERASE"
+	};
 
-	ctx.caret_str = function()
-		return string.sub(ctx.msg, ctx.chofs, ctx.caretpos - 1);
-	end
+	local flut = {
+		k_left = text_input_cleft,
+		k_right = text_input_cright,
+		k_home = text_input_chome,
+		k_end = text_input_cend,
+		k_delete = text_input_cdelete,
+		k_erase = text_input_cerase
+	};
 
-	local caretofs = function()
-		if (ctx.caretpos - ctx.chofs + 1 > ctx.ulim) then
-				ctx.chofs = string.utf8lalign(ctx.msg, ctx.caretpos - ctx.ulim);
-		end
-	end
-
-	ctx.set_str = function(ctx, str)
-		ctx.msg = str;
-		ctx.caretpos = string.len( ctx.msg ) + 1;
-		ctx.chofs = ctx.caretpos - ctx.ulim;
-		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
-		ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
-		caretofs();
-		redraw(ctx);
-	end
-
-	if (iotbl.active == false) then
-		return ctx;
-	end
-
-	if (sym == ctx.caret_home) then
-		ctx.caretpos = 1;
-		ctx.chofs    = 1;
-		caretofs();
-		redraw(ctx);
-
-	elseif (sym == ctx.caret_end) then
-		ctx.caretpos = string.len( ctx.msg ) + 1;
-		ctx.chofs = ctx.caretpos - ctx.ulim;
-		ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
-		ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
-
-		caretofs();
-		redraw(ctx);
-
-	elseif (sym == ctx.caret_left) then
-		ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
-		if (ctx.caretpos < ctx.chofs) then
-			ctx.chofs = ctx.chofs - ctx.ulim;
-			ctx.chofs = ctx.chofs < 1 and 1 or ctx.chofs;
-			ctx.chofs = string.utf8lalign(ctx.msg, ctx.chofs);
-		end
-
-		caretofs();
-		redraw(ctx);
-
-	elseif (sym == ctx.caret_right) then
-		ctx.caretpos = string.utf8forward(ctx.msg, ctx.caretpos);
-		if (ctx.chofs + ctx.ulim <= ctx.caretpos) then
-			ctx.chofs = ctx.chofs + 1;
-			caretofs();
-			redraw(ctx);
-		else
-			caretofs();
-			redraw(ctx, caret);
-		end
-
-	elseif (sym == ctx.caret_delete) then
-		ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
-		caretofs();
-		redraw(ctx);
-
-	elseif (sym == ctx.caret_erase) then
-		if (ctx.caretpos > 1) then
-			ctx.caretpos = string.utf8back(ctx.msg, ctx.caretpos);
-			if (ctx.caretpos <= ctx.chofs) then
-				ctx.chofs = ctx.caretpos - ctx.ulim;
-				ctx.chofs = ctx.chofs < 0 and 1 or ctx.chofs;
+-- overlay any provided keybindings
+	if (opts.bindings) then
+		for k,v in pairs(opts.bindings) do
+			if bindings[k] then
+				bindings[k] = v;
 			end
-
-			ctx.msg = string.delete_at(ctx.msg, ctx.caretpos);
-			caretofs();
-			redraw(ctx);
 		end
-
-	else
-		local keych = iotbl.utf8;
-		if (keych == nil or keych == '') then
-			return ctx;
-		end
-
-		ctx.oldmsg = ctx.msg;
-		ctx.oldpos = ctx.caretpos;
-		ctx.msg, nch = string.insert(ctx.msg, keych, ctx.caretpos, ctx.nchars);
-
-		ctx.caretpos = ctx.caretpos + nch;
-		caretofs();
-		redraw(ctx);
 	end
 
-	assert(string.utf8valid(ctx.msg) == true);
+-- and build the real lut
+	ctx.bindings = {};
+	for k,v in pairs(bindings) do
+		ctx.bindings[v] = flut[k];
+	end
+
+	ctx:input(iotbl, sym);
 	return ctx;
 end
 

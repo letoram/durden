@@ -263,6 +263,7 @@ return {
 	lbar_seltextbg = {0x44, 0x66, 0x88},
 	lbar_itemspace = 10,
 	lbar_fltfun = "prefix",
+	lbar_nextsym = string.char(0xe2) .. string.char(0x9e) .. string.char(0xa1),
 
 -- binding bar
 	bind_waittime = 30,
