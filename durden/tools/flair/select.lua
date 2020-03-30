@@ -15,7 +15,7 @@ return {
 		end
 
 		link_image(surface, wnd.canvas);
-		image_inherit_order(wnd.canvas, true);
+		image_inherit_order(surface, true);
 		image_mask_set(surface, MASK_UNPICKABLE);
 
 -- cover popups, subsurfaces and other crap
