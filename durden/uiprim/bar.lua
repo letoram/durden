@@ -302,7 +302,6 @@ function uiprim_button(anchor, bgshname,
 
 	res:update(lbl);
 
-	image_mask_set(res.lbl, MASK_UNPICKABLE);
 	res:update_mh(mouseh);
 	res:switch_state("active");
 	return res;

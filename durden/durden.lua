@@ -9,7 +9,7 @@ EVENT_SYNCH = {};
 
 local update_default_font, update_connection_path;
 local load_configure_mouse;
-local connection_log;
+local conn_log, conn_fmt;
 
 local argv_cmds = {};
 
@@ -103,8 +103,7 @@ function durden(argv)
 
 -- buttons with the set that is loaded / stored in gconf.lua
 	nt.buttons = gconfig_buttons;
-
-	connection_log = suppl_add_logfn("connection");
+	conn_log, conn_fmt = suppl_add_logfn("connection");
 
 -- tools are quick 'drop-ins' to get additional features like modelviewer
 	suppl_scan_tools();
@@ -375,7 +374,7 @@ end
 
 function durden_launch(vid, prefix, title, wnd, wargs)
 	if (not valid_vid(vid)) then
-		connection_log("broken_launch:reason=invalid_vid");
+		conn_log("broken_launch:reason=invalid_vid");
 		return;
 	end
 
@@ -390,7 +389,7 @@ function durden_launch(vid, prefix, title, wnd, wargs)
 -- hidden window creation failed or event during creation triggered
 -- destruction immediately, hence the table will be empty
 	if (not wnd.set_prefix) then
-		connection_log("broken_launch:reason=wnd_creation");
+		conn_log("broken_launch:reason=wnd_creation");
 		delete_image(vid);
 		return;
 	end
@@ -444,6 +443,7 @@ function durden_adopt(vid, kind, title, parent, last)
 
 -- otherwise, ignore subsegments - let the client re-request them as needed
 	if (valid_vid(parent)) then
+		conn_log(conn_fmt("adopt=%d:kind=%s:reject_subsegment", vid, kind));
 		return;
 	end
 
@@ -460,6 +460,7 @@ function durden_adopt(vid, kind, title, parent, last)
 		title = string.len(title) > 0 and title or tostring(kind),
 		source_audio = BADID
 	});
+	conn_log(conn_fmt("adopt=%d:kind=%s:parent=%d", vid, kind, parent));
 
 -- some atypes may still have 'attach_block' where this becomes a noop
 	if (wnd.ws_attach) then
@@ -467,6 +468,7 @@ function durden_adopt(vid, kind, title, parent, last)
 		table.insert(adopt_new, wnd);
 	end
 
+-- wait until last adoption call before doing relayout etc.
 	if (not last) then
 		return true;
 	end
@@ -508,8 +510,10 @@ end
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status, norespawn)
 	if (not status or status.kind ~= "connected") then
--- misplaced event, shouldn't really happen
+		conn_log(conn_fmt("status=error:code=einval:kind=%s", status.kind));
 		return;
+	else
+		conn_log(conn_fmt("status=connected:kind=%s", status.kind));
 	end
 
 -- clean up the global state (INCOMING_ENDPOINT), used to track the
@@ -523,7 +527,7 @@ function durden_new_connection(source, status, norespawn)
 -- allocate a new endpoint? or wait?
 	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
 		gconfig_get("extcon_startdelay")) then
-		connection_log("status=rate_limit:adding_timer");
+		conn_log("status=rate_limit:adding_timer");
 
 		timer_add_periodic("extcon_activation",
 			gconfig_get("extcon_rlimit"), true,
@@ -546,12 +550,12 @@ function durden_new_connection(source, status, norespawn)
 -- exceeding limits, ignore for now
 	if (extcon_wndcnt >= gconfig_get("extcon_wndlimit") and
 		gconfig_get("extcon_wndlimit") > 0) then
-		connection_log(string.format("status=limit_block:external_limit=%d:count=%d",
+		conn_log(conn_fmt("status=limit_block:external_limit=%d:count=%d",
 			gconfig_get("extcon_wndlimit"), extcon_wndcnt))
 		delete_image(source);
 	else
 		extcon_wndcnt = extcon_wndcnt + 1;
-		connection_log("status=new:count=" .. tostring(extcon_wndcnt));
+		conn_log("status=new:count=" .. tostring(extcon_wndcnt));
 -- allow 'per connpath' connection interception to modify wnd post creation
 -- but pre-attachment
 		local wargs = extevh_run_intercept(status.key);
@@ -603,11 +607,13 @@ function durden_eval_respawn(manual)
 	INCOMING_ENDPOINT = target_alloc(path, durden_new_connection);
 
 	if (valid_vid(INCOMING_ENDPOINT)) then
+		conn_log(conn_fmt("kind=listening:path=%s", path));
 		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
 		if (gconfig_get("gamma_access") == "all") then
 			target_flags(INCOMING_ENDPOINT, TARGET_ALLOWCM, true);
 		end
 	else
+		conn_log(conn_fmt("saturated:adding_timer:path=%s", path));
 		timer_add_periodic("excon_reset", 100, true,
 			function() durden_eval_respawn(true); end, true);
 	end
