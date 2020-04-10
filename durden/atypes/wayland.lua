@@ -13,6 +13,10 @@ function wayland_wndcookie(id)
 	return wlsurf[id] and wlwnds[wlsurf[id]];
 end
 
+function wayland_resources()
+	return wlwnds, wlsurf, wlsubsurf;
+end
+
 function wayland_lostwnd(source, id)
 	wayland_debug("dropped:source=" .. tostring(source));
 	wlwnds[source] = nil;
@@ -284,7 +288,7 @@ end
 
 seglut["bridge-x11"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
-	}, "x11surface", x11_event_handler);
+	}, "wayland-x11", x11_event_handler);
 end
 
 -- so this is part of the s[hi,ea]t concept, the same custom cursor is shared
@@ -343,6 +347,11 @@ local function wayland_buildwnd(wnd, source, stat)
 -- register a new window, but we want control over the window setup so we just
 -- use the 'launch' function to create and register the window then install our
 -- own handler
+	if not wnd.wm then
+		delete_image(source)
+		return
+	end
+
 	wayland_debug(string.format("request:kind=%s", stat.segkind));
 	image_tracetag(source, "wl_" .. stat.segkind);
 

@@ -3191,10 +3191,6 @@ local function wnd_mousebutton(wnd, ind, pressed, x, y)
 		return;
 	end
 
-	if (wnd.input_grab) then
-		return;
-	end
-
 	local m1, m2 = dispatch_meta();
 
 	if (not m1 and not m2) then
