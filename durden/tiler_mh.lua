@@ -282,11 +282,15 @@ local function build_canvas(wnd)
 -- overrides on vid and state here
 			if (ct.handler and ct.handler(ct.ref, nil, wnd)) then
 				mouse_cursortag_state(true);
-				blend_image(ct.vid, 1.0);
+				if (valid_vid(ct.vid)) then
+					blend_image(ct.vid, 1.0);
+				end
 				ct.accept = true;
 			else
 				mouse_cursortag_state(false);
-				blend_image(ct.vid, 0.5);
+				if (valid_vid(ct.vid)) then
+					blend_image(ct.vid, 0.5);
+				end
 				ct.accept = false;
 			end
 		end

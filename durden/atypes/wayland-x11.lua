@@ -231,11 +231,11 @@ function x11_event_handler(wnd, source, status)
 end
 
 return {
-	atype = "x11surface",
+	atype = "wayland-x11",
 	actions = {
-		name = "x11surface",
-		label = "Xsurface",
-		description = "Surfaces that comes from an X server",
+		name = "xwayland",
+		label = "Xwayland",
+		description = "Surfaces that comes from an Xwayland server",
 		submenu = true,
 		eval = function() return false; end,
 		handler = x11_menu,

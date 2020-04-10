@@ -462,6 +462,9 @@ return {
 			description = "Wayland specific window management options",
 			submenu = true,
 			kind = "action",
+			eval = function()
+				return false
+			end,
 			handler = toplevel_menu
 		}
 	},
