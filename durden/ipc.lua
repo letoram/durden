@@ -70,6 +70,7 @@ local function toggle_monitoring(on)
 		timers = "TIMERS:",
 		notification = "NOTIFICATION:",
 		client = "CLIENT:",
+		connection = "CONNECTION:",
 		clipboard = "CLIPBOARD:",
 		tools = "TOOLS:",
 		warning = "WARNING:",
