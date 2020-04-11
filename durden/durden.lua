@@ -509,31 +509,31 @@ end
 
 local extcon_wndcnt = 0;
 function durden_new_connection(source, status, norespawn)
-	if (not status or status.kind ~= "connected") then
-		conn_log(conn_fmt("status=error:code=einval:kind=%s", status.kind));
-		return;
-	else
-		conn_log(conn_fmt("status=connected:kind=%s", status.kind));
-	end
-
 -- clean up the global state (INCOMING_ENDPOINT), used to track the
 -- dangling connection point if the setting is changed while a
 -- connection is still pending, _new_connection is reused from the
 -- terminal groups in global/open
 	if (source == INCOMING_ENDPOINT) then
 		INCOMING_ENDPOINT = nil;
-	end
+
+-- should not happen, indication of source not getting a new handler
+-- assigned
+		if (status.kind ~= "connected") then
+			conn_log("status=extcon:kind=bug:status=" .. status.kind);
+			delete_image(source);
+		end
 
 -- allocate a new endpoint? or wait?
-	if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
-		gconfig_get("extcon_startdelay")) then
-		conn_log("status=rate_limit:adding_timer");
+		if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
+			gconfig_get("extcon_startdelay")) then
+			conn_log("status=rate_limit:adding_timer");
 
-		timer_add_periodic("extcon_activation",
-			gconfig_get("extcon_rlimit"), true,
-			function() durden_eval_respawn(false); end, true);
-	else
-		durden_eval_respawn(true);
+			timer_add_periodic("extcon_activation",
+				gconfig_get("extcon_rlimit"), true,
+				function() durden_eval_respawn(false); end, true);
+		else
+			durden_eval_respawn(true);
+		end
 	end
 
 -- invocation from config change, anything after this isn't relevant
