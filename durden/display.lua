@@ -1,4 +1,4 @@
--- Copyright: 2015-2018, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 --
@@ -23,7 +23,10 @@ local display_listeners = {};
 -- (which is just stupid since some functions have different semantics)
 local arcan_nested = VRES_AUTORES ~= nil;
 
-local wm_alloc_function = function() end
+-- set on display_init, used to slowly refactor / decouple display.lua from
+-- durden so that it can be added as a built-in instead
+local wm_alloc_function;
+local display_event_buffer = {};
 
 local display_debug = suppl_add_logfn("display");
 
@@ -670,6 +673,11 @@ function display_event_handler(action, id)
 		return;
 	end
 
+	if not wm_alloc_function then
+		table.insert(display_event_buffer, {action, id});
+		return;
+	end
+
 	display_debug(
 		string.format("id=%d:event=%s", id and id or -1, action and action or ""));
 
@@ -697,7 +705,13 @@ function display_event_handler(action, id)
 
 	elseif (action == "changed") then
 		active_display():message("rescanning GPUs on hotlug");
-		video_displaymodes();
+
+-- prevent hotplug storms (such as plugging in a dock or kvm switch)
+-- from causing multiple rescans and the stalls that entail
+		if (last_rescan ~= CLOCK) then
+			video_displaymodes();
+			last_rescan = CLOCK;
+		end
 	end
 end
 
@@ -807,6 +821,14 @@ function display_manager_init(alloc_fn)
 		reorient_ddisp(ddisp, ddisp.maphint);
 		mouse_querytarget(ddisp.rt);
 	end
+
+-- any deferred events from display events arriving before the caller
+-- has called init gets re-injected, this can also be used to test some
+-- of the hotplug behaviors
+	for _,v in ipairs(display_event_buffer) do
+		display_event_handler(unpack(v))
+	end
+	display_event_buffer = {};
 
 	return ddisp.tiler;
 end
