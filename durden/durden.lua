@@ -84,7 +84,8 @@ function durden(argv)
 --  update_scalef(factor, disptbl)
 --  set_background()
 --
-	local nt = display_manager_init(function(ddisp)
+	local nt = display_manager_init(
+	function(ddisp)
 		local res = tiler_create(ddisp.w, ddisp.h,
 			{
 				scalef = ddisp.ppcm / 38.4,
@@ -570,7 +571,7 @@ function durden_new_connection(source, status, norespawn)
 			);
 		end
 		wnd.external_connection = true;
-		local neww, newh = wnd.wm:suggest_size();
+		local neww, newh = wnd:suggest_size();
 		wnd:displayhint(neww, newh, wnd.dispmask, wnd.wm.disptbl);
 		return wnd;
 	end
