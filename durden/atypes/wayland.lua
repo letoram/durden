@@ -225,7 +225,7 @@ local seglut = {};
 local function build_application_window(wnd, source, stat, opts, atype, handler)
 -- need to wait with assigning a handler since we want to forward a new window
 	local ad = active_display();
-	local neww, newh = ad:suggest_size();
+	local neww, newh = wnd:suggest_size();
 	local id, aid, cookie = accept_target(neww, newh);
 	wayland_debug(string.format("build_window:vid=%d:type=%s", id, atype));
 

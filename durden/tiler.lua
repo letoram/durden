@@ -1,4 +1,4 @@
--- Copyright: 2015-2019, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Depends: display, shdrmgmt, lbar, suppl, mouse
@@ -818,8 +818,8 @@ local function wnd_select(wnd, source, mouse)
 -- for tabbed modes, the titlebar and the 'tabs' are decoupled and
 -- we hide/show the entire window based on active tab
 	if (is_tab_mode(wnd.space.mode)) then
-		show_image(wnd.canvas);
-		show_image(wnd.anchor);
+		show_image(wnd.canvas)
+		show_image(wnd.anchor)
 	end
 
 -- update the shader state for the UI bar to reflect selection
@@ -1345,10 +1345,14 @@ local function set_htab(space, repos)
 		end
 		v.ofs_x = lpad + rpad + tbarw;
 		v.ofs_y = 0;
+
+-- titlebar gets separated from canvas
 		move_image(v.anchor, 0, 0);
 		move_image(v.canvas, v.ofs_x, v.ofs_y);
 		hide_image(v.anchor);
 		hide_image(v.border);
+
+-- forces titlebar, sizes to the number of windows
 		v.titlebar:switch_group("htab", true);
 		v.titlebar:reanchor(space.anchor, 2, lpad, ofs);
 		v.titlebar:resize(tbarw, tbar_sz);
@@ -1923,8 +1927,8 @@ create_workspace = function(wm, anim)
 		tile = function(ws) workspace_set(ws, "tile"); end,
 		tab = function(ws) workspace_set(ws, "tab"); end,
 		vtab = function(ws) workspace_set(ws, "vtab"); end,
-		float = function(ws) workspace_set(ws, "float"); end,
 		htab = function(ws) workspace_set(ws, "htab"); end,
+		float = function(ws) workspace_set(ws, "float"); end,
 
 		set_label = workspace_label,
 		set_background = workspace_background,
@@ -3763,6 +3767,41 @@ local function wnd_swap(w1, w2, deep, force)
 	w2:recovertag();
 end
 
+-- based on the current mode, present a client size that would make sense
+local function wnd_suggest_size(wnd)
+	local space = wnd.space and wnd.space or active_display():active_space();
+	local wm = wnd.wm
+
+-- as with all space layouters, this should really be refactored and moved
+-- into a separate file and move all operations to a pluggable workspace
+-- mode setup rather than the ungodly mess this evolved into
+	if space.mode == "tab" then
+		local tbarh = math.ceil(gconfig_get("tbar_sz") * wm.scalef);
+		return wm.effective_width, wm.effective_height - tbarh;
+
+	elseif space.mode == "htab" then
+		local tbarw = math.ceil(
+			wm.effective_width * gconfig_get("htab_barw") * wm.scalef);
+			return wm.effective_width - tbarw, wm.effective_height;
+
+	elseif space.mode == "vtab" then
+		local nw = #linearize(space)
+
+		local tbarh = math.ceil(
+			wm.effective_width * gconfig_get("tbar_sz") * wm.scalef);
+			return wm.effective_width, wm.effective_height - nw * tbarh;
+
+	elseif space.mode == "tile" then
+-- tile-mode is worse off as we need heuristics to figure out where it will
+-- be attached (the suggest_size doesn't account for that), the current
+-- insertion mode
+
+	elseif space.mode == "float" then
+	end
+
+	return 300, 300;
+end
+
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
@@ -4420,6 +4459,7 @@ local function wnd_set_vtable(wnd)
 	wnd.move = wnd_move
 	wnd.swap = wnd_swap
 	wnd.reparent = wnd_tochild
+	wnd.suggest_size = wnd_suggest_size
 	wnd.drag_resize = wnd_drag_resize
 	wnd.drop_overlay = wnd_drop_overlay
 	wnd.add_overlay = wnd_add_overlay
@@ -4983,15 +5023,6 @@ local function tiler_input_lock(wm, dst, source)
 	end
 end
 
--- based on the current mode, present a client size that would make sense
--- this doesn't really work for tiling either as there are a bunch of other
--- variables there, the other tactic is to mark the window as 'hidden' until
--- mapped, but have a dry-run where it is not
-local function tiler_suggest_size(wm)
-	local space = wm:active_space();
-	return 300, 300;
-end
-
 local function tiler_resize(wm, neww, newh, norz)
 -- special treatment for workspaces with float, we "fake" drop/set float
 	for i=1,10 do
@@ -5199,7 +5230,6 @@ function tiler_create(width, height, opts)
 -- public functions
 		set_background = tiler_switchbg,
 		step_ws = tiler_stepws,
-		suggest_size = tiler_suggest_size,
 		switch_ws = tiler_switchws,
 		swap_ws = tiler_swapws,
 		swap_up = tiler_swapup,
