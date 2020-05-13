@@ -104,7 +104,6 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			end
 			log("tool=popup:kind=selected:item=" .. ent.name);
 
--- block submenus for now
 			if (ent.submenu) then
 				log("tool=popup:kind=chain:item=" .. ent.name);
 				local menu = type(ent.handler) ==
@@ -129,7 +128,15 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 						ent:handler(ent.preset);
 					end
 					return true;
+
+-- fallback to trigger the HUD on the entry path, this should be replaced
+-- with different helpers depending on value type
+				else
+					ctx:cancel();
+					menu_query_value(ent);
 				end
+
+				return true;
 			end
 
 -- and forward normal items (will just trigger handle and cancel)

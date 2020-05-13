@@ -254,7 +254,7 @@ function menu_hook_launch(fun)
 	menu_hook = fun;
 end
 
-local function query_value(ctx, mask)
+function menu_query_value(ctx, mask)
 	local helper = {
 		active_display().font_delta .. gconfig_get("lbar_helperstr"),
 		(ctx.description and ctx.description .. " ") or ""
@@ -291,6 +291,8 @@ local function query_value(ctx, mask)
 	if (ctx.widget) then
 		suppl_widget_path(res, res.text_anchor, ctx.widget);
 	end
+
+-- add OK / Cancel to the button bar so touch / mouse-only output can continue
 
 	return res;
 end
@@ -495,7 +497,7 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 		if (m1 and not run_hook(cpath:get_path())) then
 			return;
 		else
-			return query_value(tgt, tgt.password_mask);
+			return menu_query_value(tgt, tgt.password_mask);
 		end
 	end
 
