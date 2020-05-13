@@ -3808,6 +3808,12 @@ local function wnd_ws_attach(res, from_hook)
 	local dstindex;
 	res.attach_clock = CLOCK;
 
+-- request to attach to parent, but this has a UAF risk should the parent
+-- have died or not been completely setup at the time of the child arriving
+	if (res.attach_parent and not res.attach_time) then
+		res.attach_parent = nil;
+	end
+
 	if wm.space_default_ind then
 		dstindex = wm.space_default_ind;
 	else
@@ -3846,7 +3852,7 @@ local function wnd_ws_attach(res, from_hook)
 	end
 
 	local as_child = gconfig_get("tile_insert_child") == "child";
-	if (as_child and res.attach_parent) then
+	if (as_child and res.attach_parent and res.attach_parent) then
 			dstindex = res.attach_parent.space_ind;
 		end
 
