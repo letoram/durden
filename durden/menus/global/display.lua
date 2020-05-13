@@ -73,6 +73,15 @@ local function query_dispmenu(ind, name)
 			end
 		end
 		return mtbl;
+	else
+		return {
+			name = "fail",
+			label = "Failed",
+			description = "Display returned no valid modes, hardware/platform issue",
+			kind = "action",
+			handler = function()
+			end,
+		};
 	end
 end
 
@@ -285,9 +294,15 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		definition = "Try to reconfigure the display output mode",
 		submenu = true,
-		eval = function() return disp.id ~= nil and
-			#query_dispmenu(disp.id, disp.name) > 0;  end,
-		handler = function() return query_dispmenu(disp.id, disp.name); end
+		eval = function()
+	--
+	-- removed from causing a storm of rescans on every eval
+	-- return #query_dispmenu(disp.id, disp.name) > 0;
+			return disp.id ~= nil;
+		end,
+		handler = function()
+			return query_dispmenu(disp.id, disp.name);
+		end
 		},
 		{
 		name = "orient",
