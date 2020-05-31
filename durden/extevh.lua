@@ -48,18 +48,6 @@ end
 
 load_archetypes();
 
--- check / manage external window creation interception
-local extevh_track = {};
-function extevh_set_intercept(path, handler)
-	extevh_track[path] = handler;
-end
-
-function extevh_run_intercept(path)
-	if (extevh_track[path]) then
-		return extevh_track[path](path);
-	end
-end
-
 local function cursor_handler(wnd, source, status)
 -- for cursor layer, we reuse some events to indicate hotspot
 -- and implement local warping..
