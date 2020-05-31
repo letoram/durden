@@ -148,6 +148,9 @@ at minimal cost.
 * display backlight controls changed into a submenu, added options for
 stepping
 
+* generalized/cleaned up the external-listener implementation. fixing
+reliability and rate-limit misses.
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is

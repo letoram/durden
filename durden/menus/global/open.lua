@@ -23,34 +23,46 @@ function terminal_build_argenv(group)
 	return lstr;
 end
 
-local function setup_group_cp(wnd, group)
--- link the newly created connection point ot the anchor of the window
-	local cpoint = target_alloc(group,
-		function(source, status)
-			durden_new_connection(source, status);
-		end
-	);
-	link_image(cpoint, wnd.anchor);
+-- This version just allows n children to be connected through the group
+-- with two possible use cases, one being single 'swallow' where a window
+-- gets hidden and we have another in its place.
+--
+-- The other is slightly more advanced as the hidden windows gets minimized
+-- into the titlebar, and then 'swapped' into place on click
+--
+local function setup_group_cp(wnd, group, limit)
+	local n_children = 0;
 
--- whenever 'group' path is used by a window that is about to be spawned,
--- lookup and return override options that would associate the new window
--- with the alternate.
-	extevh_set_intercept(group,
-		function(path)
-			cpoint = target_alloc(group,
-				function(source, status)
-					durden_new_connection(source, status);
-				end
+	listen_ratelimit(group,
+-- eval
+		function()
+			return n_children < limit;
+		end,
+-- handler
+		function(source, status, ...)
+			local wargs = {
+				attach_parent = wnd
+			};
+			local wnd = durden_launch(source, "", "external", nil, wargs);
+			if not wnd then
+				delete_image(source);
+				return;
+			end
+			n_children = n_children + 1;
+			wnd.external_connection = true;
+			wnd:add_handler("destroy",
+				function()
+					n_children = n_children - 1;
+				end, true
 			);
-			return {attach_parent = wnd};
-		end
+		end,
+		0, gconfig_get("extcon_rlimit")
 	);
 
+-- make sure to remove the listening point when the window disappear
 	wnd:add_handler("destroy", function()
-		extevh_set_intercept(group, nil);
-	end, true
-	);
-
+		listen_cancel(group);
+	end, true);
 end
 
 function spawn_terminal(cmd, group)
@@ -91,7 +103,7 @@ function spawn_terminal(cmd, group)
 -- but with different controls for connection point respawn (to maintain
 -- respect for rate-limiting etc.)
 			if (group) then
-				setup_group_cp(wnd, group);
+				setup_group_cp(wnd, group, 1);
 			end
 
 		elseif (status.kind == "terminated") then

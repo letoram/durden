@@ -147,7 +147,7 @@ local rate_menu = {
 		initial = function() return gconfig_get("extcon_rlimit"); end,
 		kind = "value",
 		hint = "(0: disabled .. 1000)",
-		description = "Limit the number of external connections allowed per second",
+		description = "Impose a minimum time between external connections (ticks @25Hz)",
 		validator = gen_valid_num(0, 1000),
 		handler = function(ctx, val)
 			gconfig_set("extcon_rlimit", tonumber(val));
@@ -160,7 +160,7 @@ local rate_menu = {
 		hint = "(0: disabled .. 1000)",
 		initial = function() return gconfig_get("extcon_startdelay"); end,
 		validator = gen_valid_num(0, 1000),
-		description = "Defer external connections until an initial grace period has elapsed",
+		description = "Disable rate limit for the first n ticks (@25Hz)",
 		handler = function(ctx, val)
 			gconfig_set("extcon_startdelay", tonumber(val));
 		end
@@ -203,16 +203,11 @@ local durden_system = {
 		end,
 		description = "Change the name of the socket used to connect external clients",
 		handler = function(ctx, val)
+			if #val == 0 then
+				val = ":disabled"
+			end
+
 			gconfig_set("extcon_path", val, true);
-			if (valid_vid(INCOMING_ENDPOINT)) then
-				delete_image(INCOMING_ENDPOINT);
-				INCOMING_ENDPOINT = nil;
-			end
-			if (string.len(val) == 0) then
-				val = ":disabled";
-			else
-				durden_eval_respawn(true);
-			end
 		end
 	},
 	{

@@ -1,4 +1,4 @@
--- Copyright: 2015-2018, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main setup for the Arcan/Durden desktop environment
@@ -9,6 +9,7 @@ EVENT_SYNCH = {};
 
 local update_default_font, update_connection_path;
 local load_configure_mouse;
+local setup_external_connection;
 local conn_log, conn_fmt;
 
 local argv_cmds = {};
@@ -30,6 +31,7 @@ function durden(argv)
 	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
+	system_load("listen.lua")(); -- rate-limiting for external connection points
 	system_load("icon.lua")(); -- generate and manage user icons
 	system_load("shdrmgmt.lua")(); -- shader format parser, builder
 	system_load("uiprim/uiprim.lua")(); -- ui primitives
@@ -110,13 +112,6 @@ function durden(argv)
 	suppl_scan_tools();
 	suppl_scan_widgets();
 
--- this opens up the 'durden' external listening point, removing it means
--- only user-input controlled execution through configured database and browse
-	local cp = gconfig_get("extcon_path");
-	if (cp ~= nil and string.len(cp) > 0 and cp ~= ":disabled") then
-		durden_eval_respawn(true);
-	end
-
 -- add hooks for changes to all default font properties
 	gconfig_listen("font_def", "deffonth", update_default_font);
 	gconfig_listen("font_sz", "deffonth", update_default_font);
@@ -165,10 +160,15 @@ function durden(argv)
 		end
 	end, true);
 
+-- this is forwarded as a global between executions if the crash recovery is
+-- made, and contains a user contribution through the fatal handler, as well as
+-- a backtrace
 	if (CRASH_SOURCE and string.len(CRASH_SOURCE) > 0) then
 		notification_add(
 			"Durden", nil, "Crash", CRASH_SOURCE, 4);
 	end
+
+	setup_external_connection();
 end
 
 argv_cmds["input_lock"] = function()
@@ -188,12 +188,88 @@ end
 update_connection_path = function(key, val)
 	if (val == ":disabled") then
 		val = "";
+	else
+		setup_external_connection()
 	end
+
 	for tiler in all_tilers_iter() do
 		for i, wnd in ipairs(tiler.windows) do
 			durden_devicehint(wnd.external);
 		end
 	end
+end
+
+local last_extcon;
+setup_external_connection = function()
+-- can happen if the connection point config entry is changed
+	if last_extcon then
+		listen_cancel(last_extcon);
+		last_extcon = nil;
+	end
+
+-- no-op
+	local path = gconfig_get("extcon_path");
+	if (path == ":disabled") then
+		return;
+	end
+	last_extcon = path;
+
+	listen_ratelimit(path,
+-- eval
+	function()
+		local count = 0;
+		local wnd_lim = gconfig_get("extcon_wndlimit")
+		if wnd_lim <= 0 then
+			conn_log("eval=ok:no_limit");
+			return true;
+		end
+
+-- count all externally tagged windows, this does not cover subsegments,
+-- though most implementations impose other limits (e.g. only one popup)
+		for wnd in all_windows(nil, true) do
+			if wnd.external_connection then
+				count = count + 1;
+			end
+		end
+
+		if count < wnd_lim then
+			conn_log(conn_fmt("eval=ok:wnd_count=%d:total=%d", count, wnd_lim));
+			return true;
+		else
+			conn_log(conn_fmt("eval=fail:wnd_count=%d:total=%d", count, wnd_lim));
+			return false;
+		end
+	end,
+-- handler
+	function(source, status, ...)
+		local ap = active_display(true);
+		if ap ~= nil then
+			rendertarget_attach(ap, source, RENDERTARGET_DETACH);
+		end
+
+-- this will update the event handler to wait for the register event
+-- and switch to the proper type and handler when that is known
+		local wnd = durden_launch(source, "", "external", nil, wargs);
+		wnd.external_connection = true;
+
+		if not wnd then
+			delete_image(source)
+			return
+		end
+
+-- tell the client to just reconnect on crash to the last one we knew
+		durden_devicehint(source);
+
+-- enable external- connection specific flags, others have a path on
+-- launch (e.g. menus/global/open.lua)
+		if gconfig_get("gamma_access") == "all" then
+			target_flags(source, TARGET_ALLOWCM, true)
+		end
+	end,
+-- grace period
+	gconfig_get("extcon_startdelay"),
+	gconfig_get("extcon_rlimit")
+	);
 end
 
 load_configure_mouse = function()
@@ -508,119 +584,6 @@ function durden_adopt(vid, kind, title, parent, last)
 	return true;
 end
 
-local extcon_wndcnt = 0;
-function durden_new_connection(source, status, norespawn)
--- clean up the global state (INCOMING_ENDPOINT), used to track the
--- dangling connection point if the setting is changed while a
--- connection is still pending, _new_connection is reused from the
--- terminal groups in global/open
-	if (source == INCOMING_ENDPOINT) then
-		INCOMING_ENDPOINT = nil;
-
--- should not happen, indication of source not getting a new handler
--- assigned
-		if (status.kind ~= "connected") then
-			conn_log("status=extcon:kind=bug:status=" .. status.kind);
-			delete_image(source);
-		end
-
--- allocate a new endpoint? or wait?
-		if (gconfig_get("extcon_rlimit") > 0 and CLOCK >
-			gconfig_get("extcon_startdelay")) then
-			conn_log("status=rate_limit:adding_timer");
-
-			timer_add_periodic("extcon_activation",
-				gconfig_get("extcon_rlimit"), true,
-				function() durden_eval_respawn(false); end, true);
-		else
-			durden_eval_respawn(true);
-		end
-	end
-
--- invocation from config change, anything after this isn't relevant
-	if (not valid_vid(source)) then
-		return;
-	end
-
--- switch attachment immediately to new display
-	local ap = active_display(true);
-	if (ap ~= nil) then
-		rendertarget_attach(ap, source, RENDERTARGET_DETACH);
-	end
-
--- exceeding limits, ignore for now
-	if (extcon_wndcnt >= gconfig_get("extcon_wndlimit") and
-		gconfig_get("extcon_wndlimit") > 0) then
-		conn_log(conn_fmt("status=limit_block:external_limit=%d:count=%d",
-			gconfig_get("extcon_wndlimit"), extcon_wndcnt))
-		delete_image(source);
-	else
-		extcon_wndcnt = extcon_wndcnt + 1;
-		conn_log("status=new:count=" .. tostring(extcon_wndcnt));
--- allow 'per connpath' connection interception to modify wnd post creation
--- but pre-attachment
-		local wargs = extevh_run_intercept(status.key);
-		local wnd = durden_launch(source, "", "external", nil, wargs);
--- tell the new connection where to go in the event of a crash
-		durden_devicehint(source);
-		if (wnd) then
-			wnd:add_handler("destroy",
-				function()
-					extcon_wndcnt = extcon_wndcnt - 1;
-				end
-			);
-		end
-		wnd.external_connection = true;
-		local neww, newh = wnd:suggest_size();
-		wnd:displayhint(neww, newh, wnd.dispmask, wnd.wm.disptbl);
-		return wnd;
-	end
-end
-
-function durden_eval_respawn(manual)
-	local lim = gconfig_get("extcon_wndlimit");
-	local period = gconfig_get("extcon_rlimit");
-	local path = gconfig_get("extcon_path");
-	local count = 0;
-
-	if (path == ":disabled") then
-		return;
-	end
-
-	for disp in all_tilers_iter() do
-		count = count + #disp.windows;
-	end
-
--- if it's not the time to allow more connection, schedule a hidden
--- one-fire timer that re-runs this function
-	if ((lim > 0 and count > lim) and not manual) then
-		timer_add_periodic("extcon_activation", period, true,
-			function() durden_eval_respawn(false); end, true);
-		return;
-	end
-
--- if the timer starts fighting with the user changing the setting for
--- the connection point interactively at the right time, a small race
--- might get the timer to try and respawn endlessly
-	if (valid_vid(INCOMING_ENDPOINT)) then
-		delete_image(INCOMING_ENDPOINT);
-	end
-	INCOMING_ENDPOINT = target_alloc(path, durden_new_connection);
-
-	if (valid_vid(INCOMING_ENDPOINT)) then
-		conn_log(conn_fmt("kind=listening:path=%s", path));
-		image_tracetag(INCOMING_ENDPOINT, "nonauth_connection");
-		if (gconfig_get("gamma_access") == "all") then
-			target_flags(INCOMING_ENDPOINT, TARGET_ALLOWCM, true);
-		end
-	else
-		conn_log(conn_fmt("saturated:adding_timer:path=%s", path));
-		timer_add_periodic("excon_reset", 100, true,
-			function() durden_eval_respawn(true); end, true);
-	end
-end
-
---
 -- This will likely burst device events in the beginning that we
 -- don't really care to show, so wait a few hundred ticks before
 -- adding notifications
