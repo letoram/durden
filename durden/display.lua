@@ -28,7 +28,7 @@ local arcan_nested = VRES_AUTORES ~= nil;
 local wm_alloc_function;
 local display_event_buffer = {};
 
-local display_debug = suppl_add_logfn("display");
+local display_log, fmt = suppl_add_logfn("display");
 
 local function disp_string(disp)
 	return string.format("id=%d:name=%s:maphint=%d:w=%d:h=%d:backlight=%d:ppcm=%f",
@@ -160,8 +160,7 @@ local function autohome_spaces(ndisp)
 					tiler.spaces[i].home == ndisp.name) then
 					tiler.spaces[i]:migrate(ndisp.tiler);
 					migrated = true;
-					display_debug(
-						string.format("autohome:%s:%d:%s", tiler.name, i, ndisp.name));
+					display_log(fmt("autohome:%s:%d:%s", tiler.name, i, ndisp.name));
 				end
 			end
 		end
@@ -212,7 +211,7 @@ local function switch_active_display(ind)
 	displays.main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
-	display_debug(string.format("active_display:%d", ind));
+	display_log(fmt("active_display:%d", ind));
 	set_mouse_scalef();
 end
 
@@ -221,7 +220,8 @@ local function set_best_mode(disp, desw, desh)
 -- resolution and refresh
 	local list = video_displaymodes(disp.id);
 	if (not list or #list == 0) then
-		display_debug("mode_error:message=no_mode:display=" .. tostring(disp.id));
+		display_log(fmt(
+			"mode_error:message=no_mode:display=%s", tostring(disp.id)));
 		return;
 	end
 
@@ -248,8 +248,8 @@ local function set_best_mode(disp, desw, desh)
 		return ea < eb;
 	end);
 
-	display_debug(
-		string.format("mode_set:display=%d:width=%d:height=%d:refresh=%d",
+	display_log(
+		fmt("mode_set:display=%d:width=%d:height=%d:refresh=%d",
 		disp.id, list[1].width, list[1].height, list[1].refresh)
 	);
 
@@ -290,7 +290,7 @@ function display_fullscreen(name, vid, modesw, mapv)
 -- invalid vid == switch back, do so by reactivating rendertarget
 -- updates and possible switch back to the last known mode
 	if not valid_vid(vid) then
-		display_debug("fullscreen:off");
+		display_log("fullscreen:off");
 
 		for i, j in ipairs(displays) do
 			if (valid_vid(j.rt)) then
@@ -298,7 +298,7 @@ function display_fullscreen(name, vid, modesw, mapv)
 			end
 		end
 
-		map_video_display(disp.rt, disp.id, display_maphint(disp));
+		map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		if (disp.last_m and disp.fs_modesw) then
 			video_displaymodes(disp.id, disp.last_m.modeid);
 		end
@@ -318,7 +318,7 @@ function display_fullscreen(name, vid, modesw, mapv)
 -- 'in background' refresh rate to permit other effects etc. to be running
 -- but at a lower rate than the focused vid
 	else
-		display_debug(string.format("fullscreen:%d", disp.id));
+		display_log(fmt("fullscreen:%d", disp.id));
 		for i,j in ipairs(displays) do
 			if (valid_vid(j.rt)) then
 				rendertarget_forceupdate(j.rt, gconfig_get("display_fs_rtrate"));
@@ -350,6 +350,7 @@ local function display_data(id)
 	local data, hash = video_displaydescr(id);
 	local model = "unknown";
 	local serial = "unknown";
+
 	if (not data) then
 		return;
 	end
@@ -388,6 +389,9 @@ end
 
 local function get_name(id)
 	local name;
+	local ok = false;
+
+-- start with some fail-safe name
 	if (id == 0) then
 		name = "default_";
 	else
@@ -395,18 +399,28 @@ local function get_name(id)
 -- getting a valid EDID in some cases, might need to move this
 -- workaround to the platform layer though
 		name = "unknown_" .. tostring(id);
-		map_video_display(displays[1].rt, id, HINT_NONE);
+		map_video_display(displays[1].map_rt, id, HINT_NONE);
 	end
+
+-- try and extract display name/serial from the EDID
 	local model, serial = display_data(id);
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial;
+		ok = true;
 	else
-		display_debug(string.format("id=%d:error=", id, "no_edid"));
+		display_log(fmt("id=%d:error=%s", id, "no_edid"));
 	end
-	return name;
+
+	return name, ok;
 end
 
 local function display_byname(name, id, w, h, ppcm)
+	local name, got_name = get_name(id);
+
+-- EDID resolving might have failed for some reason, if we have an orphan
+-- display and no other - chances are there was some bug from power
+-- save/suspend type action. In that case, just 'assume' the display from
+-- the previously known ID.
 	local res = {
 		w = w,
 		h = h,
@@ -414,7 +428,7 @@ local function display_byname(name, id, w, h, ppcm)
 		rh = h,
 		ppcm = ppcm,
 		id = id,
-		name = get_name(id),
+		name = name,
 		shader = gconfig_get("display_shader"),
 		maphint = HINT_NONE,
 		refresh = 60,
@@ -577,7 +591,7 @@ local function reorient_ddisp(disp, hint)
 		end
 	end
 
-	map_video_display(disp.rt, disp.id, display_maphint(disp));
+	map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 end
 
 function display_set_backlight(name, ctrl, ind)
@@ -615,7 +629,7 @@ local function display_added(id)
 -- map resolved display modes, assume [1] is the preferred one
 	if (modes and #modes > 0 and modes[1].width > 0) then
 		for i,v in ipairs(modes) do
-			display_debug(string.format(
+			display_log(fmt(
 				"status=modedata:id=%s:mode=%d:modestr=%s", id, i, modestr(v)));
 		end
 
@@ -631,13 +645,32 @@ local function display_added(id)
 			ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
 		end
 	else
-		display_debug("status=error:id="..tostring(id)..":message=no modes on display");
+		display_log(fmt("status=error:id=%d:message=no modes on display", id));
 	end
 
 	local ddisp;
-	ddisp = display_add(get_name(id), dw, dh, ppcm, id);
+
+-- if this 'fails', name will be some generated default as we know we have a
+-- new display we just wasn't able to extract it from EDID because
+-- all-identifiers-are-broken-fsck-hardware(TM), so as a mitigation to those
+-- bugs, pick the first orphan display and assume it was just some ACPI issue
+-- or similar nightmare. A softer version for this might also be useful by
+-- throwing in a timer so that we first map something to the display, give
+-- it enough time to propagate, and then re-query EDID.
+	local name, name_ok = get_name(id);
+	if not name_ok then
+		for i,v in ipairs(displays) do
+			if (v.orphan) then
+				name = v.name
+				display_log(fmt("id=%d:status=warning:fail_assume_adopt:name=%s", i, name));
+				break
+			end
+		end
+	end
+
+	ddisp = display_add(name, dw, dh, ppcm, id);
 	if (not ddisp) then
-		display_debug("status=error:id="..tostring(id)..":message=display_add failed");
+		display_log(fmt("status=error:id=%d:message=display_add failed", id));
 		return;
 	end
 
@@ -656,9 +689,9 @@ local function display_added(id)
 		ddisp.active_ramps = ddisp.ramps;
 	end
 
-	display_debug(disp_string(ddisp));
+	display_log(disp_string(ddisp));
 	display_apply(ddisp);
-	map_video_display(ddisp.rt, id, display_maphint(ddisp));
+	map_video_display(ddisp.map_rt, id, display_maphint(ddisp));
 	if (ddisp.bg) then
 		ddisp.tiler:set_background(ddisp.bg);
 	end
@@ -678,8 +711,8 @@ function display_event_handler(action, id)
 		return;
 	end
 
-	display_debug(
-		string.format("id=%d:event=%s", id and id or -1, action and action or ""));
+	display_log(fmt("id=%d:event=%s",
+		id and id or -1, action and action or ""));
 
 -- display subsystem and input subsystem are connected when it comes
 -- to platform specific actions e.g. virtual terminal switching, assume
@@ -696,7 +729,7 @@ function display_event_handler(action, id)
 -- remove on a previous display is more like tagging it as orphan
 -- as it may reappear later
 	elseif (action == "removed") then
-		local ddisp = display_remove(name, id);
+		local ddisp = display_remove(id);
 		if (ddisp) then
 			for k,v in ipairs(display_listeners) do
 				v("removed", name, ddisp.tiler, id);
@@ -738,7 +771,7 @@ local function set_view_range(disp, x, y, factor)
 -- just normal mapping again
 	if disp.zoom.level == 1.0 then
 		image_set_txcos_default(disp.rt);
-		map_video_display(disp.rt, disp.id, display_maphint(disp));
+		map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		return;
 	end
 
@@ -768,7 +801,7 @@ local function set_view_range(disp, x, y, factor)
 -- and synch
 	local txcos = {s1, t1, s2, t1, s2, t2, s1, t2};
 	image_set_txcos(disp.rt, txcos);
-	map_video_display(disp.rt, disp.id, display_maphint(disp));
+	map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 end
 
 function display_manager_init(alloc_fn)
@@ -815,8 +848,10 @@ function display_manager_init(alloc_fn)
 			delete_image(WORLDID);
 		end
 		ddisp.rt = ddisp.tiler:set_rendertarget(true);
-		map_video_display(ddisp.rt, 0, 0);
-		shader_setup(ddisp.rt, "display", ddisp.shader, ddisp.name);
+		ddisp.map_rt = ddisp.rt;
+
+		map_video_display(ddisp.map_rt, 0, 0);
+		shader_setup(ddisp.map_rt, "display", ddisp.shader, ddisp.name);
 		switch_active_display(1);
 		reorient_ddisp(ddisp, ddisp.maphint);
 		mouse_querytarget(ddisp.rt);
@@ -878,7 +913,7 @@ function display_shader(name, key)
 		--set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
 		disp.shader = key;
 	end
-	map_video_display(disp.rt, disp.id, disp.maphint);
+	map_video_display(disp.map_rt, disp.id, disp.maphint);
 
 	return disp.shader;
 end
@@ -897,7 +932,7 @@ function display_add(name, width, height, ppcm, id)
 -- for each workspace, check if they are homed to the display
 -- being added, and, if space exists, migrate
 	if (found) then
-		display_debug(string.format("add_match:name=%s", string.hexenc(name)));
+		display_log(fmt("add_match:name=%s", string.hexenc(name)));
 		found.orphan = false;
 		image_resize_storage(found.rt, found.w, found.h);
 		display_apply(found);
@@ -920,6 +955,7 @@ function display_add(name, width, height, ppcm, id)
 -- we hide it as we explicitly map to a display and do not want it
 -- visible in the WORLDID domain, eating fillrate.
 		nd.rt = nd.tiler:set_rendertarget(true);
+		nd.map_rt = nd.rt;
 		hide_image(nd.rt);
 
 -- in the real case, we'd switch to the last known resolution
@@ -953,26 +989,34 @@ end
 
 -- sweep all used workspaces of the display and find new parents
 local function autoadopt_display(disp)
+	local set = {}
 	for i=1,10 do
-		if (not disp.tiler:empty_space(i)) then
-			local ddisp = find_free_display(disp);
+		if disp.tiler:empty_space(i) then
+			table.insert(set, i)
+		end
+	end
+
+	if #set == 0 then
+		return
+	end
+
+	display_log(fmt(
+		"attempt_adopt:orphans=%d:source=%d:name=%s", #set, disp.id, disp.name));
+
+	for _,v in ipairs(set) do
+		local ddisp = find_free_display(disp);
 
 -- chances are all displays are lost
-			if (not ddisp) then
-				return;
-			end
+		if (not ddisp) then
+			display_log("adopt_cancelled:no_free_display");
+			return;
+		end
 
-			local space = disp.tiler.spaces[i];
-			if (not space) then
-				ddisp.tiler:switch_ws(i);
-				space = ddisp.tiler.spaces[i];
-			end
-
--- couldn't find a space to home into, keep pending and wait
-			if (space) then
-				space:migrate(ddisp.tiler);
-				space.home = disp.name;
-			end
+-- perform the migration, but remember the display
+		local space = disp.tiler.spaces[v];
+		if (space) then
+			space:migrate(ddisp.tiler);
+			space.home = disp.name;
 		end
 	end
 end
@@ -987,16 +1031,16 @@ function display_bytag(tag, yield)
 end
 
 function display_lease(name)
-	display_debug("lease:name=" .. get_disp_name(name));
+	display_log(fmt("lease:name=%s", get_disp_name(name)));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (not v.leased) then
-				display_debug("leased:name=" .. get_disp_name(name));
+				display_log(fmt("leased:name=%s", get_disp_name(name)));
 				v.leased = true;
 				return v;
 			else
-				display_debug("lease_error:name=" .. get_disp_name(name));
+				display_log(fmt("lease_error:name=%s",get_disp_name(name)));
 			end
 		end
 	end
@@ -1004,54 +1048,54 @@ function display_lease(name)
 end
 
 function display_release(name)
-	display_debug("release:name=" .. get_disp_name(name));
+	display_log(fmt("release:name=%s", get_disp_name(name)));
 
 	for k,v in ipairs(ignored) do
 		if (v.name == name) then
 			if (v.leased) then
-				display_debug("released:name=" .. get_disp_name(name));
+				display_log(fmt("released:name=%s", get_disp_name(name)));
 				v.leased = false;
 				return;
 			else
-				display_debug("release_error:name=" .. get_disp_name(name));
+				display_log(fmt(("release_error:name=" .. get_disp_name(name))));
 			end
 		end
 	end
 end
 
-function display_remove(name, id)
-	local found, foundi = get_disp(name);
+function display_remove_add(id)
+	local found, foundi = get_disp(id)
+	if not found then
+		return
+	end
+	display_remove(id)
+	display_added(id)
+end
 
--- first by name, then by id
-	if (not found) then
-		for k,v in ipairs(displays) do
-			if (id and v.id == id) then
-				found = v;
-				foundi = k;
-				break;
-			end
-		end
+function display_remove(id)
+	local found, foundi = get_disp(id);
 
 -- there is still the chance that some other tool manually managed the
 -- display, this is used in the case of a VR modelviewer, for instance.
-		if (not found) then
-			for i,v in ipairs(ignored) do
-				if v.id == id then
-					if (v.handler) then
-						v:handler("remove");
-					end
-					table.remove(ignored,i);
-					return;
+	if (not found) then
 
+		for i,v in ipairs(ignored) do
+			if v.id == id then
+				if (v.handler) then
+					display_log(fmt("remove_masked:id=%d", id));
+					v:handler("remove");
 				end
+				table.remove(ignored,i);
+				return;
 			end
-			display_debug("remove:error:unknown=" .. get_disp_name(name));
-			return;
 		end
+
+		display_log(fmt("remove:error:unknown=%s", get_disp_name(name)));
+		return;
 	end
 
 -- mark as orphan and reduce memory footprint by resizing the rendertarget
-	display_debug("orphan:name=" .. get_disp_name(name));
+	display_log(fmt("orphan:id=%d:name=%s", id, get_disp_name(name)));
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
 	hide_image(found.rt);
@@ -1074,7 +1118,7 @@ end
 -- parent. We treat that as a 'normal' resolution switch.
 function VRES_AUTORES(w, h, vppcm, flags, source)
 	local disp = displays[1];
-	display_debug(string.format(
+	display_log(fmt(
 		"autores:id=0:w=%d:h=%d:ppcm=%f:flags=%d:source=%d",
 		w, h, vppcm, flags, source)
 	);
@@ -1093,7 +1137,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 		else
 			display_action(disp, function()
 				if (video_displaymodes(source, w, h)) then
-					map_video_display(disp.rt, 0, disp.maphint);
+					map_video_display(disp.map_rt, 0, disp.maphint);
 					resize_video_canvas(w, h);
 					image_set_txcos_default(disp.rt);
 					disp.tiler:resize(w, h);
@@ -1129,7 +1173,7 @@ function display_ressw(name, mode)
 		video_displaymodes(disp.id, mode.modeid);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
-			map_video_display(disp.rt, disp.id, display_maphint(disp));
+			map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		end
 		disp.tiler:resize(mode.width, mode.height) --, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
