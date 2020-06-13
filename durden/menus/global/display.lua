@@ -141,6 +141,21 @@ local function resolve_xy(disp)
 	end
 end
 
+local function get_rt_set()
+	local set = {}
+
+-- Though it takes some more thought, there might be more value to adding a
+-- full tiler reference. This decoupling should really have been there from
+-- the start.
+	for d in all_displays_iter() do
+		if valid_vid(d.rt) then
+			table.insert(set, d.rt);
+		end
+	end
+
+	return set;
+end
+
 local function gen_zoom_menu(disp)
 	return {
 		{
@@ -361,7 +376,7 @@ local function gen_disp_menu(disp)
 				opt = val == LBL_YES;
 			end
 			disp.primary = opt;
-			map_video_display(disp.rt, disp.id, display_maphint(disp));
+			map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		end
 		},
 		{
@@ -394,6 +409,33 @@ local function gen_disp_menu(disp)
 				return;
 			end
 			wnd:set_title(disp.name);
+		end
+		},
+		{
+		name = "remove_add",
+		label = "Remove/Add",
+		description = "Remove the display then immediately add it back in",
+		kind = "action",
+		handler = function()
+			display_remove_add(disp.id);
+		end
+		},
+		{
+		name = "remap",
+		label = "Remap",
+		description = "Map the display to the rendertarget of another",
+		eval = function()
+			return #get_rt_set() > 0;
+		end,
+		kind = "value",
+		set = get_rt_set,
+		handler = function(ctx, val)
+			local rt = tonumber(val)
+			if not valid_vid(rt) then
+				return
+			end
+			disp.map_rt = rt;
+			map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		end
 		}
 	};
