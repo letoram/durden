@@ -12,6 +12,7 @@
 -- surface.
 --
 local toplevel_lut = {};
+local log, fmt = suppl_add_logfn("wayland");
 
 -- criterion: if the window has input focus (though according to spec
 -- it can loose focus during drag for unspecified reasons) and the mouse
@@ -21,25 +22,25 @@ toplevel_lut["move"] = function(wnd, ...)
 		wnd.in_drag_move = true;
 	end
 
-	wayland_debug("toplevel:move");
+	log("toplevel:move");
 end
 
 toplevel_lut["maximize"] = function(wnd)
-	wayland_debug("toplevel:maximize");
+	log("toplevel:maximize");
 	if (wnd.space and wnd.space.mode == "float") then
 		wnd:toggle_maximize();
 	end
 end
 
 toplevel_lut["demaximize"] = function(wnd)
-	wayland_debug("toplevel:demaximize");
+	log("toplevel:demaximize");
 	if (wnd.space and wnd.space.mode == "float") then
 		wnd:toggle_maximize();
 	end
 end
 
 toplevel_lut["menu"] = function(wnd)
-	wayland_debug("toplevel:menu");
+	log("toplevel:menu");
 	if (active_display().selected == wnd) then
 		dispatch_symbol("/target");
 	end
@@ -95,7 +96,7 @@ local function set_dragrz_state(wnd, mask, from_wl)
 end
 
 toplevel_lut["resize"] = function(wnd, dx, dy)
-	wayland_debug(string.format("toplevel:resize:edge_x=%d:edge_y=%d", dx, dy));
+	log(fmt("toplevel:resize:edge_x=%d:edge_y=%d", dx, dy));
 	if (active_display().selected ~= wnd or wnd.space.mode ~= "float") then
 		return;
 	end
@@ -119,8 +120,7 @@ local function auto_ssd(wnd)
 	local r = props.width - wnd.geom[3] - wnd.geom[1];
 	wnd:set_crop(t, l, d, r);
 
-	wayland_debug(string.format(
-		"auto_ssd:crop_t=%d:crop_l=%d:crop_d=%d:crop_r=%d", t, l, d, r));
+	log(fmt("auto_ssd:crop_t=%d:crop_l=%d:crop_d=%d:crop_r=%d", t, l, d, r));
 
 -- also deploy wnd-impostor by means of calctarget with shader and look for edge
 end
@@ -214,17 +214,17 @@ local function set_parent(wnd, id)
 
 	local parent = wayland_wndcookie(id);
 	if (parent == wnd) then
-		wayland_debug("toplevel:parent_error=self");
+		log("toplevel:parent_error=self");
 		return;
 	end
 
 	if (parent.indirect_child and parent.indirect_child ~= wnd) then
-		wayland_debug("toplevel:parent_error=collision");
+		log("toplevel:parent_error=collision");
 		return;
 	end
 
 	if (not parent or not parent.add_overlay) then
-		wayland_debug("toplevel:parent_error=unknown");
+		log("toplevel:parent_error=unknown");
 		return;
 	end
 
@@ -270,7 +270,7 @@ function wayland_toplevel_handler(wnd, source, status)
 
 -- reparenting to another surface, this may or may not also grab input
 	elseif (status.kind == "viewport") then
-		wayland_debug("toplevel:parent=" .. tostring(status.parent));
+		log("toplevel:parent=" .. tostring(status.parent));
 		set_parent(wnd, status.parent);
 
 -- wayland doesn't distinguish between registered immutable title and current
@@ -281,7 +281,7 @@ function wayland_toplevel_handler(wnd, source, status)
 	elseif (status.kind == "message") then
 		local opts = string.split(status.message, ":");
 		if (not opts or not opts[1]) then
-			wayland_debug("toplevel:error_message=invalid format");
+			log("toplevel:error_message=invalid format");
 			return;
 		end
 
@@ -289,8 +289,7 @@ function wayland_toplevel_handler(wnd, source, status)
 			if (not opts[3]) then
 -- no-op, first message sets this
 			elseif (not toplevel_lut[opts[3]]) then
-				wayland_debug(string.format(
-					"toplevel:error=unknown command:command=%s", opts[3]));
+				log(fmt("toplevel:error=unknown command:command=%s", opts[3]));
 			else
 				toplevel_lut[opts[3]](wnd, opts[4], opts[5]);
 			end
@@ -319,19 +318,18 @@ function wayland_toplevel_handler(wnd, source, status)
 				end
 			end
 			if (#opts ~= 5) then
-				wayland_debug("toplevel:geometry_error=invalid arguments");
+				log("toplevel:geometry_error=invalid arguments");
 				return;
 			end
 		elseif (opts[1] == "scale") then
 -- don't really care right now, part otherwise is just to set the
 -- resolved factor to wnd:resize_effective
 		else
-			wayland_debug(string.format(
-				"toplevel:error=unknown type:raw=%s", status.message));
+			log(fmt("toplevel:error=unknown type:raw=%s", status.message));
 		end
 
 	elseif (status.kind == "segment_request") then
-		wayland_debug("toplevel:error=segment_request not permitted");
+		log("toplevel:error=segment_request not permitted");
 
 	elseif (status.kind == "resized") then
 		if (wnd.ws_attach) then
@@ -344,8 +342,7 @@ function wayland_toplevel_handler(wnd, source, status)
 -- loop that can bounce based on rounding issues.
 		wnd:resize_effective(status.width, status.height, true, true);
 
-		wayland_debug(
-			string.format("toplevel:resized:w=%d:h=%d", status.width, status.height));
+		log(fmt("toplevel:resized:w=%d:h=%d", status.width, status.height));
 
 -- deferred from drag resize where the move should match the config change
 		if (wnd.move_mask) then
@@ -399,9 +396,10 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 		nefh = wnd.geom[4] + (efh - wnd.last_h);
 	end
 
-	wayland_debug(string.format(
+	log(fmt(
 		"toplevel:resize_hook:name=%s:inw=%d:inh=%d:efw=%d:efh=%d:outw=%d:outh=%d",
-		wnd.name, neww, newh, efw, efh, nefw, nefh));
+		wnd.name, neww, newh, efw, efh, nefw, nefh)
+	);
 
 	local dw = wnd.dh_pad_w;
 	local dh = wnd.dh_pad_h;

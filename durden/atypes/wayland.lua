@@ -1,13 +1,12 @@
 --
--- Wayland- bridge, special protocol considerations for use with
--- arcan/src/tools/wlbridge.
+-- Wayland- bridge, special protocol considerations for use with arcan-wayland
 --
 local wlwnds = {}; -- vid->window allocation tracking
 local wlsurf = {}; -- segment cookie->vi tracking
 local wlsubsurf = {}; -- track subsurfaces to build hierarchies [cookie->vid]
 
--- also used in xdg- ... so global scope
-wayland_debug = suppl_add_logfn("wayland");
+local log, fmt = suppl_add_logfn("wayland");
+local wayland_buildwnd;
 
 function wayland_wndcookie(id)
 	return wlsurf[id] and wlwnds[wlsurf[id]];
@@ -18,7 +17,7 @@ function wayland_resources()
 end
 
 function wayland_lostwnd(source, id)
-	wayland_debug("dropped:source=" .. tostring(source));
+	log("dropped:source=" .. tostring(source));
 	wlwnds[source] = nil;
 	if (id) then
 		wlsurf[id] = nil;
@@ -27,7 +26,7 @@ function wayland_lostwnd(source, id)
 end
 
 function wayland_gotwnd(source, wnd)
-	wayland_debug("added:source=" .. tostring(source));
+	log("added:source=" .. tostring(source));
 	wlwnds[source] = wnd;
 end
 
@@ -52,12 +51,11 @@ end
 local function subsurf_handler(cl, source, status)
 	if (status.kind == "resized") then
 		resize_image(source, status.width, status.height);
-		wayland_debug(
-			string.format("subsurface:resize:w=%.0f:h=%.0f", status.width, status.height));
+		log(fmt("subsurface:resize:w=%.0f:h=%.0f", status.width, status.height));
 
 	elseif (status.kind == "viewport") then
 -- all subsurfaces need to specify a parent
-		wayland_debug(string.format("viewport:x=%.0f:y=%.0f:z=%.0f:parent=%d",
+		log(fmt("viewport:x=%.0f:y=%.0f:z=%.0f:parent=%d",
 			status.rel_x, status.rel_y, status.rel_order, status.parent));
 		if (status.parent == 0) then
 			return;
@@ -78,7 +76,7 @@ local function subsurf_handler(cl, source, status)
 
 -- can't reparent to invalid surface
 		if (not valid_vid(pvid)) then
-			wayland_debug("viewport_error:invalid_parent");
+			log("viewport_error:invalid_parent");
 			delete_image(source);
 			return;
 		end
@@ -92,7 +90,7 @@ local function subsurf_handler(cl, source, status)
 		order_image(source, status.rel_order);
 
 	elseif (status.kind == "terminated") then
-		wayland_debug("subsurface:terminated");
+		log("subsurface:terminated");
 		delete_image(source);
 		wlsubsurf[source] = nil;
 	end
@@ -101,8 +99,7 @@ end
 local function popup_handler(cl, source, status)
 -- account for popup being able to resize itself
 	if (status.kind == "resized") then
-		wayland_debug(
-			string.format("popup:resize:w=%.0f:h=%.0f", status.width, status.height));
+		log(fmt("popup:resize:w=%.0f:h=%.0f", status.width, status.height));
 		resize_image(source, status.width, status.height);
 		local wnd = wlwnds[source];
 		if (not wnd) then
@@ -119,15 +116,14 @@ local function popup_handler(cl, source, status)
 	elseif (status.kind == "viewport") then
 		local pid = wlsurf[status.parent];
 		if (not pid or not wlwnds[pid]) then
-			wayland_debug("popup:viewport_error=no_parent");
+			log("popup:viewport_error=no_parent");
 			wlwnds[source] = nil;
 			delete_image(source);
 			return;
 		end
 
 -- border attribute isn't used, wayland has geometry for this instead
-		wayland_debug(
-			string.format("popup:viewport:visible=%s:x=%.0f:y=%.0f:z=%f:w=%.0f:h=%.0f:" ..
+		log(fmt("popup:viewport:visible=%s:x=%.0f:y=%.0f:z=%f:w=%.0f:h=%.0f:" ..
 				"edge=%d:anchor_edge=%s:anchor_pos=%s:focus=%s",
 				status.invisible and "yes" or "no",
 				status.rel_x, status.rel_y, status.rel_order,
@@ -184,7 +180,7 @@ local function popup_handler(cl, source, status)
 -- note: additional popups are not created on a popup itself, but rather
 -- derived from the main client connection
 	elseif (status.kind == "terminated") then
-		wayland_debug(string.format("popup:source=%d:destroy", source));
+		log(fmt("popup:source=%d:destroy", source));
 		if (wlwnds[source]) then
 			wlwnds[source]:destroy();
 		else
@@ -214,7 +210,7 @@ local function cursor_handler(cl, source, status)
 		end
 -- if active window is part of wlwnds and has this cursor...
 	elseif (status.kind == "message") then
-		wayland_debug(string.format("cursor:hotspot=%s", status.message));
+		log(fmt("cursor:hotspot=%s", status.message));
 	elseif (status.kind == "terminated") then
 		delete_image(source);
 		wlwnds[source] = nil;
@@ -227,17 +223,17 @@ local function build_application_window(wnd, source, stat, opts, atype, handler)
 	local ad = active_display();
 	local neww, newh = wnd:suggest_size();
 	local id, aid, cookie = accept_target(neww, newh);
-	wayland_debug(string.format("build_window:vid=%d:type=%s", id, atype));
+	log(fmt("build_window:vid=%d:type=%s", id, atype));
 
 	if (not valid_vid(id)) then
-		wayland_debug("build_window:status=error:message=accept alloc failed");
+		log("build_window:status=error:message=accept alloc failed");
 		return false;
 	end
 
 -- We need to track these so that reparenting is possible, viewport events
 -- carry the cookie of the window they're targeting.
 	if (cookie > 0) then
-		wayland_debug(string.format("register:cookie=%d", id));
+		log(string.format("register:cookie=%d", id));
 		wlsurf[cookie] = id;
 	end
 
@@ -286,9 +282,35 @@ seglut["application"] = function(wnd, source, stat)
 	}, "wayland-toplevel", wayland_toplevel_handler);
 end
 
+
 seglut["bridge-x11"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
 	}, "wayland-x11", x11_event_handler);
+end
+
+-- when used in service mode, the bridge-subsegment is the control for
+-- a new client - so just tie it to the other bridge and keep track of it
+seglut["bridge-wayland"] =
+function(wnd, source, stat)
+	log(fmt("kind=bridge_client:vid=%d", source));
+
+	local id, aid, cookie =
+	accept_target(32, 32,
+	function(source, status)
+		log(fmt("kind=bridge_client:vid=%d:event=%s", source, status.kind));
+		if status.kind == "terminated" then
+			delete_image(source);
+		elseif status.kind == "segment_request" then
+			log(fmt("kind=client_request:kind=%s", status.segkind));
+			return wayland_buildwnd(wnd, source, status);
+		end
+	end)
+
+	if not valid_vid(id) then
+		return
+	end
+	link_image(id, wnd.anchor);
+	return true
 end
 
 -- so this is part of the s[hi,ea]t concept, the same custom cursor is shared
@@ -296,7 +318,7 @@ end
 -- a singleton.
 seglut["cursor"] = function(wnd, source, stat)
 	if (wnd.seat_cursor) then
-		wayland_debug("cursor:error=multiple cursors on seat");
+		log("cursor:error=multiple cursors on seat");
 		return;
 	end
 
@@ -340,10 +362,11 @@ seglut["multimedia"] = function(wnd, source, stat)
 end
 
 seglut["clipboard"] = function(wnd, source, stat)
-	wayland_debug("clipboard:error=not implemented");
+	log("clipboard:error=not implemented");
 end
 
-local function wayland_buildwnd(wnd, source, stat)
+wayland_buildwnd =
+function(wnd, source, stat)
 -- register a new window, but we want control over the window setup so we just
 -- use the 'launch' function to create and register the window then install our
 -- own handler
@@ -352,14 +375,14 @@ local function wayland_buildwnd(wnd, source, stat)
 		return
 	end
 
-	wayland_debug(string.format("request:kind=%s", stat.segkind));
+	log(fmt("request:kind=%s", stat.segkind));
 	image_tracetag(source, "wl_" .. stat.segkind);
 
 	if (seglut[stat.segkind]) then
 		seglut[stat.segkind](wnd, source, stat);
 
 	else
-		wayland_debug(string.format("request:error=unknown kind %s", stat.segkind));
+		log(fmt("request:error=unknown kind %s", stat.segkind));
 		wnd:destroy();
 	end
 
@@ -433,7 +456,7 @@ return {
 -- ideally we should update this when the spawn target changes, but there is
 -- currently no plumbing for this, and the spawn-size estimation is also
 -- incorrect.
-			wayland_debug("kind=bridge_connected:vid=" .. tostring(source));
+			log("kind=bridge_connected:vid=" .. tostring(source));
 
 			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
 				target_flags(source, TARGET_ALLOWGPU);

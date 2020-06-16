@@ -11,11 +11,11 @@
 local x11_menu = {
 -- nothing atm.
 };
+local log, fmt = suppl_add_logfn("wayland");
 
 local function viewport(wnd, status)
 -- the behavior for this varies with type
-	wayland_debug(string.format(
-		"name=%s:type=%s:x=%d:y=%d:parent=%d",
+	log(fmt("name=%s:type=%s:x=%d:y=%d:parent=%d",
 		wnd.name, wnd.surface_type, status.rel_x, status.rel_y, status.parent)
 	);
 end
@@ -35,8 +35,7 @@ local function popup_handler(wnd, source, status, wtype)
 	if (status.kind == "viewport") then
 		local pid = wayland_wndcookie(status.parent);
 		if (not pid or not valid_vid(pid.canvas)) then
-			wayland_debug(string.format(
-				"x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d:anchor=global",
+			log(fmt("x11-%s:viewport:name=%s:parent_id=%d:x=%d:y=%d:anchor=global",
 				wtype, wnd.name, status.parent, status.rel_x, status.rel_y)
 			);
 -- so some applications ignore the hierarchy of windows and just positions
@@ -44,8 +43,7 @@ local function popup_handler(wnd, source, status, wtype)
 			link_image(source, active_display().order_anchor);
 			order_image(source, 1);
 		else
-			wayland_debug(string.format(
-				"x11-%s:viewport:name=%s:parent=%s:x=%d:y=%d:anchor=parent",
+			log(fmt("x11-%s:viewport:name=%s:parent=%s:x=%d:y=%d:anchor=parent",
 				wtype, wnd.name, pid.name, status.rel_x, status.rel_y)
 			);
 			link_image(source, active_display().order_anchor);
@@ -54,14 +52,12 @@ local function popup_handler(wnd, source, status, wtype)
 		move_image(source, status.rel_x, status.rel_y);
 
 	elseif (status.kind == "terminated") then
-		wayland_debug(string.format(
-			"x11-%s:destroy:name=%s", wtype, wnd.name));
+		log(fmt("x11-%s:destroy:name=%s:client_terminated", wtype, wnd.name));
 		wayland_lostwnd(source);
 		delete_image(source);
 
 	elseif (status.kind == "resized") then
-		wayland_debug(string.format(
-			"x11-%s:resized:name=%s:w=%d:h=%d",
+		log(fmt("x11-%s:resized:name=%s:w=%d:h=%d",
 			wtype, wnd.name, status.width, status.height)
 		);
 		resize_image(source, status.width, status.height);
@@ -88,14 +84,13 @@ local function apply_type_size(wnd, source, status)
 -- what the 'rules' say about the same surface mutating in type, but
 -- assume for now that it doesn't. Likely need different positioning
 -- constraints based on the different types
-		wayland_debug(string.format(
-			"x11:type=%s:name=%s", wnd.surface_type, wnd.name));
+		log(fmt("x11:type=%s:name=%s", wnd.surface_type, wnd.name));
 		local newwnd = {name = wnd.name, surface_type = wnd.surface_type};
 		local newvid = wnd.external;
 		image_inherit_order(newvid, true);
 		image_mask_set(newvid, MASK_UNPICKABLE);
 
-		wayland_debug("switch-handler:" .. tostring(newvid));
+		log("switch-handler:" .. tostring(newvid));
 		target_updatehandler(newvid, function(source, status)
 			popup_handler(newwnd, source, status, newwnd.surface_type);
 		end);
@@ -121,7 +116,7 @@ local function apply_type_size(wnd, source, status)
 -- create so a misbehaving icon doesn't break everything, for now just rm it
 --
 -- then we should also allow a special systray window (_NET_SYSTEM_TRAY_S0)
-		wayland_debug("x11:message=eimpl:kind=icon");
+		log("x11:message=eimpl:kind=icon");
 		wnd:destroy();
 
 -- missing safety bit - this should only work if a previous x surface
@@ -131,7 +126,7 @@ local function apply_type_size(wnd, source, status)
 
 		mouse_cursortag(wnd, "window",
 			function(srcwnd, accept, dstwnd)
-				wayland_debug("x11:message=eimpl:kind=dnd_apply");
+				log("x11:message=eimpl:kind=dnd_apply");
 			end, wnd.external
 		);
 
@@ -147,8 +142,7 @@ local function apply_type_size(wnd, source, status)
 	else
 -- treat the rest as normal windows
 		if (wnd.ws_attach) then
-			wayland_debug(string.format(
-				"x11:type=%s:name=%s:status=attach_fwd", wnd.surface_type, wnd.name));
+			log(fmt("x11:type=%s:name=%s:status=attach_fwd", wnd.surface_type, wnd.name));
 			wnd:ws_attach();
 		end
 
@@ -159,8 +153,7 @@ local function apply_type_size(wnd, source, status)
 end
 
 function x11_event_handler(wnd, source, status)
-	wayland_debug(string.format(
-		"status=event:source=%d:name=%s:event=%s", source, wnd.name, status.kind));
+	log(fmt("status=event:source=%d:name=%s:event=%s", source, wnd.name, status.kind));
 
 	if (status.kind == "terminated") then
 		wayland_lostwnd(source);
@@ -173,42 +166,37 @@ function x11_event_handler(wnd, source, status)
 		if (wnd.surface_type) then
 			viewport(wnd, status);
 		else
-			wayland_debug(string.format(
-				"status=deferred:source=%d:event=%s:name=%s", source, status.kind, wnd.name));
+			log(fmt("status=deferred:source=%d:event=%s:name=%s", source, status.kind, wnd.name));
 			wnd.last_viewport = status;
 		end
 
 	elseif (status.kind == "message") then
-			wayland_debug(status.message);
+			log(status.message);
 
 -- our regular dispatch table of 'special hacks'
 		local opts = string.split(status.message, ":");
 
 		if (not opts or not opts[1]) then
-			wayland_debug(string.format(
-				"x11:error_message=unknown:source=%d:name=%s:raw=%s", source, wnd.name, status.message));
+			log(fmt("x11:error_message=unknown:source=%d:name=%s:raw=%s", source, wnd.name, status.message));
 		end
 
 		if (opts[1] == "type" and opts[2]) then
-			wayland_debug(string.format("x11:set_type=%s:name=%s", opts[2], wnd.name));
+			log(fmt("x11:set_type=%s:name=%s", opts[2], wnd.name));
 			wnd.surface_type = opts[2];
 			apply_type_size(wnd, source, wnd.defer_resize);
 			wnd.defer_size = nil;
 
 		elseif (opts[1] == "pair" and opts[2] and opts[3]) then
-			wayland_debug(string.format(
-				"x11:source=%d:wayland=%s:x11=%s",source, opts[2], opts[3]));
+			log(fmt("x11:source=%d:wayland=%s:x11=%s",source, opts[2], opts[3]));
 
 		elseif (opts[1] == "fullscreen" and opts[2]) then
-			wayland_debug(string.format(
-				"x11:source=%d:fullscreen=%s", source, opts[2]));
+			log(fmt("x11:source=%d:fullscreen=%s", source, opts[2]));
 		else
-			wayland_debug(string.format(
-				"x11:error_message=unknown:command=%s:name=%s", opts[1], wnd.name));
+			log(fmt("x11:error_message=unknown:command=%s:name=%s", opts[1], wnd.name));
 		end
 
 	elseif (status.kind == "segment_requested") then
-		wayland_debug("x11:error_message=subsegment_request");
+		log("x11:error_message=subsegment_request");
 
 	elseif (status.kind == "resized") then
 -- we actually only attach on the first buffer delivery when we also know
@@ -218,7 +206,7 @@ function x11_event_handler(wnd, source, status)
 			if (wnd.surface_type) then
 				apply_type_size(wnd, source, status);
 			else
-				wayland_debug("x11:kind=status:message=no type defer_attach");
+				log("x11:kind=status:message=no type defer_attach");
 				wnd.defer_resize = status;
 				return;
 			end
@@ -226,7 +214,7 @@ function x11_event_handler(wnd, source, status)
 			resize(wnd, status);
 		end
 	else
-		wayland_debug("x11:error_message=unhandled:event=" .. status.kind);
+		log("x11:error_message=unhandled:event=" .. status.kind);
 	end
 end
 
@@ -254,8 +242,7 @@ return {
 			local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
 			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
 
-			wayland_debug(string.format(
-				"kind=move-x11:source=%d:x=%d:y=%d:ofs=%d,%d:pad_lr=%d:%d:space_xy=%d,%d",
+			log(fmt("kind=move-x11:source=%d:x=%d:y=%d:ofs=%d,%d:pad_lr=%d:%d:space_xy=%d,%d",
 				wnd.external, rx, ry, wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
 
 -- need to send where the anchor is, not where the current position is
@@ -263,16 +250,17 @@ return {
 		end);
 		wnd:add_handler("resize",
 		function(wnd, neww, newh, efw, efh)
-			wayland_debug(string.format(
-				"kind=resize-x11:name=%s:neww=%.0f:newh=%.0f", wnd.name, neww, newh));
+			log(fmt("kind=resize-x11:name=%s:neww=%.0f:newh=%.0f", wnd.name, neww, newh));
 			target_displayhint(wnd.external, neww, newh);
 		end);
 		wnd:add_handler("destroy",
 			function()
-				wayland_debug(string.format("kind=destroy-x11:name=%s", wnd.name));
--- since we link to the space order anchor, it won't be destroyed with the window
-				if (valid_vid(source)) then
-					delete_image(source);
+				log(fmt("kind=destroy-x11:name=%s:vid=%d", wnd.name, source));
+
+-- since we link to the space order anchor, it won't be destroyed with the window,
+-- but at the same time popups and the likes have different life-cycle management
+				if (valid_vid(wnd.external)) then
+					delete_image(wnd.external);
 				end
 			end
 		);
