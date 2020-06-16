@@ -30,7 +30,7 @@ end
 -- The other is slightly more advanced as the hidden windows gets minimized
 -- into the titlebar, and then 'swapped' into place on click
 --
-local function setup_group_cp(wnd, group, limit)
+local function setup_group_cp(pwnd, group, limit)
 	local n_children = 0;
 
 	listen_ratelimit(group,
@@ -41,18 +41,35 @@ local function setup_group_cp(wnd, group, limit)
 -- handler
 		function(source, status, ...)
 			local wargs = {
-				attach_parent = wnd
+-- make sure at the direct time of attachment, this will take the place of
+-- [wnd] in the tiling hierarchy, reducing number of forced relayouts and
+-- invalid sizing hints
+				swallow_window = pwnd
 			};
 			local wnd = durden_launch(source, "", "external", nil, wargs);
+
 			if not wnd then
 				delete_image(source);
 				return;
 			end
 			n_children = n_children + 1;
 			wnd.external_connection = true;
+
+-- let the child crash-recover to our outer connection point even if in group
+			durden_devicehint(source);
+
+-- need to track this to enfore limit on children
 			wnd:add_handler("destroy",
-				function()
+				function(wnd, was_selected)
 					n_children = n_children - 1;
+					if pwnd.show then
+						pwnd:show();
+						if was_selected then
+							pwnd:select();
+						end
+--  should happen implicitly as a side effect of destroy
+--					pwnd.space:resize();
+					end
 				end, true
 			);
 		end,
@@ -60,7 +77,7 @@ local function setup_group_cp(wnd, group, limit)
 	);
 
 -- make sure to remove the listening point when the window disappear
-	wnd:add_handler("destroy", function()
+	pwnd:add_handler("destroy", function()
 		listen_cancel(group);
 	end, true);
 end

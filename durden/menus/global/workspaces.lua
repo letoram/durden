@@ -140,10 +140,9 @@ return {
 		kind = "value",
 		description = "Let displays adopt orphaned workspaces automatically",
 		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		eval = function()
-			return gconfig_get("display_simple") and LBL_YES or LBL_NO;
+		initial = function()
+			return gconfig_get("ws_autoadopt") and LBL_YES or LBL_NO;
 		end,
-		initial = function() return tostring(gconfig_get("ws_autoadopt")); end,
 		handler = suppl_flip_handler("ws_autoadopt")
 	},
 	{

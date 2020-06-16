@@ -2,6 +2,28 @@
 -- Terminal archetype, settings and menus specific for terminal-
 -- frameserver session (e.g. keymapping, state control)
 --
+local action_menu = {
+	{
+		name = "hide_reveal",
+		kind = "value",
+		description = "Hide parent and swap in child on new connection",
+		label = "Hide/Reveal",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+		end,
+		handler = function()
+		end,
+	},
+	{
+		name = "swap_active",
+		kind = "action",
+		description = "Toggle between parent and child",
+		label = "Swap",
+		handler = function()
+		end,
+	},
+}
+
 local res = {
 	dispatch = {
 
@@ -24,7 +46,18 @@ local res = {
 		end
 	},
 -- actions are exposed as target- menu
-	actions = {},
+	actions = {
+		{
+			name = "group_action",
+			label = "Group Action",
+			kind = "action",
+			handler = action_menu,
+			submenu = true,
+			eval = function()
+				return active_display().selected.terminal_group
+			end,
+		}
+	},
 -- labels is mapping between known symbol and string to forward
 	labels = {},
 	default_shader = {"simple", "crop"},
