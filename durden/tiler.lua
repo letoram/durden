@@ -14,8 +14,9 @@ local ent_count = 1;
 
 local mouse_handler_factory = system_load("tiler_mh.lua")();
 local create_workspace = function() end
-local tiler_logfun = suppl_add_logfn("wm");
+local tiler_logfun, tiler_fmt = suppl_add_logfn("wm");
 
+-- all tiler_debug / string.format calls should be re-written to fit logfun, _fmt
 local function tiler_debug(wm, msg)
 	msg = msg and msg or "bad message";
 	tiler_logfun(wm.name .. ":" .. msg);
@@ -77,7 +78,8 @@ end
 
 local function linearize(wnd)
 	local res = {};
-	local dive = function(wnd, df)
+	local dive =
+	function(wnd, df)
 		if (wnd == nil or wnd.children == nil) then
 			return;
 		end
@@ -852,7 +854,7 @@ local function wnd_select(wnd, source, mouse)
 -- warp to last known position, but disable if we just attached as there
 -- won't be a reference coordinate saved yet and the warp coordinates will
 -- resolve wrongly if the canvas is animated
-	if (CLOCK ~= wnd.attach_clock and
+	if (CLOCK ~= wnd.attach_time and
 		gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local props = image_surface_resolve(wnd.canvas);
 		local rx = wnd.x + wnd.mouse[1] * props.width;
@@ -896,17 +898,39 @@ end
 -- divided between individuals (with an assignable weight) and recurse down to
 -- children
 --
+local function visible_children(node, dst)
+	for _, v in ipairs(node.children) do
+		if not v.hidden then
+			table.insert(dst, v);
+		end
+	end
+
+-- if the entire set is invisible, remove the level and pick from grandchildren
+	if #dst == 0 then
+		for _, v in ipairs(node.children) do
+			visible_children(v, dst);
+		end
+	end
+end
+
 local function level_resize(level, x, y, w, h, repos, fairh)
-	local fairw = math.ceil(w / #level.children);
-	fairw = (fairw % 2) == 0 and fairw or fairw + 1;
-	if (#level.children == 0) then
+
+-- at the moment, hiding all nodes would block the children -
+-- should we then merge upwards instead?
+	local children = {};
+	visible_children(level, children);
+	if #children == 0 then
 		return;
 	end
+
+	local fairw = math.ceil(w / #children);
+	fairw = (fairw % 2) == 0 and fairw or fairw + 1;
 
 	local tpad_w = gconfig_get("tile_gap_w");
 	local tpad_h = gconfig_get("tile_gap_h");
 
-	local process_node = function(node, last, fairh)
+	local process_node =
+	function(node, last, fairh)
 		node.x = x; node.y = y;
 		node.max_h = h;
 
@@ -936,14 +960,12 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 		end
 
 -- recurse downwards
-		if (#node.children > 0) then
-			node.max_h = math.floor(fairh * node.vweight);
-			level_resize(node, x,
-				y + tpad_h + node.max_h,
-				node.max_w, h - tpad_h - node.max_h,
-				repos, fairh
-			);
-		end
+		node.max_h = math.floor(fairh * node.vweight);
+		level_resize(node, x,
+			y + tpad_h + node.max_h,
+			node.max_w, h - tpad_h - node.max_h,
+			repos, fairh
+		);
 
 		node:resize(node.max_w, node.max_h, true);
 
@@ -955,26 +977,28 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 -- enough for this value to be worth tracking rather than just calculating
 	local get_depth;
 	get_depth = function(node, depth)
-		if (#node.children == 0) then
+		local dchild = {};
+		visible_children(node, dchild);
+		if (#dchild == 0) then
 			return depth;
 		end
 
 		local maxd = depth;
-		for i=1,#node.children do
-			local d = get_depth(node.children[i], depth + (node.tile_ignore and 0 or 1));
+		for i=1,#dchild do
+			local d = get_depth(dchild[i], depth + 1);
 				maxd = d > maxd and d or maxd;
 		end
 
 		return maxd;
 	end
 
-	for i=1,#level.children-1 do
-		process_node(level.children[i], false,
-			fairh and fairh or math.floor(h / get_depth(level.children[i], 1)));
+	for i=1,#children-1 do
+		process_node(children[i], false,
+			fairh and fairh or math.floor(h / get_depth(children[i], 1)));
 	end
 
 -- allow the last node to "fill" to handle broken weights
-	local last = level.children[#level.children];
+	local last = children[#children];
 	process_node(last, true, fairh and fairh or math.floor(h/get_depth(last, 1)));
 end
 
@@ -1041,8 +1065,14 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 		end
 	end
 
+-- show all windows that are not marked as hidden, this skips the
+-- wnd_hide/ wnd_show implementation
 	local lst = linearize(space);
-	for _,v in ipairs(lst) do v:show(); end
+	for _,v in ipairs(lst) do
+		if not v.hidden then
+			show_image(v.anchor)
+		end
+	end
 
 	local tgt = space.selected and space.selected or space.children[1];
 end
@@ -1277,6 +1307,7 @@ local function drop_tab(space)
 		if (v.show_border) then
 			show_image(v.border);
 		end
+		show_image(v.canvas);
 		show_image(v.anchor);
 	end
 
@@ -2421,7 +2452,7 @@ end
 
 -- sweep all windows, calculate center-point distance,
 -- and weight based on desired direction (no diagonals)
-local function find_nearest(wnd, wx, wy, rec)
+local function find_nearest(wnd, wx, wy)
 	if (not wnd.space) then
 		return;
 	end
@@ -2440,7 +2471,7 @@ local function find_nearest(wnd, wx, wy, rec)
 	local shortest;
 
 	for k,v in ipairs(lst) do
-		if (v ~= wnd) then
+		if (v ~= wnd and not v.hidden) then
 			local cp_x, cp_y = cp_xy(v.canvas);
 			cp_x = cp_x - bp_x;
 			cp_y = cp_y - bp_y;
@@ -2456,101 +2487,98 @@ local function find_nearest(wnd, wx, wy, rec)
 	return (shortest and shortest[1] or nil);
 end
 
-local function wnd_next(mw, level)
-	if (mw.fullscreen or not mw.space) then
-		return;
+local level_step = function(mw, lst, step)
+	local ind = table.find_i(lst, mw);
+	local ni = ind;
+	if #lst == 0 then
+		return
 	end
 
--- should really be split out to its own mode handler
-	local mwm = mw.space.mode;
-	if (mwm == "float") then
-		wnd = level and find_nearest(mw, 0, 1) or find_nearest(mw, 1, 0);
-		if (wnd) then
-			wnd:select();
-			return;
+	repeat
+		ni = ni + step;
+		if ni <= 0 then
+			ni = #lst
 		end
-
-	elseif (is_tab_mode(mwm)) then
-		local lst = linearize(mw.space);
-		local ind = table.find_i(lst, mw);
-		ind = ind == #lst and 1 or ind + 1;
-		lst[ind]:select();
-		return;
-	end
-
-	if (level) then
-		if (#mw.children > 0) then
-			mw.children[1]:select();
-			return;
+		if ni > #lst then
+			ni = 1
 		end
-	end
-
-	local i = 1;
-	while (i < #mw.parent.children) do
-		if (mw.parent.children[i] == mw) then
+		if not lst[ni].hidden then
 			break;
 		end
-		i = i + 1;
-	end
+	until ni == ind;
 
-	if (i == #mw.parent.children) then
-		if (mw.parent.parent ~= nil) then
-			return wnd_next(mw.parent, false);
-		else
-			i = 1;
-		end
-	else
-		i = i + 1;
-	end
-
-	mw.parent.children[i]:select();
+	return lst[ni];
 end
 
-local function wnd_prev(mw, level)
+local function cycle_window(mw, step, vertical)
+	local mode = mw.space.mode;
+
+-- float and tile uses spatial
+	if mode == "float" then
+		local sx = step;
+		local sy = 0;
+		if vertical then
+			sy = step;
+			sx = 0;
+		end
+		return find_nearest(mw, sx, sy);
+	end
+
+-- tab is 'flattened'
+	if is_tab_mode(mwm) then
+		return level_step(mw, linearize(mw.space), step);
+	end
+
+-- left is tiled, parent case is 'simple' unless root node is hidden
+	if vertical then
+		local base = mw
+
+		if (step < 0) then
+			while mw.parent do
+				mw = mw.parent
+				if not mw.hidden then
+					return mw;
+				end
+			end
+			return cycle_window(mw.parent, step, false);
+		else
+			for i,v in ipairs(mw.children) do
+				if not v.hidden then
+					return v;
+				end
+			end
+		end
+
+-- if we are at root and can't go further? switch to horiz
+		mw = base
+	end
+
+	local res = level_step(mw, mw.parent.children, step);
+	if not res or res == mw and mw.parent then
+		return cycle_window(mw, -1, true);
+	end
+	return res;
+end
+
+local function wnd_next(mw, vert)
 	if (mw.fullscreen or not mw.space) then
 		return;
 	end
 
-	local mwm = mw.space.mode;
-	if (mwm == "float") then
-		wnd = level and find_nearest(mw, 0, -1) or find_nearest(mw, -1, 0);
-		if (wnd) then
-			wnd:select();
-			return;
-		end
+	local res = cycle_window(mw, 1, vert);
+	if res and res.select then
+		res:select();
+	end
+end
 
-	elseif (is_tab_mode(mwm) or "float") then
-		local lst = linearize(mw.space);
-		local ind = table.find_i(lst, mw);
-		ind = ind == 1 and #lst or ind - 1;
-		lst[ind]:select();
+local function wnd_prev(mw, vert)
+	if (mw.fullscreen or not mw.space) then
 		return;
 	end
 
-	if (level or is_tab_mode(mwm)) then
-		if (mw.parent.select) then
-			mw.parent:select();
-			return;
-		end
-	end
-
-	local ind = 1;
-	for i,v in ipairs(mw.parent.children) do
-		if (v == mw) then
-			ind = i;
-			break;
-		end
-	end
-
-	if (ind == 1) then
-		if (mw.parent.parent) then
-			mw.parent:select();
-		else
-			mw.parent.children[#mw.parent.children]:select();
-		end
-	else
-		ind = ind - 1;
-		mw.parent.children[ind]:select();
+	local res = cycle_window(mw, -1, vert);
+	if res and res.select then
+		res:select();
 	end
 end
 
@@ -3805,19 +3833,40 @@ end
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
-	local dstindex;
-	res.attach_clock = CLOCK;
+-- attach to specific parent or 'swallow' (which is attach + hide)
+	local as_child = gconfig_get("tile_insert_child") == "child";
+	local dstindex = 1;
 
 -- request to attach to parent, but this has a UAF risk should the parent
 -- have died or not been completely setup at the time of the child arriving
-	if (res.attach_parent and not res.attach_time) then
-		res.attach_parent = nil;
+	if (res.attach_parent) then
+		if (not res.attach_parent.attach_time) then
+			res.attach_parent = nil;
+		else
+			wm = res.attach_parent.wm;
+		end
 	end
 
-	if wm.space_default_ind then
-		dstindex = wm.space_default_ind;
+-- hide the swallow target and absorb some of its properties in the hierarcy
+	if (res.swallow_window and res.swallow_window.attach_time) then
+		res.attach_parent = res.swallow_window.parent;
+		res.swallow_window:hide();
+		res.defer_x = res.swallow_window.x;
+		res.defer_y = res.swallow_window.y;
+		dstindex = res.swallow_window.space_ind;
+		as_child = true;
+
+-- or attach as child to a specific window?
+	elseif as_child and res.attach_parent then
+		dstindex = res.attach_parent.space_ind;
+
+-- or just use a default workspace (spawn target)
 	else
-		dstindex = wm.space_ind;
+		if wm.space_default_ind then
+			dstindex = wm.space_default_ind;
+		else
+			dstindex = wm.space_ind;
+		end
 	end
 
 -- very special windows can refuse attaching at all
@@ -3851,76 +3900,71 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
-	local as_child = gconfig_get("tile_insert_child") == "child";
-	if (as_child and res.attach_parent and res.attach_parent) then
-			dstindex = res.attach_parent.space_ind;
-		end
+-- Can be intercepted by a hook handler that regulates placement but we avoid
+-- it if we are attaching after recovery or if the window spawns in a
+-- non-active workspace. A proper hook handler then re-runs attachment when it
+-- has done its possible positioning and sizing - example of this is the
+-- draw-to-spawn mode.
+	if ((dstindex == wm.space_ind and not res.attach_temp)
+		and wm.attach_hook and not from_hook) then
+			tiler_debug(wm, "attach_hook:name=" .. res.name);
+			return wm:attach_hook(res);
+	end
 
-	-- Can be intercepted by a hook handler that regulates placement but we avoid
-	-- it if we are attaching after recovery or if the window spawns in a
-	-- non-active workspace. A proper hook handler then re-runs attachment when it
-	-- has done its possible positioning and sizing - example of this is the
-	-- draw-to-spawn mode.
-		if ((dstindex == wm.space_ind and not res.attach_temp)
-			and wm.attach_hook and not from_hook) then
-				tiler_debug(wm, "attach_hook:name=" .. res.name);
-				return wm:attach_hook(res);
-		end
+	res.ws_attach = nil;
+	res.attach_time = CLOCK;
 
-		res.ws_attach = nil;
-		res.attach_time = CLOCK;
+-- this will only happen on assignment to non-active workspace
+	local rebuild_sbar = false;
+	if (wm.spaces[dstindex] == nil) then
+		wm.spaces[dstindex] = create_workspace(wm);
+		tiler_statusbar_update(wm);
+	end
 
-	-- this will only happen on assignment to non-active workspace
-		local rebuild_sbar = false;
-		if (wm.spaces[dstindex] == nil) then
-			wm.spaces[dstindex] = create_workspace(wm);
-			tiler_statusbar_update(wm);
-		end
+-- actual dimensions depend on the state of the workspace we'll attach,
+-- which in turn can have complicated layouting etc. rules so first
+-- attach.
+	local space = wm.spaces[dstindex];
+	res.space_ind = dstindex;
+	res.space = space;
+	link_image(res.anchor, space.anchor);
 
-	-- actual dimensions depend on the state of the workspace we'll attach,
-	-- which in turn can have complicated layouting etc. rules so first
-	-- attach.
-		local space = wm.spaces[dstindex];
-		res.space_ind = dstindex;
-		res.space = space;
-		link_image(res.anchor, space.anchor);
+	tbh = tbar_geth(res);
+	res.pad_top = res.pad_top + tbh;
 
-		tbh = tbar_geth(res);
-		res.pad_top = res.pad_top + tbh;
-
-	-- this should be improved by allowing w/h/x/y overrides based on
-	-- history for the specific source or the class it belongs to
-		if (space.mode == "float") then
-			local props = image_storage_properties(res.canvas);
-			res.width = props.width;
-			res.height = props.height;
-			if (res.defer_x) then
-				res.x = res.defer_x;
-				res.y = res.defer_y;
-				res.defer_x = nil;
-				res.defer_y = nil;
-			else
-				res.x, res.y = mouse_xy();
-				res.x = res.x - res.pad_left - res.pad_right;
-				res.y = res.y - res.pad_top - res.pad_bottom;
-			end
-			res.max_w = wm.effective_width;
-			res.max_h = wm.effective_height;
-			move_image(res.anchor, res.x, res.y);
+-- this should be improved by allowing w/h/x/y overrides based on
+-- history for the specific source or the class it belongs to
+	if (space.mode == "float") then
+		local props = image_storage_properties(res.canvas);
+		res.width = props.width;
+		res.height = props.height;
+		if (res.defer_x) then
+			res.x = res.defer_x;
+			res.y = res.defer_y;
+			res.defer_x = nil;
+			res.defer_y = nil;
 		else
+			res.x, res.y = mouse_xy();
+			res.x = res.x - res.pad_left - res.pad_right;
+			res.y = res.y - res.pad_top - res.pad_bottom;
 		end
+		res.max_w = wm.effective_width;
+		res.max_h = wm.effective_height;
+		move_image(res.anchor, res.x, res.y);
+	else
+	end
 
-	-- same goes for hierarchical position, but here there are other controls
-	-- with the main ones being attachment workspace and originating parent,
-	-- but first, let an assigned layouter try (all modes should really be
-	-- implemented as a layouter though).
-		local insert = space.layouter and space.layouter.added(space,res);
-		local insert_parent = wm.selected;
+-- same goes for hierarchical position, but here there are other controls
+-- with the main ones being attachment workspace and originating parent,
+-- but first, let an assigned layouter try (all modes should really be
+-- implemented as a layouter though).
+	local insert = space.layouter and space.layouter.added(space,res);
+	local insert_parent = wm.selected;
 
-	-- default insertion policy
-		if (not insert) then
-			if as_child and res.attach_parent then
-				table.insert(res.attach_parent.children, res);
+-- default insertion policy
+	if (not insert) then
+		if as_child and res.attach_parent then
+			table.insert(res.attach_parent.children, res);
 			res.parent = res.attach_parent;
 
 -- redirect to custom space (crash recovery for instance)
@@ -4594,6 +4638,7 @@ local wnd_setup = function(wm, source, opts)
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		default_workspace = opts.default_workspace,
 		attach_parent = opts.attach_parent,
+		swallow_window = opts.swallow_window,
 
 -- external displayhint offsets to mask cropping actions
 		dh_pad_w = 0,
@@ -4969,8 +5014,7 @@ local function tiler_rendertarget(wm, set)
 -- the surface we use as rendertarget for compositioning will use the highest
 -- quality internal storage format, and disable the use of the alpha channel
 	if (set == true) then
-		local quality = (API_VERSION_MAJOR == 0 and API_VERSION_MINOR < 11)
-			and 1 or ALLOC_QUALITY_NORMAL;
+		local quality = ALLOC_QUALITY_NORMAL;
 		wm.rtgt_id = alloc_surface(wm.width, wm.height, true, quality);
 		image_tracetag(wm.rtgt_id, "tiler_rt" .. wm.name);
 		local pitem = null_surface(32, 32); --workaround for rtgt restriction
