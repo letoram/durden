@@ -229,6 +229,16 @@ local function wnd_destroy(wnd, message)
 		return;
 	end
 
+-- 'un-swallow' a previous one
+	if wnd.swallow_window and wnd.swallow_window.show then
+		wnd.swallow_window:show()
+	end
+
+-- and if we are swallowed, make sure the owner forgets us
+	if wnd.swallow_master then
+		wnd.swallow_master.swallow_window = nil
+	end
+
 -- wnd-create - wnd-destroy behavior
 	if latest_wnd_name == wnd.name then
 		latest_wnd_name = nil;
@@ -2487,7 +2497,8 @@ local function find_nearest(wnd, wx, wy)
 	return (shortest and shortest[1] or nil);
 end
 
-local level_step = function(mw, lst, step)
+local level_step =
+function(mw, lst, step)
 	local ind = table.find_i(lst, mw);
 	local ni = ind;
 	if #lst == 0 then
@@ -2702,7 +2713,13 @@ local function wnd_reassign(wnd, ind, ninv)
 		end
 	end
 
+-- and with a new mode, the set of titlebar icons might be different
 	wnd.titlebar:switch_group(newspace.mode, true);
+
+-- grab any swallow targets as well
+	if wnd.swallow_window then
+		wnd.swallow_window:assign_ws(ind, nind)
+	end
 end
 
 local function wnd_drag_resize(wnd, mctx, enter)
@@ -3534,6 +3551,9 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		wnd.space:tile();
 	end
 
+-- need the list of windows in the space to find any dependent
+	local windows = linearize(space)
+
 -- select next in line
 	wnd:prev();
 	if (wnd.wm.selected == wnd) then
@@ -3544,7 +3564,8 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		end
 	end
 
-	local reattach_full = function(wnd, dst)
+	local reattach_full =
+	function(wnd, dst)
 		for i,v in ipairs(get_hier(wnd.anchor)) do
 			rendertarget_attach(dst, v, RENDERTARGET_DETACH);
 		end
@@ -3597,6 +3618,12 @@ local function wnd_migrate(wnd, tiler, disptbl)
 			mx = 0.5 * tiler.width,
 			my = 0.5 * tiler.height
 		};
+	end
+
+-- if the window masks another, move that one as well - assume that
+-- the layouter will do the right thing
+	if v.swallow_window then
+		v.swallow_window:migrate(tiler, disptbl);
 	end
 
 -- update
@@ -3732,6 +3759,7 @@ local function wnd_border(wnd, visible, user_force, bw)
 end
 
 -- move w1 from whatever parent and set as child or sibling to w2
+-- within the same workspace
 local function wnd_tochild(w1, w2, sibling)
 	if (w1.space ~= w2.space) then
 		return;
@@ -3752,6 +3780,9 @@ local function wnd_tochild(w1, w2, sibling)
 	w1:recovertag();
 end
 
+-- swap the logical position of two windows within the same workspace,
+-- moving to a different workspace requires other logic as the layouting
+-- scheme may differ
 local function wnd_swap(w1, w2, deep, force)
 	if (w1 == w2 or (not force
 		and w1.space.layouter and w1.space.layouter.block_swap)) then
@@ -3767,6 +3798,7 @@ local function wnd_swap(w1, w2, deep, force)
 		w2.weight = wg1;
 		w2.vweight = wg1v;
 	end
+
 -- 2. parent->children entries
 	local wp1 = w1.parent;
 	local wp1i = table.find_i(wp1.children, w1);
@@ -3775,9 +3807,11 @@ local function wnd_swap(w1, w2, deep, force)
 
 	wp1.children[wp1i] = w2;
 	wp2.children[wp2i] = w1;
+
 -- 3. parents
 	w1.parent = wp2;
 	w2.parent = wp1;
+
 -- 4. question is if we want children to tag along or not
 	if (not deep) then
 		for i=1,#w1.children do
@@ -3854,6 +3888,7 @@ local function wnd_ws_attach(res, from_hook)
 		res.defer_x = res.swallow_window.x;
 		res.defer_y = res.swallow_window.y;
 		dstindex = res.swallow_window.space_ind;
+		res.swallow_window.swallow_master = res;
 		as_child = true;
 
 -- or attach as child to a specific window?
@@ -3963,8 +3998,22 @@ local function wnd_ws_attach(res, from_hook)
 
 -- default insertion policy
 	if (not insert) then
+
 		if as_child and res.attach_parent then
-			table.insert(res.attach_parent.children, res);
+-- with 'swallowing' (one window that hides another) the two windows should
+-- be next to each-other in the structure as well, so find the index of the
+-- sibling
+			local set = res.attach_parent.children
+			local attach_point = #set+1
+
+			if res.swallow_window then
+				local ind = table.find_i(set, res.swallow_window)
+				if ind then
+					attach_point = ind + 1
+				end
+			end
+
+			table.insert(set, attach_point, res);
 			res.parent = res.attach_parent;
 
 -- redirect to custom space (crash recovery for instance)
