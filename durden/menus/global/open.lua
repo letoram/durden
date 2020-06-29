@@ -62,14 +62,6 @@ local function setup_group_cp(pwnd, group, limit)
 			wnd:add_handler("destroy",
 				function(wnd, was_selected)
 					n_children = n_children - 1;
-					if pwnd.show then
-						pwnd:show();
-						if was_selected then
-							pwnd:select();
-						end
---  should happen implicitly as a side effect of destroy
---					pwnd.space:resize();
-					end
 				end, true
 			);
 		end,
