@@ -211,8 +211,10 @@ local function cursor_handler(cl, source, status)
 -- if active window is part of wlwnds and has this cursor...
 	elseif (status.kind == "message") then
 		log(fmt("cursor:hotspot=%s", status.message));
+
 	elseif (status.kind == "terminated") then
 		delete_image(source);
+		cl.seat_cursor = nil;
 		wlwnds[source] = nil;
 	end
 end
