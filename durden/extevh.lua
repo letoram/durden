@@ -579,6 +579,11 @@ function extevh_default(source, stat)
 	if (not wnd) then
 		client_log(string.format("source=%d:message=no matching window", source));
 		return;
+
+-- tool/plugin bug not registering a valid window
+	elseif (not wnd.set_title) then
+		swm[source] = nil
+		return
 	end
 
 -- window handler has priority
