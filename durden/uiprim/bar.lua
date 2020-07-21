@@ -307,7 +307,7 @@ function uiprim_button(anchor, bgshname,
 	return res;
 end
 
-local function bar_resize(bar, neww, newh, time, bar_parent)
+local function bar_resize(bar, neww, newh, time, interp, bar_parent)
 	if (not neww or neww <= 0 or not newh or newh <= 0) then
 		return;
 	end
@@ -323,10 +323,10 @@ local function bar_resize(bar, neww, newh, time, bar_parent)
 	bar.height = newh;
 	bar.base = neww < newh and neww or newh;
 
-	resize_image(bar.anchor, bar.width, bar.height, time, INTERP_SMOOTHSTEP);
+	resize_image(bar.anchor, bar.width, bar.height, time, interp);
 
 	bar.anim_time = time;
-	bar.anim_func = INTERP_SMOOTHSTEP;
+	bar.anim_func = interp;
 
 	if (domupd) then
 		bar:invalidate();
@@ -424,7 +424,7 @@ local function bar_relayout_horiz(bar)
 		if (bar.nested.relayout) then
 			bar.nested:show();
 			bar.nested:reanchor(bar.anchor, 1, lx, 0);
-			bar.nested:resize(rx - lx, bar.height, bar.anim_time, bar);
+			bar.nested:resize(rx - lx, bar.height, bar.anim_time, bar.anim_func, bar);
 			return;
 		else
 			bar.nested = nil;
