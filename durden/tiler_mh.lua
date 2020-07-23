@@ -312,7 +312,11 @@ local function build_canvas(wnd)
 	end,
 
 	drag = function(ctx, vid, dx, dy, ...)
+	-- handle drag as well since it will mask 'motion' events as soon as we
+	-- are out of the drag threshold (if the event is handled)
 		if (wnd.space.mode ~= "float" and wnd.space.mode ~= "tile") then
+			local x, y = mouse_xy();
+			wnd:mousemotion(x, y, dx, dy);
 			return;
 		end
 

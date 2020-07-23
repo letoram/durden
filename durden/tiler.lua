@@ -259,6 +259,8 @@ local function wnd_destroy(wnd, message)
 		wnd:deselect();
 	end
 
+-- if the window is currently fullscreen, we should switch mode back
+-- to whatever the space was before fullscreen
 	local space = wnd.space;
 	if (space) then
 		if (wnd.fullscreen) then
@@ -403,6 +405,7 @@ local function wnd_message(wnd, message, timeout)
 		storage = null_surface(32, 32);
 		if (valid_vid(storage)) then
 			image_sharestorage(wnd.icon, storage);
+			image_tracetag(storage, "notification_icon");
 		end
 	end
 
@@ -420,7 +423,7 @@ local function wnd_deselect(wnd, nopick)
 	local mwm = wnd.space.mode;
 
 -- no pick argument only happens on deactivate
-	if (is_tab_mode(mwm)) then
+	if (is_tab_mode(mwm) or mwm == "fullscreen") then
 		if (not nopick) then
 			hide_image(wnd.anchor);
 			hide_image(wnd.canvas);
@@ -463,9 +466,11 @@ local function wnd_deselect(wnd, nopick)
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
+
+-- different decoration shadow weights based on selection state
 	if (wnd.shadow) then
 		local focus = gconfig_get("shadow_defocus");
-		if is_tab_mode(wnd.space.mode) then
+		if is_tab_mode(wnd.space.mode) or wnd.space.mode == "fullscreen" then
 			focus = 0;
 		end
 		blend_image(wnd.shadow, focus);
@@ -653,6 +658,7 @@ local function resolve_vsymbol(wm, label, base)
 			return function()
 				local surf = null_surface(base, base);
 				image_sharestorage(outlbl(base), surf);
+				image_tracetag(surf, "bar_vsym_" .. label);
 				return surf;
 			end
 		else
@@ -716,8 +722,6 @@ local function tiler_statusbar_build(wm)
 	wm.sbar_ws[11].drag_command = "/target/window/reassign/reassign_new";
 	wm.sbar_ws[11]:switch_state("inactive");
 
--- fill slot with system messages for the time being, need something
--- more clever here later (ie. dock titlebar, notification area, ...)
 	wm.sbar_ws["msg"] = wm.statusbar:add_button("center",
 		"sbar_msg_bg", "sbar_msg_text", " ", pad, wm.font_resfn, nil, sbsz,
 		{
@@ -839,9 +843,10 @@ local function wnd_select(wnd, source, mouse)
 	shader_setup(wnd.border, "ui",
 		wnd.space.mode == "float" and "border_float" or "border", state);
 	wnd.titlebar:switch_state(state, true);
+
 	if (wnd.shadow) then
 		local focus = gconfig_get("shadow_focus");
-		if is_tab_mode(wnd.space.mode) then
+		if is_tab_mode(wnd.space.mode) or wnd.space.mode == "fullscreen" then
 			focus = 0;
 		end
 		blend_image(wnd.shadow, focus);
@@ -1273,37 +1278,46 @@ local function drop_fullscreen(space, swap)
 		return;
 	end
 
-	workspace_activate(space, true);
-	sbar_show(space.wm);
-
--- show all hidden windows within the space
-	local wnds = linearize(space);
-	for k,v in ipairs(wnds) do
-		show_image(v.anchor);
-	end
-
 -- safe-guard against bad code elsewhere
 	if (not space.selected or not space.selected.fs_copy) then
 		return;
+	end
+
+-- show all non-hidden windows within the space
+	local wnds = linearize(space);
+	for k,v in ipairs(wnds) do
+		show_image(v.anchor);
 	end
 
 -- restore 'full-screen only' properties
 	space.hook_block = true;
 	local dw = space.selected;
 	blend_image(dw.titlebar.anchor, dw.fs_copy.tbar);
+
+	for k,v in pairs(dw.fs_copy) do
+		dw[k] = v;
+	end
+
+-- reset decorations to match last mode
 	dw.titlebar:show("fullscreen");
 	dw:set_titlebar(dw.fs_copy.show_titlebar);
 	dw:set_border(dw.fs_copy.show_border);
 
-	for k,v in pairs(dw.fs_copy) do dw[k] = v; end
+-- move the anchor to the last know position subtract decorations
+-- so the window will animate better when returning
+	local props = image_surface_resolve(dw.canvas)
+	move_image(dw.anchor, props.x, props.y)
 
-	dw:resize(dw.fs_copy.width, dw.fs_copy.height);
+-- resize decor will re-insert shadow
+-- dw:resize(dw.fs_copy.width, dw.fs_copy.height);
 
 	dw.fs_copy = nil;
 	dw.fullscreen = nil;
-	image_mask_set(dw.canvas, MASK_OPACITY);
 	space.switch_hook = nil;
 	space.hook_block = false;
+
+	sbar_show(space.wm);
+	workspace_activate(space, true);
 end
 
 local function drop_tab(space)
@@ -1516,6 +1530,7 @@ local function set_fullscreen(space)
 			fullscreen = false,
 			show_border = dw.show_border,
 			show_titlebar = dw.show_titlebar,
+			want_shadow = dw.want_shadow,
 			width = dw.width,
 			height = dw.height,
 			x = dw.x,
@@ -1533,13 +1548,18 @@ local function set_fullscreen(space)
 
 -- hide all images + statusbar
 	sbar_hide(dw.wm);
+	if valid_vid(dw.shadow) then
+		hide_image(dw.shadow);
+		delete_image(dw.shadow);
+	end
 
+-- fake-hide all windows (retains !hidden attribute)
 	local wnds = linearize(space);
 	for k,v in ipairs(wnds) do
 		hide_image(v.anchor);
 	end
-	show_image(dw.anchor);
 
+	show_image(dw.anchor);
 	dw:set_border(false);
 	dw:set_titlebar(false);
 
@@ -1675,6 +1695,8 @@ local function workspace_destroy(space)
 end
 
 local function workspace_set(space, mode)
+	tiler_logfun("set_mode=" .. mode)
+
 	if (space_handlers[mode] == nil or mode == space.mode) then
 		return;
 	end
@@ -1689,7 +1711,6 @@ local function workspace_set(space, mode)
 -- another option would be to first set their storage dimensions and then
 -- force
 	if (mode == "float" and space.mode ~= "tile" and not space.layouter) then
-		space.layouter = nil;
 		space.mode = "tile";
 		space:resize();
 	end
@@ -1704,6 +1725,7 @@ local function workspace_set(space, mode)
 		v:set_title();
 	end
 
+-- relayout the space to match new constraints, and reflect changes in statusbar
 	space:resize();
 	if (space.wm.spaces[space.wm.space_ind]) then
 		tiler_statusbar_update(space.wm);
@@ -1804,6 +1826,7 @@ local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(wm.width, wm.height);
+			image_tracetag(ws.background, "workspace_bg");
 			shader_setup(ws.background, "simple", "noalpha");
 		end
 		if (not valid_vid(ws.anchor)) then
@@ -1891,6 +1914,7 @@ local function workspace_preview(space, width, height, n_contrib, rate)
 		if valid_vid(nsrf) then
 			show_image(nsrf);
 			image_sharestorage(space.background, nsrf);
+			image_tracetag(nsrf, "workspace_preview_bg");
 			table.insert(set, nsrf);
 		end
 	end
@@ -1906,6 +1930,7 @@ local function workspace_preview(space, width, height, n_contrib, rate)
 			show_image(nsrf);
 			move_image(nsrf, v.x * wf, v.y * hf);
 			order_image(nsrf, image_surface_resolve(v.canvas).order);
+			image_tracetag(nsrf, "workspace_preview_item");
 			table.insert(set, nsrf);
 		end
 
@@ -3337,7 +3362,7 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 	end
 
 -- with mouse grab @ center only send the relative samples
--- and only of they have changed
+-- and only if they have changed
 	if (wnd.mouse_lock_center) then
 		local rt = {
 			kind = "analog",
