@@ -458,6 +458,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
 	else
 		reset_image_transform(ctx.shadow);
+		show_image(ctx.shadow, time, interp);
 	end
 
 	image_color(ctx.shadow, cr, cg, cb);
