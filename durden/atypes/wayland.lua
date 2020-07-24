@@ -125,7 +125,7 @@ local function popup_handler(cl, source, status)
 -- border attribute isn't used, wayland has geometry for this instead
 		log(fmt("popup:viewport:visible=%s:x=%.0f:y=%.0f:z=%f:w=%.0f:h=%.0f:" ..
 				"edge=%d:anchor_edge=%s:anchor_pos=%s:focus=%s",
-				status.invisible and "yes" or "no",
+				status.invisible and "no" or "yes",
 				status.rel_x, status.rel_y, status.rel_order,
 				status.anchor_w, status.anchor_h, status.edge,
 				status.anchor_edge and "yes" or "no",
@@ -148,13 +148,16 @@ local function popup_handler(cl, source, status)
 		end
 
 		local wnd = wlwnds[source];
+		local pwnd = wlwnds[pid];
+
 -- hide/show?
 		wnd[status.invisible and "hide" or "show"](wlwnds[source]);
+		if pwnd.geom then
+			status.rel_x = status.rel_x + pwnd.geom[1];
+			status.rel_y = status.rel_y + pwnd.geom[2];
+			log(fmt("popup-parent:x=%d:y=%d", pwnd.geom[1], pwnd.geom[2]));
+		end
 
-		local ox = wlwnds[pid].geom and wlwnds[pid].geom[1] or 0;
-		local oy = wlwnds[pid].geom and wlwnds[pid].geom[2] or 0;
-		status.rel_x = status.rel_x + ox;
-		status.rel_y = status.rel_y + oy;
 		wnd.popup_state = {
 			status.rel_x, status.rel_y, status.rel_x + status.anchor_w,
 			status.rel_y + status.anchor_h, status.edge
@@ -187,6 +190,24 @@ local function popup_handler(cl, source, status)
 			delete_image(source);
 		end
 		wlwnds[source] = nil;
+
+	elseif (status.kind == "message") then
+		local wnd = wlwnds[source];
+		local opts = string.split(status.message, ":");
+		if opts[1] and opts[1] == "geom" then
+			local x, y, w, h;
+			x = tonumber(opts[2]);
+			y = tonumber(opts[3]);
+			w = tonumber(opts[4]);
+			h = tonumber(opts[5]);
+			if x and y and w and h then
+				wnd.geom = {x, y, w, h}
+			end
+		else
+			log(fmt("popup:message=%s", status.message))
+		end
+	else
+		log(fmt("popup:unhandled_event:kind=%s", status.kind))
 	end
 end
 
@@ -280,6 +301,7 @@ seglut["application"] = function(wnd, source, stat)
 	return build_application_window(wnd, source, stat, {
 		show_titlebar = false,
 		show_border = false,
+		block_shadow = true,
 		auto_ssd = gconfig_get("wl_decorations") == "autossd",
 	}, "wayland-toplevel", wayland_toplevel_handler);
 end
@@ -320,13 +342,17 @@ end
 -- a singleton.
 seglut["cursor"] = function(wnd, source, stat)
 	if (wnd.seat_cursor) then
-		log("cursor:error=multiple cursors on seat");
+		log(fmt(
+			"cursor:error=multiple cursors on seat:valid=%s:vid=%d",
+			valid_vid(wnd.seat_cursor.vid) and "yes" or "no", wnd.seat_cursor.vid));
 		return;
 	end
 
 	local vid = accept_target(
-		function(a, b) cursor_handler(wnd,a,b);
-	end);
+		function(a, b)
+			return cursor_handler(wnd,a,b);
+		end
+	);
 
 -- bind lifecycle, custom cursor- tracking struct, etc.
 -- is performed in the resized- handler for the callback
