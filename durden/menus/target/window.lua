@@ -1,3 +1,31 @@
+local function swallow_menu(wnd)
+	return {
+		{
+		label = "Swap",
+		name = "first",
+		kind = "action",
+		description = "Swap in the first swallowed / hidden window",
+		handler = function()
+			local wnd = active_display().selected
+			local swallow = wnd.swallow_window
+
+-- user lingered on the menu and the window died in the background
+			if not swallow then
+				return
+			end
+
+			swallow.swallow_window = wnd
+			wnd.swallow_master = swallow
+			swallow.swallow_master = nil
+			wnd:hide()
+			swallow:show()
+			swallow:select()
+			wnd.space:resize()
+		end
+		}
+	}
+end
+
 local swap_menu = {
 	{
 		name = "up",
@@ -75,6 +103,19 @@ local swap_menu = {
 			end
 		end
 	},
+	{
+		name = "swallow",
+		label = "Swallow",
+		kind = "action",
+		submenu = true,
+		eval = function()
+			return active_display().selected.swallow_window ~= nil
+		end,
+		description = "Switch window with one in the swallowed set",
+		handler = function(wnd)
+			return swallow_menu(wnd)
+		end
+	}
 };
 
 local select_menu = {
