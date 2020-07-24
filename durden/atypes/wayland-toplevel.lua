@@ -324,6 +324,21 @@ function wayland_toplevel_handler(wnd, source, status)
 		elseif (opts[1] == "scale") then
 -- don't really care right now, part otherwise is just to set the
 -- resolved factor to wnd:resize_effective
+		elseif (opts[1] == "decor") then
+			if opts[2] and opts[2] == "ssd" then
+				wnd.show_titlebar = true
+				wnd:set_titlebar(true, true)
+				wnd.want_shadow = gconfig_get("shadow_style") ~= "none"
+				wnd:resize()
+			else
+				wnd.show_titlebar = false
+				wnd:set_titlebar(false, true)
+				wnd.want_shadow = false
+				if valid_vid(wnd.shadow) then
+					delete_image(wnd.shadow)
+				end
+				wnd:resize()
+			end
 		else
 			log(fmt("toplevel:error=unknown type:raw=%s", status.message));
 		end
