@@ -284,7 +284,6 @@ local dump_menu = {
 	hint = "(debug/)",
 	validator = strict_fname_valid,
 	handler = function(ctx, val)
-		dump_store(val, _G);
 	end
 },
 {
@@ -295,6 +294,7 @@ local dump_menu = {
 	kind = "value",
 	validator = strict_fname_valid,
 	handler = function(ctx, val)
+		print(DataDumper(val, _G));
 	end
 },
 };
@@ -426,6 +426,21 @@ return {
 			end
 			fun(space, 0);
 			print("</space>");
+		end
+	},
+	{
+		name = "cursor_vid",
+		label = "Print Cursor",
+		kind = "action",
+		description = "Dump the tracetag of vid beneath cursor as warning",
+		handler = function(ctx)
+			local mx, my = mouse_xy();
+			local list = pick_items(mx, my, 10, true, active_display(true));
+
+			print(#list, "items at: ", mx, my);
+			for i, v in ipairs(list) do
+				print(string.format("%s%s", string.rep("-", i), image_tracetag(v)))
+			end
 		end
 	}
 };
