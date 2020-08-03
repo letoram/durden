@@ -1,18 +1,19 @@
--- Copyright: 2015-2019, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Basic clipboard handling, currently text only but there's
 -- little stopping us from using more advanced input and output formats.
 --
-local clipboard_debug
+
+local log = warning
+local fmt = string.format
+
 if suppl_add_logfn then
-	clipboard_debug = suppl_add_logfn("clipboard");
-else
-	clipboard_debug = warning
+	log, fmt = suppl_add_logfn("clipboard");
 end
 
 local function clipboard_add(ctx, source, msg, multipart)
-	clipboard_debug(string.format(
+	log(string.format(
 		"add:multipart=%d:message=%s", multipart and 1 or 0, msg));
 
 	if (multipart) then
@@ -68,7 +69,7 @@ end
 
 local function clipboard_setglobal(ctx, msg, src)
 	table.insert_unique_i(ctx.globals, 1, msg);
-	clipboard_debug(string.format("global:message=%s", msg));
+	log(string.format("global:message=%s", msg));
 
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
@@ -81,7 +82,7 @@ end
 
 -- by default, we don't retain history that is connected to a dead window
 local function clipboard_lost(ctx, source)
-	clipboard_debug(string.format("lost:source=%d", source));
+	log(string.format("lost:source=%d", source));
 	ctx.mpt[source] = nil;
 	ctx.locals[source] = nil;
 end
@@ -90,7 +91,7 @@ local function clipboard_save(ctx, fn)
 	zap_resource(fn);
 	local wout = open_nonblock(fn, 1);
 	if (not wout) then
-		clipboard_debug(
+		log(
 			string.format("save:kind=error:destination=%s:message=couldn't open", fn));
 		return false;
 	end
@@ -123,13 +124,13 @@ local function clipboard_load(ctx, fn)
 
 	local res = system_load(fn, 0);
 	if (not res) then
-		clipboard_debug(string.format("load:kind=error:source=%s:message=couldn't open", fn));
+		log(string.format("load:kind=error:source=%s:message=couldn't open", fn));
 		return;
 	end
 
 	local okstate, map = pcall(res);
 	if (not okstate) then
-		clipboard_debug(string.format("load:kind=error:source=%s:message=couldn't parse", fn));
+		log(string.format("load:kind=error:source=%s:message=couldn't parse", fn));
 		return;
 	end
 
@@ -141,6 +142,9 @@ local function clipboard_load(ctx, fn)
 	end
 
 	return true;
+end
+
+local function clipboard_provider(ctx, ref, types, trigger)
 end
 
 local function clipboard_locals(ctx, source)
@@ -208,6 +212,7 @@ return {
 	locals = {}, -- local clipboard history (of history_size size)
 	globals = {},
 	urls = {},
+	providers = {},
 	modes = pastemodes,
 	history_size = 10,
 	mpt_cutoff = 10,
@@ -220,4 +225,5 @@ return {
 	pastemodes = clipboard_pastemodes,
 	set_global = clipboard_setglobal,
 	list_local = clipboard_locals,
+	set_provider = clipboard_provider
 };

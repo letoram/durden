@@ -28,12 +28,20 @@ end
 
 local function clipboard_paste()
 	local wnd = active_display().selected;
-	pastefun(wnd, CLIPBOARD.globals[1]);
+	if wnd.paste then
+		wnd:paste(CLIPBOARD.globals[1]);
+	else
+		pastefun(wnd, CLIPBOARD.globals[1]);
+	end
 end
 
 local function clipboard_paste_local()
 	local wnd = active_display().selected;
-	pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
+	if wnd.paste then
+		wnd:paste(wnd, CLIPBARD:list_local(wnd.clipboard)[1]);
+	else
+		pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
+	end
 end
 
 local function clipboard_histgen(wnd, lst, promote)
@@ -52,7 +60,11 @@ local function clipboard_histgen(wnd, lst, promote)
 					CLIPBOARD:set_global(v);
 				else
 					local m1, m2 = dispatch_meta();
-					pastefun(wnd, v);
+					if wnd.paste then
+						wnd:paste(v);
+					else
+						pastefun(wnd, v);
+					end
 				end
 			end
 		});
@@ -82,7 +94,11 @@ local function clipboard_urls()
 			kind = "action",
 			handler = function()
 				local m1, m2 = dispatch_meta();
-				pastefun(active_display().selected, v);
+				if wnd.paste then
+					wnd:paste(v);
+				else
+					pastefun(active_display().selected, v);
+				end
 			end
 		});
 	end

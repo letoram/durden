@@ -30,6 +30,132 @@ function wayland_gotwnd(source, wnd)
 	wlwnds[source] = wnd;
 end
 
+local bridge_dispatch =
+{
+	segment_request =
+	function(...)
+		return wayland_buildwnd(...)
+	end,
+
+-- allow the destruction to chain, most windows clean up themselves but
+-- we want to de-register as a clipboard provider
+	terminated =
+	function(wnd, ...)
+		CLIPBOARD:set_provider(wnd)
+		return false;
+	end,
+}
+
+bridge_dispatch.preroll =
+function(wnd, source, tbl)
+-- the bridge needs information about the output, right now we assume this
+-- is the same one as the currently active - and then re-send on display
+-- migration
+	target_displayhint(source,
+		active_display().width, active_display().height, 0,
+		display_output_table(nil)
+	);
+
+-- ideally we should update this when the spawn target changes, but there is
+-- currently no plumbing for this, and the spawn-size estimation is also
+-- incorrect.
+	log("kind=bridge_connected:vid=" .. tostring(source));
+
+	if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
+		target_flags(source, TARGET_ALLOWGPU);
+	end
+
+-- client implements repeat on wayland, se we need to set it here, but
+-- quite frankly, just disable it to 0 0 and force server-side repeat
+-- is probably the better option.
+	message_target(source,
+		string.format("seat:rate:%d,%d",
+			gconfig_get("kbd_period"), gconfig_get("kbd_delay")));
+
+-- remove whatever handler already exists
+	target_updatehandler(source,
+	function(source, status, ...)
+		if not bridge_dispatch[status.kind] then
+			log(fmt("kind=bridge:missing=%s", status.kind))
+			return
+		else
+			return bridge_dispatch[status.kind](wnd, source, status, ...)
+		end
+	end)
+	return true;
+end
+
+bridge_dispatch.message =
+function(wnd, source, tbl)
+	local cmd, data = string.split_first(tbl.message, ":")
+
+	if cmd == "offer" then
+		if not wnd.offer_types then
+			wnd.offer_types = {}
+		end
+
+		if table.find_i(wnd.offer_types, data) then
+			return
+		end
+
+		table.insert(wnd.offer_types, data)
+
+-- if we get a text-plain, try and sample it and see what's in there -
+-- since wayland works on mimetypes and bchunk on sanitised extensions
+-- the workaround is a message based selector - if the pre-read data
+-- turns out to be less than some buffer size, just add it as a normal
+-- clipboard entry - otherwise set it as a possible provider
+		if data == "text/plain;charset=utf-8" then
+			message_target(source, "select:" .. data);
+			ioblock = open_nonblock(source, false);
+
+			wnd.clip_buffer = {}
+			wnd.timer_name = "wl-clip_" .. wnd.name;
+
+-- this tells the clipboard that the window is available for offering
+-- the specific set of types (wnd act as key/index so repeated calls
+-- will update) - the callback is triggered when a paste operation is
+-- provided through this provider, the 'dst' is the target window,
+-- send a message about the type and bond_target
+			CLIPBOARD:set_provider(wnd, wnd.offer_types,
+				function(dst)
+				end
+			)
+
+-- there is still no callback / interrupt driven non-block interface,
+-- when that is fixed in arcan we'll just switch to that
+				timer_add_periodic(wnd.timer_name, 1, false,
+			function()
+				local inbuf, ok = ioblock:read(true)
+				if #line > 0 then
+					table.insert(wnd.clip_buffer, inbuf)
+					wnd.buffer_sz = wnd.buffer_sz + #line
+				end
+
+				local overflow = wnd.buffer_sz >= 64 * 256;
+				if not ok or overflow then
+					if not ok then
+						local msg = table.concat(wnd.clip_buffer, "")
+						CLIPBOARD:add(source, msg, false)
+					end
+
+					ioblock:close()
+					timer_delete(wnd.timer_name)
+				end
+			end, true);
+
+-- the remainder is handled in the target/clipboard/paste style ops
+		end
+
+	elseif cmd == "offer-reset" then
+		wnd.offer_types = {}
+	end
+	if cmd ~= "offer" then
+		return
+	end
+
+end
+
 function wayland_debug_wnd()
 	local wnd = active_display().selected;
 	local vid = target_alloc(wnd.bridge.external, function() end, "debug");
@@ -314,25 +440,27 @@ end
 
 -- when used in service mode, the bridge-subsegment is the control for
 -- a new client - so just tie it to the other bridge and keep track of it
+-- though we should probably limit depth to 1
 seglut["bridge-wayland"] =
 function(wnd, source, stat)
 	log(fmt("kind=bridge_client:vid=%d", source));
 
 	local id, aid, cookie =
 	accept_target(32, 32,
-	function(source, status)
-		log(fmt("kind=bridge_client:vid=%d:event=%s", source, status.kind));
-		if status.kind == "terminated" then
-			delete_image(source);
-		elseif status.kind == "segment_request" then
-			log(fmt("kind=client_request:kind=%s", status.segkind));
-			return wayland_buildwnd(wnd, source, status);
+		function(source, status, ...)
+			if not bridge_dispatch[status.kind] then
+				log(fmt("kind=bridge:missing=%s", status.kind))
+				return
+			end
+
+			return bridge_dispatch[status.kind](wnd, source, status, ...)
 		end
-	end)
+	)
 
 	if not valid_vid(id) then
 		return
 	end
+
 	link_image(id, wnd.anchor);
 	return true
 end
@@ -472,33 +600,5 @@ return {
 		attach_block = true
 	},
 
-	dispatch = {
-		preroll = function(wnd, source, tbl)
-
--- (TOREM) the bridge need privileged GPU access in order to bind display
--- also get the actual display table of the current display in order for some
--- fullscreen clients (X games) to get the correct RANDR info.
-			target_displayhint(source,
-				active_display().width, active_display().height, 0, WORLDID);
-
--- ideally we should update this when the spawn target changes, but there is
--- currently no plumbing for this, and the spawn-size estimation is also
--- incorrect.
-			log("kind=bridge_connected:vid=" .. tostring(source));
-
-			if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
-				target_flags(source, TARGET_ALLOWGPU);
-			end
-
--- client implements repeat on wayland, se we need to set it here, but
--- quite frankly, just disable it to 0 0 and force server-side repeat
--- is probably the better option.
-			message_target(source,
-				string.format("seat:rate:%d,%d",
-					gconfig_get("kbd_period"), gconfig_get("kbd_delay")));
-			return true;
-		end,
-
-		segment_request = wayland_buildwnd,
-	}
+	dispatch = bridge_dispatch
 };
