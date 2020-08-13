@@ -20,9 +20,13 @@ return {
 	activation = {0.0, 0.0, 1.0, 1.0},
 	scale_x = 1.0,
 	scale_y = 1.0,
-	button_gesture = {[1] = "doubletap"},
+	button_gestures = {
+		[32] = "ignore",
+		[33] = "ignore"
+	},
 	default_cooldown = 2,
 	mt_eval = 5,
+	mt_disable = true,
 	motion_block = false,
 	warp_press = true,
 	timeout = 1,
@@ -30,7 +34,7 @@ return {
 	drag_threshold = 0.2,
 	gestures = {
 -- idle_return, popup helper menu to select / control modes
-		["doubletap"] = "/global",
+		["idle_return"] = "/global",
 --		["idle_return"] = "/global/tools/dterm",
 	}
 };

@@ -53,6 +53,7 @@ local function tryload(map)
 
 	local ref = {
 		mt_eval = 10,
+		mt_disable = false,
 		swipe_threshold = 0.2,
 		drag_threshold = 0.2,
 		autorange = true,
@@ -73,6 +74,7 @@ local function tryload(map)
 		zones = {},
 		axis_remap = {},
 		button_remap = {},
+		button_gestures = {},
 		cooldown = 4
 	};
 
@@ -313,6 +315,7 @@ local function menu_for_device(dev)
  -- zones (same problem as cursor regions actually)
  -- axis_remap
  -- button_remap
+ -- button_gestures
 	return {
 	{
 		name = "cooldown",
