@@ -3,12 +3,12 @@
 --  [absmouse] = absolution mouse action, cursor follows finger
 --  [relmouse] = relative mouse action, cursor follows relative action
 --
--- SOme further cleaning work here would entail splitting out the
+-- Some further cleaning work here would entail splitting out the
 -- multitouch analysis code into its own as well
 --
-local idevice_log = suppl_add_logfn("idevice");
+local idevice_log, idevice_fmt = suppl_add_logfn("idevice");
 local touchm_evlog = function(msg)
-	idevice_log("submodule=touch:" .. msg);
+	idevice_log("submodule=touch:classifier=mouse" .. msg);
 end
 
 local function nbits(v)
@@ -80,6 +80,35 @@ local function memu_digital(devtbl, iotbl)
 		devtbl.button_mask and 1 or 0,
 		devtbl.warp_press and 1 or 0));
 
+-- some buttons should not be forwarded as buttons at all, since they
+-- indicate some virtual feature or are just uninteresting, so apply
+-- a table for those.
+	local bg = devtbl.button_gestures[iotbl.subid];
+
+	if bg then
+		local gesture;
+
+-- allow applying gestures both on press and release, if provided as
+-- a table, otherwise just assume press and go with that.
+		if type(bg) == "table" then
+			gesture = bg[iotbl.active and 1 or 2];
+
+		elseif iotbl.active and type(bg) == "string" then
+			gesture = bg;
+		end
+
+		if gesture then
+			touchm_evlog(idevice_fmt("button_gesture:index=%d:gesture=%s", iotbl.subid, gesture));
+			if devtbl.gestures[gesture] then
+				dispatch_symbol(devtbl.gestures[gesture]);
+			end
+		end
+
+		return;
+	end
+
+-- otherwise we have button translation to allow certain buttons to
+-- become logical mouse buttons (i.e. left, right, middle, wheel, ...)
 	iotbl.subid = iotbl.subid ~= 0 and iotbl.subid or 1;
 	if (devtbl.button_remap and devtbl.button_remap[iotbl.subid]) then
 		iotbl.subid = devtbl.button_remap[iotbl.subid];
@@ -222,6 +251,7 @@ local function memu_sample(devtbl, iotbl)
 	end
 -- track sample for auto-reset
 	devtbl.last_sample = CLOCK;
+	devtbl.reset = false;
 
 -- check for activation, we want a cooldown to this so that the slight
 -- delay in multitouch doesn't result in real mouse events
@@ -314,7 +344,7 @@ local function memu_sample(devtbl, iotbl)
 		end
 -- track multi-finger gestures motion separate, this is reset in
 -- per timeslot and can be used for magnitude in multi-finger drag
-	elseif (nb >= 2) then
+	elseif (nb >= 2 and not devtbl.mt_disable) then
 		if (not devtbl.mt_enter) then
 			devtbl.mt_enter = CLOCK;
 		end
@@ -344,6 +374,9 @@ local function memu_tick(v)
 	if (v.in_active) then
 		if (v.cooldown > 0) then
 			v.cooldown = v.cooldown - 1;
+			if v.cooldown == 0 then
+				touchm_evlog("kind=cooldown_over:device=" .. v.name);
+			end
 		end
 
 	if (v.mt_enter and CLOCK - v.mt_enter >= v.mt_eval) then
@@ -360,7 +393,7 @@ local function memu_tick(v)
 		end
 	end
 
-	if (CLOCK - v.last_sample > v.timeout) then
+	if (not v.reset and CLOCK - v.last_sample > v.timeout) then
 		v.in_active = false;
 		v.ind_mask = 0;
 		v.dragged = false;
@@ -369,6 +402,8 @@ local function memu_tick(v)
 		v.dx_tmp_factor = 1;
 		v.dy_tmp_factor = 1;
 		v.got_tap = false;
+		v.reset = true;
+		touchm_evlog("kind=timeout_reset:device=" .. v.name);
 	end
 end
 

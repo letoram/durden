@@ -35,6 +35,9 @@ return {
 -- window for drag-vs-swipe evaluation
 	mt_eval = 5,
 
+-- ignore multitouch entirely
+	mt_disable = false,
+
 -- useful when combining touch displays, track pad and regular mouse,
 -- motion block stops cursor movement (gestures only) and warp_press
 -- makes digital events warp to last known device-specific x,y, send a
@@ -50,7 +53,10 @@ return {
 -- some drivers give button presses for various gestures such as
 -- double-tap, remap these to their gestures (or some unknown one
 -- like ignore) to mask these
-	button_gesture = {[1] = "doubletap"},
+	button_gestures = {
+		[1] = "doubletap",
+		[2] = {"held, released"},
+	},
 
 -- some devices that aren't detected as touch properly need to have
 -- their axis mapping specified explicitly
