@@ -3647,8 +3647,8 @@ local function wnd_migrate(wnd, tiler, disptbl)
 
 -- if the window masks another, move that one as well - assume that
 -- the layouter will do the right thing
-	if v.swallow_window then
-		v.swallow_window:migrate(tiler, disptbl);
+	if wnd.swallow_window then
+		wnd.swallow_window:migrate(tiler, disptbl);
 	end
 
 -- update

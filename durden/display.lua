@@ -215,6 +215,28 @@ local function switch_active_display(ind)
 	set_mouse_scalef();
 end
 
+function display_output_table(name)
+	local disp
+	local outtbl = {
+		width = VRESH,
+		height = VRESW
+	}
+
+	if not name then
+		disp = displays[displays.main];
+	else
+		disp = get_disp(name);
+	end
+
+	if disp then
+		outtbl.width = disp.w
+		outtbl.height = disp.h
+		outtbl.refresh = disp.refresh
+	end
+
+	return outtbl;
+end
+
 local function set_best_mode(disp, desw, desh)
 -- fixme, enumerate list of modes and pick one that has a fitting
 -- resolution and refresh
