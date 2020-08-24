@@ -27,7 +27,7 @@ local arcan_nested = VRES_AUTORES ~= nil;
 -- durden so that it can be added as a built-in instead
 local wm_alloc_function;
 local display_event_buffer = {};
-
+local set_view_range;
 local display_log, fmt = suppl_add_logfn("display");
 
 local function disp_string(disp)
@@ -455,6 +455,12 @@ local function display_byname(name, id, w, h, ppcm)
 		maphint = HINT_NONE,
 		refresh = 60,
 		backlight = 1.0,
+		view_range = set_view_range,
+		zoom = {
+			level = 1.0,
+			x = 0,
+			y = 0
+		},
 		wm = "tiler"
 	};
 
@@ -787,7 +793,8 @@ function display_all_mode(mode)
 	end
 end
 
-local function set_view_range(disp, x, y, factor)
+set_view_range =
+function(disp, x, y, factor)
 	disp.zoom.level = math.clamp(factor, 1.0, 100.0);
 
 -- just normal mapping again
@@ -847,12 +854,6 @@ function display_manager_init(alloc_fn)
 -- a virtual-display and bind a tiler to that, then allow a display to
 -- grab the orphaned virtual one.
 	ddisp.tiler = wm_alloc_function(ddisp);
-	ddisp.view_range = set_view_range;
-	ddisp.zoom = {
-		level = 1.0,
-		x = 0,
-		y = 0
-	};
 
 	displays[1] = ddisp;
 
