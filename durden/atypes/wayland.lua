@@ -85,9 +85,38 @@ function(wnd, source, tbl)
 	return true;
 end
 
+local function period(wnd, source)
+	local inbuf, ok = wnd.ioblock:read(true)
+
+-- no data yet?
+	if inbuf == nil and ok then
+		return
+	end
+
+	if #inbuf > 0 then
+		wnd.buffer_sz = wnd.buffer_sz + #inbuf;
+		log("clipboard:count=" .. tostring(wnd.buffer_sz))
+		table.insert(wnd.clip_buffer, inbuf);
+	end
+
+	local overflow = wnd.buffer_sz >= 64 * 256;
+
+-- have we reached a terminal part yet? (eof or overflow)
+	if not ok or overflow then
+		local msg = table.concat(wnd.clip_buffer, "")
+		CLIPBOARD:add(source, msg, false)
+
+		wnd.ioblock:close()
+		timer_delete(wnd.timer_name)
+		wnd.ioblock = nil
+		wnd.clip_buffer = nil
+	end
+end
+
 bridge_dispatch.message =
 function(wnd, source, tbl)
 	local cmd, data = string.split_first(tbl.message, ":")
+	log(fmt("bridge-messsage=%s", cmd))
 
 	if cmd == "offer" then
 		if not wnd.offer_types then
@@ -105,12 +134,13 @@ function(wnd, source, tbl)
 -- the workaround is a message based selector - if the pre-read data
 -- turns out to be less than some buffer size, just add it as a normal
 -- clipboard entry - otherwise set it as a possible provider
-		if data == "text/plain;charset=utf-8" then
+		if data == "text/plain;charset=utf-8" and not wnd.ioblock then
 			message_target(source, "select:" .. data);
-			ioblock = open_nonblock(source, false);
+			wnd.ioblock = open_nonblock(source, false);
 
-			wnd.clip_buffer = {}
+			wnd.clip_buffer = {};
 			wnd.timer_name = "wl-clip_" .. wnd.name;
+			wnd.buffer_sz = 0;
 
 -- this tells the clipboard that the window is available for offering
 -- the specific set of types (wnd act as key/index so repeated calls
@@ -118,31 +148,16 @@ function(wnd, source, tbl)
 -- provided through this provider, the 'dst' is the target window,
 -- send a message about the type and bond_target
 			CLIPBOARD:set_provider(wnd, wnd.offer_types,
-				function(dst)
+				function(dst, typestr)
+					log("request copy of " .. typestr);
 				end
 			)
 
 -- there is still no callback / interrupt driven non-block interface,
 -- when that is fixed in arcan we'll just switch to that
-				timer_add_periodic(wnd.timer_name, 1, false,
-			function()
-				local inbuf, ok = ioblock:read(true)
-				if #line > 0 then
-					table.insert(wnd.clip_buffer, inbuf)
-					wnd.buffer_sz = wnd.buffer_sz + #line
-				end
-
-				local overflow = wnd.buffer_sz >= 64 * 256;
-				if not ok or overflow then
-					if not ok then
-						local msg = table.concat(wnd.clip_buffer, "")
-						CLIPBOARD:add(source, msg, false)
-					end
-
-					ioblock:close()
-					timer_delete(wnd.timer_name)
-				end
-			end, true);
+			timer_add_periodic(wnd.timer_name,
+				1, false, function() period(wnd, source); end, true);
+			period(wnd);
 
 -- the remainder is handled in the target/clipboard/paste style ops
 		end
