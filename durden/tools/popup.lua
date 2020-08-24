@@ -6,13 +6,13 @@
 -- user customizable popup menus, real implementation is thus in the
 -- other scripts mentioned.
 --
-local log = suppl_add_logfn("tools");
+local log, fmt = suppl_add_logfn("tools");
 local mpos = mouse_xy;
 
 local function popup(path, x, y)
 	local menu = menu_resolve(path);
 	if not menu then
-		log("tool=popup:kind=error:message=couldn't resolve:path=" .. path);
+		log(fmt("tool=popup:kind=error:message=couldn't resolve:path=%s", path));
 		return;
 	end
 
@@ -21,7 +21,7 @@ local function popup(path, x, y)
 		menu = {menu};
 	end
 
-	log("tool=popup:kind=status:message=spawn menu, " .. tonumber(#menu) .. " entries");
+	log(fmt("tool=popup:kind=spawn:x=%d:y=%d:entries=%d", x, y, #menu));
 	uimap_popup(menu, x, y);
 end
 
