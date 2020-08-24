@@ -13,7 +13,7 @@ if suppl_add_logfn then
 end
 
 local function clipboard_add(ctx, source, msg, multipart)
-	log(string.format(
+	log(fmt(
 		"add:multipart=%d:message=%s", multipart and 1 or 0, msg));
 
 	if (multipart) then
@@ -69,7 +69,7 @@ end
 
 local function clipboard_setglobal(ctx, msg, src)
 	table.insert_unique_i(ctx.globals, 1, msg);
-	log(string.format("global:message=%s", msg));
+	log(fmt("global:message=%s", msg));
 
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
@@ -82,7 +82,7 @@ end
 
 -- by default, we don't retain history that is connected to a dead window
 local function clipboard_lost(ctx, source)
-	log(string.format("lost:source=%d", source));
+	log(fmt("lost:source=%d", source));
 	ctx.mpt[source] = nil;
 	ctx.locals[source] = nil;
 end
@@ -92,16 +92,16 @@ local function clipboard_save(ctx, fn)
 	local wout = open_nonblock(fn, 1);
 	if (not wout) then
 		log(
-			string.format("save:kind=error:destination=%s:message=couldn't open", fn));
+			fmt("save:kind=error:destination=%s:message=couldn't open", fn));
 		return false;
 	end
 
-	wout:write(string.format("local res = { globals = {}; urls = {}; };\n"));
+	wout:write(fmt("local res = { globals = {}; urls = {}; };\n"));
 	for k,v in ipairs(ctx.globals) do
-		wout:write(string.format("table.insert(res.globals, %q);\n", v));
+		wout:write(fmt("table.insert(res.globals, %q);\n", v));
 	end
 	for k,v in ipairs(ctx.urls) do
-		wout:write(string.format("table.insert(res.urls, %q);\n", v));
+		wout:write(fmt("table.insert(res.urls, %q);\n", v));
 	end
 
 	wout:write("return res;\n");
@@ -124,13 +124,13 @@ local function clipboard_load(ctx, fn)
 
 	local res = system_load(fn, 0);
 	if (not res) then
-		log(string.format("load:kind=error:source=%s:message=couldn't open", fn));
+		log(fmt("load:kind=error:source=%s:message=couldn't open", fn));
 		return;
 	end
 
 	local okstate, map = pcall(res);
 	if (not okstate) then
-		log(string.format("load:kind=error:source=%s:message=couldn't parse", fn));
+		log(fmt("load:kind=error:source=%s:message=couldn't parse", fn));
 		return;
 	end
 
@@ -144,7 +144,49 @@ local function clipboard_load(ctx, fn)
 	return true;
 end
 
+-- The client referenced by 'ref' can provide multiple paste types,
+-- and this set can mutate whenever.
 local function clipboard_provider(ctx, ref, types, trigger)
+	if not types or #types == 0 or not trigger then
+		ctx.providers[ref] = nil
+		if ctx.focus_provider == ref then
+			ctx.focus_provider = nil
+		end
+		return;
+	end
+
+	ctx.providers[ref] = {
+		ts = CLOCK,
+		ref = ref,
+		types = types
+	};
+end
+
+-- Used to indicate that provider 'ref' should be the first returned
+-- result when enumerating possible providers
+local function clipboard_focus_provider(ctx, ref)
+	ctx.focus_provider = ref
+end
+
+-- Retrieve a list of possible providers and their types sorted
+-- by when they were added
+local function clipboard_providers(ctx)
+	local res = {};
+
+	for k,v in pairs(ctx.providers) do
+		table.insert(res, v);
+	end
+
+	table.sort(res,
+	function(a, b)
+		return a.ts <= b.ts;
+	end)
+
+	if ctx.focus_provider then
+		table.insert(res, 1, ctx.focus_provider);
+	end
+
+	return res, focus_provider;
 end
 
 local function clipboard_locals(ctx, source)
@@ -225,5 +267,7 @@ return {
 	pastemodes = clipboard_pastemodes,
 	set_global = clipboard_setglobal,
 	list_local = clipboard_locals,
-	set_provider = clipboard_provider
+	set_provider = clipboard_provider,
+	focus_provider = clipboard_focus_provider,
+	get_providers = clipboard_providers
 };

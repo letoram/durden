@@ -105,6 +105,53 @@ local function clipboard_urls()
 	return res;
 end
 
+local function pick_type(prov, tbl)
+	local res = {};
+
+-- we'd need some remapping table for common types here as some clients
+-- (wayland/x11) tend to provide mime- descriptions
+	for i,v in ipairs(tbl.types) do
+		table.insert(res, {
+			name = "type_" .. tostring(i),
+			label = v,
+			kind = "action",
+			handler = function()
+				prov(active_display().selected, v);
+			end,
+		});
+	end
+
+	return res;
+end
+
+local function table_for_provider(name, tbl)
+	return {
+		kind = "action",
+		label = name,
+		name = name,
+		submenu = true,
+		handler =
+		function()
+			return pick_type(tbl);
+		end,
+	};
+end
+
+local function clipboard_provmenu()
+	local lst, first = CLIPBOARD:get_providers();
+	local res = {};
+
+	if first then
+		table.insert(res, menu_for_provider("focus", first));
+	end
+
+	for i,v in ipairs(lst) do
+		table.insert(res, menu_for_provider(v.name, v));
+	end
+
+	return res;
+end
+
 return {
 	{
 		name = "paste",
@@ -140,6 +187,19 @@ return {
 		handler = function()
 			local wnd = active_display().selected;
 			return clipboard_histgen(wnd, CLIPBOARD:list_local(wnd.clipboard));
+		end
+	},
+	{
+		name = "providers",
+		label = "Providers",
+		kind = "action",
+		description = "Paste from a specific data provider and type",
+		eval = function()
+			return #CLIPBOARD:get_providers() > 0;
+		end,
+		submenu = true,
+		handler = function()
+			return clipboard_provmenu;
 		end
 	},
 	{
