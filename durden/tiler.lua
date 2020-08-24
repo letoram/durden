@@ -814,12 +814,14 @@ local function wnd_select(wnd, source, mouse)
 
 -- may be used to reactivate locking after a lbar or similar action
 -- has been performed.
+	local same_select = false
 	if (wm.selected == wnd) then
 		wnd_titlebar_to_statusbar(wnd);
 		if (wnd.mouse_lock) then
 			mouse_lockto(wnd.canvas, type(wnd.mouse_lock) == "function" and
 				wnd.mouse_lock or nil, wnd.mouse_lock_center);
 		end
+		same_select = true
 	end
 
 -- format focus state (unless that's blocked, set_dispmask handles that)
@@ -827,7 +829,7 @@ local function wnd_select(wnd, source, mouse)
 		bit.bnot(wnd.dispmask, TD_HINT_UNFOCUSED)));
 
 -- deselect the current one
-	if (wm.selected and wm.selected.deselect and wm.selected ~= wnd) then
+	if (wm.selected and wm.selected.deselect and not same_select) then
 		wm.selected:deselect();
 	end
 
@@ -870,6 +872,7 @@ local function wnd_select(wnd, source, mouse)
 -- won't be a reference coordinate saved yet and the warp coordinates will
 -- resolve wrongly if the canvas is animated
 	if (CLOCK ~= wnd.attach_time and
+		not same_select and
 		gconfig_get("mouse_remember_position") and not ms.in_handler) then
 		local props = image_surface_resolve(wnd.canvas);
 		local rx = wnd.x + wnd.mouse[1] * props.width;
