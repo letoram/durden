@@ -6,6 +6,7 @@
 --
 
 local tsupp = system_load("widgets/support/text.lua")();
+local log, fmt = suppl_add_logfn("tools");
 local sheets = {};
 
 local function reglob()
@@ -15,17 +16,18 @@ local function reglob()
 -- open_rawresource, read up to n lines and add to sheets, blocking
 			local lines = {};
 			if (open_rawresource("widgets/cheatsheets/" .. v)) then
-				local line;
+				local line, ok;
 				repeat
-					line = read_rawresource();
+					line, ok = read_rawresource();
 					if (line) then
 						table.insert(lines, line);
 					end
-				until(#lines > 256 or not line);
+				until(#lines > 256 or not ok);
 				close_rawresource();
 			end
 			if (#lines > 1) then
 				sheets[v] = lines;
+				log(fmt("tool=widget-cheatsheet:kind=status:name=%s:lines=%d", v, #lines))
 			end
 		end
 	end
