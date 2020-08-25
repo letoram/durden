@@ -7,6 +7,7 @@
 
 -- just cycle this to make it easier to distinguish individual lines
 local neutral = "\\#999999";
+local log, fmt = suppl_add_logfn("wm")
 
 -- if requested, setup a mouse-handler that calls back on row- clicks
 local function setup_mh(ctx, w, h, vid, heights, ofs)
@@ -190,8 +191,11 @@ return {
 			cind = cind == #HC_PALETTE and 1 or (cind + 1);
 		end
 
-		local tbl, heights, outw, outh, asc = render_text(out);
-		if (not valid_vid(tbl)) then
+		local vid, heights, outw, outh, asc = render_text(out);
+		if (not valid_vid(vid) or #heights == 0) then
+			log(fmt(
+				"widget_text:status=error:source=%s:start=%d:stop=%d:count=%d:msg=%s",
+				ctx.name, start_i, stop_i, #tbl, tbl[start_i]));
 			return;
 		end
 
@@ -203,24 +207,24 @@ return {
 		local backdrop = color_surface(bdw + 4, bdh + 4, 20, 20, 20);
 		shader_setup(backdrop, "ui", "rounded", "active");
 		link_image(backdrop, anchor);
-		link_image(tbl, backdrop);
+		link_image(vid, backdrop);
 		image_inherit_order(backdrop, true);
-		image_inherit_order(tbl, true);
-		move_image(tbl, 4, 4);
+		image_inherit_order(vid, true);
+		move_image(vid, 4, 4);
 --			center_image(tbl, anchor);
 --			center_image(backdrop, anchor);
-		show_image({backdrop, tbl});
+		show_image({backdrop, vid});
 		order_image(backdrop, 1);
-		order_image(tbl, 1);
-		image_clip_on(tbl, CLIP_SHALLOW);
+		order_image(vid, 1);
+		image_clip_on(vid, CLIP_SHALLOW);
 		image_clip_on(backdrop, CLIP_SHALLOW);
-		image_mask_set(tbl, MASK_UNPICKABLE);
+		image_mask_set(vid, MASK_UNPICKABLE);
 		image_mask_set(backdrop, MASK_UNPICKABLE);
 
 		if (ctx.on_click or ctx.on_motion) then
-			setup_mh(ctx, bdw, bdh, tbl, heights, ofs);
+			setup_mh(ctx, bdw, bdh, vid, heights, ofs);
 		end
 
-		return bdw + 4, bdh + 4, tbl, heights;
+		return bdw + 4, bdh + 4, vid, heights;
 	end
 };
