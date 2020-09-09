@@ -454,6 +454,10 @@ function()
 end, true
 );
 
+function durden_ipc_monitoring(on)
+	toggle_monitoring(on and debug_count > 0)
+end
+
 -- chain here rather than add some other hook mechanism, then the entire feature
 -- can be removed by dropping the system_load() call.
 local dshut = durden_shutdown;

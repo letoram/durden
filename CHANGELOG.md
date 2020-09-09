@@ -90,6 +90,10 @@ act as restricted input devices as well as custom widget mappings
 This tool allows for simple tracking of todo tasks that integrate with
 the notification system, status bars and so on.
 
+* new tool: tracing
+This tool mixes the monitoring wm inspection parts of durden with the
+tracing facility in arcan to produce chrome://tracing friendly json logs.
+
 Minor / Fixes:
 * display resolution picker should now bias towards the highest refresh
 rate when there are multiple to chose from at the desired resolution
