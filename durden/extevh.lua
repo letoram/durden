@@ -1,4 +1,4 @@
--- Copyright: 2015-2017, Björn Ståhl
+-- Copyright: 2015-2020, Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
 -- Description: Main event-handlers for different external connections
@@ -311,40 +311,70 @@ function(wnd, source, stat)
 	client_log(
 		string.format("bchunk_state:input=%d:stream=%d:hint=%d:ext=%s",
 			stat.input and 1 or 0, stat.stream and 1 or 0,
-			stat.hint and 1 or 0, stat.extensions
+			stat.hint and 1 or 0, stat.wildcard and "*" or stat.extensions
 		)
 	);
 
--- only announce extension - open capability, this is used by
--- the passive- browser or the target option path as such
-	if stat.hint then
-		if stat.input then
-			wnd.input_extensions = stat.extensions
-		else
-			wnd.output_extensions = stat.extensions
+-- this means we have a oneshot request for immediate data
+--
+-- so respond to that y either immediately triggering the proper
+-- target/state/open,save with the temporary set of extensions
+--
+	if not stat.hint then
+		wnd.ephemeral_ext = stat.extensions and stat.extensions or "*";
+		local fun =
+		function()
+			dispatch_symbol_wnd(wnd,
+				"/target/state/" .. (stat.input and "open" or "save"));
+			wnd.ephemeral_ext = nil;
 		end
-		return
-	end
 
--- client wants input as soon as possible, if not focus,
--- set alert and when focus is obtained, trigger
-	local fun = function()
-		wnd.ephemeral_ext = stat.extensions;
-		dispatch_symbol_wnd(wnd,
-			"/target/state/" .. (stat.input and "open" or "save"));
-		wnd.ephemeral_ext = nil;
-	end
+-- 	go immediately?
+		if active_display().selected == wnd then
+			fun();
+			return;
+		end
 
-	if active_display().selected == wnd then
-		fun();
-	else
+-- mark alert and set handler
 		local fwrap;
-		fwrap = function()
+		fwrap =
+		function()
 			fun()
 			wnd:drop_handler("select", fwrap);
 		end
+
+-- and set temporary on-select handler
 		wnd:add_handler("select", fwrap);
 		wnd:alert();
+		return;
+	end
+
+	local dst = stat.input and "input_extensions" or "output_extensions"
+
+	if stat.disable then
+		wnd[dst] = nil
+		return
+	end
+
+-- if someone already set wildcard or we reverted to it
+	if stat.wildcard or wnd[dst] == true then
+		wnd[dst] = true
+		return
+	end
+
+-- merge, but we don't really care as we won't probe / filter types
+-- for the time being, everything will be exposed as wildcard until
+-- the launcher gets the controls to toggle between filter set and
+-- wildcard
+	if not wnd[dst]	then
+		wnd[dst] = stat.extensions
+
+-- expand the set, but if it is too spammy, just switch to wildcard
+	else
+		wnd[dst] = wnd[dst] .. ";" .. stat.extensions
+		if #wnd[dst] > 256 then
+			wnd[dst] = true
+		end
 	end
 end
 

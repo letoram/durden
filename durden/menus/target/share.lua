@@ -178,6 +178,11 @@ return
 		local argstr = string.format("protocol=%s:port=%d:pass=%s", proto, port, pass);
 		local name = proto .. (active and "_act" or "_pass") .. "_" .. tostring(port);
 
+-- we don't have access to the refined list of groups so just set all of them
+		if DEBUGLEVEL > 0 then
+			argstr = "trace=4095:" .. argstr
+		end
+
 -- note that this is 'on-demand' clocked for external sources
 		local wnd, buf = setup_sharing(argstr,
 			active_display().selected.external and 0 or -1, true,

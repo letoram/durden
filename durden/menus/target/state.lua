@@ -51,6 +51,57 @@ local function grab_file(handler, open)
 	);
 end
 
+local function gen_type_menu(wnd, open)
+	local res = {}
+	local dst = open and "input_extensions" or "output_extensions"
+	local lst = wnd.ephemeral_ext and wnd.ephemeral_ext or wnd[dst]
+
+-- client has not announced any capability
+	if not lst then
+		return res
+	end
+
+-- or this happened on the wrong window
+	local source = wnd.external;
+	if not valid_vid(source, TYPE_FRAMESERVER) then
+		return res
+	end
+
+	local grab =
+	function(identifier)
+		grab_file(
+		function(path)
+			if valid_vid(source, TYPE_FRAMESERVER) then
+				if open then
+					restore_target(source, path, SHARED_RESOURCE, identifier);
+				else
+					snapshot_target(source, path, SHARED_RESOURCE, identifier);
+				end
+			end
+		end)
+	end
+
+	for i,v in ipairs(string.split(lst, ";")) do
+-- we have naming restrictions that don't apply to the extension so
+-- swap for a placeholder
+		local name = suppl_valid_name(v) and v or "unkn_ext";
+		if v == "*" then
+			name = "wildcard";
+		end
+
+		table.insert(res, {
+			name = string.format("%d_%s", i, name),
+			label = v,
+			kind = "action",
+			handler = function()
+				grab(name);
+			end
+		})
+	end
+
+	return res;
+end
+
 return {
 	{
 		name = "suspend",
@@ -93,33 +144,48 @@ return {
 		name = "open",
 		label = "Open",
 		kind = "action",
-		hidden = true,
 		interactive = true,
 		description = "Browse for a file and request that the client tries to open it",
+		eval = function()
+			return #gen_type_menu(active_display().selected, true) > 0;
+		end,
 		handler = function()
 -- cache source and re-validate as the asynch- nature of the grab_ menu may
 -- have the source die while we are waiting
-			local source = active_display().selected.external;
-			grab_file(function(path)
-				if valid_vid(source, TYPE_FRAMESERVER) then
-					restore_target(source, path, SHARED_RESOURCE);
-				end
-			end, true);
+			local menu = gen_type_menu(active_display().ephemeral_ext, true);
+			menu[1].handler();
 		end
 	},
 	{
 		name = "save",
 		label = "Save",
 		kind = "action",
-		hidden = true,
-		description = "Query for a path and filename and request that the client stores to it",
-		handler = function()
-			local source = active_display().selected.external;
-			grab_file(function(path)
-				if valid_vid(source, TYPE_FRAMESERVER) then
-					snapshot_target(source, path, SHARED_RESOURCE);
-				end
-			end, false);
+		interactive = true,
+		eval =
+		function()
+			return #gen_type_menu(active_display().selected, false) > 0;
+		end,
+		description = "Query for a path and filename and request that the client saves to it",
+		handler =
+		function()
+			local menu = gen_type_menu(active_display().selected, false);
+			menu[1].handler();
+		end
+	},
+	{
+		name = "save_as",
+		label = "Save As",
+		kind = "action",
+		description = "Pick a data type and filename then request that the client saves to it",
+		interactive = true,
+		submenu = true,
+		eval =
+		function()
+			return #gen_type_menu(active_display().selected, false) > 1;
+		end,
+		handler =
+		function()
+			return gen_type_menu(active_display().selected, false);
 		end
 	},
 	{

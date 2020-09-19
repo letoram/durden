@@ -145,8 +145,10 @@ local function clipboard_provmenu()
 		table.insert(res, menu_for_provider("focus", first));
 	end
 
-	for i,v in ipairs(lst) do
-		table.insert(res, menu_for_provider(v.name, v));
+	if ist then
+		for i,v in ipairs(lst) do
+			table.insert(res, menu_for_provider(v.name, v));
+		end
 	end
 
 	return res;
@@ -195,11 +197,11 @@ return {
 		kind = "action",
 		description = "Paste from a specific data provider and type",
 		eval = function()
-			return #CLIPBOARD:get_providers() > 0;
+			return #clipboard_provmenu() > 0;
 		end,
 		submenu = true,
 		handler = function()
-			return clipboard_provmenu;
+			return clipboard_provmenu();
 		end
 	},
 	{

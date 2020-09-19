@@ -108,7 +108,6 @@ function string.to_u8(instr)
 	return s;
 end
 
-
 function string.utf8forward(src, ofs)
 	if (ofs <= string.len(src)) then
 		repeat
@@ -242,6 +241,16 @@ end
 
 function table.set_unless_exists(tbl, key, val)
 	tbl[key] = tbl[key] and tbl[key] or val;
+end
+
+function table.intersect(tbl, tbl2)
+	local res = {}
+	for _, v in ipairs(tbl) do
+		if table.find_i(tbl2) then
+			table.insert(res, v)
+		end
+	end
+	return res
 end
 
 -- take the entries in ref and apply to src if they match type
