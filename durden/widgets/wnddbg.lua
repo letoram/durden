@@ -33,6 +33,14 @@ local function probe(ctx, yh)
 		table.insert(lines, "Group-Tag: " .. wnd.group_tag);
 	end
 
+	if (wnd.input_extensions) then
+		table.insert(lines, "Open: " .. wnd.input_extensions);
+	end
+
+	if (wnd.output_extensions) then
+		table.insert(lines, "Save: " .. wnd.output_extensions);
+	end
+
 	table.insert(lines, string.format(
 		"pad: t-%d, l-%d, d-%d, r-%d + hint-pad: %d %d",
 		wnd.pad_top, wnd.pad_left, wnd.pad_bottom, wnd.pad_right,
