@@ -237,6 +237,9 @@ end
 local function query_bg_media()
 	dispatch_symbol_bind(
 	function(path)
+		if not path then
+			return;
+		end
 		load_bg(path);
 	end, "/browse/shared");
 end
