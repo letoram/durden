@@ -16,8 +16,10 @@ end
 -- input samples on the device to dispatch actions or new input
 -- events on virtual devices
 local classifiers = {};
-local mclassifiers = system_load("input/classifiers/mouse.lua")();
-for k,v in pairs(mclassifiers) do
+for k,v in pairs(system_load("input/classifiers/mouse.lua")()) do
+	classifiers[k] = v;
+end
+for k,v in pairs(system_load("input/classifiers/touch.lua")()) do
 	classifiers[k] = v;
 end
 
@@ -113,15 +115,16 @@ local function apply_classifier(cf, profile, devtbl, devid)
 		devtbl[k] = v;
 	end
 	devtbl.tick = cf.tick;
-	devtbl.profile = profile;
+	devtbl.profile = new_profile;
 
 	if (devid) then
+		devtbl.devid = devid;
 		iostatem_register_handler(devid, "touch",
 			function(iotbl)
-				cf.sample(devtbl, iotbl);
+				return cf.sample(devtbl, iotbl);
 			end
 		);
-end
+	end
 end
 
 -- normally a device class like this would be added by adding a listener
@@ -288,12 +291,24 @@ function touchm_reload()
 	return false;
 end
 
-local function get_classifier_set()
+local function gen_classifier_menu(dev)
 	local res = {};
+
 	for k, v in pairs(classifiers) do
-		table.insert(res, k);
+		table.insert(res, {
+			name = k,
+			label = v.label,
+			description = v.description,
+			kind = "action",
+			handler = function()
+				apply_classifier(v, dev.profile, dev, dev.devid);
+			end
+		});
 	end
-	table.sort(res)
+	table.sort(res,
+	function(a, b)
+		return a.name < b.name;
+	end)
 	return res;
 end
 
@@ -381,12 +396,12 @@ local function menu_for_device(dev)
 	},
 	{
 	name = "classifier",
-	kind = "value",
+	kind = "action",
 	label = "Classifier",
 	description = "Set the input analysis model used",
-	set = get_classifier_set(),
+	submenu = true,
 	handler = function(ctx, val)
-		apply_classifier(classifiers[val], dev.profile, dev);
+		return gen_classifier_menu(dev);
 	end
 	}
 	};
