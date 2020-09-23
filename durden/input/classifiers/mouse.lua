@@ -8,7 +8,7 @@
 --
 local idevice_log, idevice_fmt = suppl_add_logfn("idevice");
 local touchm_evlog = function(msg)
-	idevice_log("submodule=touch:classifier=mouse" .. msg);
+	idevice_log("submodule=touch:classifier=mouse:" .. msg);
 end
 
 local function nbits(v)
@@ -169,9 +169,9 @@ local function memu_sample(devtbl, iotbl)
 			ind = devtbl.axis_remap[iotbl.subid];
 		end
 
--- still 'fake mouse'? then leave and drop the sample
+-- still 'fake mouse'? then leave and discard the sample
 		if (not ind or ind < 0) then
-			return;
+			return true, nil;
 		end
 	end
 
@@ -199,7 +199,7 @@ local function memu_sample(devtbl, iotbl)
 				iotbl.devid, iotbl.subid, iotbl.active and 1 or 0)
 			);
 		end
-		return;
+		return true, nil;
 	end
 
 -- platform or caller filtering, to allow devices lika a PS4 that has a touchpad
@@ -207,7 +207,7 @@ local function memu_sample(devtbl, iotbl)
 	if (not devtbl.touch and devtbl.touch_only) then
 		touchm_evlog(string.format(
 			"device=%d:status=forward_notouch", subid.devid));
-		return iotbl;
+		return true, iotbl;
 	end
 
 	if (not iotbl.x or not iotbl.y) then
@@ -219,10 +219,10 @@ local function memu_sample(devtbl, iotbl)
 				iotbl.y = iotbl.samples[1];
 			else
 				devtbl.cache_x = iotbl.samples[1];
-				return;
+				return true, nil;
 			end
 		else
-			return iotbl;
+			return true, iotbl;
 		end
 	end
 
@@ -268,7 +268,7 @@ local function memu_sample(devtbl, iotbl)
 			devtbl.dxyclk = CLOCK;
 			devtbl.cooldown = devtbl.default_cooldown;
 		end
-		return;
+		return true, nil;
 	end
 
 -- detect which fingers have been added or removed
@@ -301,14 +301,14 @@ local function memu_sample(devtbl, iotbl)
 			devtbl.last_y = y;
 		end
 		devtbl.ind_mask = nm;
-		return;
+		return true, nil;
 	end
 
 -- only track delta motion for the first finger, this
 -- prevents the classifier from being able to distinguish
 -- pinch/zoom style motion
 	if (im ~= devtbl.primary) then
-		return;
+		return true, nil;
 	end
 
 -- finally figure out the actual motion and scale
@@ -352,6 +352,8 @@ local function memu_sample(devtbl, iotbl)
 		devtbl.dxdt = devtbl.dx_tmp_factor * (devtbl.dxdt + dx);
 		devtbl.dydt = devtbl.dy_tmp_factor * (devtbl.dydt + dy);
 	end
+
+	return true, nil;
 end
 
 local function memu_init(abs, prof)
@@ -413,6 +415,8 @@ relmouse = {
 	init = function(...)
 		memu_init(false, ...);
 	end,
+	label = "Relative",
+	description = "Motion will be translated to relative motion in the mouse cursor",
 	sample = memu_sample,
 	tick = memu_tick,
 	gestures = {},
@@ -423,6 +427,8 @@ absmouse = {
 	function(...)
 		memu_init(true, ...);
 	end,
+	label = "Absolute",
+	description = "Motion will be mapped to warping the mouse cursor to the sample coordinate",
 	sample = memu_sample,
 	tick = memu_tick,
 	gestures = {},

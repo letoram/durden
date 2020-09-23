@@ -127,13 +127,17 @@ function iostatem_input(iotbl)
 	end
 	dev.idle_clock = 0;
 
--- forward to any possible device handler before continuing, keyboard/mouse
--- are a bit different here in that the device handlers may be allowed to
--- translate to one of these, so their processing is kept here.
+-- some input types (touch, game) can hook into the processing chain and either
+-- consume and foward by itself, consume and translate to something else, or
+-- revert to default behavior for the type.
 	if (dev.handler) then
-		iotbl = dev.handler(iotbl);
-		if not iotbl then
-			return
+		local consumed, repl
+		consumed, repl = dev.handler(iotbl);
+		if consumed then
+			return iotbl;
+		end
+		if repl then
+			iotbl = repl;
 		end
 	end
 

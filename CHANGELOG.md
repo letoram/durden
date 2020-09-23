@@ -75,7 +75,8 @@ Add soft shadow controls to windows, ui elements and statusbar
 New gestures, 'tap', 'doubletap', 'idle\_return', 'idle\_enter'. improved
 relative mouse emulation to better handle click-select refactored some of the
 code to more easilly accomodate custom classifiers. Some device profile based
-values can now be changed through the path /global/input/touch.
+values can now be changed through the path /global/input/touch. A classifier
+that forwards as basic touch events has been added.
 
 * first round of (non-text) icon management (caching, shared sets etc.) added
 
