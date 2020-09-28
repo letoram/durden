@@ -61,12 +61,8 @@ function durden(argv)
 
 	kbd_repeat(0, 0);
 
--- can't work without a detected keyboard
-	if (not input_capabilities().translated) then
-		warning("arcan reported no available translation capable devices "
-			.. "(keyboard), cannot continue without one.\n");
-		return shutdown("", EXIT_FAILURE);
-	end
+-- if we don't have a keyboard or any other input devices available here
+-- there should be some kind of user interface to indicate that
 
 	SYMTABLE = system_load("builtin/keyboard.lua")();
 	SYMTABLE:load_translation();
