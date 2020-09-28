@@ -96,6 +96,9 @@ This tool mixes the monitoring wm inspection parts of durden with the
 tracing facility in arcan to produce chrome://tracing friendly json logs.
 
 Minor / Fixes:
+* global/settings/terminal/tpack added for temporarily forcing server-side
+  text on for all new terminal windows (feature still experimental)
+
 * display resolution picker should now bias towards the highest refresh
 rate when there are multiple to chose from at the desired resolution
 

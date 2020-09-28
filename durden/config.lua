@@ -232,6 +232,7 @@ return {
 	term_font_sz = 12,
 	term_font_hint = 2,
 	term_blink = 0,
+	term_tpack = false,
 	term_cursor = "block",
 	term_font = "hack.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
