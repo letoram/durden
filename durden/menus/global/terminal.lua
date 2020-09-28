@@ -35,6 +35,18 @@ local config_terminal_font = {
 		end
 	},
 	{
+		name = "tpack",
+		label = "Server Side Text",
+		kind = "value",
+		description = "Enable the use of server-side text rendering",
+		hint = "(new terminals only, temporary)",
+		initial = function()
+			return gconfig_get("term_tpack") and LBL_YES or LBL_NO;
+		end,
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		handler = suppl_flip_handler("term_tpack")
+	},
+	{
 		name = "force_bitmap",
 		label = "Force Bitmap",
 		kind = "value",

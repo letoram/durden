@@ -7,7 +7,8 @@ function terminal_build_argenv(group)
 	local blink = gconfig_get("term_blink");
 
 	local lstr = string.format(
-		"cursor=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		"%scursor=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		gconfig_get("term_tpack") and "tpack:" or "",
 		cursor, blink,
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2], fc[3],
