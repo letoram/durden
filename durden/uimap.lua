@@ -76,7 +76,6 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			link_image(ssurf, anchor);
 			image_inherit_order(ssurf, true);
 			blend_image(ssurf, 1.0);
-			force_image_blend(ssurf, BLEND_NORMAL);
 			order_image(ssurf, -1);
 		end,
 		cursor_at = function(ctx, vid, xofs, yofs, max_w, h)
