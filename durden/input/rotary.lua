@@ -7,6 +7,60 @@ for _,v in ipairs(labels) do
 	v.devices = {};
 end
 
+local function space_handler(dev, iotbl)
+	if iotbl.digital then
+		if dev.buttons and dev.buttons[iotbl.subid] then
+			if iotbl.active then
+				dispatch_symbol(dev.buttons[iotbl.subid]);
+			end
+			return true;
+		end
+	end
+
+-- update state tracking about various 'held' axes that are ticking
+--
+-- if we are in mouse- emulation mode the tick below will emit a relative
+-- sample based on the relative axis for each dimension
+--
+-- the rest is only if we have a selected window to work with
+	local wnd = active_display().selected;
+	if not wnd then
+		return true;
+	end
+
+-- if we have any analog inputs labeled, try and match and if no match,
+-- pick based on index -- since we don't want to slam the search and
+-- match each time, keep a cache
+	if not wnd.input_labels or not
+		wnd.rotary_cache or wnd.rotary_cache ~= wnd.label_update then
+		wnd.rotary_cache = wnd.label_update;
+		wnd.rotary_cache_tbl = {};
+		table.set_unless_exists(wnd, "input_labels", {});
+
+-- need path / control for mapping analog axes to device axes here
+		for i,v in ipairs(wnd.input_labels) do
+			print(v.idatatype, v.label, i, #wnd.rotary_cache_tbl);
+			if v.idatatype == "analog" then
+				table.insert(wnd.rotary_cache_tbl, v.label);
+			end
+		end
+		print("rebuild over");
+	end
+
+-- remap axis and lookup against known labels
+	if iotbl.analog then
+		iotbl.subid = dev.axis_map[iotbl.subid] and dev.axis_map[iotbl.subid] or iotbl.subid
+		iotbl.label = wnd.rotary_cache_tbl[iotbl.subid];
+
+-- manually re-range
+		iotbl.samples[1] = dev.resample(dev.subid, iotbl.samples[1])
+		print("label", iotbl.subid, iotbl.label, iotbl.samples[1]);
+	end
+
+	wnd:input_table(iotbl);
+	return true;
+end
+
 -- common denominator for mouse/keyboard handler,
 -- figure out basic gestures (press-wheel, click, doubleclick)
 local function classify_action(dev, iotbl)
@@ -26,6 +80,12 @@ local function classify_action(dev, iotbl)
 	local button;
 
 	if iotbl.digital then
+		if dev.buttons and dev.buttons[iotbl.subid] then
+			if iotbl.active then
+				dispatch_symbol(dev.buttons[iotbl.subid]);
+			end
+			return true;
+		end
 
 -- release or press?
 		if (dev.rotary_held ~= nil) then
@@ -101,11 +161,11 @@ local function mouse_handler(dev, iotbl)
 -- special handle if we have popup, menu or pickregion
 	if active_display().input_lock then
 		step_to_systemkey(step, meta, button);
-		return;
+		return true;
 	end
 
 	if step == 0 then
-		return;
+		return true;
 	end
 
 -- translate to wheel action, unless no grab and target window
@@ -122,6 +182,7 @@ local function mouse_handler(dev, iotbl)
 		mouse_button_input(ind, true);
 		mouse_button_input(ind, false);
 	end
+	return true;
 end
 
 -- [popup or menu?]
@@ -191,14 +252,22 @@ local function rotary_tick()
 end
 
 local function lookup_device(devtbl)
-	local dev = table.find_key_i(labels, "label", devtbl.label);
+-- specific override for one device?
+	local dev =	table.find_key_i(labels, "devid", devtbl.devid);
+
+-- or generic profile for class?
 	if not dev then
+		dev = table.find_key_i(labels, "label", devtbl.label);
+	end
+
+	if not dev then
+		log(fmt("submodule=rotary:" ..
+			"kind=no_match:device=%d:label=%s", devtbl.devid, devtbl.label));
 		return;
 	end
 	dev = labels[dev];
 
-	log(fmt(
-		"submodule=rotary:kind=added:device=%d", devtbl.devid));
+	log(fmt("submodule=rotary:kind=added:device=%d", devtbl.devid));
 	device_count = device_count + 1;
 
 -- enable the tick- timer for digital events (idle, click, double-click)
@@ -208,11 +277,24 @@ local function lookup_device(devtbl)
 
 -- init basic tracking fields
 	table.insert(dev.devices, devtbl);
-	devtbl.rotary_sample = mouse_handler;
+
+-- 'elastic' rotary (3dmouse) only turns then bounces back on release
+	if (dev.elastic) then
+		devtbl.rotary_sample = space_handler;
+	else
+		devtbl.rotary_sample = mouse_handler;
+	end
+
+-- copy basics from profile
 	devtbl.rotary_last_click = 0;
 	devtbl.rotary_idle = 0;
 	devtbl.scale = dev.scale;
 	devtbl.scale_press = dev.scale_press;
+	devtbl.buttons = dev.buttons;
+	devtbl.axis_map = dev.axis_map;
+	devtbl.resample = dev.resample;
+	table.set_unless_exists(devtbl, "resample", function(id, smpl) return smpl; end);
+	table.set_unless_exists(devtbl, "axis_map", {});
 	devtbl.gestures = {
 		["click"] = dev.gestures.click,
 		["dblclick"] = dev.gestures.dblclick,
@@ -226,6 +308,8 @@ local function lookup_device(devtbl)
 		function(iotbl)
 			return devtbl:rotary_sample(iotbl);
 		end);
+
+	return true;
 end
 
 -- when a device with a matching table gets added, implement a handler
