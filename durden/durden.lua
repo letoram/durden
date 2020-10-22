@@ -47,17 +47,15 @@ function durden(argv)
 	system_load("dispatch.lua")(); -- UI keyboard routing / management
 	system_load("tiler.lua")(); -- window management
 	system_load("uimap.lua")(); -- map uiprim/* to tiler etc.
+	system_load("menus/menus.lua")(); -- root of menu virtual filesystem
 
-	system_load("input/iostatem.lua")(); -- device detection, repeat rate, ..
+	system_load("input/devstate.lua")(); -- device detection, repeat rate, ..
 
 	system_load("ledm.lua")(); -- led controllers
 	system_load("display.lua")(); -- multidisplay management
 	system_load("ipc.lua")(); -- status and command channels
-	system_load("menus/menus.lua")(); -- root of menu virtual filesystem
 
 	system_load("extevh.lua")(); -- handlers for external events
-	system_load("input/rotary.lua")(); -- rotary device controls
-	system_load("input/touchm.lua")(); -- touch device controls
 
 	kbd_repeat(0, 0);
 

@@ -167,11 +167,11 @@ function touch_register_device(iotbl, eval)
 
 -- grab the matching classifier
 	if (classifiers[profile.classifier]) then
-		touchm_evlog(devstr .. "classsifier=" .. profile.classifier);
+		touchm_evlog(devstr .. ":classifier=" .. profile.classifier);
 		cf = classifiers[profile.classifier];
 -- or fallback
 	elseif (classifiers[gconfig_get("mt_classifier")]) then
-		touchm_evlog(devstr .. "classsifier=mt_default:name=" .. gconfig_get("mt_classifier"));
+		touchm_evlog(devstr .. ":classifier=mt_default:name=" .. gconfig_get("mt_classifier"));
 		cf = classifiers[gconfig_get("mt_classifier")];
 	else
 		cf = classifiers["relmouse"];

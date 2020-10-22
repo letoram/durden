@@ -236,7 +236,7 @@ function iostatem_input(iotbl)
 -- touch is "deferred" registration because the event layer won't tell us
 -- if we have a touch device or not, so we react to the first sample and the
 -- touch subsystem then redirects routing for the specific device
-	elseif (iotbl.touch) then
+	elseif (iotbl.touch and not dev.masked) then
 		touch_register_device(iotbl);
 	end
 end
@@ -389,7 +389,9 @@ function iostatem_added(iotbl)
 			end
 		end
 
--- notification may need an initial cutoff due to the startup storm
+-- notification may need an initial cutoff due to the startup storm,
+-- though it should really be binned / rate-limited in the notification
+-- system based on CLOCK
 		local cutoff = gconfig_get("device_notification");
 		if cutoff >= 0 and CLOCK > cutoff then
 			notification_add("Device",
@@ -407,12 +409,26 @@ function iostatem_added(iotbl)
 		iostatem_evlog(iostatem_fmt("%s:label=%s:slot=%d",
 			loglbl, iotbl.label and iotbl.label or "missing", dev.slot));
 
--- send to any registered listeners so they can grab the device
-		for _,v in ipairs(device_listeners) do
-			v(devices[iotbl.devid]);
+-- Send to any registered listeners so they can grab the device.
+-- This is more complex than 'one device_listener takes one device' as
+-- some are aggregates that can be a keyboard, mouse, touch etc. on the
+-- same logical device. In some cases those should be forwarded to other
+-- handlers, in some cases we might need to create synthetic devices.
+		local masked = false;
+		for i=1,#device_listeners do
+			if device_listeners[i](devices[iotbl.devid]) then
+				iostatem_evlog(iostatem_fmt("handler_mask:device=%d", iotbl.devid));
+				devices[iotbl.devid].masked = true;
+			end
 		end
 
-		touch_register_device(iotbl, true);
+-- touch handling should be reworked to match the interface above,
+-- note that devices with no profile won't be assigned default touch
+-- until it provides a sample that was not previously registered to a
+-- touch device
+		if not devices[iotbl.devid].masked then
+			touch_register_device(iotbl, true);
+		end
 	else
 -- keeping this around for devices and platforms that generate a new
 -- ID for each insert/removal will slooowly leak (unlikely though)
@@ -539,3 +555,6 @@ function iostatem_init()
 	inputanalog_toggle(true);
 	iostatem_save();
 end
+
+system_load("input/rotary.lua")(); -- rotary device controls
+system_load("input/touch.lua")(); -- touch device controls

@@ -16,7 +16,7 @@ local swm = {};
 -- special window overrides (intended for tools)
 local guid_handler_table = {};
 
-local client_log = suppl_add_logfn("client");
+local client_log, fmt = suppl_add_logfn("client");
 
 -- notice that logging server to client commands are done elsewhere as
 -- the hook is quite costly and we only want to enable it when in an IPC
@@ -158,6 +158,8 @@ function(wnd, source, tbl)
 -- reset or first call? there is a synchronization issue here in that the reset
 -- and update can come periodically. If that ever becomes an actual problem, using
 -- frame delivery as an indicator that the burst is over works.
+	client_log(fmt(
+		"input_label:name=%s:type=%s:sym=%s", tbl.labelhint, tbl.datatype, tbl.vsym));
 	if (not wnd.input_labels or #tbl.labelhint == 0) then
 		wnd.input_labels = {};
 		if (#tbl.labelhint == 0) then
@@ -167,7 +169,6 @@ function(wnd, source, tbl)
 
 -- NOTE: this does not currently respect:
 -- a. "description update to language switch response"
--- b. per- datatype translation
 	if (#wnd.input_labels > 100) then
 		return;
 	end
@@ -181,7 +182,8 @@ function(wnd, source, tbl)
 	};
 
 -- add the default as binding unless there's a collision
-	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string") then
+	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string" and
+		(tbl.idatatype == "translated" or tbl.idatatype == "digital")) then
 		local sym = SYMTABLE[tbl.initial];
 		if (tbl.modifiers > 0) then
 			sym = table.concat(decode_modifiers(tbl.modifiers), "_") .. "_" .. sym;
