@@ -464,7 +464,6 @@ function suppl_region_shadow(ctx, w, h, opts)
 		if shid then
 			shader_uniform(shid, "color", "fff", cr, cg, cb);
 		end
-		force_image_blend(ctx.shadow, BLEND_MULTIPLY);
 	else
 		reset_image_transform(ctx.shadow);
 		show_image(ctx.shadow, time, interp);
