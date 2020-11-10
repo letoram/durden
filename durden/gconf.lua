@@ -7,7 +7,7 @@
 -- configuration values, see config.lua
 --
 
-local log = suppl_add_logfn("config");
+local log, fmt = suppl_add_logfn("config");
 
 -- here for the time being, will move with internationalization
 LBL_YES = "yes";
@@ -62,14 +62,16 @@ end
 
 function gconfig_set(key, val, force)
 	if (type(val) ~= type(defaults[key])) then
-		log(string.format(
+		log(fmt(
 			"key=%s:kind=error:type_in=%s:type_out=%s:value=%s",
 			key, type(val), type(defaults[key]), val
 		));
 		return;
 	end
 
-	log(string.format("key=%s:kind=set:new_value=%s", key, val));
+-- lua5.1 timebomb, 5.2 adds to_lstring on args, 5.1 does not, might
+-- need to go with a fixup where .format walks ... and tostrings boolean
+	log(fmt("key=%s:kind=set:new_value=%s", key, tostring(val)));
 	defaults[key] = val;
 
 	if (force) then
