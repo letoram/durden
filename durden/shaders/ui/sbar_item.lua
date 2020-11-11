@@ -7,14 +7,14 @@ return {
 [[
 	uniform sampler2D map_tu0;
 	uniform float factor;
-	uniform float mix;
+	uniform float mix_u;
 	uniform vec3 col;
 	varying vec2 texco;
 
 	void main()
 	{
 		vec4 txcol = texture2D(map_tu0, texco);
-		vec3 bc = mix(col, txcol.rgb, mix);
+		vec3 bc = mix(col, txcol.rgb, mix_u);
 		gl_FragColor = vec4(bc.rgb * factor, txcol.a);
 	}
 ]],
@@ -34,7 +34,7 @@ return {
 		high = 1.0
 		},
 -- use static color or override?
-		mix = {
+		mix_u = {
 		label = 'Mix',
 		utype = 'f',
 		default = 1.0,
