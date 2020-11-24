@@ -429,12 +429,12 @@ local function lbar_readline_input(wm, ictx, sym, m1)
 		return
 	end
 
--- ctrl+e to clear
+-- ctrl+l to clear
 	if sym == "l" then
 		ictx.inp:clear()
 		update_completion_set(wm, ictx, ictx.inp.set)
 		return
-end
+	end
 
 -- try to step a page forward
 	if sym == "k" then
