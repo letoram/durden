@@ -50,7 +50,8 @@ return {
 
 -- minimum weighted normalized distance to move for gesture to register
 	swipe_threshold = 0.2,
-	drag_threshold = 0.2,
+	drag_threshold = 0.05,
+	drag_step = 0.01,
 
 -- options for various rotated screens, inversions are applied after swap
 	swap_xy = false,
