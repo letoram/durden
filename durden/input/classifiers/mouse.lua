@@ -42,8 +42,8 @@ local function gen_key(dev, prefix, thresh, dx, dy, nf)
 	end
 end
 
-local function run_drag(dev, dx, dy, nf)
-	local key = gen_key(dev, "drag", dev.drag_threshold, dx, dy, nf);
+local function run_drag(dev, dx, dy, nf, thresh)
+	local key = gen_key(dev, "drag", thresh, dx, dy, nf);
 	if (not key) then
 		return;
 	end
@@ -52,6 +52,7 @@ local function run_drag(dev, dx, dy, nf)
 
 	if (dev.gestures[key]) then
 		dispatch_symbol(dev.gestures[key]);
+		return true;
 	end
 end
 
@@ -351,6 +352,12 @@ local function memu_sample(devtbl, iotbl)
 
 		devtbl.dxdt = devtbl.dx_tmp_factor * (devtbl.dxdt + dx);
 		devtbl.dydt = devtbl.dy_tmp_factor * (devtbl.dydt + dy);
+
+-- when we have started one drag and that resulted in a gesture,
+-- emit it at a faster rate now
+		if devtbl.dragged then
+			run_drag(devtbl, devtbl.dxdt, devtbl.dydt, nb, devtbl.drag_step);
+		end
 	end
 
 	return true, nil;
@@ -386,8 +393,7 @@ local function memu_tick(v)
 -- otherwise reset dxdt and drop mt_enter
 			local nb = nbits(v.ind_mask);
 			if (nb == 2 or nb == 3) then
-				run_drag(v, v.dxdt, v.dydt, nb);
-				v.dragged = true;
+				v.dragged = run_drag(v, v.dxdt, v.dydt, nb, v.drag_threshold);
 			end
 			v.mt_enter = CLOCK;
 			v.dxdt = 0;

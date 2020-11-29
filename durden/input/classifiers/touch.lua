@@ -14,7 +14,6 @@ local function sample(dev, io)
 	end
 
 	if dev.autorange then
-		print(dev.range[1], dev.range[2], dev.range[3], dev.range[4])
 		touchm_update_range(dev, io);
 	end
 
