@@ -251,7 +251,13 @@ return {
 		wnd:add_handler("resize",
 		function(wnd, neww, newh, efw, efh)
 			log(fmt("kind=resize-x11:name=%s:neww=%.0f:newh=%.0f", wnd.name, neww, newh));
-			target_displayhint(wnd.external, neww, newh);
+
+-- workaround for an odd asynch-rase where a window gets resized even though
+-- it is dead -- since we will be moving this to the builtin/wayland helper script
+-- eventually, just work around it for now
+			if valid_vid(wnd.external, TYPE_FRAMESERVER) then
+				target_displayhint(wnd.external, neww, newh);
+			end
 		end);
 		wnd:add_handler("destroy",
 			function()

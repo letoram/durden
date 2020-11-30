@@ -39,12 +39,10 @@ local function space_handler(dev, iotbl)
 
 -- need path / control for mapping analog axes to device axes here
 		for i,v in ipairs(wnd.input_labels) do
-			print(v.idatatype, v.label, i, #wnd.rotary_cache_tbl);
 			if v.idatatype == "analog" then
 				table.insert(wnd.rotary_cache_tbl, v.label);
 			end
 		end
-		print("rebuild over");
 	end
 
 -- remap axis and lookup against known labels
@@ -54,7 +52,6 @@ local function space_handler(dev, iotbl)
 
 -- manually re-range
 		iotbl.samples[1] = dev.resample(dev.subid, iotbl.samples[1])
-		print("label", iotbl.subid, iotbl.label, iotbl.samples[1]);
 	end
 
 	wnd:input_table(iotbl);

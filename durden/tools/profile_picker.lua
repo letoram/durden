@@ -189,11 +189,12 @@ local function config()
 	run_stage();
 end
 
-menus_register("global", "settings/tools",
-{
-	name = "profile_picker",
-	label = "Profile Picker",
-	kind = "action",
-	description = "Reconfigure system basics, e.g. startup schemes and keys",
-	handler = config
-});
+-- disable for now, some more testing needed here
+-- menus_register("global", "settings/tools",
+-- {
+--	name = "profile_picker",
+--	label = "Profile Picker",
+--	kind = "action",
+--	description = "Reconfigure system basics, e.g. startup schemes and keys",
+--	handler = config
+-- });
