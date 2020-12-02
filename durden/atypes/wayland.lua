@@ -1,5 +1,7 @@
 --
 -- Wayland- bridge, special protocol considerations for use with arcan-wayland
+-- These should eventually merge with the upstream builtin/wayland and
+-- builtin/decorator.
 --
 local wlwnds = {}; -- vid->window allocation tracking
 local wlsurf = {}; -- segment cookie->vi tracking
@@ -393,6 +395,7 @@ local function build_application_window(wnd, source, stat, opts, atype, handler)
 		log("build_window:status=error:message=accept alloc failed");
 		return false;
 	end
+	image_tracetag(id, "wl_unknown");
 
 -- We need to track these so that reparenting is possible, viewport events
 -- carry the cookie of the window they're targeting.
@@ -464,11 +467,11 @@ function(wnd, source, stat)
 	accept_target(32, 32,
 		function(source, status, ...)
 			if not bridge_dispatch[status.kind] then
-				log(fmt("kind=bridge:missing=%s", status.kind))
+				log(fmt("kind=bridge:missing=%s", status.kind));
 				return
 			end
 
-			return bridge_dispatch[status.kind](wnd, source, status, ...)
+			return bridge_dispatch[status.kind](wnd, source, status, ...);
 		end
 	)
 
@@ -476,6 +479,7 @@ function(wnd, source, stat)
 		return
 	end
 
+	image_tracetag(id, "bridge_wayland");
 	link_image(id, wnd.anchor);
 	return true
 end
@@ -501,6 +505,7 @@ seglut["cursor"] = function(wnd, source, stat)
 -- is performed in the resized- handler for the callback
 	if (valid_vid(vid)) then
 		link_image(vid, wnd.anchor);
+		image_tracetag(vid, "wayland_cursor");
 		return true;
 	end
 end
@@ -513,6 +518,7 @@ seglut["popup"] = function(wnd, source, stat)
 	if (valid_vid(vid)) then
 		wlsurf[cookie] = vid;
 		link_image(vid, wnd.anchor);
+		image_tracetag(vid, "wayland_popup");
 		return true;
 	end
 end
@@ -528,6 +534,7 @@ seglut["multimedia"] = function(wnd, source, stat)
 	if (valid_vid(vid)) then
 		link_image(vid, wnd.anchor);
 		image_mask_set(vid, MASK_UNPICKABLE);
+		image_tracetag(vid, "wayland_subsurface");
 		return true;
 	end
 end

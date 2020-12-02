@@ -86,6 +86,7 @@ local function apply_type_size(wnd, source, status)
 -- constraints based on the different types
 		log(fmt("x11:type=%s:name=%s", wnd.surface_type, wnd.name));
 		local newwnd = {name = wnd.name, surface_type = wnd.surface_type};
+
 		local newvid = wnd.external;
 		image_inherit_order(newvid, true);
 		image_mask_set(newvid, MASK_UNPICKABLE);
@@ -144,6 +145,7 @@ local function apply_type_size(wnd, source, status)
 		if (wnd.ws_attach) then
 			log(fmt("x11:type=%s:name=%s:status=attach_fwd", wnd.surface_type, wnd.name));
 			wnd:ws_attach();
+			wnd.x11_move_block = false;
 		end
 
 		if (status) then
@@ -229,6 +231,8 @@ return {
 		handler = x11_menu,
 	},
 	init = function(atype, wnd, source)
+		wnd.x11_move_block = true;
+
 		wnd:add_handler("move",
 		function(wnd, x, y)
 			if (wnd.in_drag_move) then
@@ -246,7 +250,9 @@ return {
 				wnd.external, rx, ry, wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
 
 -- need to send where the anchor is, not where the current position is
-			target_input(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
+			if not wnd.x11_move_block then
+				target_input(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
+			end
 		end);
 		wnd:add_handler("resize",
 		function(wnd, neww, newh, efw, efh)
