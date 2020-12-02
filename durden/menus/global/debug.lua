@@ -231,6 +231,66 @@ DataDumper = function(value, varname, fastmode, ident)
   end
 end
 
+local fnlist = {
+	"color_surface",
+	"fill_surface",
+	"alloc_surface",
+	"raw_surface",
+	"render_text",
+	"define_rendertarget",
+	"define_linktarget",
+	"define_recordtarget",
+	"define_calctarget",
+	"define_linktarget",
+	"define_nulltarget",
+	"define_arcantarget",
+	"launch_target",
+	"accept_target",
+	"target_alloc",
+	"load_image",
+	"launch_decode",
+	"launch_avfeed",
+	"load_image_asynch",
+};
+
+local fnbuf
+local alist
+
+local function toggle_alloc()
+	if fnbuf then
+		print("disable alloc tracing")
+		for k,v in pairs(fnbuf) do
+			_G[k] = v
+		end
+		fnbuf = nil
+		for k,v in pairs(alist) do
+			if valid_vid(k) then
+				print("alive", image_tracetag(k), v)
+			end
+		end
+
+		alist = nil
+		return
+	end
+
+	fnbuf = {}
+	alist = {}
+	print("enable alloc tracing")
+
+	for _,v in ipairs(fnlist) do
+		fnbuf[v] = _G[v]
+		_G[v] = function(...)
+			print(v, debug.traceback())
+			local vid, a, b, c, d, e, f, g = fnbuf[v](...)
+			if valid_vid(vid) then
+				print("=>", vid)
+				alist[vid] = debug.traceback()
+			end
+			return vid, a, b, c, d, e, f, g
+		end
+	end
+end
+
 local function spawn_debug_wnd(vid, title)
 	show_image(vid);
 	local wnd = active_display():add_window(vid, {scalemode = "stretch"});
@@ -441,6 +501,15 @@ return {
 			for i, v in ipairs(list) do
 				print(string.format("%s%s", string.rep("-", i), image_tracetag(v)))
 			end
+		end
+	},
+	{
+		name = "dump_alloc",
+		label = "Dump Allocations",
+		kind = "action",
+		description = "Toggle vid tracing allocation as messages on stdout",
+		handler = function(ctx)
+			toggle_alloc();
 		end
 	}
 };
