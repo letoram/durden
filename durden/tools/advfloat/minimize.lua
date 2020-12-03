@@ -70,6 +70,7 @@ local function hide_tgt(wnd, tgt)
 						wnd:show();
 						wnd:select();
 					end
+					wnd.space:resize();
 				end
 			}
 		);
