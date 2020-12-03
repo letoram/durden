@@ -80,6 +80,102 @@ local function mouse_to_border(wnd)
 	end
 end
 
+local function wnd_drag_preview_synch(wnd)
+	if wnd.in_drag_ts < wnd.space.last_action then
+		wnd.in_drag_move = linearize(wnd.space);
+	end
+
+-- the action depends on if we are in tiling or not
+	if wnd.space.mode ~= "tile" then
+		return
+	end
+
+-- more options here is with tab (swap order) and if rcpt is the titlebar
+-- (merge/hide into window then add as button)
+	local x, y = mouse_xy();
+
+-- cache to not iterate on every step, account for lw being removed during drag
+	local lw = wnd.in_drag_last;
+	if lw then
+		if lw.x and
+			x >= lw.x and x <= lw.effective_w + lw.x and
+			y >= lw.y and y <= lw.effective_h + lw.y then
+		else
+			lw = nil;
+		end
+	end
+
+-- otherwise we have to search
+	if not lw then
+		for _,v in ipairs(wnd.in_drag_move) do
+			if v ~= wnd and x >= v.x and x <= v.effective_w + v.x and
+				y >= v.y and y <= v.effective_h + v.y then
+				lw = v;
+				break;
+			end
+		end
+	end
+
+	wnd.in_drag_last = lw;
+	if not lw then
+-- top, bottom or statusbar
+		return
+	end
+
+-- figure out effective region (and action), since it attaches to the current
+-- 'over' window it could die while we are moving
+	local dmp;
+	local dpos = wnd.drag_move_pos;
+	if not valid_vid(wnd.drag_move_preview) then
+		wnd.drag_move_preview = color_surface(64, 64, unpack(gconfig_get("titlebar_color")));
+		image_inherit_order(wnd.drag_move_preview, true);
+		order_image(wnd.drag_move_preview, 1);
+		dmp = wnd.drag_move_preview;
+	else
+		dmp = wnd.drag_move_preview;
+	end
+
+	local set_preview =
+	function(anchor, anchor_dir, w, h, dw, dh, tag)
+		if dpos == tag then
+			return;
+		end
+
+		local at = gconfig_get("animation");
+		hide_image(dmp);
+		resize_image(dmp, 1, 1);
+		move_image(dmp, 0, 0);
+		link_image(dmp, anchor, anchor_dir);
+		resize_image(dmp, w, h, at);
+		move_image(dmp, w * dw, h * dh, at);
+		blend_image(dmp, 0.5, at);
+		image_mask_set(dmp, MASK_UNPICKABLE);
+		wnd.drag_move_pos = tag;
+	end
+
+	if y < lw.y + lw.effective_h * 0.2 then
+		set_preview(lw.canvas, ANCHOR_UL,
+			lw.effective_w, lw.effective_h * 0.2, 0, 0, "t");
+
+	elseif y > lw.y + lw.effective_h * 0.8 then
+		local bh = math.ceil(lw.effective_h * 0.2);
+		set_preview(lw.canvas, ANCHOR_LL, lw.effective_w, bh, 0, -1, "d");
+
+	elseif x < lw.x + lw.effective_w * 0.2 then
+		set_preview(lw.canvas, ANCHOR_UL,
+			lw.effective_w * 0.2, lw.effective_h, 0, 0, "l");
+
+	elseif x > lw.x + lw.effective_w * 0.8 then
+		local bw = math.ceil(lw.effective_w * 0.2);
+		set_preview(lw.canvas, ANCHOR_UR, bw, lw.effective_h, -1, 0, "r");
+
+	else
+		local bw = math.ceil(lw.effective_w * 0.4);
+		local bh = math.ceil(lw.effective_h * 0.4);
+		set_preview(lw.canvas, ANCHOR_C, bw, bh, -0.5, -0.5, "c");
+	end
+end
+
 -- evaluate position and update cursor etc. based on where we are, this is
 -- made more complicated about a client actually telling us which border it
 -- thinks that we are on.
@@ -119,24 +215,70 @@ local function step_drag_resize(wnd, mctx, vid, dx, dy)
 end
 
 -- special sematics for dragging a window and dropping it on top of another
-local function try_swap(vids, wnd, candidates)
-	for i,v in ipairs(candidates) do
-		if (v ~= wnd and vids[v.canvas]) then
-			local m1, m2 = dispatch_meta();
-			if (m1) then
-				wnd:reparent(v);
-			elseif (m2) then
-				wnd:reparent(v, true);
-			else
-				wnd:swap(v, false, false);
-			end
-			return;
-		end
+local function try_swap(wnd, tgt, tgt_dir)
+	if tgt_dir == "c" then
+		wnd:swap(tgt, false, false);
+
+	elseif tgt_dir == "t" then
+		wnd:collapse();
+		wnd:reparent(tgt.parent);
+		tgt:reparent(wnd);
+		wnd.space:resize();
+
+	elseif tgt_dir == "l" then
+		wnd:collapse();
+		wnd:reparent(tgt, true);
+
+-- re-order so it lands at the index to the left
+		table.remove_match(tgt.parent.children, wnd);
+		local i = table.find_i(tgt.parent.children, tgt);
+		table.insert(tgt.parent.children, i > 1 and i - 1 or 1, wnd);
+
+		wnd.space:resize();
+
+	elseif tgt_dir == "r" then
+		wnd:collapse();
+		wnd:reparent(tgt, true);
+
+		table.remove_match(tgt.parent.children, wnd);
+		local i = table.find_i(tgt.parent.children, tgt);
+		table.insert(tgt.parent.children, i + 1, wnd);
+
+		wnd.space:resize();
+
+-- re-order so it lands at the index to the right
+	elseif tgt_dir == "d" then
+		wnd:collapse();
+		wnd:reparent(tgt);
+		wnd.space:resize();
 	end
 end
 
-local function drop_swap(wnd, mode)
+local function drop_swap(wnd, mode, tgt, tgt_dir)
+-- first clean up
+	wnd.drag_move_pos = nil;
+	if valid_vid(wnd.drag_move_preview) then
+		delete_image(wnd.drag_move_preview);
+		wnd.drag_move_preview = nil;
+	end
+
+-- if we have an explicit target, just go with that
+	if tgt then
+		if mode == "tile" then
+			try_swap(wnd, tgt, tgt_dir);
+			wnd.space:resize();
+		end
+		return;
+	end
+
+-- otherwise we still need to check for drag over statusbar buttons
 	local x, y = mouse_xy();
+
+	wnd.in_drag_move = false;
+	if valid_vid(wnd.drag_move_preview) then
+		delete_image(wnd.drag_move_preview);
+		wnd.drag_move_preview = nil;
+	end
 
 -- gather / repack the suspects
 	local items = pick_items(x, y, 8, true, active_display(true));
@@ -149,7 +291,8 @@ local function drop_swap(wnd, mode)
 		set[v] = true;
 	end
 
--- first, statusbar buttons
+-- this could also be used for individual window titlebar buttons or
+-- the bar itself, e.g. drag to dock into titlebar for pseudo- tabbed
 	for btn in wnd.wm.statusbar:all_buttons()	do
 		if set[btn.bg] then
 			if (btn.drag_command) then
@@ -158,17 +301,6 @@ local function drop_swap(wnd, mode)
 			return;
 		end
 	end
-
-	if mode ~= "tile" then
-		return;
-	end
-
--- for tiling modes, we can also try to swap or merge based on meta
-	if (#items) then
-		try_swap(set, wnd, wnd.space:linearize());
-	end
-
--- restore is just relayout, so applies to both cases
 	wnd.space:resize();
 end
 
@@ -327,7 +459,8 @@ local function build_canvas(wnd)
 			if (m1 or m2) then
 				wnd.x = wnd.x + wnd.ofs_x;
 				wnd.y = wnd.y + wnd.ofs_y;
-				wnd.in_drag_move = true;
+				wnd.in_drag_move = wnd.space:linearize();
+				wnd.in_drag_ts = CLOCK;
 				mouse_switch_cursor("drag");
 			end
 		end
@@ -350,6 +483,7 @@ local function build_canvas(wnd)
 -- c. perform instantaneous (no animation)
 		elseif (wnd.in_drag_move) then
 			wnd:move(dx, dy, false, false, true);
+			wnd_drag_preview_synch(wnd);
 
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
 				v(wnd.space.wm, wnd, dx, dy);
@@ -366,7 +500,7 @@ local function build_canvas(wnd)
 
 	drop = function(ctx, vid)
 		if (wnd.in_drag_move) then
-			drop_swap(wnd, wnd.space.mode);
+			drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
 
 -- wm global drag handlers
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
@@ -376,7 +510,6 @@ local function build_canvas(wnd)
 		end
 
 		wnd.in_drag_rz = false;
-		wnd.in_drag_move = false;
 		mouse_switch_cursor();
 	end,
 
@@ -464,7 +597,7 @@ local function build_titlebar(wnd)
 	drop =
 	function(ctx)
 		local mode = wnd.space.mode;
-		drop_swap(wnd, mode);
+		drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
 
 		if (mode == "float" or mode == "tile") then
 			mouse_switch_cursor("grabhint");
@@ -484,15 +617,18 @@ local function build_titlebar(wnd)
 		if (mode == "float" or mode == "tile") then
 -- disable the VIDs from the 'drag' so that on-over/on-out tracking
 -- register for windows that we are passing
+			if not wnd.in_drag_move then
+				wnd:set_drag_move();
+			end
+
 			wnd:move(dx, dy, false, false, true);
+			wnd_drag_preview_synch(wnd);
 
 -- some event handlers to allow determining if it is 'droppable' or not
 			for k,v in ipairs(wnd.wm.on_wnd_drag) do
 				v(wnd.wm, wnd, dx, dy);
 			end
 		end
--- possibly check for other window in tile hierarchy based on
--- polling mouse cursor, and do a window swap
 	end,
 
 	click =

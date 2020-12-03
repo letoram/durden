@@ -255,7 +255,11 @@ local function wnd_destroy(wnd, message)
 -- doesn't always hit, we want to forward this information to any
 -- event handler as well since it might affect next-selected heuristics
 	local was_selected = wnd.wm.selected == wnd;
-	if (wm.selected == wnd) then
+	local sel_target;
+
+-- copy the last selected window, and try to restore to that one first
+	if was_selected then
+		sel_target = wnd.space.last_selected ~= wnd and wnd.space.last_selected;
 		wnd:deselect();
 	end
 
@@ -291,7 +295,9 @@ local function wnd_destroy(wnd, message)
 
 -- mark a new node as selected
 	if (wnd.wm.selected == nil or wnd.wm.selected == wnd) then
-		if (#wnd.children > 0) then
+		if sel_target and sel_target.select then
+			sel_target:select();
+		elseif (#wnd.children > 0) then
 			wnd.children[1]:select();
 		elseif (wnd.parent and wnd.parent.parent) then
 			wnd.parent:select();
@@ -331,6 +337,7 @@ local function wnd_destroy(wnd, message)
 
 -- last step before deletion, any per-tiler hook?
 	if (space) then
+		space.last_action = CLOCK;
 		for i,v in ipairs(wm.on_wnd_destroy) do
 			v(wm, wnd, space, space == wm:active_space());
 		end
@@ -421,6 +428,7 @@ local function wnd_deselect(wnd, nopick)
 	end
 
 	local mwm = wnd.space.mode;
+	wnd.space.last_selected = wnd;
 
 -- no pick argument only happens on deactivate
 	if (is_tab_mode(mwm) or mwm == "fullscreen") then
@@ -751,7 +759,8 @@ end
 local function get_hier(vid)
 	local ht = {};
 
-	local level = function(hf, vid)
+	local level =
+	function(hf, vid)
 		for i,v in ipairs(image_children(vid)) do
 			table.insert(ht, v);
 			hf(hf, v);
@@ -3596,6 +3605,8 @@ local function wnd_migrate(wnd, tiler, disptbl)
 	function(wnd, dst)
 		for i,v in ipairs(get_hier(wnd.anchor)) do
 			rendertarget_attach(dst, v, RENDERTARGET_DETACH);
+			local tt = image_tracetag(v)
+			tiler_debug(wnd.wm, "reattach:name=%s", tt and tt or "missing");
 		end
 		rendertarget_attach(dst, wnd.anchor, RENDERTARGET_DETACH);
 	end
@@ -3991,6 +4002,7 @@ local function wnd_ws_attach(res, from_hook)
 	res.space_ind = dstindex;
 	res.space = space;
 	link_image(res.anchor, space.anchor);
+	space.last_action = CLOCK;
 
 	tbh = tbar_geth(res);
 	res.pad_top = res.pad_top + tbh;
@@ -4536,6 +4548,11 @@ local function wnd_drop_overlay(wnd, key)
 	end
 end
 
+local function wnd_set_drag_move(wnd)
+	wnd.in_drag_move = wnd.space:linearize();
+	wnd.in_drag_ts = CLOCK;
+end
+
 local function wnd_tbar_btn(wnd, dir, vsym, action, altaction, dst_group)
 	local dir = dir and dir or "left";
 
@@ -4806,6 +4823,7 @@ local wnd_setup = function(wm, source, opts)
 -- the window has been created, but it is not yet 'attached' to a workspace
 -- so a number of window management functions will be unavailable still
 	res.ws_attach = wnd_ws_attach;
+	res.set_drag_move = wnd_set_drag_move;
 
 -- load / override settings with whatever is in tag-memory
 	res:recovertag(true);

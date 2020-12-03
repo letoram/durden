@@ -19,7 +19,9 @@ local log, fmt = suppl_add_logfn("wayland");
 -- is clicked, we toggle canvas- drag.
 toplevel_lut["move"] = function(wnd, ...)
 	if (active_display().selected == wnd) then
+		wnd:set_drag_move();
 		wnd.in_drag_move = true;
+		wnd.in_drag_ts = CLOCK;
 	end
 
 	log("toplevel:move");
