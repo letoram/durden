@@ -232,7 +232,7 @@ local function try_swap(wnd, tgt, tgt_dir)
 -- re-order so it lands at the index to the left
 		table.remove_match(tgt.parent.children, wnd);
 		local i = table.find_i(tgt.parent.children, tgt);
-		table.insert(tgt.parent.children, i > 1 and i - 1 or 1, wnd);
+		table.insert(tgt.parent.children, i, wnd);
 
 		wnd.space:resize();
 
