@@ -82,7 +82,7 @@ end
 
 local function wnd_drag_preview_synch(wnd)
 	if wnd.in_drag_ts < wnd.space.last_action then
-		wnd.in_drag_move = linearize(wnd.space);
+		wnd.in_drag_move = wnd:linearize(wnd.space);
 	end
 
 -- the action depends on if we are in tiling or not
@@ -98,8 +98,8 @@ local function wnd_drag_preview_synch(wnd)
 	local lw = wnd.in_drag_last;
 	if lw then
 		if lw.x and
-			x >= lw.x and x <= lw.effective_w + lw.x and
-			y >= lw.y and y <= lw.effective_h + lw.y then
+			x >= lw.x and x <= lw.width + lw.x and
+			y >= lw.y and y <= lw.height + lw.y then
 		else
 			lw = nil;
 		end
@@ -108,8 +108,8 @@ local function wnd_drag_preview_synch(wnd)
 -- otherwise we have to search
 	if not lw then
 		for _,v in ipairs(wnd.in_drag_move) do
-			if v ~= wnd and x >= v.x and x <= v.effective_w + v.x and
-				y >= v.y and y <= v.effective_h + v.y then
+			if v ~= wnd and x >= v.x and x <= v.width + v.x and
+				y >= v.y and y <= v.height + v.y then
 				lw = v;
 				break;
 			end
@@ -220,9 +220,14 @@ local function try_swap(wnd, tgt, tgt_dir)
 		wnd:swap(tgt, false, false);
 
 	elseif tgt_dir == "t" then
+		local top = wnd
+		while top.parent ~= nil do
+			top = top.parent
+		end
+
 		wnd:collapse();
-		wnd:reparent(tgt.parent);
-		tgt:reparent(wnd);
+		wnd:reparent(tgt);
+		wnd:swap(wnd.parent);
 		wnd.space:resize();
 
 	elseif tgt_dir == "l" then
@@ -232,6 +237,7 @@ local function try_swap(wnd, tgt, tgt_dir)
 -- re-order so it lands at the index to the left
 		table.remove_match(tgt.parent.children, wnd);
 		local i = table.find_i(tgt.parent.children, tgt);
+
 		table.insert(tgt.parent.children, i, wnd);
 
 		wnd.space:resize();
