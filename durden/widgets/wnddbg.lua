@@ -1,8 +1,22 @@
 local tsupp = system_load("widgets/support/text.lua")();
 
 local function probe(ctx, yh)
-	local lines = {};
 	local wnd = active_display().selected;
+	local lines = {
+		"Name: " .. wnd.name .. " Parent: " .. wnd.parent.name
+	};
+
+	local children = "Children: ";
+	for i,v in ipairs(wnd.children) do
+		children = children .. string.format("(%d)%s ", i, v.name);
+	end
+	table.insert(lines, children);
+
+	children = "Siblings: ";
+	for i,v in ipairs(wnd.parent.children) do
+		children = children .. string.format("(%d)%s ", i, v.name);
+	end
+	table.insert(lines, children);
 
 	if (wnd.crop_values) then
 		local c = wnd.crop_values;
