@@ -2,7 +2,7 @@
 
 return {
 	flash = function(wm, wnd, space, space_active, popup)
-		if (popup or not space_active) then
+		if (popup or not space_active or wm ~= active_display()) then
 			return;
 		end
 
@@ -14,7 +14,7 @@ return {
 			return;
 		end
 
-		link_image(surface, wnd.canvas);
+		link_image(surface, wnd.canvas, ANCHOR_UL, ANCHOR_SCALE_WH);
 		image_inherit_order(surface, true);
 		image_mask_set(surface, MASK_UNPICKABLE);
 
@@ -25,7 +25,7 @@ return {
 		expire_image(surface, 10);
 	end,
 	shake = function(wm, wnd, space, space_active, popup)
-		if not space_active then
+		if not space_active or wm ~= active_display() then
 			return;
 		end
 		for i=1,2 do
