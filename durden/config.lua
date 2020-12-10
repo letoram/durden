@@ -292,6 +292,9 @@ return {
 	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
 	sbar_wsmeta = true, -- show the workspace- create button
 	sbar_numberprefix = true,
+	sbar_dispbuttons = true, -- controls for multidisplay
+	sbar_dispbutton_dir = "right", -- keep in the tray side
+	sbar_dispbutton_prefix = "D", -- any valid vsym
 	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
 	sbar_prefixcolor = "dynamic", -- "\\#ffffff ",
 

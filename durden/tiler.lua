@@ -535,6 +535,55 @@ local function update_sbar_shadow(wm)
 	suppl_region_shadow(sb, sb.width, sb.height, opts);
 end
 
+local function prune_missing_known(wm, list)
+	local known =
+	function(btn)
+		for i, disp in ipairs(list) do
+			if btn.display and disp[1] == btn.display[1] and disp[2] == btn.display[2] then
+				return i
+			end
+		end
+	end
+
+-- delete all buttons not in the list
+	for btn in wm.statusbar:all_buttons() do
+		local i = known(btn)
+		if not i and btn.display then
+			btn:destroy();
+		elseif i then
+			print("delete known button", i)
+			table.remove(list, i)
+		end
+	end
+
+	return list
+end
+
+local function resolve_vsymbol(wm, label, base)
+	local state, outlbl = suppl_valid_vsymbol(label);
+	if not base or base <= 0 then
+		base = sbar_geth(wm, true);
+	end
+
+-- in order for the titlebar group management to work, we can't just
+-- return the vid itself, but rather need to provide a factory function
+	if state then
+		if type(outlbl) == "function" then
+			return function()
+				local surf = null_surface(base, base);
+				image_sharestorage(outlbl(base), surf);
+				image_tracetag(surf, "bar_vsym_" .. label);
+				return surf;
+			end
+		else
+			return outlbl;
+		end
+	end
+
+	return "[bad]";
+end
+
+
 local function tiler_statusbar_update(wm)
 -- synch constraints, first get the statusbar height ignoring visibility
 	local statush = sbar_geth(wm, true);
@@ -589,7 +638,9 @@ local function tiler_statusbar_update(wm)
 		wm.statusbar:move(xpos, wm.effective_height + ytop);
 	end
 
--- same tactic to hiding the ws buttons
+-- same tactic to hiding the ws buttons, this should probably be refactored
+-- entirely to use the display-button tactic of iterating and removing the
+-- ones that doesn't matter
 	local hide_ws = not gconfig_get("sbar_wsbuttons");
 	local prefcolor = gconfig_get("sbar_prefixcolor");
 	local dyncolor = gconfig_get("sbar_prefixcolor") == "dynamic";
@@ -650,31 +701,42 @@ local function tiler_statusbar_update(wm)
 		wm.sbar_ws[11]:hide();
 	end
 
-	update_sbar_shadow(wm);
-end
-
-local function resolve_vsymbol(wm, label, base)
-	local state, outlbl = suppl_valid_vsymbol(label);
-	if not base or base <= 0 then
-		base = sbar_geth(wm, true);
-	end
-
--- in order for the titlebar group management to work, we can't just
--- return the vid itself, but rather need to provide a factory function
-	if state then
-		if type(outlbl) == "function" then
-			return function()
-				local surf = null_surface(base, base);
-				image_sharestorage(outlbl(base), surf);
-				image_tracetag(surf, "bar_vsym_" .. label);
-				return surf;
+-- now we have the dynamic list of 'display buttons', time to see which ones
+-- should stay and which should go
+	if gconfig_get("sbar_dispbuttons") then
+		local list = {}
+		for disp in all_displays_iter() do
+			if disp.tiler ~= wm then
+				table.insert(list, {disp.name, disp.id})
 			end
-		else
-			return outlbl;
 		end
+
+		list = prune_missing_known(wm, list)
+
+		local dir = gconfig_get("sbar_dispbutton_dir");
+		for i,v in ipairs(list) do
+			local dn_hex = string.hexenc(v[1]);
+			local dn_path = "/global/display/displays/disp_" .. dn_hex .. "/";
+			local pad = gconfig_get("sbar_tpad") * wm.scalef;
+
+-- the icon-management needs to be a little bit better here so that we can
+-- take a base icon and overlay a number or text on it
+			local outlbl = resolve_vsymbol(wm,
+				gconfig_get("sbar_dispbutton_prefix") .. v[2], sbsz);
+
+			local btn = wm.statusbar:add_button(
+				dir, "sbar_item_bg",
+				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
+				mouse_handler_factory.statusbar_icon(wm, dn_path .. "focus", "")
+			);
+			btn.drag_command = "/target/window/migrate/migrate_" .. dn_hex;
+			btn.display = v
+		end
+	else
+		prune_missing_known(wm, {})
 	end
 
-	return "[bad]";
+	update_sbar_shadow(wm);
 end
 
 local function tiler_statusbar_build(wm)
@@ -1188,6 +1250,8 @@ local function workspace_migrate(ws, newt, disptbl)
 	end
 
 	if (not dsti or not srci) then
+		tiler_logfun(tiler_fmt("migrate_fail:missing:dst=%s:src=%s",
+			dsti and "yes" or "no", srci and "yes" or "no"));
 		return;
 	end
 
@@ -1199,6 +1263,7 @@ local function workspace_migrate(ws, newt, disptbl)
 
 	local wnd = linearize(ws);
 	for i,v in ipairs(wnd) do
+		tiler_logfun(tiler_fmt("ws_migrate:wnd=%s:dst=%s", v.name, newt.name));
 		v.wm = newt;
 		table.insert(newt.windows, v);
 		table.remove_match(oldt.windows, v);
@@ -1229,6 +1294,7 @@ local function workspace_migrate(ws, newt, disptbl)
 
 	oldt.selected = nil;
 
+-- recalculate HUD order slot (based on # windows)
 	order_image(oldt.order_anchor,
 		2 + #oldt.windows * WND_RESERVED + 2 * WND_RESERVED);
 	order_image(newt.order_anchor,
@@ -2024,7 +2090,9 @@ create_workspace = function(wm, anim)
 		weight = 1.0,
 		vweight = 1.0,
 		background_y = 0,
+		last_action = CLOCK
 	};
+
 	image_tracetag(res.anchor, "workspace_anchor");
 	show_image(res.anchor);
 	link_image(res.anchor, wm.anchor);
@@ -4243,23 +4311,36 @@ local function recover_restore(wnd)
 	wnd.desired_parent = res["parent"];
 	wnd:set_title();
 
--- now create the workspace (if known) and move there
-	if (res["ws_ind"] and tonumber(res["ws_ind"])) then
-		local dw = math.clamp(tonumber(res["ws_ind"]), 1, 10);
-		wnd.default_workspace = dw;
+-- for an adopted display we can only remember where home is and wait
+	if res.ws_home and wnd.wm.name ~= res.ws_home then
+		wnd.adopt_display = {
+			home = res.ws_home,
+			index = res.ws_home_ind,
+			mode = res.ws_mode,
+			label = res.ws_label
+		};
 
-		if (not wnd.wm.spaces[dw]) then
+-- otherwise try to reset the workspace as we remember it
+	elseif (res.ws_ind and tonumber(res.ws_ind)) then
+		local dw = math.clamp(tonumber(res.ws_ind), 1, 10);
+
+		wnd.default_workspace = dw;
+		local dspace = wnd.wm.spaces[dw];
+
+		if (not dspace) then
 			wnd.wm.spaces[dw] = create_workspace(wnd.wm, false);
+			dspace = wnd.wm.spaces[dw];
 		end
 
 -- only restore mode if we are the first in a workspace
-		local lst = linearize(wnd.wm.spaces[dw]);
+		local lst = linearize(dspace);
 		if (#lst == 0) then
-			if (res["ws_mode"]) then
-				wnd.wm.spaces[dw].mode = res["ws_mode"];
+			if res.ws_mode then
+				dspace.mode = res.ws_mode;
 			end
-			if (res["ws_label"]) then
-				wnd.wm.spaces[dw]:set_label(res["ws_label"]);
+
+			if res.ws_label then
+				dspace:set_label(res.ws_label);
 			end
 		end
 	end
@@ -4283,7 +4364,7 @@ local function wnd_recovertag(wnd, restore)
 
 	local recoverlst = {"durden"};
 
--- space- proerties
+-- space- properties
 	table.insert(recoverlst, string.format("ws_ind=%d", wnd.space_ind));
 	table.insert(recoverlst, string.format("ws_mode=%s", wnd.space.mode));
 	if (wnd.space.label) then
@@ -4291,6 +4372,9 @@ local function wnd_recovertag(wnd, restore)
 	end
 	if (wnd.space.home) then
 		table.insert(recoverlst, string.format("ws_home=%s", wnd.space.home));
+	end
+	if (wnd.space.home_ind) then
+		table.insert(recoverlst, string.format("ws_home_ind=%d", wnd.space.home_index));
 	end
 
 -- window- properties
@@ -4338,7 +4422,6 @@ local function wnd_recovertag(wnd, restore)
 	end
 
 -- missing restore:
--- preferred display, workspace preferred display
 -- custom bindings / translations
 -- aural/visual junk (shader, scale, centered, gain)
 -- workspace properties: background
@@ -5340,6 +5423,14 @@ function tiler_create_listener(handler)
 	table.insert(create_listeners, handler);
 end
 
+local function on_display_event(event, name, tiler, id)
+	for disp in all_tilers_iter() do
+		if disp.tile_update then
+			disp:tile_update();
+		end
+	end
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 	counter = counter + 1;
@@ -5480,6 +5571,12 @@ function tiler_create(width, height, opts)
 
 	for _,v in ipairs(create_listeners) do
 		v(res);
+	end
+
+-- only need one as it will rebuild on all tilers
+	if not got_display_listener then
+		display_add_listener(on_display_event)
+		got_display_listener = true;
 	end
 
 	return res;

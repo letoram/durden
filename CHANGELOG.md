@@ -162,6 +162,10 @@ reliability and rate-limit misses.
 * multiple changes to display hotplug behavior / detection, fallback when
 edid fail after power cycle
 
+* added visual indicators to window drag-reorder in tiling mode
+
+* added dynamic statusbar buttons to control / reach other displays
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
