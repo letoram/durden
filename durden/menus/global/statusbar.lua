@@ -253,14 +253,30 @@ local statusbar_buttons_dir = {
 		description = "Control the presence of workspace indicator buttons",
 		initial = function()
 			return gconfig_get("sbar_wsbuttons") and LBL_YES or LBL_NO; end,
-		set = {LBL_YES, LBL_NO},
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		handler = function(ctx, val)
-			gconfig_set("sbar_wsbuttons", val == LBL_YES);
+			suppl_flip_handler("sbar_wsbuttons")(ctx, val);
 			for tiler in all_tilers_iter() do
 				tiler:tile_update();
 			end
 		end
 	},
+	{
+		name = "display_buttons",
+		label = "Display Buttons",
+		description = "Control the presence of dynamic display control buttons",
+		initial = function()
+			return gconfig_get("sbar_dispbuttons") and LBL_YES or LBL_NO;
+		end,
+		kind = "value",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		handler = function(ctx, val)
+			suppl_flip_handler("sbar_dispbuttons")(ctx, val);
+			for tiler in all_tilers_iter() do
+				tiler:tile_update();
+			end
+		end
+	}
 -- like the normal suppl_append_color_menu but special handling for
 -- the possible "dynamic" option where we pick the color from a palette
 };

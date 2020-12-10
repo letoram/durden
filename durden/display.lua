@@ -149,22 +149,35 @@ function display_maphint(disp)
 	return bit.bor(disp.maphint, (disp.primary and HINT_PRIMARY or 0));
 end
 
-local function autohome_spaces(ndisp)
-	local migrated = false;
+local function autohome_windows(ndisp)
+
+-- find all windows that belong to this display, and move them back
+	for wnd in all_displays_iter() do
+		if wnd.adopt_display and wnd.adopt_display.ws_home == ndisp.name then
+			wnd:migrate(ndisp.tiler, ndisp);
+			if wnd.adopt_display.index then
+				wnd:reassign(wnd.adopt_display.index);
+			end
+
+			wnd.adopt_display = nil;
+		end
+	end
 
 	for i, disp in ipairs(displays) do
 		local tiler = disp.tiler;
+
 		if (tiler and tiler ~= ndisp.tiler) then
 			for i=1,10 do
 				if (tiler.spaces[i] and tiler.spaces[i].home and
 					tiler.spaces[i].home == ndisp.name) then
 					tiler.spaces[i]:migrate(ndisp.tiler);
-					migrated = true;
 					display_log(fmt("autohome:%s:%d:%s", tiler.name, i, ndisp.name));
 				end
 			end
 		end
 	end
+
+-- there might be individual windows after a 'reset' that
 end
 
 local function set_mouse_scalef()
@@ -374,6 +387,7 @@ local function display_data(id)
 	local serial = "unknown";
 
 	if (not data) then
+		display_log(fmt("edid_fail:id=" .. tostring(id)));
 		return;
 	end
 
@@ -424,10 +438,12 @@ local function get_name(id)
 		map_video_display(displays[1].map_rt, id, HINT_NONE);
 	end
 
--- try and extract display name/serial from the EDID
+-- Try and extract display name/serial from the EDID but since some cheap
+-- displays also come with the same EDID we need to tag with the id slot
+-- or we get duplicates (mirrored mode).
 	local model, serial = display_data(id);
 	if (model) then
-		name = string.split(model, '\r')[1] .. "/" .. serial;
+		name = string.split(model, '\r')[1] .. "/" .. serial .. tostring(id);
 		ok = true;
 	else
 		display_log(fmt("id=%d:error=%s", id, "no_edid"));
@@ -859,6 +875,7 @@ function display_manager_init(alloc_fn)
 
 	displays.simple = gconfig_get("display_simple");
 	displays.main = 1;
+	ddisp.ind = 1;
 	ddisp.tiler.name = "default";
 
 -- simple mode does not permit us to do much of the fun stuff, like
@@ -988,7 +1005,7 @@ function display_add(name, width, height, ppcm, id)
 	end
 
 -- this also takes care of spaces that are saved as preferring a certain disp.
-	autohome_spaces(found);
+	autohome_windows(found);
 
 	if (found.last_m) then
 		display_ressw(name, found.last_m);
@@ -1014,7 +1031,7 @@ end
 local function autoadopt_display(disp)
 	local set = {}
 	for i=1,10 do
-		if disp.tiler:empty_space(i) then
+		if not disp.tiler:empty_space(i) then
 			table.insert(set, i)
 		end
 	end
@@ -1038,8 +1055,12 @@ local function autoadopt_display(disp)
 -- perform the migration, but remember the display
 		local space = disp.tiler.spaces[v];
 		if (space) then
-			space:migrate(ddisp.tiler);
+			display_log(fmt("migrate:home=%s:dst=%s:index=%d", disp.name, ddisp.name, v));
+			space:migrate(ddisp.tiler, ddisp);
 			space.home = disp.name;
+			space.home_index = v;
+		else
+			display_log("adopt_cancelled:space_empty");
 		end
 	end
 end
