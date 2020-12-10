@@ -95,10 +95,6 @@ local select_effects = system_load("tools/flair/select.lua", false)();
 local drag_effect = nil;
 -- just route the drag/drop events with extra states for begin/end
 local function flair_drag_hook(wm, wnd, dx, dy, last)
-	if (wnd.space.mode ~= "float") then
-		return;
-	end
-
 -- already in effect, just update
 	if (in_drag) then
 

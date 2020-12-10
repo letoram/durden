@@ -9,7 +9,7 @@ return {
 -- this might be a bit icky if the window also animate resize, we don't
 -- have a reliable mechanism to say (match parent size), though we should.
 		local cw = image_surface_resolve(wnd.canvas);
-		local surface = color_surface(cw.width, cw.height, 255, 255, 255);
+		local surface = color_surface(1, 1, 255, 255, 255);
 		if not valid_vid(surface) then
 			return;
 		end
