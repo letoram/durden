@@ -69,7 +69,7 @@ local function synthesize_icon(w, shader)
 	return icon;
 end
 
-function icon_synthesize_src(name, w, shader, argtbl)
+function icon_synthesize_src(name, base, shader, argtbl)
 	local fn = string.format("icons/%s/%s", setname, name);
 	local img = load_image(fn);
 	if not valid_vid(img) then
@@ -78,7 +78,22 @@ function icon_synthesize_src(name, w, shader, argtbl)
 	for k,v in pairs(argtbl) do
 		shader_uniform(shader, k, unpack(v));
 	end
-	resample_image(img, shader, w, w);
+
+	local w = base
+	local h = base
+
+-- deal with aspect ratio when resampling
+	local props = image_storage_properties(img)
+	if props.height >= props.width then
+		local ar = props.width / props.height
+		w = math.ceil(h * (props.width / props.height))
+	else
+		h = math.ceil(w * (props.height / props.width))
+	end
+
+-- if it is smaller than the desired height, pick the desired height
+
+	resample_image(img, shader, w, h);
 	return img;
 end
 
