@@ -119,8 +119,7 @@ menus_register("target", "window",
 	kind = "action",
 	eval = function()
 		return
-			gconfig_get("advfloat_minimize") ~= "disabled" and
-				active_display().selected.space.mode == "float";
+			gconfig_get("advfloat_minimize") ~= "disabled";
 	end,
 	handler = function()
 		local wnd = active_display().selected;
