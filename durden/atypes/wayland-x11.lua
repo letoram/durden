@@ -124,7 +124,7 @@ local function apply_type_size(wnd, source, status)
 -- from the same bridge had input focus before us, and we need more work
 -- to actually 'drop' it on a non-X surface
 	elseif (wnd.surface_type == "dnd") then
-
+		mouse_cursortag_drop();
 		mouse_cursortag(wnd, "window",
 			function(srcwnd, accept, dstwnd)
 				log("x11:message=eimpl:kind=dnd_apply");
@@ -135,6 +135,8 @@ local function apply_type_size(wnd, source, status)
 		function(source, status)
 			if status.kind == "terminated" then
 				mouse_cursortag_drop(false, dstwnd);
+			elseif status.kind == "resized" then
+				resize_image(source, status.width, status.height);
 			end
 		end);
 
