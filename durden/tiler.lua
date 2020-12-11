@@ -551,7 +551,6 @@ local function prune_missing_known(wm, list)
 		if not i and btn.display then
 			btn:destroy();
 		elseif i then
-			print("delete known button", i)
 			table.remove(list, i)
 		end
 	end
@@ -570,8 +569,7 @@ local function resolve_vsymbol(wm, label, base)
 	if state then
 		if type(outlbl) == "function" then
 			return function()
-				local surf = null_surface(base, base);
-				image_sharestorage(outlbl(base), surf);
+				local surf = outlbl(base);
 				image_tracetag(surf, "bar_vsym_" .. label);
 				return surf;
 			end
@@ -731,6 +729,7 @@ local function tiler_statusbar_update(wm)
 			);
 			btn.drag_command = "/target/window/migrate/migrate_" .. dn_hex;
 			btn.display = v
+			btn:switch_state("inactive");
 		end
 	else
 		prune_missing_known(wm, {})
@@ -799,7 +798,8 @@ local function tiler_statusbar_build(wm)
 				btn:update("");
 			end
 		});
-
+	wm.sbar_ws["msg"]:switch_state("inactive");
+	wm.sbar_ws["msg"].drag_command = "/target/window/minimize";
 	wm.sbar_ws["msg"].align_left = true;
 end
 
@@ -1661,6 +1661,19 @@ end
 -- floating mode has different rulesets for spawning, sizing and all windows
 -- are "unlocked" for custom drag-resize
 local function set_float(space)
+	local tbl = linearize(space);
+
+-- rescue any windows that are outside of view
+	for _,v in ipairs(tbl) do
+		if v.x > v.wm.width then
+			v:move(v.wm.width - v.x, 0, false, false, true)
+		end
+
+		if v.y > v.wm.height then
+			v:move(v.wm.height - v.y, 0, false, false, true)
+		end
+	end
+
 	if (space.in_float) then
 		return;
 	end
@@ -1669,7 +1682,6 @@ local function set_float(space)
 	space.mode_hook = drop_float;
 	space.in_float = true;
 
-	local tbl = linearize(space);
 	if (space.layouter and space.layouter.resize(space, tbl)) then
 		return;
 	end
@@ -3679,8 +3691,6 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		rendertarget_attach(dst, wnd.anchor, RENDERTARGET_DETACH);
 	end
 
-	reattach_full(wnd, tiler.rtgt_id);
-
 -- switch rendertarget
 -- change association with wm and relayout old one
 	if (not wnd.space) then
@@ -3733,7 +3743,10 @@ local function wnd_migrate(wnd, tiler, disptbl)
 		wnd.swallow_window:migrate(tiler, disptbl);
 	end
 
+	reattach_full(wnd, tiler.rtgt_id);
+
 -- update
+	dsp:resize();
 	wnd:recovertag();
 end
 
