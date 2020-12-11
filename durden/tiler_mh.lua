@@ -80,19 +80,37 @@ local function mouse_to_border(wnd)
 	end
 end
 
+local old_btn
 local function wnd_drag_preview_synch(wnd)
 	if wnd.in_drag_ts < wnd.space.last_action then
 		wnd.in_drag_move = wnd:linearize(wnd.space);
+	end
+
+-- more options here is with tab (swap order) and if rcpt is the titlebar
+-- (merge/hide into window then add as button)
+	local x, y = mouse_xy();
+
+-- statusbar buttons are the exception, we need to go in / out
+	if old_btn and valid_vid(old_btn.bg) then
+		if image_hit(old_btn.bg, x, y) then
+			old_btn:switch_state("active")
+			return
+		end
+		old_btn:switch_state("inactive")
+	end
+
+	for btn in wnd.wm.statusbar:all_buttons()	do
+		if image_hit(btn.bg, x, y) then
+			old_btn = btn
+			btn:switch_state("active")
+			return
+		end
 	end
 
 -- the action depends on if we are in tiling or not
 	if wnd.space.mode ~= "tile" then
 		return
 	end
-
--- more options here is with tab (swap order) and if rcpt is the titlebar
--- (merge/hide into window then add as button)
-	local x, y = mouse_xy();
 
 -- cache to not iterate on every step, account for lw being removed during drag
 	local lw = wnd.in_drag_last;
@@ -105,7 +123,7 @@ local function wnd_drag_preview_synch(wnd)
 		end
 	end
 
--- otherwise we have to search
+-- otherwise we have to searh
 	if not lw then
 		for _,v in ipairs(wnd.in_drag_move) do
 			if v ~= wnd and x >= v.x and x <= v.width + v.x and
@@ -263,6 +281,7 @@ end
 local function drop_swap(wnd, mode, tgt, tgt_dir)
 -- first clean up
 	wnd.drag_move_pos = nil;
+
 	if valid_vid(wnd.drag_move_preview) then
 		delete_image(wnd.drag_move_preview);
 		wnd.drag_move_preview = nil;
@@ -304,7 +323,7 @@ local function drop_swap(wnd, mode, tgt, tgt_dir)
 			if (btn.drag_command) then
 				dispatch_symbol_wnd(wnd, btn.drag_command);
 			end
-			return;
+			break;
 		end
 	end
 	wnd.space:resize();
@@ -604,6 +623,11 @@ local function build_titlebar(wnd)
 	function(ctx)
 		local mode = wnd.space.mode;
 		drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
+
+		if old_btn and valid_vid(old_btn.bg) then
+			old_btn:switch_state("inactive")
+			old_btn = nil
+		end
 
 		if (mode == "float" or mode == "tile") then
 			mouse_switch_cursor("grabhint");
