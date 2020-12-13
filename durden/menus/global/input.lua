@@ -416,9 +416,21 @@ local function dev_menu(v)
 			kind = "value",
 			description = "Always process input device analog samples",
 			set = {LBL_YES, LBL_NO, LBL_FLIP},
-			eval = false; -- INCOMPLETE
+			eval = false,
 			initial = function()
 				return v.force_analog and LBL_YES or LBL_NO;
+			end,
+		},
+		{
+			name = pref .. "forget",
+			label = "Forget",
+			description = "Release the device and its resources",
+			kind = "value",
+			set = {LBL_YES, LBL_NO},
+			handler = function(ctx, val)
+				if val == LBL_YES then
+					inputanalog_filter(v.devid, 0, 0, 0, 0, 0, "forget")
+				end
 			end,
 		},
 		gen_smenu(v, pref)
