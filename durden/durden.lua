@@ -853,9 +853,10 @@ end
 -- changes to keybinding etc. for better recovery, downside is that
 -- there is the possiblity we save a 'guaranteed broken' state.
 function durden_fatal(msg)
+	local lsym = dispatch_last_symbol and dispatch_last_symbol() or "pre-init"
 	local msg = string.format(
 		"error: %s\nlast path: %s\ntrace:\n%s",
-		msg, dispatch_last_symbol(), debug.traceback()
+		msg, lsym, debug.traceback()
 	);
 	return msg;
 end
