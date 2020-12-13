@@ -104,6 +104,7 @@ local function hide_tgt(wnd, tgt)
 			end
 		else
 			wnd:hide();
+			wnd.space:resize();
 		end
 	else
 		warning("unknown hide target: " .. tgt);

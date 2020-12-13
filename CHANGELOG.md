@@ -166,6 +166,12 @@ edid fail after power cycle
 
 * added dynamic statusbar buttons to control / reach other displays
 
+* HC-palette color changes (global/settings/visual/colors/palette) persist
+
+* input devices can be forgotten (global/input/all-devices/dev/forget=yes
+
+* better error reporting for init-script errors
+
 # 0.5.0
   * tools/advfloat:
      window-to-background will now receive input when no window is
