@@ -261,8 +261,16 @@ function menu_query_value(ctx, mask)
 	};
 	if (ctx.hint) then
 		local hint = type(ctx.hint) == "function" and ctx.hint() or ctx.hint;
-		table.insert(helper, HC_PALETTE[1]);
-		table.insert(helper, hint);
+
+-- allow the hint to define some form of style
+		if type(hint) == "table" then
+			for _, v in ipairs(hint) do
+				table.insert(helper, v)
+			end
+		else
+			table.insert(helper, HC_PALETTE[1]);
+			table.insert(helper, hint);
+		end
 	end
 
 	local hintstr = string.format("%s",
