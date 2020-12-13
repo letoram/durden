@@ -178,6 +178,9 @@ local function ent_to_table(res, ret)
 			if (type(res.hint) == "function") then
 				hint = res:hint();
 			end
+			if type(res.hint) == "table" then
+				hint = res.hint[2];
+			end
 			table.insert(ret, "hint: " .. hint);
 		end
 	end
