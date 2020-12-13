@@ -10,6 +10,9 @@ dispatch_symbol("/global/settings/titlebar/buttons/left/add_float=icon_minimize"
 dispatch_bindtarget("/target/window/move_resize/maximize");
 dispatch_symbol("/global/settings/titlebar/buttons/left/add_float=icon_maximize");
 
+dispatch_bindtarget("/global");
+dispatch_symbol("/global/settings/statusbar/buttons/left/add=Go");
+
 -- terminal icon with a popup that also allows access to other menus
 dispatch_bindtarget("/global/open/terminal");
 dispatch_symbol("/global/settings/statusbar/buttons/left/add=icon_cli");
@@ -19,4 +22,4 @@ dispatch_symbol("/global/settings/statusbar/buttons/left/extend/alternate_click/
 
 -- when this feature is more refined, everything above can be moved /
 -- pushed to the scheme / profile being picked
-dispatch_symbol("/global/settings/tools/profile_picker");
+-- dispatch_symbol("/global/settings/tools/profile_picker");
