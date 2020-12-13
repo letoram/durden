@@ -25,9 +25,11 @@ local function gen_palette_menu()
 			format = HC_PALETTE[i],
 			label = "COLOR_" .. tostring(i)
 		};
-		suppl_append_color_menu(v, tbl, function(new)
+		suppl_append_color_menu(v, tbl,
+		function(new)
 			HC_PALETTE[i] = new;
 		end);
+		tbl.hint = {HC_PALETTE[i], "(current color)"},
 		table.insert(list, tbl);
 	end
 	return list;
@@ -39,7 +41,7 @@ return {
 	kind = "action",
 	label = "Palette",
 	submenu = true,
-	description = "High contrast palette, used for file browser and widgets",
+	description = "High contrast palette, used for durden UI elements",
 	handler = gen_palette_menu()
 },
 {
