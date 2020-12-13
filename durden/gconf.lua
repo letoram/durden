@@ -251,9 +251,12 @@ local function gconfig_setup()
 	end
 
 -- and for the high-contrast palette used for widgets, ...
-	for i,v in ipairs(match_keys("hc_palette_%")) do
-		local cl = string.split(v, "=")[2];
-		HC_PALETTE[i] = cl;
+	for _,v in ipairs(match_keys("hc_palette_%")) do
+		local cl = string.split(v, "=");
+		local ind = tonumber(string.sub(cl[1], 12));
+		if ind then
+			HC_PALETTE[ind] = cl[2];
+		end
 	end
 
 -- and for global state of titlebar and statusbar
@@ -284,6 +287,11 @@ function gconfig_shutdown()
 			ktbl[k] = "";
 		end
 	end
+
+	for i,v in ipairs(HC_PALETTE) do
+		ktbl["hc_palette_" .. tostring(i)] = v
+	end
+
 	store_key(ktbl);
 end
 
