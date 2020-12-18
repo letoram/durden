@@ -447,8 +447,7 @@ local function get_name(id)
 -- we don't always get a model/serial from the EDID, but when we do:
 	if (model) then
 		name = string.split(model, '\r')[1] .. "/" .. serial
-		display_log(fmt("id=%d:model=%s:serial=%s", id, model, serial));
-		local found
+		display_log(fmt("id=%s:model=%s:serial=%s", tostring(id), model, serial));
 
 -- now the display might already exist (do nothing), there might be a display
 -- with the same name/serial from a sloppy monitor (need to suffix)
