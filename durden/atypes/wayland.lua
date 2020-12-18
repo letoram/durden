@@ -336,6 +336,11 @@ local function popup_handler(cl, source, status)
 
 	elseif (status.kind == "message") then
 		local wnd = wlwnds[source];
+		if not wnd then
+			log(fmt("popup:source=%d:unknown_wnd:message=%s", source, status.message));
+			return;
+		end
+
 		local opts = string.split(status.message, ":");
 		if opts[1] and opts[1] == "geom" then
 			local x, y, w, h;
@@ -413,7 +418,6 @@ local function build_application_window(wnd, source, stat, opts, atype, handler)
 	if (not newwnd) then
 		return false;
 	end
-	newwnd.wl_autossd = opts.auto_ssd;
 
 -- since the 'registered' event won't get routed past the extevh, we need
 -- to manually apply the atype for the toplevel here - this does not attach/
@@ -446,7 +450,6 @@ seglut["application"] = function(wnd, source, stat)
 		show_titlebar = false,
 		show_border = false,
 		block_shadow = true,
-		auto_ssd = gconfig_get("wl_decorations") == "autossd",
 	}, "wayland-toplevel", wayland_toplevel_handler);
 end
 
@@ -566,34 +569,6 @@ function(wnd, source, stat)
 
 	return true;
 end
-
-gconfig_register("wl_decorations", "client");
-local wayland_settings = {
-{
-	name = "decorations",
-	label = "Decorations",
-	kind = "value",
-	description = "Set the default decoration policy for new clients",
-	set = {"client", "autossd"},
-	handler = function(ctx, val)
-		gconfig_set("wl_decorations", val);
-	end
-},
-};
-
-menus_register("global", "settings",
-{
-	name = "wayland",
-	label = "Wayland",
-	kind = "action",
--- disable for now, code isn't that robust
-	eval = function()
-		return false;
-	end,
-	submenu = true,
-	description = "Global settings for all wayland clients",
-	handler = wayland_settings
-});
 
 return {
 	atype = "bridge-wayland",
