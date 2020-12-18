@@ -103,9 +103,18 @@ local function wnd_drag_preview_synch(wnd)
 		if image_hit(btn.bg, x, y) then
 			old_btn = btn
 			btn:switch_state("active")
+
+			if valid_vid(wnd.drag_move_preview) then
+				delete_image(wnd.drag_move_preview)
+				wnd.drag_move_preview = nil
+				wnd.in_drag_last = nil
+				wnd.drag_move_pos = nil
+			end
 			return
 		end
 	end
+
+	old_btn = nil
 
 -- the action depends on if we are in tiling or not
 	if wnd.space.mode ~= "tile" then
