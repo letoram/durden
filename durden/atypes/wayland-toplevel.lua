@@ -114,19 +114,6 @@ toplevel_lut["resize"] = function(wnd, dx, dy)
 	set_dragrz_state(wnd, mask, true);
 end
 
-local function auto_ssd(wnd)
-	local props = image_storage_properties(wnd.canvas);
-	local t = wnd.geom[2];
-	local l = wnd.geom[1];
-	local d = props.height - wnd.geom[4] - wnd.geom[2];
-	local r = props.width - wnd.geom[3] - wnd.geom[1];
-	wnd:set_crop(t, l, d, r);
-
-	log(fmt("auto_ssd:crop_t=%d:crop_l=%d:crop_d=%d:crop_r=%d", t, l, d, r));
-
--- also deploy wnd-impostor by means of calctarget with shader and look for edge
-end
-
 -- try and center but don't go out of screen boundaries
 local function center_to(wnd, parent)
 	local dw = wnd.width;
@@ -312,9 +299,6 @@ function wayland_toplevel_handler(wnd, source, status)
 				if (not wnd.geom or (wnd.geom[1] ~= x or
 					wnd.geom[2] ~= y or wnd.geom[3] ~= w or wnd.geom[4] ~= h)) then
 					wnd.geom = {x, y, w, h};
-					if (wnd.wl_autossd) then
-						auto_ssd(wnd);
-					end
 -- new geometry, if we're set to autocrop then do that, if we have an
 -- impostor defined, update it now
 				end
@@ -435,26 +419,6 @@ local function wl_resize(wnd, neww, newh, efw, efh)
 end
 
 local toplevel_menu = {
-	{
-		name = "crop_geom",
-		label = "Auto-SSD",
-		kind = "value",
-		description = "Automatically crop non-geometry area and impostor titlebar",
-		initial = function()
-			return active_display().selected.wl_autossd and LBL_YES or LBL_NO;
-		end,
-		set = {LBL_YES, LBL_NO},
-		handler = function(ctx, val)
-			local wnd = active_display().selected;
-			if (val == LBL_YES) then
-				wnd.wl_autossd = true;
-				auto_ssd(wnd);
-			else
-				wnd.wl_autossd = false;
-				wnd:set_crop(0, 0, 0, 0);
-			end
-		end
-	},
 	{
 		name = "debug",
 		label = "Debug Bridge",
