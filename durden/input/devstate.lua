@@ -243,7 +243,6 @@ end
 
 local function set_period(id, val)
 	if (val == nil) then
-		print("set_delay broken", id, val, debug.traceback());
 		return;
 	end
 	def_period = val < 0 and 0 or val;
@@ -251,7 +250,6 @@ end
 
 local function set_delay(id, val)
 	if (val == nil) then
-		print("set_delay broken", id, val, debug.traceback());
 		return;
 	end
 
