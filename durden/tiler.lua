@@ -5314,7 +5314,7 @@ local function tiler_activate(wm)
 		local deact = wm.deactivated;
 		wm.deactivated = nil;
 		mouse_absinput_masked(deact.mx, deact.my, true);
-		if (deact.wnd) then
+		if (deact.wnd and deact.wnd.select) then
 			deact.wnd:select();
 		end
 	end
