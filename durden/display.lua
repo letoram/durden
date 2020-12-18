@@ -15,6 +15,9 @@ end
 
 local SIZE_UNIT = 38.4;
 local displays = {};
+local is_display_simple = false;
+local display_main = 1;
+
 local profiles = {};
 local ignored = {};
 local display_listeners = {};
@@ -127,7 +130,7 @@ function display_scanprofiles()
 		return;
 	end
 	table.sort(lst);
-	for k,v in ipairs(lst) do
+	for _,v in ipairs(lst) do
 		local res = tryload("devmaps/display/" .. v);
 		if (res) then
 			table.insert(profiles, res);
@@ -163,7 +166,7 @@ local function autohome_windows(ndisp)
 		end
 	end
 
-	for i, disp in ipairs(displays) do
+	for _,disp in ipairs(displays) do
 		local tiler = disp.tiler;
 
 		if (tiler and tiler ~= ndisp.tiler) then
@@ -182,8 +185,8 @@ end
 
 local function set_mouse_scalef()
 	local sf = gconfig_get("mouse_scalef");
-	mouse_cursor_sf(sf * displays[displays.main].tiler.scalef,
-		sf * displays[displays.main].tiler.scalef);
+	mouse_cursor_sf(sf * displays[display_main].tiler.scalef,
+		sf * displays[display_main].tiler.scalef);
 end
 
 -- execute [cb] in the attachment context of [tiler], needed with
@@ -192,7 +195,7 @@ end
 function display_tiler_action(tiler, cb)
 	for i,v in ipairs(displays) do
 		if (v.tiler == tiler) then
-			local save = displays.main;
+			local save = display_main;
 			set_context_attachment(v.rt);
 			cb();
 			set_context_attachment(displays[save].rt);
@@ -203,7 +206,7 @@ end
 
 -- same as for display_tiler_action, just a different lookup function
 function display_action(disp, cb)
-	local save = displays.main;
+	local save = display_main;
 
 	if (type(disp) == "number") then
 		set_context_attachment(disp);
@@ -215,16 +218,17 @@ function display_action(disp, cb)
 end
 
 local function switch_active_display(ind)
-	if (displays[ind] == nil or not valid_vid(displays[ind].rt)) then
+	if (displays[ind] == nil or not
+		valid_vid(displays[ind].rt) or type(ind) 	~= "number") then
 		return;
 	end
 
-	displays[displays.main].tiler:deactivate();
+	displays[display_main].tiler:deactivate();
 	displays[ind].tiler:activate();
-	displays.main = ind;
+	display_main = ind;
 	set_context_attachment(displays[ind].rt);
 	mouse_querytarget(displays[ind].rt);
-	display_log(fmt("active_display:%d", ind));
+	display_log(fmt("active_display:ind=%d:id=%d", ind, displays[ind].id));
 	set_mouse_scalef();
 end
 
@@ -236,7 +240,7 @@ function display_output_table(name)
 	}
 
 	if not name then
-		disp = displays[displays.main];
+		disp = displays[display_main];
 	else
 		disp = get_disp(name);
 	end
@@ -270,8 +274,8 @@ local function set_best_mode(disp, desw, desh)
 		local dx = desw - a.width;
 		local dy = desh - a.height;
 		local ea = math.sqrt((dx * dx) + (dy * dy));
-		local dx = desw - b.width;
-		local dy = desh - b.height;
+		dx = desw - b.width;
+		dy = desh - b.height;
 		local eb = math.sqrt((dx * dx) + (dy * dy));
 
 -- same resolution? take the matching refresh, not the highest as that would
@@ -316,7 +320,7 @@ end
 --
 --  * use more native post-processing for ICC-/ gamma correction
 --
-function display_fullscreen(name, vid, modesw, mapv)
+function display_fullscreen(name, vid, modesw)
 	local disp = get_disp(name);
 	if (not disp) then
 		return;
@@ -382,7 +386,7 @@ end
 -- we should allow an edid override here as well - though linux etc. provide
 -- that at a lower level
 local function display_data(id)
-	local data, hash = video_displaydescr(id);
+	local data = video_displaydescr(id);
 	local model = "unknown";
 	local serial = "unknown";
 
@@ -438,15 +442,25 @@ local function get_name(id)
 		map_video_display(displays[1].map_rt, id, HINT_NONE);
 	end
 
--- Try and extract display name/serial from the EDID but since some cheap
--- displays also come with the same EDID we need to tag with the id slot
--- or we get duplicates (mirrored mode).
-	local model, serial = display_data(id);
+	local model, serial = display_data(id)
+
+-- we don't always get a model/serial from the EDID, but when we do:
 	if (model) then
-		name = string.split(model, '\r')[1] .. "/" .. serial .. tostring(id);
+		name = string.split(model, '\r')[1] .. "/" .. serial
+		display_log(fmt("id=%d:model=%s:serial=%s", id, model, serial));
+		local found
+
+-- now the display might already exist (do nothing), there might be a display
+-- with the same name/serial from a sloppy monitor (need to suffix)
+		for _, v in ipairs(displays) do
+			if v.name == name and not v.orphan and id ~= v.id then
+				name = name .. "_" .. tostring(id)
+				break
+			end
+		end
 		ok = true;
 	else
-		display_log(fmt("id=%d:error=%s", id, "no_edid"));
+		display_log(fmt("id=%d:error=no_edid", id));
 	end
 
 	return name, ok;
@@ -697,17 +711,25 @@ local function display_added(id)
 -- if this 'fails', name will be some generated default as we know we have a
 -- new display we just wasn't able to extract it from EDID because
 -- all-identifiers-are-broken-fsck-hardware(TM), so as a mitigation to those
--- bugs, pick the first orphan display and assume it was just some ACPI issue
--- or similar nightmare. A softer version for this might also be useful by
--- throwing in a timer so that we first map something to the display, give
--- it enough time to propagate, and then re-query EDID.
+-- bugs, pick a pre-existing display with the same id IF it is orphaned,
+-- otherwise the first known orphaned display.
+--
+-- A softer version for this might also be useful by throwing in a timer so
+-- that we first map something to the display, give it enough time to
+-- propagate, and then re-query EDID.
 	local name, name_ok = get_name(id);
 	if not name_ok then
-		for i,v in ipairs(displays) do
-			if (v.orphan) then
-				name = v.name
-				display_log(fmt("id=%d:status=warning:fail_assume_adopt:name=%s", i, name));
-				break
+		local disp = get_disp(id);
+		if disp.orphan then
+			name = disp.name
+			display_log(fmt("id=%d:status=warning:fail_assume_same_adopt:name=%s", id, name));
+		else
+			for i,v in ipairs(displays) do
+				if (v.orphan) then
+					name = v.name
+					display_log(fmt("id=%d:status=warning:fail_assume_adopt:name=%s", i, name));
+					break
+				end
 			end
 		end
 	end
@@ -746,10 +768,6 @@ end
 
 local last_rescan = CLOCK;
 function display_event_handler(action, id)
-	if (displays.simple) then
-		return;
-	end
-
 	if not wm_alloc_function then
 		table.insert(display_event_buffer, {action, id});
 		return;
@@ -873,8 +891,8 @@ function display_manager_init(alloc_fn)
 
 	displays[1] = ddisp;
 
-	displays.simple = gconfig_get("display_simple");
-	displays.main = 1;
+	is_display_simple = gconfig_get("display_simple");
+	display_main = 1;
 	ddisp.ind = 1;
 	ddisp.tiler.name = "default";
 
@@ -882,7 +900,7 @@ function display_manager_init(alloc_fn)
 -- different color etc. correction shaders or rotate/fit/.. it's
 -- essentially just for low powered nested use
 
-	if (not displays.simple) then
+	if (not is_display_simple) then
 		rendertarget_forceupdate(WORLDID, 0);
 		if (not arcan_nested) then
 			delete_image(WORLDID);
@@ -909,7 +927,7 @@ function display_manager_init(alloc_fn)
 end
 
 function display_attachment()
-	if (displays.simple) then
+	if (not is_display_simple) then
 		return nil;
 	else
 		return displays[1].rt;
@@ -1001,7 +1019,7 @@ function display_add(name, width, height, ppcm, id)
 -- in the real case, we'd switch to the last known resolution
 -- and then set the display to match the rendertarget
 		found = nd;
-		set_context_attachment(displays[displays.main].rt);
+		set_context_attachment(displays[display_main].rt);
 	end
 
 -- this also takes care of spaces that are saved as preferring a certain disp.
@@ -1151,7 +1169,7 @@ function display_remove(id)
 
 -- if it was the main display we lost, cycle to the next one so that gets
 -- set as main
-	if (foundi == displays.main) then
+	if (foundi == display_main) then
 		display_cycle_active(ws);
 	end
 
@@ -1167,7 +1185,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 		w, h, vppcm, flags, source)
 	);
 
-	for k,v in ipairs(displays) do
+	for _,v in ipairs(displays) do
 		if (v.id == source) then
 			disp = v;
 			break;
@@ -1175,7 +1193,7 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 	end
 
 	if (gconfig_get("lwa_autores")) then
-		if (displays.simple) then
+		if (is_display_simple) then
 			resize_video_canvas(w, h);
 			disp.tiler:resize(w, h, true);
 		else
@@ -1190,7 +1208,6 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			end);
 		end
 	end
-
 end
 
 function display_ressw(name, mode)
@@ -1236,17 +1253,17 @@ end
 
 function display_cycle_active(ind)
 	if (type(ind) == "boolean") then
-		switch_active_display(displays.main);
+		switch_active_display(display_main);
 		return;
 	elseif (type(ind) == "number") then
 		switch_active_display(ind);
 		return;
 	end
 
-	local nd = displays.main;
+	local nd = display_main;
 	repeat
 		nd = (nd + 1 > #displays) and 1 or (nd + 1);
-	until (nd == displays.main or not
+	until (nd == display_main or not
 		(displays[nd].orphan or displays[nd].disabled));
 
 	switch_active_display(nd);
@@ -1280,7 +1297,7 @@ function display_migrate_ws(tiler, dstname)
 end
 
 function display_reorient(name, hint)
-	if (displays.simple) then
+	if (is_display_simple) then
 		return;
 	end
 
@@ -1294,7 +1311,7 @@ function display_reorient(name, hint)
 end
 
 function display_simple()
-	return displays.simple;
+	return is_display_simple;
 end
 
 function display_share(disp, args, recfn)
@@ -1327,22 +1344,18 @@ end
 -- state.
 function active_display(rt, raw)
 	if (raw) then
-		return displays[displays.main];
+		return displays[display_main];
 	end
 
-	if (not displays[displays.main]) then
+	if (not displays[display_main]) then
 		return;
 	end
 
 	if (rt) then
-		return displays[displays.main].rt;
+		return displays[display_main].rt;
 	else
-		return displays[displays.main].tiler;
+		return displays[display_main].tiler;
 	end
-end
-
-	local function save_active_display()
-		return displays.main;
 end
 
 --
@@ -1359,7 +1372,7 @@ local function aditer(rawdisp, showorph, showdis)
 	end
 	local c = #tbl;
 	local i = 0;
-	local save = displays.main;
+	local save = display_main;
 
 	return function()
 		i = i + 1;
@@ -1390,7 +1403,7 @@ function all_spaces_iter()
 	end
 	local c = #tbl;
 	local i = 0;
-	local save = displays.main;
+	local save = display_main;
 
 	return function()
 		i = i + 1;
@@ -1414,7 +1427,7 @@ function all_windows(atype, noswitch)
 
 	local i = 0;
 	local c = #tbl;
-	local save = displays.main;
+	local save = display_main;
 
 	return function()
 		i = i + 1;
@@ -1439,7 +1452,7 @@ function displays_alive(filter)
 	local res = {};
 
 	for k,v in ipairs(displays) do
-		if (not (v.orphan or v.disabled) and (not filter or k ~= displays.main)) then
+		if (not (v.orphan or v.disabled) and (not filter or k ~= display_main)) then
 			table.insert(res, v.name);
 		end
 	end
@@ -1453,7 +1466,7 @@ function display_tick()
 		end
 
 -- periodically check source for dedicated fullscreen mode
-		if (not displays.simple and v.monitor_vid) then
+		if (not is_display_simple and v.monitor_vid) then
 
 -- on death, set "BADID" (which will revert mapping to normal rt)
 			if (not valid_vid(v.monitor_vid, TYPE_FRAMESERVER)) then
