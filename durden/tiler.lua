@@ -136,6 +136,7 @@ local function sbar_geth(wm, ign)
 			((wm.spaces[wm.space_ind] and
 				wm.spaces[wm.space_ind].mode == "fullscreen")) then
 					wm.statusbar:hide();
+					print("hide sbar", wm.statusbar.nested)
 					return 0;
 		else
 			return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
@@ -190,6 +191,8 @@ local function wnd_titlebar_to_statusbar(wnd)
 			end
 		end
 	);
+
+	wnd.space:resize();
 end
 
 local function moveup_children(wnd)
@@ -1701,8 +1704,8 @@ local function set_float(space)
 			move_image(v.anchor, v.x, v.y, lm, interp);
 -- if window havn't been here before, clamp
 		else
-			neww = props.width + v.pad_left + v.pad_right;
-			newh = props.height + v.pad_top + v.pad_bottom;
+			neww = props.width;
+			newh = props.height;
 			neww = (space.wm.effective_width < neww
 				and space.wm.effective_width) or neww;
 			newh = (space.wm.effective_height < newh
@@ -2841,8 +2844,6 @@ end
 
 local function wnd_drag_resize(wnd, mctx, enter)
 	if (enter) then
-		if (not wnd.in_drag_rz) then
-		end
 		wnd.in_drag_rz = true;
 		wnd.drag_dx = 0;
 		wnd.drag_dy = 0;
@@ -3830,15 +3831,20 @@ local function wnd_titlebar(wnd, visible)
 		h = tbar_geth(wnd);
 	end
 
-	if (wnd.space.mode == "float") then
-		wnd.height = wnd.height + h;
-		wnd_size_decor(wnd, wnd.width, wnd.height, false);
-
-	elseif (wnd.space.mode == "tile") then
-		wnd:resize(wnd.width, wnd.height, true, true);
+	local selected = wnd.wm.selected == wnd;
+	if visible and wnd.wm.statusbar == wnd.titlebar then
+		wnd.wm.statusbar:set_nested()
+	elseif selected and not visible then
+		wnd_titlebar_to_statusbar(wnd)
 	end
 
-	wnd.space:resize();
+--	if (wnd.space.mode == "float") then
+--		wnd.height = wnd.height + h;
+--		wnd_size_decor(wnd, wnd.width, wnd.height, false);
+--		wnd.space:resize();
+--	end
+
+	wnd:resize(wnd.width, wnd.height, true, true);
 end
 
 local function wnd_border(wnd, visible, user_force, bw)
