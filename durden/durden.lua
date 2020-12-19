@@ -431,7 +431,6 @@ end
 local function desel_input(wnd)
 	SYMTABLE:translation_overlay({});
 	wnd.iostatem = iostatem_save();
-	mouse_switch_cursor("default");
 end
 
 -- separated from launch etc. as we don't want it for subwindows,
@@ -499,6 +498,7 @@ local adopt_new = {};
 function durden_adopt(vid, kind, title, parent, last)
 -- always ignore unknown ones as they are likely pending or external listening
 	if (kind == "unknown") then
+		conn_log(conn_fmt("adopt=%d:kind=unknown:reject_wnd", vid));
 		return false;
 	end
 
@@ -521,6 +521,7 @@ function durden_adopt(vid, kind, title, parent, last)
 -- build a new window with the old title etc.
 	local wnd = durden_launch(vid, title);
 	if (not wnd) then
+		conn_log(conn_fmt("adopt=%d:kind=%s:reject_wnd", vid, kind));
 		return;
 	end
 
