@@ -660,11 +660,17 @@ local function bar_hide(bar, key)
 	bar.hidekey = key;
 	bar.hidden = true;
 	hide_image(bar.anchor);
+	if bar.nested then
+		bar.nested:hide(key)
+	end
 end
 
 local function bar_show(bar, key)
 	if (not bar.hidekey or (key and bar.hidekey == key)) then
 		show_image(bar.anchor);
+		if bar.nested then
+			bar.nested:show(key)
+		end
 		bar.hidden = false;
 	end
 end
