@@ -63,7 +63,9 @@ local res = {
 	default_shader = {"simple", "crop"},
 	atype = "terminal",
 	props = {
-		scalemode = "stretch",
+-- keep as client for now, when the server-side rendering can do cropping
+-- and clipping correctly for tui surfaces we can reconsider..
+		scalemode = "client",
 		autocrop = true,
 		font_block = true,
 		filtermode = FILTER_NONE,
