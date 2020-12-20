@@ -303,6 +303,17 @@ function(wnd, source, stat)
 		wnd.shader_hook();
 	end
 
+-- need to nudge the window with the size delta based on the mask
+	if wnd.in_drag_rz then
+		local dt = wnd.drag_sz_ack;
+		local dw = wnd.effective_w - stat.width;
+		local dh = wnd.effective_h - stat.height;
+		local dx = dw * dt.pos_x;
+		local dy = dh * dt.pos_y;
+		wnd:move(dx, dy, false, false, true)
+	end
+
+-- this will force a resize
 	wnd:resize_effective(stat.width, stat.height, true, true);
 	wnd.space:resize(true);
 end
