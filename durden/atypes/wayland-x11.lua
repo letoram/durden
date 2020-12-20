@@ -21,6 +21,16 @@ local function viewport(wnd, status)
 end
 
 local function resize(wnd, status)
+-- need to nudge the window with the size delta based on the mask
+	if wnd.in_drag_rz then
+		local dt = wnd.drag_sz_ack;
+		local dw = wnd.effective_w - status.width;
+		local dh = wnd.effective_h - status.height;
+		local dx = dw * dt.pos_x;
+		local dy = dh * dt.pos_y;
+		wnd:move(dx, dy, false, false, true)
+	end
+
 	wnd:resize_effective(status.width, status.height, true, true);
 end
 

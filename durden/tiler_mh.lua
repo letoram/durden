@@ -3,6 +3,8 @@
 -- mouse handlers, as well as the default implementation for mouse events that
 -- are attached to a window on creation.
 --
+-- Much of this could/should be reworked to use builtin/decorator.lua instead.
+--
 local tiler_logfun = suppl_add_logfn("wm");
 local function tiler_debug(wm, msg)
 	msg = msg and msg or "bad message";
@@ -219,19 +221,27 @@ local function step_drag_resize(wnd, mctx, vid, dx, dy)
 		return;
 	end
 
-	wnd.x = wnd.x + dx * mctx.mask[3];
-	wnd.y = wnd.y + dy * mctx.mask[4];
+	local dt = wnd.drag_sz_ack
 
 -- for client- driven resizing, we can only send our suggestion ('configure')
 -- and then wait in the client event handler on a time where that makes sense
 	if (wnd.scalemode == "client" and
 		valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-		wnd.max_w = wnd.max_w + dx;
-		wnd.max_h = wnd.max_h + dy;
-		wnd:run_event("resize",
-			wnd.max_w, wnd.max_h, wnd.effective_w, wnd.effective_h);
+
+-- remember the accumulated delta (as the client ack will be dragging behind)
+-- then we flush in the extevh- resized handler
+		dt.acc_x = dt.acc_x + dx
+		dt.acc_y = dt.acc_y + dy
+
+		wnd:displayhint(
+			dt.w + dt.acc_x * dt.size_x,
+			dt.h + dt.acc_y * dt.size_y, wnd.dispmask
+		);
 
 	else
+		wnd.x = wnd.x + dx * mctx.mask[3];
+		wnd.y = wnd.y + dy * mctx.mask[4];
+
 		wnd:resize(
 			wnd.width + dx * mctx.mask[1],
 			wnd.height + dy * mctx.mask[2],
@@ -502,13 +512,10 @@ local function build_canvas(wnd)
 -- with no decoration and a client that has requested that we are in resize
 -- mode, we need to repeat the same dance we do in the border handler
 		if (wnd.in_drag_rz) then
-			if (wnd.in_drag_rz_mask) then
-				ctx.mask = wnd.in_drag_rz_mask;
-			end
 			if (type(wnd.in_drag_rz) == "function") then
 				wnd:in_drag_rz(ctx, vid, dx, dy);
 			else
-				wnd_step_drag(wnd, ctx, vid, dx, dy);
+				step_drag_resize(wnd, ctx, vid, dx, dy);
 			end
 
 -- move is easier, but options that are specific for mouse here:
@@ -544,7 +551,7 @@ local function build_canvas(wnd)
 		end
 
 		wnd.in_drag_rz = false;
-		mouse_switch_cursor();
+		wnd:mouseactivate();
 	end,
 
 	press = function(ctx, vid, ...)

@@ -1,4 +1,4 @@
-# 0.6.0
+# 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
 now trigger the file browser accordingly.
@@ -171,6 +171,8 @@ edid fail after power cycle
 * input devices can be forgotten (global/input/all-devices/dev/forget=yes
 
 * better error reporting for init-script errors
+
+* number of fixes to drag-resize
 
 # 0.5.0
   * tools/advfloat:

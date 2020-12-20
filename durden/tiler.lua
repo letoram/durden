@@ -136,7 +136,6 @@ local function sbar_geth(wm, ign)
 			((wm.spaces[wm.space_ind] and
 				wm.spaces[wm.space_ind].mode == "fullscreen")) then
 					wm.statusbar:hide();
-					print("hide sbar", wm.statusbar.nested)
 					return 0;
 		else
 			return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
@@ -1643,6 +1642,7 @@ local function set_fullscreen(space)
 	show_image(dw.anchor);
 	dw:set_border(false);
 	dw:set_titlebar(false);
+	dw:set_dispmask(TD_HINT_FULLSCREEN);
 
 -- need to hook switching between workspaces to enable things like the sbar
 	space.mode_hook = drop_fullscreen;
@@ -2845,8 +2845,16 @@ end
 local function wnd_drag_resize(wnd, mctx, enter)
 	if (enter) then
 		wnd.in_drag_rz = true;
-		wnd.drag_dx = 0;
-		wnd.drag_dy = 0;
+		wnd.drag_sz_ack = {
+			w      = wnd.effective_w,
+			h      = wnd.effective_h,
+			acc_x  = 0,
+			acc_y  = 0,
+			size_x = mctx.mask[1], -- multiply acc to get dw, dh
+			size_y = mctx.mask[2],
+			pos_x  = mctx.mask[3], -- multiply acc to get move- delta
+			pos_y  = mctx.mask[4]
+		};
 		wnd.drag_mode = wnd.scalemode;
 
 -- it was easier (though not as pretty) this way to get the problem
@@ -3651,8 +3659,8 @@ local function wnd_dispmask(wnd, val, noflush)
 	if (not noflush) then
 		wnd:displayhint(0, 0, wnd.dispmask);
 
--- focus target is a new arcan API so wait with assuming its existance
-		if (focus_target and not bit.band(wnd.dispmask, TD_HINT_UNFOCUSED)
+-- tell the scheduler to prioritise this target
+		if (not bit.band(wnd.dispmask, TD_HINT_UNFOCUSED)
 			and valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 			focus_target(wnd.external);
 		end
@@ -4591,14 +4599,6 @@ local function default_displayhint(wnd, hw, hh, dm, tbl, ...)
 
 	if (not dm) then
 		dm = wnd.dispmask;
-	end
-
--- basically only WL clients care about this because hey, CSD -
--- but this also fights with cropping away CSD as the geometry
--- changes
-	if (wnd.space and
-		(wnd.space.mode ~= "float" or wnd.maximized)) then
-		dm = bit.bor(dm, TD_HINT_MAXIMIZED);
 	end
 
 -- so many important details to this that it's better to have a
