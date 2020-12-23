@@ -225,13 +225,13 @@ local function launch(str, cfg, tag)
 	end
 end
 
-local function target_cfgmenu(str, cfgs)
+local function target_cfgmenu(str, cfgs, noquery)
 	local res = {};
 	for k,v in ipairs(cfgs) do
 		table.insert(res,{
 			name = "launch_" .. string.hexenc(util.hash(str))
 				.. "_" .. string.hexenc(util.hash(v)),
-			kind = "value",
+			kind = noquery and "action" or "value",
 			validator = function(val)
 				return not val or #val == 0 or suppl_valid_name(val);
 			end,
@@ -243,7 +243,7 @@ local function target_cfgmenu(str, cfgs)
 	return res;
 end
 
-local function target_submenu()
+local function target_submenu(noquery)
 	local res = {};
 	local targets = list_targets();
 	for k,v in ipairs(targets) do
@@ -252,14 +252,14 @@ local function target_submenu()
 		if (#cfgs == 1) then
 			table.insert(res, {
 				name = short,
-				kind = "value",
+				kind = noquery and "action" or "value",
 				hint = "(optional window tag)",
 				validator = function(val)
 					return not val or #val == 0 or suppl_valid_name(val);
 				end,
 				label = v,
 				handler = function(ctx, val)
-					launch(v, cfgs[1], val);
+					launch(v, cfgs[1], val, noquery);
 				end,
 			});
 		elseif (#cfgs > 1) then
@@ -268,7 +268,7 @@ local function target_submenu()
 				kind = "action",
 				label = v,
 				handler = function()
-					return target_cfgmenu(v, cfgs, val);
+					return target_cfgmenu(v, cfgs, val, noquery);
 				end,
 				submenu = true
 			});
@@ -372,7 +372,20 @@ return {
 		local tgt = list_targets();
 		return tgt ~= nil and #tgt > 0;
 	end,
-	handler = target_submenu
+	handler = function() return target_submenu(true); end
+},
+{
+	name = "target_tag",
+	label = "Target (Tagging)",
+	description = "Target but query for a window tag and options, mainly useful for automation",
+	submenu = true,
+	kind = "action",
+	force_completion = true,
+	eval = function()
+		local tgt = list_targets();
+		return tgt ~= nil and #tgt > 0;
+	end,
+	handler = function() return target_submenu(false); end
 },
 {
 	name = "terminal_group",

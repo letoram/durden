@@ -1,3 +1,6 @@
+# 0.6.2
+* split out target/open into target/open and target/open\_tag
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
