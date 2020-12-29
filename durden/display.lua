@@ -435,11 +435,9 @@ local function get_name(id)
 	if (id == 0) then
 		name = "default_";
 	else
--- first mapping nonsense has previously made it easier (?!)
--- getting a valid EDID in some cases, might need to move this
--- workaround to the platform layer though
+-- First mapping nonsense has previously made it easier (?!) getting a valid
+-- EDID in some cases, might need to move this workaround to the platform layer.
 		name = "unknown_" .. tostring(id);
-		map_video_display(displays[1].map_rt, id, HINT_NONE);
 	end
 
 	local model, serial = display_data(id)
@@ -466,7 +464,7 @@ local function get_name(id)
 end
 
 local function display_byname(name, id, w, h, ppcm)
-	local name, got_name = get_name(id);
+	local name, got_name = get_name(id, w, h);
 
 -- EDID resolving might have failed for some reason, if we have an orphan
 -- display and no other - chances are there was some bug from power
@@ -676,6 +674,7 @@ end
 
 local function display_added(id)
 	local modes = video_displaymodes(id);
+	display_log(fmt("added:id=%d", id));
 
 -- "safe" defaults
 	local dw = VRESW;
