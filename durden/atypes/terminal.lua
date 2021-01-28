@@ -26,6 +26,17 @@ local action_menu = {
 
 local res = {
 	dispatch = {
+		content_state = function(wnd, source, status)
+			if status.max_w <= 0 or status.max_h <= 0 or
+				not wnd.space or not wnd.space.in_float then
+				return
+			end
+
+-- could have other strategies here for tiled at least where any children or
+-- siblings get more space allocated to them, but would take some refactoring
+-- of the layout code
+			wnd:displayhint(status.max_w, status.max_h, wnd.dispmask)
+		end,
 
 -- add a sub- protocol for communicating cell dimensions, this is
 -- used to cut down on resize calls (as they are ** expensive in
