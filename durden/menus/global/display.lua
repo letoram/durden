@@ -421,6 +421,33 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
+		name = "format",
+		label = "Format",
+		description = "Change the underlying mapping format",
+		eval = function()
+			return not display_simple();
+		end,
+		kind = "value",
+		set = {"565", "888", "deep", "fp16"},
+		handler =
+		function(ctx, val)
+			local fmt
+
+-- 1. alloc new surface
+			if val == "565" then
+				fmt = ALLOC_QUALITY_LOW
+			elseif val == "888" then
+				fmt = ALLOC_QUALITY_NORMAL
+			elseif val == "deep" then
+				fmt = ALLOC_QUALITY_HIGH
+			elseif val == "fp16" then
+				fmpt = ALLOC_QUALITY_FLOAT16
+			end
+
+			display_set_format(disp.name, fmt)
+		end
+		},
+		{
 		name = "remap",
 		label = "Remap",
 		description = "Map the display to the rendertarget of another",
