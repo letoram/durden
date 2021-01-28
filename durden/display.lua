@@ -304,6 +304,24 @@ function display_count()
 	return #displays;
 end
 
+function display_set_format(name, fmt)
+	local disp = get_disp(name);
+	if (not disp) then
+		return;
+	end
+
+	local buf = alloc_surface(disp.rw, disp.rh, true, fmt)
+	if not valid_vid(buf) then
+		return
+	end
+
+	local hint = display_maphint(disp)
+	display_log(fmt("display=%d:set_format=%d:hint=%d:", disp.id,fmt, hint))
+	image_sharestorage(buf, disp.map_rt)
+	image_sharestorage(buf, disp.rt)
+	map_video_display(disp.map_rt, hint)
+end
+
 -- "hard" fullscreen- mode where the window canvas is mapped directly to
 -- the display without going through the detour of a rendertarget. Note that
 -- this is not as close as we can go yet, but requires more platform support
@@ -483,6 +501,7 @@ local function display_byname(name, id, w, h, ppcm)
 		refresh = 60,
 		backlight = 1.0,
 		view_range = set_view_range,
+		format = ALLOC_QUALITY_NORMAL,
 		zoom = {
 			level = 1.0,
 			x = 0,
