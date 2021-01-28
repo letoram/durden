@@ -159,9 +159,10 @@ function(wnd, source, tbl)
 -- and update can come periodically. If that ever becomes an actual problem, using
 -- frame delivery as an indicator that the burst is over works.
 	client_log(fmt(
-		"input_label:name=%s:type=%s:sym=%s", tbl.labelhint, tbl.datatype, tbl.vsym));
+		"input_label:name=%s:type=%s:sym=%s", tbl.labelhint, tbl.idatatype, tbl.vsym));
 	if (not wnd.input_labels or #tbl.labelhint == 0) then
 		wnd.input_labels = {};
+		client_log("reset_labels")
 		if (#tbl.labelhint == 0) then
 			return;
 		end
