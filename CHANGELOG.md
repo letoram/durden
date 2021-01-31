@@ -1,5 +1,12 @@
 # 0.6.2
+
 * split out target/open into target/open and target/open\_tag
+
+* new path: display/displays/current/format for controlling output
+  format selection (rgb565, 888, deep, hdr, ...)
+
+* target/video/colors: add option to switch/control client-preferred
+  color palette for clients that support the feature
 
 # 0.6.0 - 0.6.1
 * universal open/save:

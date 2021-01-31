@@ -4844,6 +4844,9 @@ local wnd_setup = function(wm, source, opts)
 		weight = 1.0,
 		vweight = 1.0,
 
+-- custom color overrides
+		color_table = {},
+
 -- decoration controls
 		cursor = "default",
 		show_titlebar = not gconfig_get("hide_titlebar"),

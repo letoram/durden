@@ -329,7 +329,7 @@ local font_override = {
 local function color_cb(ind, r, g, b)
 	local wnd = active_display().selected;
 	wnd.color_table[ind] = {r, g, b};
-	target_graphmode(wnd.external, ind, r, g, b);
+	target_graphmode(wnd.external, ind + 2, r, g, b);
 	target_graphmode(wnd.external, 0);
 end
 
@@ -453,9 +453,10 @@ return {
 		label = "Colors",
 		kind = "action",
 		submenu = true,
-		eval = function() return active_display().selected.color_table ~= nil; end,
 		description = "Color control for clients that support server- defined colors",
-		suppl_color_menu(color_cb, color_lookup)
+		handler = function()
+			return suppl_color_menu(active_display().selected.external)
+		end
 	},
 	{
 		label = "Advanced",
