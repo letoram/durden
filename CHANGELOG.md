@@ -8,6 +8,10 @@
 * target/video/colors: add option to switch/control client-preferred
   color palette for clients that support the feature
 
+minor:
+
+* value-input cancel-out crash fixed
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
