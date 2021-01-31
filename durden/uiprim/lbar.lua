@@ -162,7 +162,11 @@ local function update_completion_set(wm, ctx, set)
 	ctx.ucount = ctx.ucount + 1;
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	if (ctx.canchor) then
-		delete_image(ctx.canchor);
+
+		if valid_vid(ctx.canchor) then
+			delete_image(ctx.canchor);
+		end
+
 		for i,v in ipairs(pending) do
 			mouse_droplistener(v);
 		end
