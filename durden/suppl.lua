@@ -663,42 +663,124 @@ end
 -- offset by 2 as shown in arcan_tuisym.h
 local color_labels =
 {
-	{"primary", "Dominant foreground"},
-	{"secondary", "Dominant alternative foreground"},
-	{"background", "Default background"},
-	{"text", "Default text"},
-	{"cursor", "Default caret or mouse cursor"},
-	{"altcursor", "Default alternative-state caret or mouse cursor"},
-	{"highlight", "Default marked / selection state"},
-	{"label", "Text labels and content annotations"},
-	{"warning", "Labels and text that require additional consideration"},
-	{"error", "Indicate wrong input or other erroneous state"},
-	{"alert", "Areas that require immediate attention"},
-	{"inactive", "Labels where the related content is currently inaccessible"},
-	{"reference", "Actions that reference external contents or trigger navigation"}
+	{2, "primary", "Primary"},
+	{3, "secondary", "Secondary"},
+	{4, "background", "Background"},
+	{5, "text", "Text"},
+	{256+5, "text_bg", "Text-Background"},
+	{6, "cursor", "Cursor"},
+	{7, "altcursor", "Alternate-Cursor"},
+	{8, "highlight", "Text Highlight"},
+	{256+8, "highlight_bg", "Text Highlight Background"},
+	{9, "label", "Label", "Group/Content Descriptions"},
+	{256+9, "label", "Label Background", "Group/Content Descriptions"},
+	{10, "warning", "Warning", "Indicators of recoverable errors"},
+	{256+10, "warning_bg", "Warning Background", "Indicators of recoverable errors"},
+	{11, "error", "Error"},
+	{256+11, "error", "Error Background"},
+	{12, "alert", "Alert", "Catch user attention"},
+	{256+12, "alert", "Alert Background", "Catch user attention"},
+	{13, "inactive", "Inactive", "Labels where the related content is currently inaccessible"},
+	{256+13, "inactive", "Inactive Background", "Labels where the related content is currently inaccessible"},
+	{14, "reference", "Reference", "Actions that reference external contents or trigger navigation"},
+	{256+14, "reference", "Reference Background", "Actions that reference external contents or trigger navigation"},
+	{15, "ui", "UI", "User Interface Elements"},
+	{256+15, "ui", "UI Background", "User Interface Elements"},
+	{16, "black", "Terminal-Black"},
+	{17, "red", "Terminal-Red"},
+	{18, "green", "Terminal-Green"},
+	{19, "yellow", "Terminal-Yellow"},
+	{20, "blue", "Terminal-Blue"},
+	{21, "magenta", "Terminal-Magenta"},
+	{22, "cyan", "Terminal-Cyan"},
+	{23, "light_grey", "Terminal-Light-Grey"},
+	{24, "dark_grey", "Terminal-Dark-Grey"},
+	{25, "light_red", "Terminal-Light-Red"},
+	{26, "light_green", "Terminal-Light-Green"},
+	{27, "light_yellow", "Terminal-Light-Yellow"},
+	{28, "light_blue", "Terminal-Light-Blue"},
+	{29, "light_magenta", "Terminal-Light-Magenta"},
+	{30, "light_cyan", "Terminal-Light-Cyan"},
+	{31, "white", "Terminal-White"},
+	{32, "fg", "Terminal-Foreground"},
+	{33, "bg", "Terminal-Background"},
 };
+
+local function glob_scheme_menu(dst)
+	local list = glob_resource("devmaps/colorschemes/*.lua", APPL_RESOURCE);
+	local res = {};
+	list = list and list or {};
+
+	for i,v in ipairs(list) do
+-- protect against '.lua' file edge condition
+		local name = string.sub(v, 1, -5)
+		if #name > 0 then
+			table.insert(res, {
+				name = "colorscheme_" .. tostring(i),
+				label = name,
+				description = "Apply colorscheme " .. name,
+				kind = "action",
+				handler = function()
+					local tbl = suppl_script_load("devmaps/colorschemes/" .. v, false)
+					if type(tbl) == "table" and valid_vid(dst, TYPE_FRAMESERVER) then
+						suppl_tgt_color(dst, tbl)
+					end
+				end
+			})
+		end
+	end
+	return res
+end
 
 -- Generate menu entries for defining colors, where the output will be
 -- sent to cb. This is here in order to reuse the same tables and code
 -- path for both per-window overrides and some global option
-function suppl_color_menu(cb, lookup)
-	local res = {};
+function suppl_color_menu(vid)
+	local res = {
+		{
+			name = "scheme",
+			label = "Scheme",
+			kind = "action",
+			description = "Apply a static color scheme from (devmaps/colorschemes)",
+			submenu = true,
+			handler = function()
+				return glob_scheme_menu(vid)
+			end,
+		},
+		{
+			name = "opacity",
+			label = "Opacity",
+			description = "Change background layer opacity (alpha channel)",
+			kind = "value",
+			hint = "(0..1)",
+			validator = gen_valid_float(0, 1),
+			handler = function(ctx, val)
+				if not valid_vid(vid, TYPE_FRAMESERVER) then
+					return
+				end
+				target_graphmode(vid, 1, tonumber(val) * 255)
+				target_graphmode(vid, 0)
+			end
+		}
+	}
+
 	for k,v in ipairs(color_labels) do
 		table.insert(res, {
-			name = v[1],
-			label =
-				string.upper(string.sub(v[1], 1, 1)) .. string.upper(string.sub(v[1], 2)),
+			name = v[2],
+			label = v[3],
 			kind = "value",
-			hint = "(r g b)(0..255)",
+			hint = "(fr fg fb [br bg bb])(0..255)",
 			widget = "special:colorpick_r8g8b8",
+			description = v[4],
 			validator = suppl_valid_typestr("fff", 0, 255, 0),
-			initial = function()
-				local r, g, b = lookup(v[1]);
-				return string.format("%.0f %.0f %.0f", r, g, b);
-			end,
 			handler = function(ctx, val)
 				local col = suppl_unpack_typestr("fff", val, 0, 255);
-				cb(val, col[1], col[2], col[3]);
+				if not valid_vid(vid, TYPE_FRAMESERVERR) or not col then
+					return
+				end
+
+				target_graphmode(vid, v[1], unpack(col))
+				target_graphmode(vid, 0, unpack(col))
 			end
 		});
 	end
@@ -859,7 +941,17 @@ end
 function suppl_valid_typestr(utype, lowv, highv, defaultv)
 	return function(val)
 		local tbl = suppl_unpack_typestr(utype, val, lowv, highv);
-		return tbl ~= nil and #tbl == string.len(utype);
+		if tbl == nil then
+			return false;
+		end
+
+-- allow minimum + more
+		local vlen = string.sub(utype, -1) == "*";
+		if vlen then
+			return #tbl >= string.len(utype-1);
+		else
+			return #tbl == string.len(utype);
+		end
 	end
 end
 
@@ -1427,18 +1519,26 @@ function suppl_flip_handler(key)
 	end
 end
 
+function suppl_script_load(fn, logfn)
+	local res = system_load(fn, false)
+	logfn = logfn and logfn or warning
+
+	if (not res) then
+		logfn(string.format("couldn't parse/load script: %s", fn))
+	else
+		local okstate, msg = pcall(res);
+		if (not okstate) then
+			logfn(string.format("script (%s) error: %s", fn, msg))
+		else
+			return msg
+		end
+	end
+end
+
 function suppl_scan_tools()
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(list) do
-		local res, msg = system_load("tools/" .. v, false);
-		if (not res) then
-			warning(string.format("couldn't parse tool: %s", v));
-		else
-			local okstate, msg = pcall(res);
-			if (not okstate) then
-				warning(string.format("runtime error loading tool: %s - %s", v, msg));
-			end
-		end
+		suppl_script_load("tools/" .. v, warning)
 	end
 end
 
@@ -1634,4 +1734,18 @@ function suppl_add_logfn(prefix)
 
 	logscope();
 	return prefixes[prefix][1], prefixes[prefix][2];
+end
+
+function suppl_tgt_color(vid, tbl)
+	assert(valid_vid(vid), "invalid vid to suppl_color")
+	for i=1,36 do
+		local v = tbl[i]
+		if v and #v > 0 then
+			target_graphmode(vid, i+1, v[1], v[2], v[3])
+			if #v == 6 then
+				target_graphmode(vid, bit.bor(i+1, 256), v[4], v[5], v[6])
+			end
+		end
+	end
+	target_graphmode(vid, 0)
 end
