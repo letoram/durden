@@ -28,6 +28,8 @@ function assert(...)
 end
 
 function durden(argv)
+	rendertarget_reconfigure(WORLDID, 38.4, 38.4);
+
 	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
@@ -79,7 +81,7 @@ function durden(argv)
 --  empty_space(ind)
 --  update_scalef(factor, disptbl)
 --  set_background()
---
+
 	local nt = display_manager_init(
 	function(ddisp)
 		local res = tiler_create(ddisp.w, ddisp.h,
