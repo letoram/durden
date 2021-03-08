@@ -1,5 +1,5 @@
 Keyboard Maps
-=======
+=============
 
 Initially, durden always tries to load the keymap with the name
 'default' (if such a map exists)
@@ -11,19 +11,42 @@ a table with a number of subtables and is best configured either through
 the user-interface or with a tool to export other native keymaps.
 
 Basic table layout:
- name (string) identifier for scripting
- map (table)
-  subtable indexed by modifiers ("lshift", "rshift", "lctrl", "rctrl",
-	"lalt", "ralt", "lmeta", "rmeta"} and then indexed by keyboard device
-	subid field, e.g.
 
- map["lshift"][25] = "!" where the lookup value is a valid utf8-sequence.
- symmap (table)
-  indexed by subid number and corresponds to a keysym from symtable.lua
+    return {
+        name = "mymap",
+        map = {
+            [plain]  = {[25] = "a"},,
+            ["lalt"] = {[25] = "!"},
+            ["ralt"] = {[21] = "@"},
+            ["rctrl"] = {},
+            ["lctrl"] = {},
+            ["lmeta"] = {},
+            ["rmeta"] = {},
+            ["num"] = {}
+        },
+        symmap =
+        {
+            [58] = "ESCAPE"
+        },
+        dctbl =
+        {
+            [25] = {25, 49, "!"}
+        }
+        meta_1_sym = "COLON",
+        meta_2_sym = "GREATER"
+     }
 
- dctbl (table) diacretic sequences, currently unused but is used as a
- table indexed by subid and resolves to a table of additional subids with
- the last value being the utf8- sequence to resolve to:
+The map table takes the subids of the translated device input table,
+applies the platform tracked modifier and sets the 'utf8' field to
+whatever codepoint it corresponds to.
 
- dctbl[25] = {25, 49, "!"};
+The dctbl table walks the subtable of subids until the entire sequence
+is provided, then adds/emits the utf8 codepoint at the end of the table.
 
+This is used for combinatory marks, e.g. 'e' + '!' -> ~
+if the chain is broken, the normal map applies for the initial character.
+
+The symmap table remaps raw symbols, often used together with meta\_1\_sym
+and meta\_2\_sym for application specific keybindings.
+
+The symbolic names are lifted from SDL1.2, and shown in builtin/keyboard.lua
