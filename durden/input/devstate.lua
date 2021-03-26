@@ -307,8 +307,17 @@ function iostatem_tick()
 	if (devstate.iotbl and devstate.period) then
 		devstate.counter = devstate.counter - 1;
 
+-- undocumented quirk, ARKMOD_REPEAT is provided by some platforms but not
+-- exposed in modifiers - set it here
+
 		if (devstate.counter == 0) then
 			devstate.counter = devstate.period;
+			devstate.iotbl.modifiers = bit.bor(devstate.iotbl.modifiers, 0x8000)
+			if not devstate.iotbl.repeat_count then
+				devstate.iotbl.repeat_count = 0
+			else
+				devstate.iotbl.repeat_count = devstate.iotbl.repeat_count + 1
+			end
 
 -- copy and add a release so the press is duplicated
 			local a = {};
