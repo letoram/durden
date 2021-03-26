@@ -487,7 +487,9 @@ function dispatch_translate(iotbl, nodispatch)
 			end
 
 		elseif (tbl[rlut]) then
-			dispatch_symbol(tbl[rlut]);
+			if (bit.band(iotbl.modifiers, 0x8000) == 0) then
+				dispatch_symbol(tbl[rlut]);
+			end
 			last_deferred = nil;
 		end
 

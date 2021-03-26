@@ -722,11 +722,25 @@ local function glob_scheme_menu(dst)
 				kind = "action",
 				handler = function()
 					local tbl = suppl_script_load("devmaps/colorschemes/" .. v, false)
-					if type(tbl) == "table" and valid_vid(dst, TYPE_FRAMESERVER) then
+					if type(tbl) == "table" and valid_vid(dst, type_frameserver) then
 						suppl_tgt_color(dst, tbl)
 					end
 				end
 			})
+		end
+	end
+	return res
+end
+
+function suppl_colorschemes()
+	local list = glob_resource("devmaps/colorschemes/*.lua", APPL_RESOURCE);
+	local res = {};
+	list = list and list or {};
+	for i,v in ipairs(list) do
+-- protect against '.lua' file edge condition
+		local name = string.sub(v, 1, -5)
+		if #name > 0 then
+			table.insert(res, name)
 		end
 	end
 	return res
@@ -1426,7 +1440,7 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		k_right = text_input_cright,
 		k_home = text_input_chome,
 		k_end = text_input_cend,
-		k_delete = text_input_cdelete,
+		k_delete = text_input_cdel,
 		k_erase = text_input_cerase
 	};
 
@@ -1635,7 +1649,7 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 		return;
 	end
 
-	local pad = 00;
+	local pad = 0;
 
 -- create anchors linked to background for automatic deletion, as they
 -- are used for clipping, distribute in a fair way between top and bottom
@@ -1736,8 +1750,28 @@ function suppl_add_logfn(prefix)
 	return prefixes[prefix][1], prefixes[prefix][2];
 end
 
-function suppl_tgt_color(vid, tbl)
+local color_cache = {}
+function suppl_tgt_color(vid, cmap)
 	assert(valid_vid(vid), "invalid vid to suppl_color")
+	local tbl = {}
+
+	if type(cmap) == "string" then
+		if not color_cache[cmap] then
+			tbl = suppl_script_load(
+				"devmaps/colorschemes/" .. cmap .. ".lua", false)
+			if type(tbl) == "table" then
+				color_cache[cmap] = tbl
+			else
+				tbl = nil
+			end
+		end
+		tbl = color_cache[cmap]
+	end
+
+	if not tbl then
+		return
+	end
+
 	for i=1,36 do
 		local v = tbl[i]
 		if v and #v > 0 then
