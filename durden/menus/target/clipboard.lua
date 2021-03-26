@@ -38,7 +38,7 @@ end
 local function clipboard_paste_local()
 	local wnd = active_display().selected;
 	if wnd.paste then
-		wnd:paste(wnd, CLIPBARD:list_local(wnd.clipboard)[1]);
+		wnd:paste(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 	else
 		pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 	end
