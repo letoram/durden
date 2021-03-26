@@ -120,10 +120,28 @@ return {
 		label = "Palette",
 		kind = "value",
 		set = {"default", "solarized", "solarized-black", "solarized-white", "srcery"},
-		description = "Change palette used by terminal at startup",
+		description = "[DEPRECATED] Change palette used by terminal at startup",
 		initial = function() return gconfig_get("term_palette"); end,
 		handler = function(ctx, val)
 			gconfig_set("term_palette", val);
+		end
+	},
+	{
+		name = "colorscheme",
+		label = "Scheme",
+		kind = "value",
+		set = function()
+			return suppl_colorschemes()
+		end,
+		initial = function() return gconfig_get("tui_colorscheme"); end,
+		handler = function(ctx, val)
+			gconfig_set("tui_colorscheme", val)
+			for wnd in all_windows("tui", true) do
+				suppl_tgt_color(wnd.external, val)
+			end
+			for wnd in all_windows("terminal", true) do
+				suppl_tgt_color(wnd.external, val)
+			end
 		end
 	},
 	{

@@ -8,9 +8,17 @@
 * target/video/colors: add option to switch/control client-preferred
   color palette for clients that support the feature
 
+* drag-resize in floating mode now has an 'silent' global option
+  for using server-side selection, and a 'per-type' enable with tui default
+
 minor:
 
+* added dracula/gruvbox/gruvbox-light colorschemes
+
 * value-input cancel-out crash fixed
+
+* terminal hard coded colorscheme deprecated in favor of dynamic
+  switching (/global/settings/terminal/colorscheme)
 
 # 0.6.0 - 0.6.1
 * universal open/save:

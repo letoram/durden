@@ -1,0 +1,41 @@
+-- entries marked foreground/background takes 6 values (fr, fg, fb, br, gb, bb)
+-- tui clients will use first set, terminal clients second, entries with an empty
+-- or nil table will retain whatever client default is
+
+return {
+ {0xf8, 0xf8, 0xf2}, -- primary (base color/foreground)
+ {}, -- secondary (alternate base color)
+ {0x28, 0x2a, 0x36}, -- background
+ {0xf8, 0xf8, 0xf2, 0x28, 0x2a, 0x36}, -- text (foreground+background)
+ {0x97, 0x1a}, -- cursor (normal state)
+ {0xd7, 0x99, 0x21}, -- alt-cursor (scrollback/special state)
+ {0x44, 0x47, 0x5a}, -- highlight selection, active-word (foreground+background)
+ {}, -- label    : prompts, data labels (foreground+background)
+ {}, -- warning  : alert user but non-fatal (foreground+background)
+ {0xff, 0x55, 0x55, 0x21, 0x22, 0x2c}, -- error    : alert user, requires action (foreground+background)
+ {}, -- alert    : alert user, immediate input / action (foreground+background)
+ {0x07, 0x66, 0x78}, -- ref      : urls, file-paths, ... (foreground + background)
+ {0x62, 0x72, 0xa4}, -- inactive : inaccessible element (foreground + background)
+ {0xfb, 0xf1, 0xc7, 0x07, 0x66, 0x78}, -- ui       : generic UI elements like menubar
+
+-- terminal clients below --
+ {0x21, 0x22, 0x2c}, -- black
+ {0xff, 0x55, 0x55}, -- red
+ {0x50, 0xfa, 0x7b}, -- green
+ {0xf1, 0xfa, 0x8c}, -- yellow
+ {0xbd, 0x93, 0xf9}, -- blue
+ {0xff, 0x79, 0xc6}, -- magenta
+ {0x88, 0xe9, 0xfd}, -- cyan
+ {0xf8, 0xf8, 0xf2}, -- light-grey
+ {0x62, 0x72, 0xa4}, -- dark-grey
+ {0xff, 0x6e, 0x6e}, -- light-red
+ {0x69, 0xff, 0x94}, -- light-green
+ {0xff, 0xff, 0xa5}, -- light-yellow
+ {0xd6, 0xac, 0xff}, -- light-blue
+ {0xff, 0x92, 0xdf}, -- light-magenta
+ {0xa4, 0xff, 0xff}, -- light-cyan
+ {0xff, 0xff, 0xff}, -- white
+
+ {0xf8, 0xf8, 0xf2}, -- foreground
+ {0x28, 0x2a, 0x36}, -- background
+}

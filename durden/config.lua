@@ -239,8 +239,9 @@ return {
 	term_fgcol = {0xff, 0xff, 0xff},
 	term_opa = 1.0,
 	term_bitmap = false,
-	term_palette = "",
+	term_palette = "", -- deprecated
 	term_append_arg = "", -- ci=ind,r,g,b to override individual colors
+	tui_colorscheme = "dracula", -- takes precedence over terminal palette
 
 -- input bar graphics
 	lbar_dim = 0.8,
@@ -271,8 +272,8 @@ return {
 	bind_repeat = 5,
 
 -- statusbar
-	sbar_tpad = 2, -- add some space to the text
-	sbar_bpad = 2,
+	sbar_tpad = 1, -- add some space to the text
+	sbar_bpad = 1,
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,

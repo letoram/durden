@@ -92,6 +92,10 @@ function spawn_terminal(cmd, group)
 			end
 			wnd.scalemode = "stretch";
 
+			if gconfig_get("tui_colorscheme") then
+				suppl_tgt_color(source, gconfig_get("tui_colorscheme"))
+			end
+
 -- fake registration so we use the same path as a normal external connection
 			extevh_default(source, {
 				kind = "registered",

@@ -26,6 +26,11 @@ local action_menu = {
 
 local res = {
 	dispatch = {
+		preroll = function(wnd, source, status)
+			if gconfig_get("tui_colorscheme") then
+				suppl_tgt_color(source, gconfig_get("tui_colorscheme"))
+			end
+		end,
 		content_state = function(wnd, source, status)
 			if status.max_w <= 0 or status.max_h <= 0 or
 				not wnd.space or not wnd.space.in_float then

@@ -45,16 +45,21 @@ return {
 	handler = gen_palette_menu()
 },
 {
--- text color
--- label color
--- alertstr
--- labelstr
--- menulblstr
--- menulblselstr
--- helperstr
--- errstr
--- seltextstr
--- pretiletext_color
--- tbar_textstr
-}
+	name = "colorscheme",
+	label = "Scheme",
+	kind = "value",
+	set = function()
+		return suppl_colorschemes()
+	end,
+	initial = function() return gconfig_get("tui_colorscheme"); end,
+	handler = function(ctx, val)
+		gconfig_set("tui_colorscheme", val)
+		for wnd in all_windows("tui", true) do
+			suppl_tgt_color(wnd.external, val)
+		end
+		for wnd in all_windows("terminal", true) do
+			suppl_tgt_color(wnd.external, val)
+		end
+	end
+},
 };
