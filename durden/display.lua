@@ -14,7 +14,9 @@ if VPPCM > 240 then
 end
 
 local SIZE_UNIT = 38.4;
+local active_display_count = 0;
 local displays = {};
+
 local is_display_simple = false;
 local display_main = 1;
 
@@ -304,19 +306,19 @@ function display_count()
 	return #displays;
 end
 
-function display_set_format(name, fmt)
+function display_set_format(name, buffer_fmt)
 	local disp = get_disp(name);
 	if (not disp) then
 		return;
 	end
 
-	local buf = alloc_surface(disp.rw, disp.rh, true, fmt)
+	local buf = alloc_surface(disp.rw, disp.rh, true, buffer_fmt)
 	if not valid_vid(buf) then
 		return
 	end
 
 	local hint = display_maphint(disp)
-	display_log(fmt("display=%d:set_format=%d:hint=%d:", disp.id,fmt, hint))
+	display_log(fmt("display=%d:set_format=%d:hint=%d:", disp.id, buffer_fmt, hint))
 	image_sharestorage(buf, disp.map_rt)
 	image_sharestorage(buf, disp.rt)
 	map_video_display(disp.map_rt, hint)
@@ -758,6 +760,7 @@ local function display_added(id)
 	end
 
 	ddisp.id = id;
+	active_display_count = active_display_count + 1;
 
 -- load possible overrides since before, note that this is slightly
 -- inefficient as it will force rebuild of underlying rendertargets
@@ -780,6 +783,12 @@ local function display_added(id)
 	end
 	for k,v in ipairs(display_listeners) do
 		v("added", name, ddisp.tiler, id);
+	end
+
+-- if the number of active displays is only one, make sure this one
+-- is the one that is marked as active
+	if active_display_count == 1 then
+		switch_active_display(table.find_i(displays, ddisp));
 	end
 end
 
@@ -816,7 +825,7 @@ function display_event_handler(action, id)
 		end
 
 	elseif (action == "changed") then
-		active_display():message("rescanning GPUs on hotlug");
+		active_display():message("rescanning GPUs on hotplug");
 
 -- prevent hotplug storms (such as plugging in a dock or kvm switch)
 -- from causing multiple rescans and the stalls that entail
@@ -1178,6 +1187,7 @@ function display_remove(id)
 	found.orphan = true;
 	image_resize_storage(found.rt, 32, 32);
 	hide_image(found.rt);
+	active_display_count = active_display_count - 1;
 
 -- try and have another display adopt
 	if (gconfig_get("ws_autoadopt") and autoadopt_display(found)) then
