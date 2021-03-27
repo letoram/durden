@@ -468,11 +468,12 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	if (atbl.init) then
 		atbl:init(wnd, source);
 	end
+end
 
--- very rarely needed
-	for k,v in ipairs(wnd.handlers.register) do
-		v(wnd, stat.segkind, stat);
-	end
+-- this is not overridable so we need to check if we should chain into the
+-- dispatch for the type
+defhtbl["preroll"] =
+function(wnd, source, stat)
 end
 
 defhtbl["registered"] =
@@ -501,8 +502,14 @@ function(wnd, source, stat)
 			"registered:name=%s:kind=%s", wnd.name, stat.segkind));
 	end
 	extevh_apply_atype(wnd, stat.segkind, source, stat);
+
 	wnd:set_title(stat.title);
 	wnd:set_guid(stat.guid);
+
+-- very rarely needed
+	for k,v in ipairs(wnd.handlers.register) do
+		v(wnd, stat.segkind, stat);
+	end
 end
 
 --  stateinf is used in the builtin/shared
