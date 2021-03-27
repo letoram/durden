@@ -11,6 +11,9 @@
 * drag-resize in floating mode now has an 'silent' global option
   for using server-side selection, and a 'per-type' enable with tui default
 
+* display composition output format can now be set per display, at runtime:
+  565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR (16)
+
 minor:
 
 * added dracula/gruvbox/gruvbox-light colorschemes
