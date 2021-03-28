@@ -130,6 +130,7 @@ return {
 		name = "colorscheme",
 		label = "Scheme",
 		kind = "value",
+		description = "Change the current and default set of colors used for terminal/tui clients",
 		set = function()
 			return suppl_colorschemes()
 		end,

@@ -1766,6 +1766,8 @@ function suppl_tgt_color(vid, cmap)
 			end
 		end
 		tbl = color_cache[cmap]
+	else
+		tbl = cmap
 	end
 
 	if not tbl then
