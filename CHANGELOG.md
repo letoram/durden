@@ -14,6 +14,9 @@
 * display composition output format can now be set per display, at runtime:
   565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR (16)
 
+* added a tile-bsp mode that adds new windows based on the highest-level
+  tile with less than 2 children (/global/workspace/layout/tile\_bsp)
+
 minor:
 
 * added dracula/gruvbox/gruvbox-light colorschemes
@@ -22,6 +25,9 @@ minor:
 
 * terminal hard coded colorscheme deprecated in favor of dynamic
   switching (/global/settings/terminal/colorscheme)
+
+* swapping from fullscreen workspace to a non fullscreen one and back
+  should no longer lose the surface canvas
 
 # 0.6.0 - 0.6.1
 * universal open/save:
