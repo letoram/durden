@@ -156,6 +156,18 @@ local workspace_layout_menu = {
 		end
 	},
 	{
+		name = "tile_bsp",
+		kind = "action",
+		description = "Switch to tiling mode, and set insertion slot to auto-binary space",
+		label = "Tile-BSP",
+		handler = function()
+			local space = active_display().spaces[active_display().space_ind];
+			space.insert = "bsp";
+			space:tile();
+			space.wm:tile_update();
+		end
+	},
+	{
 		name = "tile_toggle",
 		kind = "action",
 		description =

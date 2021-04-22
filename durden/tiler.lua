@@ -436,7 +436,6 @@ local function wnd_deselect(wnd, nopick)
 	if (is_tab_mode(mwm) or mwm == "fullscreen") then
 		if (not nopick) then
 			hide_image(wnd.anchor);
-			hide_image(wnd.canvas);
 			hide_image(wnd.border);
 			if (wnd.shadow) then
 				hide_image(wnd.shadow);
@@ -1342,18 +1341,18 @@ local function switch_fullscreen(space, to, ndir, newbg, oldbg)
 	if (to) then
 		sbar_hide(space.wm);
 		workspace_activate(space, false, ndir, oldbg);
-		local lst = linearize(space);
-		for k,v in ipairs(space) do
-			hide_image(space.anchor);
+		for _, v in ipairs(linearize(space)) do
+			if v ~= space.selected then
+				hide_image(v.anchor)
+			end
 		end
-			show_image(space.selected.anchor);
 	else
 		sbar_show(space.wm);
 		workspace_deactivate(space, false, ndir, newbg);
 	end
 end
 
-local function drop_fullscreen(space, swap)
+local function drop_fullscreen(space)
 	if (space.hook_block) then
 		return;
 	end
@@ -3998,6 +3997,25 @@ local function wnd_suggest_size(wnd)
 	return 300, 300;
 end
 
+local function find_leaf(node, depth)
+	if #node.children <= 1 then
+		return node, depth
+	end
+
+	local min_node = node
+	local min_depth = depth
+
+	for _,v in ipairs(node.children) do
+		local x, y = find_leaf(v, depth + 1)
+		if min_depth == 0 or #min_node.children > 1 or y < min_depth then
+			min_node = x
+			min_depth = y
+		end
+	end
+
+	return min_node, min_depth
+end
+
 -- attach a window to the active workspace, this is a one-time action
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
@@ -4168,6 +4186,13 @@ local function wnd_ws_attach(res, from_hook)
 				table.insert(space.children, res, ind);
 				res.parent = space;
 			end
+
+		elseif (space.insert == "bsp") then
+			local leaf, depth = find_leaf(space, 0);
+			table.insert(leaf.children, res);
+			res.parent = leaf;
+
+-- add as child to current
 		else
 			table.insert(wm.selected.children, res);
 			res.parent = wm.selected;
