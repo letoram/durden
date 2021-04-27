@@ -277,7 +277,7 @@ return {
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
-	sbar_color = {0, 0, 0},
+	sbar_color = {127, 127, 127},
 	sbar_tspace = 0,
 	sbar_lspace = 0,
 	sbar_dspace = 0,
@@ -288,7 +288,7 @@ return {
 	sbar_rshadow = 5,
 	sbar_popup_pad = 4,
 	sbar_shadow = "soft",
-	sbar_shadow_color = {0x00, 0x00, 0x00},
+	sbar_shadow_color = {0, 0, 0},
 	sbar_pos = "top",
 	sbar_visible = "desktop", -- (desktop / hud / hidden)
 	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
