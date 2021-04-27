@@ -40,6 +40,11 @@ local function setup_sharing(argstr, srate, nosound, destination, allow_input, n
 	local wnd = active_display().selected;
 	local props = image_storage_properties(wnd.canvas);
 
+	if not wnd.ignore_crop and wnd.crop_values then
+		props.width = (wnd.crop_values[4] - wnd.crop_values[2]);
+		props.height = (wnd.crop_values[3] - wnd.crop_values[1]);
+	end
+
 -- notice: some cases we would want to align to divisible/2,/16 something.
 	local storew = props.width % 2 ~= 0 and props.width + 1 or props.width;
 	local storeh = props.height % 2 ~= 0 and props.height + 1 or props.height;
