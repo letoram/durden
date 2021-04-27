@@ -1,8 +1,29 @@
 local tsupp = system_load("widgets/support/text.lua")();
+local prefix = "/global/display/displays/"
 
-local function probe(ctx, yh)
+local function probe(ctx, yh, tag)
+	if not tag then
+		return
+	end
+
+	local disp
+
+	if tag ~= "current" then
+		for d in all_displays_iter() do
+			if "disp_" .. string.hexenc(d.name) == tag then
+				disp = d;
+-- note: breaking out of disp here is dangerous as the iterator needs a closure
+			end
+		end
+	else
+		disp = active_display(false, true);
+	end
+
+	if not disp then
+		return tsupp.setup(ctx, {{"Broken " .. tag}}, yh);
+	end
+
 	local lines = {};
-	local disp = active_display(false, true);
 
 	table.insert(lines, string.format("Id: %d", disp.id));
 	table.insert(lines, string.format("Dimensions: %d * %d", disp.w, disp.h));
@@ -57,6 +78,14 @@ local function probe(ctx, yh)
 		table.insert(lines, "Map: Default");
 	end
 
+	if (disp.tiler.scalef) then
+		table.insert(lines, string.format("Scale: %f", disp.tiler.scalef))
+	end
+
+	if #lines == 0 then
+		table.insert(lines, "Not Found")
+	end
+
 	return tsupp.setup(ctx, {lines}, yh);
 end
 
@@ -71,11 +100,15 @@ end
 
 return {
 	name = "dispdbg",
-	paths = {function(ctx, pathid)
-		if (pathid == "/global/display/displays/current") then
-			return true;
+	paths =
+	{
+	function(ctx, pathid)
+		if string.starts_with(pathid, prefix) then
+			local ng = #(string.split(pathid, "/"));
+			return ng == 5 and string.sub(pathid, #prefix+1) or nil;
 		end
-	end},
+	end
+	},
 	show = show,
 	probe = probe,
 	destroy = destroy
