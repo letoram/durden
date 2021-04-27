@@ -613,6 +613,12 @@ local function tiler_statusbar_update(wm)
 		statush = 0;
 	end
 
+-- Update background color and alpha
+	local r, g, b = unpack(gconfig_get("sbar_color"));
+	local alpha = gconfig_get("sbar_alpha");
+	shader_update_uniform(wm.statusbar.shader, "ui", "col",
+					  	  { r / 255, g / 255, b / 255, alpha});
+
 -- positioning etc. still needs the current size of the statusbar
 	statush = sbar_geth(wm);
 	wm.statusbar:resize(wm.width - pad_l - pad_r, statush);
