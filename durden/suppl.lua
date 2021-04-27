@@ -1751,8 +1751,7 @@ function suppl_add_logfn(prefix)
 end
 
 local color_cache = {}
-function suppl_tgt_color(vid, cmap)
-	assert(valid_vid(vid), "invalid vid to suppl_color")
+function suppl_tgt_loadcolor(cmap)
 	local tbl = {}
 
 	if type(cmap) == "string" then
@@ -1769,6 +1768,13 @@ function suppl_tgt_color(vid, cmap)
 	else
 		tbl = cmap
 	end
+
+	return tbl
+end
+
+function suppl_tgt_color(vid, cmap)
+	assert(valid_vid(vid), "invalid vid to suppl_color")
+	tbl = suppl_tgt_loadcolor(cmap)
 
 	if not tbl then
 		return
