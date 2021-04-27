@@ -277,6 +277,7 @@ return {
 	sbar_sz = 12, -- dynamically recalculated on font changes
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
+	sbar_color = {0, 0, 0},
 	sbar_tspace = 0,
 	sbar_lspace = 0,
 	sbar_dspace = 0,

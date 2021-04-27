@@ -358,6 +358,36 @@ return {
 		end
 	},
 	{
+		name = "color",
+		label = "Color",
+		kind = "value",
+		description = "Change the statusbar background color",
+		hint = "(r g b)[0..1]",
+		widget = "special:colorpick_r8g8b8",
+		initial = function()
+			local bc = gconfig_get("sbar_color");
+			return string.format("%.0f %.0f %.0f", bc[1], bc[2], bc[3]);
+		end,
+		handler = function(ctx, val)
+			local tbl = suppl_unpack_typestr("fff", val, 0, 255);
+			gconfig_set("sbar_color", tbl);
+			active_display():tile_update();
+		end
+	},
+	{
+		name = "transparency",
+		label = "Transparency",
+		kind = "value",
+		description = "Change the statusbar alpha value",
+		initial = function()
+			return gconfig_get("sbar_alpha");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("sbar_alpha", tonumber(val));
+			active_display():tile_update();
+		end
+	},
+	{
 		name = "visibility",
 		label = "Visibility",
 		kind = "value",
