@@ -58,6 +58,11 @@ local shader_1;
 local shader_2;
 local function build_colorimage(w, h)
 	local nelem = 3;
+	local cmap = suppl_tgt_loadcolor(gconfig_get("tui_colorscheme"))
+	if cmap then
+		nelem = nelem + 1
+	end
+
 	local cellw = math.ceil(w / nelem);
 	local space = active_display():active_space():preview(cellw, h, 5, 0);
 	if not space then
@@ -80,9 +85,11 @@ local function build_colorimage(w, h)
 	end
 
 -- build a tree so we don't need to position / cleanup all
-	link_image(v2, v1, ANCHOR_UR);
+	local ap = v2
+	link_image(v2, v1, ANCHOR_UR)
 	if valid_vid(space) then
-		link_image(space, v2, ANCHOR_UR);
+		link_image(space, v2, ANCHOR_UR)
+		ap = space
 	end
 
 	if not shader_1 then
@@ -96,6 +103,23 @@ local function build_colorimage(w, h)
 	local set = {v1, v2};
 	if valid_vid(space) then
 		table.insert(set, space);
+	end
+
+	if cmap then
+		local ctbl = {}
+		for i=1,#cmap do
+			ctbl[(i-1)*3+1] = cmap[i][1]
+			ctbl[(i-1)*3+2] = cmap[i][2]
+			ctbl[(i-1)*3+3] = cmap[i][3]
+		end
+
+		local surf = raw_surface(1, #cmap, 3, ctbl)
+		if valid_vid(surf) then
+			resize_image(surf, cellw, h)
+			table.insert(set, surf)
+			link_image(surf, ap, ANCHOR_UR)
+			ap = surf
+		end
 	end
 
 -- build intermediate buffer
