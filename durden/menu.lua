@@ -95,7 +95,7 @@ local function flt_fuzzy(val, instr)
 	while i <= #instr do
 		local next_i = string.utf8forward(instr, i);
 		local ch = string.lower(string.sub(instr, i, next_i - 1));
-		local pos = string.find(string.lower(val), ch, last_pos + 1);
+		local pos = string.find(string.lower(val), ch, last_pos + 1, true);
 
 		if (not pos) then
 			return false;
