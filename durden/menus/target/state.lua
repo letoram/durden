@@ -152,7 +152,7 @@ return {
 		handler = function()
 -- cache source and re-validate as the asynch- nature of the grab_ menu may
 -- have the source die while we are waiting
-			local menu = gen_type_menu(active_display().ephemeral_ext, true);
+			local menu = gen_type_menu(active_display().selected, true);
 			menu[1].handler();
 		end
 	},
