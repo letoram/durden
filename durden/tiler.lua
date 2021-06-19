@@ -129,7 +129,10 @@ end
 
 local function sbar_geth(wm, ign)
 	if (ign) then
-		return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+		return math.clamp(
+			math.ceil(gconfig_get("sbar_sz") * wm.scalef),
+			math.ceil(gconfig_get("sbar_min_sz") * wm.scalef)
+		)
 	else
 
 		if gconfig_get("sbar_visible") ~= "desktop" or
@@ -138,7 +141,10 @@ local function sbar_geth(wm, ign)
 					wm.statusbar:hide();
 					return 0;
 		else
-			return math.ceil(gconfig_get("sbar_sz") * wm.scalef);
+			return math.clamp(
+				math.ceil(gconfig_get("sbar_sz") * wm.scalef),
+				math.ceil(gconfig_get("sbar_min_sz") * wm.scalef)
+			)
 		end
 	end
 end
@@ -585,12 +591,12 @@ end
 
 local function tiler_statusbar_update(wm)
 -- synch constraints, first get the statusbar height ignoring visibility
-	local statush = sbar_geth(wm, true);
+	local bar_base = sbar_geth(wm, true);
 	local xpos = 0;
-	local ytop = 0;
-	local ybottom = 0;
 	local pad_l = 0;
 	local pad_r = 0;
+	local pad_t = 0;
+	local pad_d = 0;
 
 -- consider visibility (fullscreen, or HUD mode affects it)
 	local space = wm:active_space();
@@ -607,40 +613,72 @@ local function tiler_statusbar_update(wm)
 	if (not sb_invisible) then
 		pad_l = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
 		pad_r = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
-		ytop = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
-		ybottom = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
-		xpos = pad_l;
-		statush = 0;
+		pad_t = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
+		pad_d = math.floor(gconfig_get("sbar_dspace") * wm.scalef);
 	end
+
+	local pad_h = pad_l + pad_r;
+	local pad_v = pad_t + pad_d;
 
 -- Update background color and alpha
 	local r, g, b = unpack(gconfig_get("sbar_color"));
 	local alpha = gconfig_get("sbar_alpha");
-	shader_update_uniform(wm.statusbar.shader, "ui", "col",
-					  	  { r / 255, g / 255, b / 255, alpha});
+	shader_update_uniform(wm.statusbar.shader,
+		"ui", "col", { r / 255, g / 255, b / 255, alpha});
 
 -- positioning etc. still needs the current size of the statusbar
-	statush = sbar_geth(wm);
-	wm.statusbar:resize(wm.width - pad_l - pad_r, statush);
-
--- modify this to implement vertical sidebars, interesting option
--- would be to attach to the list of tabs in the sidebar tabbed
--- mode and split left/center/right into groups of its own.
-	wm.effective_width = wm.width;
-	wm.effective_height = wm.height - ytop - ybottom - statush;
+	bar_base = sbar_geth(wm);
 
 	if (gconfig_get("sbar_pos") == "top") then
-		wm.yoffset = statush + ytop + ybottom;
+		wm.yoffset = bar_base + pad_v;
+		wm.xoffset = 0;
+		wm.effective_width = wm.width;
+		wm.effective_height = wm.height - wm.yoffset;
 		wm.ylimit = wm.height;
-		wm.statusbar:move(xpos, ytop);
-		move_image(wm.anchor, 0, statush + ytop + ybottom);
-		move_image(wm.order_anchor, 0, -statush - ytop - ybottom);
-	else
+		wm.xlimit = wm.width;
+		wm.statusbar:move(pad_l, pad_t);
+		wm.statusbar:set_horizontal();
+		move_image(wm.anchor, 0, bar_base + pad_t);
+		move_image(wm.order_anchor, 0, -bar_base - pad_t);
+		wm.statusbar:resize(wm.width - pad_h, bar_base);
+
+	elseif (gconfig_get("sbar_pos") == "left") then
 		wm.yoffset = 0;
-		wm.ylimit = wm.effective_height;
+		wm.xoffset = bar_base + pad_l;
+		wm.xlimit = wm.width;
+		wm.ylimit = wm.height;
+		wm.effective_width = wm.width - wm.xoffset;
+		wm.effective_height = wm.height;
+		wm.statusbar:move(pad_l, pad_t);
+		wm.statusbar:set_vertical();
+		move_image(wm.anchor, wm.xoffset, 0);
+		move_image(wm.order_anchor, -bar_base - pad_h, 0);
+		wm.statusbar:resize(bar_base, wm.height - pad_v);
+
+	elseif (gconfig_get("sbar_pos") == "right") then
+		wm.yoffset = 0;
+		wm.xoffset = 0;
+		wm.xlimit = wm.width - bar_base - pad_h;
+		wm.effective_width = wm.xlimit;
+		wm.effective_height = wm.height;
+		wm.statusbar:set_vertical();
+		wm.statusbar:move(wm.xlimit + pad_l, pad_t);
 		move_image(wm.anchor, 0, 0);
 		move_image(wm.order_anchor, 0, 0);
-		wm.statusbar:move(xpos, wm.effective_height + ytop);
+		wm.statusbar:resize(bar_base, wm.height - pad_v);
+
+	else -- "down"
+		wm.yoffset = 0;
+		wm.xoffset = 0;
+		wm.effective_width = wm.width;
+		wm.effective_height = wm.height - bar_base - pad_v;
+		wm.ylimit = wm.effective_height;
+		wm.xlimit = wm.width;
+		move_image(wm.anchor, 0, 0);
+		move_image(wm.order_anchor, 0, 0);
+		wm.statusbar:move(xpos, wm.effective_height + pad_t);
+		wm.statusbar:set_horizontal();
+		wm.statusbar:resize(wm.width - pad_h, bar_base);
 	end
 
 -- same tactic to hiding the ws buttons, this should probably be refactored
@@ -750,6 +788,7 @@ local function tiler_statusbar_build(wm)
 	if (wm.statusbar) then
 		wm.statusbar:destroy();
 	end
+	print("statusbar building", wm.width)
 
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
@@ -2925,7 +2964,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 
 	if (abs) then
 		local props = image_surface_resolve(wnd.wm.anchor);
-		wnd.x = dx - props.x;
+		wnd.x = wnd.wm.xoffset + dx - props.x;
 		wnd.y = wnd.wm.yoffset + dy - props.y;
 
 	elseif (align) then
@@ -4108,7 +4147,6 @@ local function wnd_ws_attach(res, from_hook)
 	res.attach_time = CLOCK;
 
 -- this will only happen on assignment to non-active workspace
-	local rebuild_sbar = false;
 	if (wm.spaces[dstindex] == nil) then
 		wm.spaces[dstindex] = create_workspace(wm);
 		tiler_statusbar_update(wm);
@@ -4237,11 +4275,12 @@ local function wnd_ws_attach(res, from_hook)
 			res.attach_temp = nil;
 		else
 -- hint the clamp against the display
-			w = math.clamp(res.wm.effective_width - x, 32, res.wm.effective_width);
+			w = math.clamp(res.wm.effective_width - x - res.wm.xoffset, 32, res.wm.xlimit);
 			h = math.clamp(res.wm.effective_height - y - res.wm.yoffset, 32, res.wm.ylimit);
 		end
 
-		y = y - active_display().yoffset;
+		x = x - res.wm.xoffset;
+		y = y - res.wm.yoffset;
 
 		res.max_w = w;
 		res.max_h = h;
@@ -5563,9 +5602,11 @@ function tiler_create(width, height, opts)
 	res.effective_width = width;
 	res.effective_height = height;
 
--- statusbar affects the coordinate space origo of at top
+-- statusbar may affect the drag/layout/...
 	res.yoffset = 0;
+	res.xoffset = 0;
 	res.ylimit = height;
+	res.xlimit = width;
 
 -- to help with y positioning when we have large subscript,
 -- this is manually probed during font-load

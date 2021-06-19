@@ -275,6 +275,7 @@ return {
 	sbar_tpad = 1, -- add some space to the text
 	sbar_bpad = 1,
 	sbar_sz = 12, -- dynamically recalculated on font changes
+	sbar_min_sz = 0, -- if set, sbar_sz won't get below this
 	sbar_textstr = "\\#00ff00 ",
 	sbar_alpha = 0.3,
 	sbar_color = {127, 127, 127},

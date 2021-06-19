@@ -154,6 +154,7 @@ local border_menu = {
 			gconfig_set("sbar_rspace", math.floor(tonumber(elem[4])));
 			for disp in all_tilers_iter() do
 				disp:tile_update();
+				disp:resize();
 			end
 		end
 	},
@@ -180,6 +181,7 @@ local border_menu = {
 			gconfig_set("sbar_rshadow", math.floor(tonumber(elem[4])));
 			for disp in all_tilers_iter() do
 				disp:tile_update();
+				disp:resize();
 			end
 		end
 	},
@@ -348,13 +350,14 @@ return {
 		label = "Position",
 		kind = "value",
 		description = "Change the statusbar vertical position",
-		set = {"top", "bottom"},
+		set = {"top", "bottom", "left", "right"},
 		initial = function()
 			return gconfig_get("sbar_pos");
 		end,
 		handler = function(ctx, val)
 			gconfig_set("sbar_pos", val);
 			active_display():tile_update();
+			active_display():resize();
 		end
 	},
 	{
@@ -384,8 +387,28 @@ return {
 		end,
 		handler = function(ctx, val)
 			gconfig_set("sbar_alpha", tonumber(val));
-			active_display():tile_update();
+			for d in all_tilers_iter() do
+				d:tile_update();
+			end
 		end
+	},
+	{
+		name = "min_sz",
+		label = "Minimum Size",
+		kind = "value",
+		initial = function()
+			return gconfig_get("sbar_min_sz");
+		end,
+		validator = gen_valid_num(0, 200),
+		hint = "(0=font defined..n_px)",
+		description = "Minimum scaled pixel size for statusbar buttons",
+		handler = function(ctx, val)
+			gconfig_set("sbar_min_sz", tonumber(val));
+			for d in all_tilers_iter() do
+				d:tile_update();
+				d:resize();
+			end
+		end,
 	},
 	{
 		name = "visibility",
@@ -396,6 +419,12 @@ return {
 		initial = function() return gconfig_get("sbar_visible"); end,
 		handler = function(ctx, val)
 			gconfig_set("sbar_visible", val);
+
+-- special case this as the layouting consequences for left/right are high
+			if val == "hud" then
+				gconfig_set("sbar_pos", "top")
+			end
+
 			for tiler in all_tilers_iter() do
 				tiler:tile_update();
 				tiler:resize();
