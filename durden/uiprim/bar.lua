@@ -1,15 +1,11 @@
--- Copyright: 2015-2019, Björn Ståhl
+-- Copyright: Björn Ståhl
 -- License: 3-Clause BSD
 -- Reference: http://durden.arcan-fe.com
--- Description: This is a rather messy implementation of a button
--- bar and it is used for both the statusbar, window titlebar and
--- possible docks and so on.
+-- Description: This is a rather messy implementation of a button bar and it is
+-- used for both the statusbar, window titlebar and possible docks and so on.
 --
--- A reason for this mess is also that is was written before dpi-
--- awareness on the rendertarget level, so we stuck to one fixed
--- durden- dpi then patch the font-size accordingly. Just having
--- a relayout trigger on dpi swap should be enough these days.
---
+-- Missing:
+--  [ ] autosize bar to buttons + pad
 --
 local function btn_clamp(btn, w, h)
 -- done with label, figure out new button size including padding and minimum
@@ -25,9 +21,10 @@ local function btn_clamp(btn, w, h)
 		w = btn.maxw;
 	end
 
-	if (btn.maxh and btn.maxh > 0 and w > btn.maxh) then
+	if (btn.maxh and btn.maxh > 0 and h > btn.maxh) then
 		h = btn.maxh;
 	end
+
 	return w,h;
 end
 
@@ -73,8 +70,10 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		elseif (txt ~= btn.lbl and valid_vid(btn.lbl)) then
 			delete_image(btn.lbl);
 		end
+
 		btn.lbl = txt;
 		btn.w, btn.h = btn_clamp(btn, w, h);
+
 -- just resize / relayout
 	elseif type(lbl) == "function" then
 		btn.last_lbl = lbl;
@@ -89,10 +88,27 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		if (valid_vid(btn.lbl) and btn.lbl ~= lbl) then
 			delete_image(btn.lbl);
 		end
+
 		local props = image_surface_properties(lbl);
 		btn.lbl = lbl;
-		btn.w, btn.h = btn_clamp(btn, props.width, props.height);
-		resize_image(lbl, btn.w, btn.h);
+
+-- with vertical layout the wider buttons with labels might make sense to rotate
+		if btn.lbl_rotate then
+			local oldh = props.height;
+			props.height = props.width;
+			props.width = old;
+			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
+			rotate_image(lbl, btn.lbl_rotate);
+			print("rotate", btn.last_lbl, btn.w, btn.h)
+		else
+			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
+			rotate_image(lbl, 0);
+		end
+
+		resize_image(lbl,
+			props.width < btn.w and props.width or btn.w,
+			props.height < btn.h and props.height or btn.h
+		);
 		offsetf = 0;
 	end
 
@@ -107,11 +123,13 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 
 -- for some odd cases (center area on bar for instance),
 -- specific lalign on text may be needed
-	local xofs = btn.align_left and 0 or
-		(0.5 * (btn.w - image_surface_properties(btn.lbl).width));
+	local prop = image_surface_properties(btn.lbl);
+
+	local xofs = btn.align_left and 0 or 0.5 * (btn.w - prop.width);
+	local yofs = 0.5 * (btn.h - prop.height) + offsetf;
 
 	reset_image_transform(btn.lbl);
-	move_image(btn.lbl, xofs, offsetf, btn.anim_time, btn.anim_func);
+	move_image(btn.lbl, xofs, yofs, btn.anim_time, btn.anim_func);
 	image_inherit_order(btn.lbl, true);
 	order_image(btn.lbl, 1);
 	show_image(btn.lbl);
@@ -262,7 +280,6 @@ function uiprim_button(anchor, bgshname,
 		state = "active",
 		minw = 0,
 		minh = 0,
-		yshift = 0,
 		pad = pad,
 		name = "uiprim_btn_" .. tostring(ind),
 -- exposed methods
@@ -275,9 +292,32 @@ function uiprim_button(anchor, bgshname,
 		tick = button_tick,
 		update_mh = button_mh,
 		constrain = button_constrain,
+		rotation = button_rotation,
 		set_description = button_description
 	};
 	res.lbl_tag = res.name .. "_label";
+
+	local priv = {}
+
+	setmetatable(res, {
+		__index =
+		function(self, key)
+			local v = rawget(self, key)
+			if v then
+				return v
+			end
+			return priv[key]
+		end,
+		__newindex =
+		function(self, key, value)
+			priv[key] = value
+			if key == "minh" and value == 1430 then
+				print("min changed", debug.traceback())
+			end
+		end
+	})
+
+	res.minh = nil
 
 -- only need anchor or we should have a real drawn node?
 	if (not bgshname) then
@@ -305,40 +345,6 @@ function uiprim_button(anchor, bgshname,
 	res:update_mh(mouseh);
 	res:switch_state("active");
 	return res;
-end
-
-local function bar_resize(bar, neww, newh, time, interp, bar_parent)
-	if (not neww or neww <= 0 or not newh or newh <= 0) then
-		return;
-	end
-
--- if we are running in nested mode, don't accept a resize from anyone
--- other than the parent or reanchor / resize / ... may occur
-	if (bar.parent and not bar_parent) then
-		return;
-	end
-
-	local domupd = newh ~= bar.height;
-	bar.width = neww;
-	bar.height = newh;
-	bar.base = neww < newh and neww or newh;
-
-	resize_image(bar.anchor, bar.width, bar.height, time, interp);
-
-	bar.anim_time = time;
-	bar.anim_func = interp;
-
-	if (domupd) then
-		bar:invalidate();
-	else
-		bar:relayout();
-	end
-
-	if (bar.impostor_rz) then
-		bar:impostor_rz(neww, newh, time, bar.anim_func);
-	end
-
-	bar.anim_time = nil;
 end
 
 local function bar_relayout_horiz(bar)
@@ -436,8 +442,8 @@ local function bar_relayout_horiz(bar)
 		if (not v.hidden) then
 			v.minw = fair_sz;
 			v.maxw = fair_sz;
-			v.minh = bar.height;
-			v.maxh = bar.height;
+			v.minh = bar.base;
+			v.maxh = bar.base;
 			v.anim_time = bar.anim_time;
 			v.anim_func = bar.anim_func;
 			button_labelupd(v, nil, v.timeout, v.timeout_str);
@@ -453,6 +459,179 @@ local function bar_relayout_horiz(bar)
 
 	return 0;
 end
+
+-- Just a modified version of relayout_horiz, any changes there should be
+-- replicated here. While they look to be sharing much code, actually having a
+-- shared base and cover invariants was even messier.
+local function bar_relayout_vert(bar)
+	reset_image_transform(bar.anchor);
+	resize_image(bar.anchor,
+		bar.width, bar.height, bar.anim_time, bar.anim_func);
+
+-- default hide center as it will matter later
+	local nvis = 0;
+	for i,v in ipairs(bar.buttons.center) do
+		if (not v.hidden) then
+			nvis = nvis + 1;
+		end
+		hide_image(v.bg);
+	end
+
+-- "left" and "right" here is inherited bias from the normal layout being
+-- horizontal, "left" -> top, "right" -> bottom.
+	local relay = function(afn)
+		local ly = bar.sidepad;
+		for k,v in ipairs(bar.buttons.left) do
+			local w, h = v:dimensions();
+			local xp = w ~= bar.width and math.floor(0.5 * (bar.width) - w) or 0;
+			xp = xp < 0 and 0 or xp;
+			reset_image_transform(v.bg);
+
+			afn(v.bg, v, w, h, xp, ly, bar.anim_time, bar.anim_func);
+			ly = ly + h;
+		end
+
+		local ry = bar.height - bar.sidepad;
+		for k,v in ipairs(bar.buttons.right) do
+			local w, h = v:dimensions();
+			ry = ry - h;
+			local xp = h ~= bar.width and math.floor(0.5 * (bar.width) - w) or 0;
+			xp = xp < 0 and 0 or xp;
+			reset_image_transform(v.bg);
+			afn(v.bg, v, w, h, xp, ry, bar.anim_time, bar.anim_func);
+		end
+		return ly, ry;
+	end
+
+-- figure out how much is needed for the center area
+	local ca = 0;
+	for k,v in ipairs(bar.buttons.center) do
+		local w, h = v:dimensions();
+		ca = ca + h;
+	end
+
+	local ly, ry = relay(
+		function(vid, v, w, h, x, y, ...)
+			if (y + h > bar.height) then
+				hide_image(vid);
+			elseif (not v.hidden) then
+				show_image(vid);
+			end
+			move_image(vid, x, y, ...);
+		end
+	);
+
+	if (ca == 0) then
+		return 0;
+	end
+
+-- fill region doesn't need to deal with forced- button layout
+	local fair_sz = nvis > 0 and math.floor((ry -ly)/nvis) or 0;
+	if (fair_sz <= 0) then
+-- and completely hide the nested bar instead of relayout
+		if (bar.nested) then
+
+-- but it might have been deleted elsewhere, so safeguard
+			if (bar.nested.hide) then
+				bar.nested:hide();
+			else
+				bar.nested = nil;
+			end
+		end
+
+		return;
+	end
+
+-- if we are in nested mode, then just forward the layouting process there
+	if (bar.nested) then
+		if (bar.nested.relayout) then
+			local method = bar.nested.relayout
+			bar.nested.relayout = bar_relayout_vert
+			bar.nested:show();
+			bar.nested:reanchor(bar.anchor, 1, 0, ly);
+			bar.nested:resize(bar.width, ry - ly, bar.anim_time, bar.anim_func, bar);
+			bar.nested.relayout = method
+			return;
+		else
+			bar.nested = nil;
+		end
+	end
+
+-- otherwise, sweep the buttons and update labels etc. where appropriate
+	for k,v in ipairs(bar.buttons.center) do
+		if (not v.hidden) then
+			v.minw = bar.base;
+			v.maxw = bar.base;
+			v.minh = fair_sz;
+			v.maxh = fair_sz;
+			v.anim_time = bar.anim_time;
+			v.anim_func = bar.anim_func;
+			v.lbl_rotate = 90;
+			button_labelupd(v, nil, v.timeout, v.timeout_str);
+			v.anim_func = nil;
+			v.anim_time = nil;
+			if (ly + v.maxh <= bar.height) then
+				show_image(v.bg);
+			end
+			move_image(v.bg, 0, ly);
+			ly = ly + fair_sz;
+		end
+	end
+
+	return 0;
+end
+
+local function bar_resize(bar, neww, newh, time, interp, bar_parent)
+	if (not neww or neww <= 0 or not newh or newh <= 0) then
+		return;
+	end
+
+-- if we are running in nested mode, don't accept a resize from anyone
+-- other than the parent or reanchor / resize / ... may occur
+	if (bar.parent and not bar_parent) then
+		return;
+	end
+
+-- relayout vs. a full invalidations has different costs as the one might
+-- cause re-rasterization of size aware icons, versus just moving buttons
+	local domupd = false;
+	if neww > newh then
+		domupd = neww ~= bar.width;
+		bar.base = newh;
+	else
+		domupd = newh ~= bar.height;
+		bar.base = neww;
+	end
+
+	bar.width = neww;
+	bar.height = newh;
+
+	for i in bar:all_buttons() do
+		if bar.relayout == bar_relayout_horiz then
+			i:constrain(i.pad, bar.base, bar.base, bar.width, bar.base);
+		else
+			i:constrain(i.pad, bar.base, bar.base, bar.base, bar.height);
+		end
+	end
+
+	resize_image(bar.anchor, bar.width, bar.height, time, interp);
+
+	bar.anim_time = time;
+	bar.anim_func = interp;
+
+	if (domupd) then
+		bar:invalidate();
+	else
+		bar:relayout();
+	end
+
+	if (bar.impostor_rz) then
+		bar:impostor_rz(neww, newh, time, bar.anim_func);
+	end
+
+	bar.anim_time = nil;
+end
+
 
 -- note that this kills multiple returns
 local function chain_upd(bar, fun, tag)
@@ -571,18 +750,11 @@ local function bar_button(bar, align,
 	assert(bar.buttons[align] ~= nil, "unknown alignment");
 	assert(type(fontfn) == "function", "font resolver is not a function");
 
--- autofill in the non-dominant axis
-	local fill = false;
-	if (not minh) then
-		minh = bar.base;
-		fill = true;
-	end
-
 -- defer creation until the group is set as active
 	local gtbl = {
 		bar = bar, align = align, bgshname = bgshname,
 		lblshname = lblshname, lbl = lbl, pad = pad,
-		fontfn = fontfn, minw = minw, minh = min, mouseh = mouseh,
+		fontfn = fontfn, minw = minw, minh = minh, mouseh = mouseh,
 		opts = opts
 	};
 
@@ -690,22 +862,8 @@ local function bar_update(bar, group, index, ...)
 end
 
 local function bar_invalidate(bar, minw, minh)
-	for k,v in pairs(bar.buttons) do
-		for i,j in ipairs(v) do
-
-			if (j.autofill) then
-				j.minh = bar.height;
-			else
-				if (minw and j.minw and j.minw > 0) then
-					j.minw = minw;
-				end
-				if (minh and j.minh and j.minh > 0) then
-					j.minh = minh;
-				end
-			end
-
-			j:update();
-		end
+	for i in bar:all_buttons() do
+		i:update();
 	end
 	bar:relayout();
 end
@@ -854,6 +1012,16 @@ local function bar_nested(bar, new, closure)
 	bar:invalidate();
 end
 
+-- these do not trigger a relayout by themselves as a setsize call is
+-- pretty much guaranteed to come afterwards
+local function layout_switch_horiz(bar)
+	bar.relayout = bar_relayout_horiz;
+end
+
+local function layout_switch_vert(bar)
+	bar.relayout = bar_relayout_vert;
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
@@ -894,6 +1062,8 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
 		resize = bar_resize,
 		invalidate = bar_invalidate,
 		relayout = bar_relayout_horiz,
+		set_horizontal = layout_switch_horiz,
+		set_vertical = layout_switch_vert,
 
 -- used for animation invalidation and input handling switches
 		update = bar_update,

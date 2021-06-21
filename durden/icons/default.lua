@@ -30,7 +30,11 @@
 --
 -- and they can be mixed, i.e. if there is no direct match for a certain px size,
 -- the generator will be invoked. This is to allow both a SDF based vector synth
--- as well as hand drawn overrides
+-- as well as hand drawn overrides.
+--
+-- It is up to the UI component that uses the icon to deal with the desired px
+-- size not actually being the returned one, and many will rather pad/relayout
+-- than force-scale. In that case, use the 3. method with icon_synthesize_src.
 --
 return {
 ["cli"] =

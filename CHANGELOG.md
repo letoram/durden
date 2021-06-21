@@ -1,4 +1,4 @@
-# 0.6.2
+# 0.7.0:
 
 * split out target/open into target/open and target/open\_tag
 
@@ -12,19 +12,29 @@
   for using server-side selection, and a 'per-type' enable with tui default
 
 * display composition output format can now be set per display, at runtime:
-  565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR (16)
+  565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR
 
 * added a tile-bsp mode that adds new windows based on the highest-level
   tile with less than 2 children (/global/workspace/layout/tile\_bsp)
+
+* statusbar - added vertical layout
 
 minor:
 
 * added dracula/gruvbox/gruvbox-light colorschemes
 
+* color picking widget not shows tui- colorschemes
+
+* activation / type fixes for universal open/save
+
 * value-input cancel-out crash fixed
 
 * terminal hard coded colorscheme deprecated in favor of dynamic
   switching (/global/settings/terminal/colorscheme)
+
+* added font- size stepping control (/target/visual/font/step\_size)
+
+* uiprim/bar - label dominant-axis positioning fixed
 
 * swapping from fullscreen workspace to a non fullscreen one and back
   should no longer lose the surface canvas
