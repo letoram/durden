@@ -261,6 +261,24 @@ local font_override = {
 		end
 	},
 	{
+		name = "step_size",
+		label = "Step Size",
+		kind = "value",
+		description = "Increment or decrement the current font size",
+		validator = gen_valid_num(-6, 6),
+		hint = "(-6..6)",
+		eval = function() return active_display().selected.last_font ~= nil; end,
+		handler =
+		function(ctx, val)
+			local wnd = active_display().selected;
+			local sz = math.clamp(wnd.last_font[1] + tonumber(val), 4, 200)
+			local ob = wnd.font_block;
+			wnd.font_block = false;
+			wnd:update_font(sz, -1);
+			wnd.font_block = ob;
+		end,
+	},
+	{
 		name = "hinting",
 		label = "Hinting",
 		kind = "value",
