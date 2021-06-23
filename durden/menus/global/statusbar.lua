@@ -352,10 +352,10 @@ return {
 		description = "Change the statusbar vertical position",
 		set = {"top", "bottom", "left", "right"},
 		initial = function()
-			return gconfig_get("sbar_pos");
+			return gconfig_get("sbar_position");
 		end,
 		handler = function(ctx, val)
-			gconfig_set("sbar_pos", val);
+			gconfig_set("sbar_position", val);
 			active_display():tile_update();
 			active_display():resize();
 		end

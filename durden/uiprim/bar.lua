@@ -38,22 +38,17 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		btn.timeout_lbl = timeoutstr and timeoutstr or "";
 	end
 
--- if it just means to repeat the last label, then we just
--- prepend the new font-str
-	local append = true;
+-- might just need to repeat the last known label with new fontinfo
+	local replace;
 	if (lbl == nil) then
 		lbl = btn.last_lbl;
-		append = false;
+		replace = true;
 	end
 
 -- keep this around so we can update if the fontfn changes
 	if (type(lbl) == "string" or type(lbl) == "table") then
 		if (type(lbl) == "string") then
 			lbl = {fontstr, lbl};
-		elseif (append) then
-			lbl[1] = fontstr .. lbl[1];
-		else
-			lbl[1] = fontstr;
 		end
 		btn.last_lbl = lbl;
 
@@ -82,6 +77,8 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- vid should belong to the caller, as the linking and deleting will occur
 -- here
 		lbl = lbl(btn.minh);
+		print("regen", btn.minh);
+
 		if (not valid_vid(lbl)) then
 			return;
 		end
@@ -99,7 +96,6 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 			props.width = old;
 			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
 			rotate_image(lbl, btn.lbl_rotate);
-			print("rotate", btn.last_lbl, btn.w, btn.h)
 		else
 			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
 			rotate_image(lbl, 0);
@@ -298,26 +294,6 @@ function uiprim_button(anchor, bgshname,
 	res.lbl_tag = res.name .. "_label";
 
 	local priv = {}
-
-	setmetatable(res, {
-		__index =
-		function(self, key)
-			local v = rawget(self, key)
-			if v then
-				return v
-			end
-			return priv[key]
-		end,
-		__newindex =
-		function(self, key, value)
-			priv[key] = value
-			if key == "minh" and value == 1430 then
-				print("min changed", debug.traceback())
-			end
-		end
-	})
-
-	res.minh = nil
 
 -- only need anchor or we should have a real drawn node?
 	if (not bgshname) then
@@ -582,6 +558,7 @@ local function bar_relayout_vert(bar)
 end
 
 local function bar_resize(bar, neww, newh, time, interp, bar_parent)
+	print("resize to", neww, newh);
 	if (not neww or neww <= 0 or not newh or newh <= 0) then
 		return;
 	end
@@ -1147,6 +1124,13 @@ local function hlp_add_btn(ctx, helper, lbl)
 -- if ofs + width, compact left and add a "grow" offset on pop
 	res.ofs = #helper > 0 and helper[#helper].ofs or 0;
 	res.yofs = (tileh + 1) * dir;
+
+-- order-anchor can be pushed outside screen boundaries to the left, counter that
+	local order = image_surface_resolve(active_display().order_anchor);
+	if order.x < 0 then
+		res.ofs = res.ofs - order.x;
+	end
+
 	move_image(res.btn.bg, res.ofs, res.yofs);
 	move_image(res.btn.bg, res.ofs, yp); -- switch, lbar height
 	nudge_image(res.btn.bg, 0, res.yofs, gconfig_get("animation") * 0.5, INTERP_SINE);

@@ -575,8 +575,8 @@ local function resolve_vsymbol(wm, label, base)
 -- return the vid itself, but rather need to provide a factory function
 	if state then
 		if type(outlbl) == "function" then
-			return function()
-				local surf = outlbl(base);
+			return function(w)
+				local surf = outlbl((w and w > 0) and w or base);
 				image_tracetag(surf, "bar_vsym_" .. label);
 				return surf;
 			end
@@ -629,7 +629,8 @@ local function tiler_statusbar_update(wm)
 -- positioning etc. still needs the current size of the statusbar
 	bar_base = sbar_geth(wm);
 
-	if (gconfig_get("sbar_pos") == "top") then
+	local pos = gconfig_get("sbar_position")
+	if (pos == "top") then
 		wm.yoffset = bar_base + pad_v;
 		wm.xoffset = 0;
 		wm.effective_width = wm.width;
@@ -642,7 +643,7 @@ local function tiler_statusbar_update(wm)
 		move_image(wm.order_anchor, 0, -bar_base - pad_t);
 		wm.statusbar:resize(wm.width - pad_h, bar_base);
 
-	elseif (gconfig_get("sbar_pos") == "left") then
+	elseif (pos == "left") then
 		wm.yoffset = 0;
 		wm.xoffset = bar_base + pad_l;
 		wm.xlimit = wm.width;
@@ -655,7 +656,7 @@ local function tiler_statusbar_update(wm)
 		move_image(wm.order_anchor, -bar_base - pad_h, 0);
 		wm.statusbar:resize(bar_base, wm.height - pad_v);
 
-	elseif (gconfig_get("sbar_pos") == "right") then
+	elseif (pos == "right") then
 		wm.yoffset = 0;
 		wm.xoffset = 0;
 		wm.xlimit = wm.width - bar_base - pad_h;
@@ -726,10 +727,10 @@ local function tiler_statusbar_update(wm)
 
 			wm.sbar_ws[i]:update(lbltbl, 0, true);
 
--- offset background to take titlebar- size into account
+-- offset background to take size and position into account
 			if (wm.spaces[i].background) then
-				wm.spaces[i].background_y = -(image_surface_resolve(wm.anchor).y);
-				move_image(wm.spaces[i].background, 0, wm.spaces[i].background_y);
+				wm.spaces[i].background_y = -wm.yoffset;
+				move_image(wm.spaces[i].background, -wm.xoffset, -wm.yoffset);
 			end
 		else
 			wm.sbar_ws[i]:hide();
@@ -788,7 +789,6 @@ local function tiler_statusbar_build(wm)
 	if (wm.statusbar) then
 		wm.statusbar:destroy();
 	end
-	print("statusbar building", wm.width)
 
 	wm.statusbar = uiprim_bar(
 		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
@@ -1973,8 +1973,7 @@ local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
 		resize_image(ws.background, wm.width, wm.height);
 		link_image(ws.background, ws.anchor);
 		local sb_sz = sbar_geth(wm);
-		ws.background_y = -(image_surface_resolve(wm.anchor).y);
-		move_image(ws.background, 0, ws.background_y);
+		move_image(ws.background, -ws.wm.xoffset, -ws.wm.yoffset);
 		if (crossfade) then
 			blend_image(ws.background, 0.0, ttime);
 		end
@@ -2148,7 +2147,6 @@ create_workspace = function(wm, anim)
 		children = {},
 		weight = 1.0,
 		vweight = 1.0,
-		background_y = 0,
 		last_action = CLOCK
 	};
 
@@ -2442,6 +2440,25 @@ local function wnd_show(wnd)
 	wnd.hidden = false;
 end
 
+local function wnd_recalc_pad(wnd)
+	local tbh = tbar_geth(wnd);
+	local bw = wnd:border_width();
+	wnd.pad_top = bw;
+	wnd.pad_left = bw;
+	wnd.pad_right = bw;
+	wnd.pad_bottom = bw;
+	local pos = gconfig_get("tbar_position")
+	if pos == "left" then
+		wnd.pad_left = wnd.pad_left + tbh;
+	elseif pos == "right" then
+		wnd.pad_right = wnd.pad_right + tbh;
+	elseif pos == "down" then
+		wnd.pad_bottom = wnd.pad_bottom + tbh;
+	else
+		wnd.pad_top = wnd.pad_top + tbh;
+	end
+end
+
 local function wnd_size_decor(wnd, w, h, animate)
 -- redraw / update the decorations
 	local bw = wnd:border_width();
@@ -2463,10 +2480,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 		animate and "yes" or "no", at, bw, tbh, wnd.want_shadow and "yes" or "no")
 	);
 
-	wnd.pad_top = bw;
-	wnd.pad_left = bw;
-	wnd.pad_right = bw;
-	wnd.pad_bottom = bw;
+	wnd_recalc_pad(wnd);
 
 -- note that all these resize calls should actually first get the 'reset'
 -- transform length and subtract that from the at if the at is larger than
@@ -2476,10 +2490,29 @@ local function wnd_size_decor(wnd, w, h, animate)
 
 	if (wnd.show_titlebar or not tbar_mode(wnd.space.mode)) then
 		wnd.titlebar:show();
-		wnd.titlebar:move(wnd.pad_left, wnd.pad_top, at, af);
-		wnd.titlebar:resize(
-			wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
-		wnd.pad_top = wnd.pad_top + tbh;
+
+		local pos = gconfig_get("tbar_position")
+		if pos == "left" then
+			wnd.titlebar:set_vertical();
+			wnd.titlebar:resize(tbh,
+				wnd.height - wnd.pad_top - wnd.pad_bottom + wnd.dh_pad_h, at, af);
+			wnd.titlebar:reanchor(wnd.anchor, 4, bw, wnd.pad_top, ANCHOR_UL);
+		elseif pos == "right" then
+			wnd.titlebar:set_vertical();
+			wnd.titlebar:resize(tbh,
+				wnd.height - wnd.pad_top - wnd.pad_bottom + wnd.dh_pad_h, at, af);
+			wnd.titlebar:reanchor(wnd.anchor, 4, -tbh, wnd.pad_top, ANCHOR_UR);
+		elseif pos == "down" then
+			wnd.titlebar:set_horizontal();
+			wnd.titlebar:resize(
+				wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
+			wnd.titlebar:reanchor(wnd.anchor, 4, wnd.pad_left, -tbh - bw, ANCHOR_LL);
+		else
+			wnd.titlebar:set_horizontal();
+			wnd.titlebar:resize(
+				wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
+			wnd.titlebar:reanchor(wnd.anchor, 4, wnd.pad_left, bw, ANCHOR_UL);
+		end
 
 -- only hide if we are not in a nested state. otherwise parent decides
 	elseif (not wnd.titlebar.parent) then
@@ -2959,7 +2992,7 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 	);
 
 -- make sure the titlebar (if visible) isn't occluded by the statusbar
-	local tbarh = tbar_geth(wnd);
+	local tbh = tbar_geth(wnd);
 	local lm, ls, interp = wnd_animation_time(wnd, wnd.anchor, false, true);
 
 	if (abs) then
@@ -2988,8 +3021,9 @@ local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
 		lm = 0;
 	end
 
+-- this depends on titlebar state / position
 	if (not noclamp) then
-		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbarh);
+		wnd.y = math.clamp(wnd.y, 0, wnd.wm.ylimit - tbh);
 	end
 
 	tiler_debug(wnd.wm, string.format(
@@ -4161,11 +4195,13 @@ local function wnd_ws_attach(res, from_hook)
 	link_image(res.anchor, space.anchor);
 	space.last_action = CLOCK;
 
+--	size_decor will override this anyhow
 	tbh = tbar_geth(res);
 	res.pad_top = res.pad_top + tbh;
 
 -- this should be improved by allowing w/h/x/y overrides based on
--- history for the specific source or the class it belongs to
+-- history for the specific source or the class it belongs to, or a 'find
+-- best fit'.
 	if (space.mode == "float") then
 		local props = image_storage_properties(res.canvas);
 		res.width = props.width;
@@ -4177,8 +4213,8 @@ local function wnd_ws_attach(res, from_hook)
 			res.defer_y = nil;
 		else
 			res.x, res.y = mouse_xy();
-			res.x = res.x - res.pad_left - res.pad_right;
-			res.y = res.y - res.pad_top - res.pad_bottom;
+			res.x = math.clamp(res.x - res.pad_left - res.pad_right, 0);
+			res.y = math.clamp(res.y - res.pad_top - res.pad_bottom, 0);
 		end
 		res.max_w = wm.effective_width;
 		res.max_h = wm.effective_height;
@@ -5414,7 +5450,7 @@ end
 
 -- this is the wrong way to do it now that rendertargets actually support
 -- setting an output density and rerastering accordingly, refactor when
--- time permits.
+-- time permits. Then we can simply return an empty string here.
 local function recalc_fsz(wm)
 	local fsz = gconfig_get("font_sz") * wm.scalef - gconfig_get("font_sz");
 	local int, fract = math.modf(fsz);
@@ -5424,14 +5460,7 @@ local function recalc_fsz(wm)
 	end
 
 	wm.font_deltav = int;
-
--- since ascent etc. may be different at different sizes, render a test line
--- and set the "per tiler" shift here
-	if (int > 0) then
-		wm.font_delta = "\\f,+" .. tostring(int);
-	elseif (int <= 0) then
-		wm.font_delta = "\\f," .. tostring(int);
-	end
+	wm.font_delta = "\\f," .. tostring(gconfig_get("font_sz") + int);
 end
 
 -- the tiler is now on a display with a new scale factor, this means redoing
@@ -5465,14 +5494,13 @@ local function tiler_scalef(wm, newf, disptbl)
 -- easier doing things like this than fixing the other dimensioning edgecases
 --	wm.statusbar:destroy();
 -- this broke custom buttons and buttons from other origins
-	wm.statusbar:invalidate();
 
 -- mouse locking coordinates depend on active rt
 	if (active_display() == wm) then
 		mouse_querytarget(wm.rtgt_id);
 	end
 
---	tiler_statusbar_build(wm);
+	tiler_statusbar_build(wm);
 	wm:tile_update();
 end
 

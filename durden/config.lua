@@ -1,3 +1,11 @@
+--
+-- These only 'apply' first run, and are normally supposed to be changed at
+-- runtime through the menu system. If you really want an 'offline' tuning
+-- process, make sure to run 'arcan_db drop_appl durden' between runs.
+--
+-- Do note that Durden treats the first run differently (see firstrun.lua)
+-- and this will be repeated each time the database is reset.
+--
 return {
 	msg_timeout = 100,
 	tbar_timeout = 200,
@@ -290,7 +298,7 @@ return {
 	sbar_popup_pad = 4,
 	sbar_shadow = "soft",
 	sbar_shadow_color = {0, 0, 0},
-	sbar_pos = "top",
+	sbar_position = "top",
 	sbar_visible = "desktop", -- (desktop / hud / hidden)
 	sbar_wsbuttons = true, -- show the dynamic workspace switch buttons
 	sbar_wsmeta = true, -- show the workspace- create button
@@ -308,6 +316,7 @@ return {
 	tbar_text = "left", -- left, center, right
 	tbar_textstr = "\\#ffffff ",
 	tbar_rclick = "/global/tools/popup/menu=/target",
+	tbar_position = "top",
 
 -- icons
 	icon_set = "default",
