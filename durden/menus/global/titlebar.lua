@@ -206,4 +206,17 @@ return
 		description = "Modify the default set of decoration buttons added to new windows",
 		handler = titlebar_buttons
 	},
+	{
+		name = "position",
+		label = "Position",
+		kind = "value",
+		description = "(Tiling, Float) Change titlebar anchor point",
+		set = {"top", "left", "right", "down"},
+		initial = function()
+			return gconfig_get("tbar_position");
+		end,
+		handler = function(ctx, val)
+			gconfig_set("tbar_position", val);
+		end
+	},
 };

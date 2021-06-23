@@ -161,6 +161,8 @@ local function update_completion_set(wm, ctx, set)
 	end
 	ctx.ucount = ctx.ucount + 1;
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
+	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+
 	if (ctx.canchor) then
 
 		if valid_vid(ctx.canchor) then
@@ -351,7 +353,7 @@ local function update_completion_set(wm, ctx, set)
 			);
 		end
 
-		move_image(txt, ofs, pad);
+		move_image(txt, ofs, pad + 0.5 * (barh - txt_h));
 		ofs = ofs + (crop and w or txt_w) + gconfig_get("lbar_itemspace");
 -- can't fit more entries, give up
 		if (exit) then
@@ -367,17 +369,13 @@ local function setup_string(wm, ictx, str)
 		return ictx;
 	end
 
-	local pad = gconfig_get("lbar_tpad") * wm.scalef;
-
 	ictx.text = tvid;
 	image_tracetag(ictx.text, "lbar_inpstr");
 	show_image(ictx.text);
 	link_image(ictx.text, ictx.text_anchor);
 	image_inherit_order(ictx.text, true);
 
-	move_image(ictx.text, ictx.textofs, pad);
-
-	return tvid;
+	return tvid, texth;
 end
 
 local function lbar_istr(wm, ictx, res)
@@ -390,11 +388,14 @@ local function lbar_istr(wm, ictx, res)
 	end
 
 	if (valid_vid(ictx.text)) then
-		ictx.text = render_text(ictx.text, str);
+		ictx.text, _, _, ictx.texth = render_text(ictx.text, str);
 	else
-		ictx.text = setup_string(wm, ictx, str);
+		ictx.text, ictx.texth = setup_string(wm, ictx, str);
 	end
 
+	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+	move_image(ictx.text, ictx.textofs,
+		0.5 * (barh - ictx.texth) + gconfig_get("lbar_tpad") * wm.scalef);
 	update_caret(ictx, ictx.mask_text);
 end
 
@@ -635,8 +636,8 @@ local function lbar_label(lbar, lbl)
 
 	local wm = active_display();
 
-	local id, lines, w, h, asc = render_text({wm.font_delta ..
-		gconfig_get("lbar_labelstr"), lbl});
+	local id, lines, w, h, asc =
+		render_text({wm.font_delta .. gconfig_get("lbar_labelstr"), lbl});
 
 	lbar.labelid = id;
 	if (not valid_vid(lbar.labelid)) then
@@ -650,12 +651,14 @@ local function lbar_label(lbar, lbl)
 	order_image(id, 1);
 
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
+	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
+
 -- relinking / delinking on changes every time
-	move_image(lbar.labelid, pad, pad);
+	move_image(lbar.labelid, pad, 0.5 * (barh - h) + pad);
 	lbar.textofs = w + gconfig_get("lbar_spacing") * wm.scalef;
 
 	if (valid_vid(lbar.text)) then
-		move_image(lbar.text, lbar.textofs, pad);
+		move_image(lbar.text, lbar.textofs, 0.5 * (barh - lbar.texth) + pad);
 	end
 	update_caret(lbar);
 end
