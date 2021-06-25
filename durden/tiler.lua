@@ -5500,8 +5500,14 @@ local function tiler_scalef(wm, newf, disptbl)
 		mouse_querytarget(wm.rtgt_id);
 	end
 
-	tiler_statusbar_build(wm);
-	wm:tile_update();
+	local olddisp = active_display();
+
+-- this will re-recreate some parts of the statusbar, and thus we need to be
+-- sure that new items gets attached to the right rendertarget
+	set_context_attachment(wm.rtgt_id);
+		tiler_statusbar_build(wm);
+		wm:tile_update();
+	set_context_attachment(olddisp.rtgt_id);
 end
 
 local function tiler_fontres(wm)
