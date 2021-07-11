@@ -473,6 +473,93 @@ local function gen_devmenu(slotted)
 	return res;
 end
 
+local function keymap_actions(id, verb, ...)
+	local ok = false
+	repeat
+		ok = input_remap_translation(id, verb, ...)
+		id = id - 1
+	until id >= -1 or not ok
+end
+
+local devid_opts = {}
+local function ensure_set(devid, ind, val)
+	val = val and val or "";
+	if not devid_opts[devid] then
+		devid_opts[devid] = {"", "", "", ""}; -- layout, model, variant, options
+	end
+	devid_opts[devid][ind] = val;
+end
+
+local function get_keymap_menu(devid)
+	return {
+	{
+		name = "reset",
+		label = "Reset",
+		kind = "action",
+		description = "Reset keyboard translation options to platform default",
+		handler = function()
+			keymap_actions(devid, TRANSLATION_CLEAR)
+		end,
+	},
+	{
+		name = "layout",
+		label = "Layout",
+		kind = "value",
+		initial = function()
+			return devid_opts[devid] and devid_opts[devid][1] or "";
+		end,
+		description = "Change the set of mapped keyboard layouts",
+		hint = "(, separate: us,cz,de)",
+		handler = function(ctx, val)
+			ensure_set(devid, 1, val);
+			keymap_actions(devid, TRANSLATION_SET, unpack(devid_opts[devid]));
+		end,
+	},
+	{
+		name = "model",
+		label = "Model",
+		kind = "value",
+		description = "Change the active keyboard model",
+		hint = "(pc104)",
+		initial = function()
+			return devid_opts[devid] and devid_opts[devid][2] or "";
+		end,
+		handler = function(ctx, val)
+			ensure_set(devid, 2, val);
+			keymap_actions(devid, TRANSLATION_SET, unpack(devid_opts[devid]));
+		end
+	},
+	{
+		name = "variant",
+		label = "Variant",
+		kind = "value",
+		description = "Change the active keyboard variant",
+		hint = "(basic)",
+		initial = function()
+			return devid_opts[devid] and devid_opts[devid][3] or "";
+		end,
+		handler = function(ctx, val)
+			ensure_set(devid, 3, val);
+			keymap_actions(devid, EVENT_TRANSLATION_SET, unpack(devid_opts[devid]));
+		end
+	},
+	{
+		name = "options",
+		label = "Options",
+		kind = "value",
+		description = "Set keyboard layout options",
+		hint = "(grp:alt_shift_toggle)",
+		initial = function()
+			return devid_opts[devid] and devid_opts[devid][4] or "";
+		end,
+		handler = function(ctx, val)
+			ensure_set(devid, 4, val);
+			keymap_actions(devid, TRANSLATION_SET, unpack(devid_opts[devid]));
+		end
+	},
+	}
+end
+
 local keymaps_menu = {
 	{
 		name = "bind_utf8",
@@ -481,6 +568,17 @@ local keymaps_menu = {
 		description = "Associate a keyboard key with a UTF-8 defined unicode codepoint",
 		external_block = true,
 		handler = bind_utf8,
+	},
+	{
+		name = "platform",
+		label = "Platform",
+		kind = "action",
+		description = "Override current evdev input platform keymap for all keyboards",
+		submenu = true,
+		eval = function()
+			return string.match(API_ENGINE_BUILD, "evdev") and input_remap_translation ~= nil;
+		end,
+		handler = get_keymap_menu(-1)
 	},
 	{
 		name = "bind_sym",
