@@ -778,7 +778,9 @@ end
 
 local function bar_destroy(bar)
 	if (bar.parent) then
-		bar.parent:set_nested()
+		if bar.parent.set_nested then
+			bar.parent:set_nested()
+		end
 	end
 
 	if (valid_vid(bar.anchor)) then
