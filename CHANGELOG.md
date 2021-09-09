@@ -19,6 +19,9 @@
 
 * statusbar - added vertical layout
 
+* touch - added an empty (disable) classifier, exposed more profile
+  values dynamically, option to hook profile picking on unknown device.
+
 minor:
 
 * added dracula/gruvbox/gruvbox-light colorschemes
