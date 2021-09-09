@@ -1,4 +1,4 @@
--- Copyright: 2016-2020, Björn Ståhl
+-- Copyright: Björn Ståhl
 -- Description: Touch, tablet, multitouch support and routing.
 -- of devices that fits a preset profile (devmaps/touch/...). These profiles
 -- sets default parameters and state-machine ('classifier') which filters
@@ -6,6 +6,7 @@
 local devices = {};
 local profiles = {};
 local default_profile = nil;
+local touch_device_hook = nil;
 
 local idevice_log, fmt = suppl_add_logfn("idevice");
 local touchm_evlog = function(msg)
@@ -16,11 +17,14 @@ end
 -- input samples on the device to dispatch actions or new input
 -- events on virtual devices
 local classifiers = {};
-for k,v in pairs(system_load("input/classifiers/mouse.lua")()) do
-	classifiers[k] = v;
-end
-for k,v in pairs(system_load("input/classifiers/touch.lua")()) do
-	classifiers[k] = v;
+for k,v in ipairs(glob_resource("input/classifiers/*.lua")) do
+	local val = suppl_script_load(
+		"input/classifiers/" .. v, idevice_log);
+	if val and type(val) == "table" then
+		for k,v in pairs(val) do
+			classifiers[k] = v;
+		end
+	end
 end
 
 touchm_evlog("status=active");
@@ -158,6 +162,7 @@ function touch_register_device(iotbl, eval)
 		if (eval) then
 			return;
 		end
+
 		touchm_evlog(devstr .. ":message=no profile, assigning default");
 		profile = default_profile;
 	end
@@ -202,6 +207,16 @@ function touch_register_device(iotbl, eval)
 
 -- reinject input so the sample gets used as well
 	durden_input(iotbl);
+
+	if profile == default_profile and touch_device_hook then
+		touch_device_hook(devtbl, iotbl.devid);
+	end
+end
+
+-- enable hooking in configuration tools for unknown device
+-- profiles to allow new ones to be dynamically created
+function touch_hook_default(hook)
+	touch_device_hook = hook;
 end
 
 function touch_shutdown()
@@ -342,6 +357,31 @@ local function menu_for_device(dev)
 		initial = tostring(dev.cooldown),
 		handler = function(ctx, val)
 			dev.cooldown = tonumber(val);
+		end
+	},
+	{
+		name = "activation",
+		label = "Activation",
+		kind = "value",
+		description = "Normalized range for first valid input value between resets",
+		validator = function(val)
+			local tbl = suppl_unpack_typestr("ffff", val, 0, 1);
+			if tbl == nil then
+				return false;
+			end
+
+			return tbl[1] < tbl[3] and tbl[2] < tbl[4];
+		end,
+		hint = "(x1 y1 x2 y2)(0..1, x1y1 < x2y2)",
+		initial = function(ctx)
+			return string.format("%.2f %.2f %.2f %.2f",
+				dev.activation[1], dev.activation[2],
+				dev.activation[3], dev.activation[4]
+			);
+		end,
+		handler = function(ctx, val)
+			local tbl = suppl_unpack_typestr("ffff", val);
+			dev.activation = tbl;
 		end
 	},
 	{
