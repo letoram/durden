@@ -43,6 +43,23 @@ local function gen_key(dev, prefix, thresh, dx, dy, nf)
 end
 
 local function run_drag(dev, dx, dy, nf, thresh)
+
+-- special case for mapping to analog mouse wheels, possibly that we should
+-- have a scrolling inertia to block small transitions because peoples fingers
+-- aren't that precise
+	if nf == 2 and dev.drag_2f_analog then
+		local basesym;
+		if math.abs(dx) > math.abs(dy) then
+			dx = dx * dev.drag_2f_analog_factor[1];
+			basesym = '/global/input/mouse/scroll/vertical=' .. tostring(dx);
+		else
+			dy = dy * dev.drag_2f_analog_factor[2];
+			basesym = '/global/input/mouse/scroll/horizontal=' .. tostring(dy);
+		end
+		dispatch_symbol(basesym);
+		return true;
+	end
+
 	local key = gen_key(dev, "drag", thresh, dx, dy, nf);
 	if (not key) then
 		return;
@@ -105,7 +122,7 @@ local function memu_digital(devtbl, iotbl)
 			end
 		end
 
-		return;
+		return true;
 	end
 
 -- otherwise we have button translation to allow certain buttons to
@@ -119,7 +136,7 @@ local function memu_digital(devtbl, iotbl)
 -- but rather require either a 'tap' gesture or motion then 'click',
 -- though if a press has been let through, do the same with the release
 		if (devtbl.button_mask and not devtbl.buttons_held[iotbl.subid]) then
-		return;
+		return true;
 	end
 
 	if (devtbl.warp_press) then
@@ -152,7 +169,7 @@ local function memu_digital(devtbl, iotbl)
 		mouse_absinput_masked(mx, my, true);
 	end
 
-	return iotbl;
+	return true;
 end
 
 -- aggregate samples with a variable number of ticks as sample period
@@ -406,7 +423,8 @@ local function memu_tick(v)
 		v.ind_mask = 0;
 		v.dragged = false;
 		v.mt_enter = nil;
-		v.button_mask = true;
+--		v.button_mask = true; removed to always accept digital buttons
+--		regardless of activation zone
 		v.dx_tmp_factor = 1;
 		v.dy_tmp_factor = 1;
 		v.got_tap = false;

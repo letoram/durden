@@ -63,10 +63,13 @@ local function tryload(map)
 		swipe_threshold = 0.2,
 		drag_threshold = 0.05,
 		drag_step = 0.01,
+		drag_2f_analog = false,
+		drag_2f_analog_factor = {1, 1},
 		autorange = true,
 		timeout = 10,
 		idle_base = 500,
 		motion_block = false,
+		button_block = false,
 		warp_press = false,
 		touch_only = false,
 		activation = {0.0, 0.0, 1.0, 1.0},
@@ -163,7 +166,7 @@ function touch_register_device(iotbl, eval)
 			return;
 		end
 
-		touchm_evlog(devstr .. ":message=no profile, assigning default");
+		touchm_evlog(devstr .. ":no_match:label=" .. devtbl.label);
 		profile = default_profile;
 	end
 
@@ -357,6 +360,32 @@ local function menu_for_device(dev)
 		initial = tostring(dev.cooldown),
 		handler = function(ctx, val)
 			dev.cooldown = tonumber(val);
+		end
+	},
+	{
+		name = "drag_2f_analog",
+		label = "2-Finger Analog Wheel",
+		kind = "value",
+		description = "Translate two finger drag action to scroll wheel",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return dev.drag_2f_analog and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			dev.drag_2f_analog = val == LBL_YES;
+		end
+	},
+	{
+		name = "button_block",
+		label = "Button Block",
+		kind = "value",
+		description = "Discard all digital events on device",
+		set = {LBL_YES, LBL_NO},
+		initial = function()
+			return dev.button_block and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			dev.button_block = val == LBL_YES;
 		end
 	},
 	{

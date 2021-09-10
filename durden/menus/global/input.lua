@@ -38,9 +38,11 @@ end
 local
 scroll_menu = {
 	{
-		name = "analog_vertical",
+		name = "vertical",
 		kind = "value",
-		label = "Analog-Vertical",
+		label = "Vertical",
+		description = "Send an analog vertical wheel scroll action",
+		hint = "(px: -100, 100)",
 		validator = gen_valid_num(-100, 100),
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
@@ -51,9 +53,11 @@ scroll_menu = {
 		end,
 	},
 	{
-		name = "analog_horizontal",
+		name = "horizontal",
 		kind = "value",
-		label = "Analog-Horizontal",
+		label = "Horizontal",
+		description = "Send an analog horizontal wheel scroll action",
+		hint = "(px: -100, 100)",
 		validator = gen_valid_num(-100, 100),
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
