@@ -77,7 +77,6 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- vid should belong to the caller, as the linking and deleting will occur
 -- here
 		lbl = lbl(btn.minh);
-		print("regen", btn.minh);
 
 		if (not valid_vid(lbl)) then
 			return;
@@ -558,7 +557,6 @@ local function bar_relayout_vert(bar)
 end
 
 local function bar_resize(bar, neww, newh, time, interp, bar_parent)
-	print("resize to", neww, newh);
 	if (not neww or neww <= 0 or not newh or newh <= 0) then
 		return;
 	end
