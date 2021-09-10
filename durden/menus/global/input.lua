@@ -35,6 +35,36 @@ local function gen_mbounce_menu()
 	return res;
 end
 
+local
+scroll_menu = {
+	{
+		name = "analog_vertical",
+		kind = "value",
+		label = "Analog-Vertical",
+		validator = gen_valid_num(-100, 100),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			if not wnd or not wnd.scroll then
+				return;
+			end
+			wnd:scroll(0, tonumber(val));
+		end,
+	},
+	{
+		name = "analog_horizontal",
+		kind = "value",
+		label = "Analog-Horizontal",
+		validator = gen_valid_num(-100, 100),
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			if not wnd or not wnd.scroll then
+				return;
+			end
+			wnd:scroll(tonumber(val), 0);
+		end
+	}
+};
+
 local remap_menu = {
 	{
 		name = "remap_123",
@@ -164,6 +194,14 @@ local mouse_menu = {
 		submenu = true,
 		kind = "action",
 		handler = remap_menu
+	},
+	{
+		name = "scroll",
+		kind = "action",
+		label = "Scrolling",
+		description = "Synthesize smooth (analog) scrolling values",
+		submenu = true,
+		handler = scroll_menu
 	},
 	{
 		name = "save_pos",

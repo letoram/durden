@@ -4774,6 +4774,13 @@ local function wnd_tbar_btn(wnd, dir, vsym, action, altaction, dst_group)
 	);
 end
 
+-- step content relatively (this should translate into seek
+-- operations when we have contenthint set for server-side
+-- seeking).
+local function wnd_scroll(wnd, dx, dy)
+	tiler_debug(wnd.wm,	string.format("scroll:%d:%d", dx, dy));
+end
+
 local function wnd_set_vtable(wnd)
 -- visual attribute- functions
 	wnd.alert = wnd_alert
@@ -4838,6 +4845,7 @@ local function wnd_set_vtable(wnd)
 	wnd.mousedblclick = wnd_mousedblclick
 	wnd.mousehover = wnd_mousehover
 	wnd.mouseover = wnd_mouseover
+	wnd.scroll = wnd_scroll
 
 -- special windows
 	wnd.add_popup = wnd_popup
@@ -5040,7 +5048,7 @@ local wnd_setup = function(wm, source, opts)
 	res:recovertag(true);
 
 	tiler_debug(wm, string.format(
-		"create:name=%s:=w%d:h=%d:titlebar=%s:border=%s:parent=%s",
+		"create:name=%s:w=%d:h=%d:titlebar=%s:border=%s:parent=%s",
 		res.name, res.width, res.height,
 		tostring(res.show_titlebar), tostring(res.show_border),
 		res.attach_parent and res.attach_parent.name or "none"
