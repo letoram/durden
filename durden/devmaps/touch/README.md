@@ -50,12 +50,22 @@ return {
 -- all the digital inputs
 	button_block = false,
 
+-- For mouse simulation classifiers, the wheel is a source of problems
+-- as some drivers exclusively provide digital 'ticks' and some act as
+-- a relative-analog sensor. This has lead to emulating ticks in the
+-- analog case, and clients that can't deal with analog wheels. This
+-- setting will emit 2-finger drags as wheel action in the dominant
+-- axis and don't emit these as discrete 'gesture' events.
+	drag_2f_analog = false,
+	drag_2f_analog_factor = {100, 100},
+
 -- some drivers give button presses for various gestures such as
 -- double-tap, remap these to their gestures (or some unknown one
 -- like ignore) to mask these
 	button_gestures = {
 		[1] = "doubletap",
 		[2] = {"held, released"},
+		[37] = "ignore"
 	},
 
 -- some devices that aren't detected as touch properly need to have

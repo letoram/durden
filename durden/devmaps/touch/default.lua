@@ -58,6 +58,11 @@ return {
 	invert_x = false,
 	invert_y = false,
 
+-- treat 2f drag gestures as analog mouse wheel, masking out any
+-- drag2_up/drag2_down gestures
+	drag_2f_analog = false,
+	drag_2f_analog_factor = {100, 100},
+
 -- menu path to trigger on gestures, valid are:
 -- swipe(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
 -- drag(n)_(dir) where (n) == 2,3,4... and (dir) == up,down,left,right
