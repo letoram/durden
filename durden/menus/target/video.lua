@@ -79,13 +79,18 @@ local scalemodes = {
 
 local function fs_handler(wnd, sym, iotbl, path)
 	if (not sym and not iotbl) then
-		display_fullscreen(active_display(
-			false, true).name, BADID, val == "Mode Switch");
+		local disp = active_display(false, true);
+		display_fullscreen(disp.name, BADID, val == "Mode Switch");
+		wnd.block_rz_hint = wnd.old_block_rz_hint;
+		wnd.old_block_rz_hint = nil;
+		target_displayhint(wnd.external, wnd.hint_w, wnd.hint_h);
 		return;
 	end
+
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_input(wnd.external, iotbl);
 	end
+
 -- HACK: the dispatch- override wasn't intended for this purpose, but
 -- will forward mouse samples for us as well. The "ok, outsym,.."
 -- value matching in durden_input only interrupts input for digital
@@ -113,11 +118,16 @@ local advanced = {
 		kind = "value",
 		eval = function() return not display_simple() and valid_vid(
 			active_display().selected.external, TYPE_FRAMESERVER); end,
-		set = {"Stretch", "Mode Switch"},
+		set = {"Stretch", "Hint-Pad", "Mode Switch"},
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
-			display_fullscreen(active_display(false, true).name,
-				wnd.external, val == "Mode Switch");
+			local disp = active_display(false, true);
+			if (val == "Hint-Pad") then
+				target_displayhint(wnd.external, disp.w, disp.h);
+				wnd.old_block_rz_hint = wnd.block_rz_hint;
+				wnd.block_rz_hint = true;
+			end
+			display_fullscreen(disp.name, wnd.external, val == "Mode Switch");
 			dispatch_toggle(function(sym, iot, path)
 				return fs_handler(wnd, sym, iot, path);
 			end

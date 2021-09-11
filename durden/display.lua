@@ -343,6 +343,7 @@ end
 function display_fullscreen(name, vid, modesw)
 	local disp = get_disp(name);
 	if (not disp) then
+		display_log(fmt("reject_fs:bad_display=%s", name and name or "nil"));
 		return;
 	end
 

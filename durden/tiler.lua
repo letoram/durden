@@ -1442,6 +1442,10 @@ local function drop_fullscreen(space)
 
 	sbar_show(space.wm);
 	workspace_activate(space, true);
+
+-- re-send the original displayhint as fullscreen has different hint
+-- behaviours than other modes when there is a relayout pending
+	dw:displayhint(dw.width, dw.height, dw.dispmask);
 end
 
 local function drop_tab(space)
