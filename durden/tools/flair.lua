@@ -24,6 +24,93 @@ flair_supp_clone = function(wnd)
 	return vid;
 end
 
+local blur_frag = [[
+uniform sampler2D map_tu0;
+uniform float obj_opacity;
+uniform vec2 obj_output_sz;
+uniform vec4 weight;
+varying vec2 texco;
+
+void main()
+{
+	vec4 sum = vec4(0.0);
+	float blurh = 1.0 / obj_output_sz.x;
+	sum += texture2D(map_tu0, vec2(texco.x - 4.0 * blurh, texco.y)) * 0.05;
+	sum += texture2D(map_tu0, vec2(texco.x - 3.0 * blurh, texco.y)) * 0.09;
+	sum += texture2D(map_tu0, vec2(texco.x - 2.0 * blurh, texco.y)) * 0.12;
+	sum += texture2D(map_tu0, vec2(texco.x - 1.0 * blurh, texco.y)) * 0.15;
+	sum += texture2D(map_tu0, vec2(texco.x - 0.0 * blurh, texco.y)) * 0.18;
+	sum += texture2D(map_tu0, vec2(texco.x + 1.0 * blurh, texco.y)) * 0.15;
+	sum += texture2D(map_tu0, vec2(texco.x + 2.0 * blurh, texco.y)) * 0.12;
+	sum += texture2D(map_tu0, vec2(texco.x + 3.0 * blurh, texco.y)) * 0.09;
+	sum += texture2D(map_tu0, vec2(texco.x + 4.0 * blurh, texco.y)) * 0.05;
+
+	float blurv = 1.0 / obj_output_sz.y;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y - 4.0 * blurv)) * 0.05;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y - 3.0 * blurv)) * 0.09;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y - 2.0 * blurv)) * 0.12;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y - 1.0 * blurv)) * 0.15;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y - 0.0 * blurv)) * 0.18;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y + 1.0 * blurv)) * 0.15;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y + 2.0 * blurv)) * 0.12;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y + 3.0 * blurv)) * 0.09;
+	sum += texture2D(map_tu0, vec2(texco.x, texco.y + 4.0 * blurv)) * 0.05;
+	sum *= weight;
+	gl_FragColor = vec4(sum.rgb, sum.a);
+}
+]]
+
+local blur_shid;
+local function setup_lbar_handler(tiler)
+	local old_lbar = tiler.lbar;
+
+-- intercept lbar creation and impose the placeholder, might be able
+-- to use another slicing range / tool here to also work for content
+-- or decoration blurs.
+	tiler.lbar =
+	function(wm, completion, comp_ctx, opts, ...)
+		local opts = opts and opts or {};
+
+		if gconfig_get("flair_hud") == "blur" and valid_vid(tiler.rtgt_id) then
+			if not blur_shid then
+				blur_shid = build_shader(nil, blur_frag, "flair_blur");
+				shader_uniform(blur_shid, "weight", "ffff", 0.5, 0.5, 0.5, 1.0)
+			end
+
+-- Draw everything up to the hud layer into a buffer, this blur is rather
+-- naive and clamps, so the edges will get a slight bias. To offset that,
+-- the darken/vignette shader helps.
+			local w = 512;
+			local h = 256;
+			if wm.effective_width < wm.effective_height then
+				w = 256;
+				h = 512;
+			end
+
+			rendertarget_range(tiler.rtgt_id, 0,
+				image_surface_properties(tiler.order_anchor).order - 1);
+			local buf = alloc_surface(w, h);
+			rendertarget_forceupdate(tiler.rtgt_id);
+			resample_image(tiler.rtgt_id, "flair_blur", w, h, buf);
+
+-- statically apply the blur
+			for i=1,8 do
+				resample_image(buf, blur_shid, w, h, true);
+			end
+
+-- restore world
+			rendertarget_range(tiler.rtgt_id, -1, -1);
+
+			opts.bg_shader = "vignette";
+			opts.bg_shader_group = "simple";
+			opts.bg_source = buf;
+			opts.bg_alpha = 1.0;
+		end
+
+		return old_lbar(wm, completion, comp_ctx, opts, ...);
+	end
+end
+
 -- slice the window in segments of w/s*h/t subsurfaces and present each
 -- to the provided iterator. These have a preset expiration time that the
 -- caller may override in the callback
@@ -385,6 +472,12 @@ local function display_added(event, name, tiler, id)
 	if (tiler.on_wnd_drag) then
 		set_tiler(tiler);
 	end
+
+-- intercept lbar creation in order to patch in our own background
+-- and shader, this is done per display
+	if tiler.lbar then
+		setup_lbar_handler(tiler);
+	end
 end
 
 local flair_menu = {
@@ -417,9 +510,21 @@ local flair_menu = {
 	description = "Set an effect that applies to the active workspace background",
 	handler = background_effects,
 	eval = function() return false; end
+},
+{
+	name = "hud_background",
+	label = "HUD background",
+	description = "Set an effect for the HUD background",
+	kind = "value",
+	set = {"darken", "blur"},
+	handler =
+	function(ctx, val)
+		gconfig_set("flair_hud", val);
+	end
 }
 };
 
+gconfig_register("flair_hud", "darken");
 display_add_listener(display_added);
 
 menus_register("global", "tools",

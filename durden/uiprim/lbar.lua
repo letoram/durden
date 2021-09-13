@@ -729,10 +729,22 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		active_lbar:destroy();
 	end
 
--- the bg is mainly input capture
-	local bg = color_surface(wm.width, wm.height, 255, 0, 0);
+-- the bg is mainly input capture but can be used to display
+-- some effect is desired, e.g. blur
+	local bg;
+	if opts.bg_source then
+		bg = null_surface(wm.width, wm.height);
+		image_sharestorage(opts.bg_source, bg);
+		delete_image(opts.bg_source);
+	else
+		bg = color_surface(wm.width, wm.height, 255, 0, 0);
+	end
+
 	image_tracetag(bg, "lbar_bg");
-	shader_setup(bg, "ui", "lbarbg");
+	local group = opts.bg_shader_group or "ui";
+	local shader = opts.bg_shader or "lbarbg";
+	local bg_alpha = opts.bg_alpha or gconfig_get("lbar_dim");
+	shader_setup(bg, group, shader);
 	image_tracetag(bg, "lbar_bg");
 
 --actual completion bar, gconfig- controled base color
@@ -749,7 +761,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	image_inherit_order(bg, true);
 	image_mask_clear(bar, MASK_OPACITY);
 
-	blend_image(bg, gconfig_get("lbar_dim"), time, INTERP_EXPOUT);
+	blend_image(bg, bg_alpha, time, INTERP_EXPOUT);
 	order_image(bg, 1);
 	order_image(bar, 3);
 	blend_image(bar, 1.0, time, INTERP_EXPOUT);

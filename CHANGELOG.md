@@ -24,6 +24,8 @@
 
 * new tool - text to speech
 
+* flair - add background effect to HUD (darken, blur+vignette)
+
 minor:
 
 * added dracula/gruvbox/gruvbox-light colorschemes
