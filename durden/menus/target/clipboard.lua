@@ -1,7 +1,11 @@
 local function pastefun(wnd, msg)
 	local dst = wnd.clipboard_out;
 
-	if (not dst) then
+	if not dst or not valid_vid(dst) then
+		if not valid_vid(wnd.external) then
+			return;
+		end
+
 		local dst = alloc_surface(1, 1);
 
 -- this approach triggers an interesting bug that may be worthwhile to explore
@@ -83,6 +87,8 @@ end
 
 local function clipboard_urls()
 	local res = {};
+	local wnd = active_display().selected;
+
 	for k,v in ipairs(CLIPBOARD.urls) do
 		local short = string.shorten(v, 20);
 		table.insert(res, {
@@ -94,10 +100,11 @@ local function clipboard_urls()
 			kind = "action",
 			handler = function()
 				local m1, m2 = dispatch_meta();
+
 				if wnd.paste then
 					wnd:paste(v);
 				else
-					pastefun(active_display().selected, v);
+					pastefun(wnd, v);
 				end
 			end
 		});
