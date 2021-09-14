@@ -4444,6 +4444,9 @@ local function recover_restore(wnd)
 	if (res["prefix"]) then
 		wnd.prefix = res["title"];
 	end
+	if (res["origo_ll"]) then
+		wnd.origo_ll = true;
+	end
 	if (res["geom"]) then
 		local vl = string.split(res["geom"], ":");
 		if (#vl == 4) then
@@ -4566,6 +4569,10 @@ local function wnd_recovertag(wnd, restore)
 
 	if (wnd.prefix) then
 		table.insert(recoverlst, string.format("prefix=%s", wnd.prefix));
+	end
+
+	if (wnd.origo_ll) then
+		table.insert(recoverlst, string.format("origo_ll=1"));
 	end
 
 -- missing restore:
