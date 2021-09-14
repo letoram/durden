@@ -67,7 +67,7 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		end
 
 		btn.lbl = txt;
-		btn.w, btn.h = btn_clamp(btn, w, h);
+		btn.w, btn.h = btn_clamp(btn, w + btn.padw + btn.padw, h);
 
 -- just resize / relayout
 	elseif type(lbl) == "function" then
@@ -96,7 +96,8 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
 			rotate_image(lbl, btn.lbl_rotate);
 		else
-			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
+			btn.w, btn.h = btn_clamp(btn,
+				props.width + btn.padw + btn.padw, props.height);
 			rotate_image(lbl, 0);
 		end
 
@@ -120,8 +121,8 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- specific lalign on text may be needed
 	local prop = image_surface_properties(btn.lbl);
 
-	local xofs = btn.align_left and 0 or 0.5 * (btn.w - prop.width);
-	local yofs = 0.5 * (btn.h - prop.height) + offsetf;
+	local xofs = btn.align_left and btn.padw or 0.5 * (btn.w - prop.width);
+	local yofs = btn.pad + 0.5 * (btn.h - prop.height) + offsetf;
 
 	reset_image_transform(btn.lbl);
 	move_image(btn.lbl, xofs, yofs, btn.anim_time, btn.anim_func);
@@ -263,7 +264,7 @@ end
 -- (mouseh) keyed table of functions to event handler
 local ind = 0;
 function uiprim_button(anchor, bgshname,
-	lblshname, lbl, pad, fontfn, minw, minh, mouseh)
+	lblshname, lbl, pad, padw, fontfn, minw, minh, mouseh)
 	ind = ind + 1;
 	assert(pad);
 
@@ -276,6 +277,7 @@ function uiprim_button(anchor, bgshname,
 		minw = 0,
 		minh = 0,
 		pad = pad,
+		padw = padw,
 		name = "uiprim_btn_" .. tostring(ind),
 -- exposed methods
 		update = button_labelupd,
@@ -621,7 +623,7 @@ local function btn_insert(bar, align,
 	bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts)
 
 	local btn = uiprim_button(bar.anchor,
-		bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh);
+		bgshname, lblshname, lbl, pad, 0, fontfn, minw, minh, mouseh);
 
 	if (not btn) then
 		warning("couldn't create button");
@@ -1097,36 +1099,39 @@ end
 local function hlp_add_btn(ctx, helper, lbl)
 	local yp, tileh, dir = lbar_props();
 	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
+	local disp = active_display(false, true);
 
 	local res = {};
 	local dsti = #helper+1;
 	local path = ctx:get_path();
+	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
+
+	local mh = {
+		click = function()
+			local nstep = #helper - dsti;
+			if (nstep > 0) then
+				for i=1,nstep do
+					ctx:on_cancel();
+				end
+			end
+		end,
+		over = function()
+			res.btn.old_state = res.btn.state;
+			res.btn:switch_state("active");
+		end,
+		out = function(ctx)
+			ctx:switch_state(res.btn.old_state and res.btn.old_state or "inactive");
+			res.btn.old_state = nil;
+		end
+	}
 
 -- click is iterate cancel the same amount of times as current count to index,
 -- use of menu_cancel here is unfortunate - we should propagate the right esc-
 -- handler for dependency management reasons.
 	res.btn =
 	uiprim_button(active_display().order_anchor,
-		"lbar_tile", "lbar_tiletext", lbl, pad,
-		active_display().font_resfn, 0, tileh,
-		{
-			click = function()
-				local nstep = #helper - dsti;
-				if (nstep > 0) then
-					for i=1,nstep do
-						ctx:on_cancel();
-					end
-				end
-			end,
-			over = function()
-				res.btn.old_state = res.btn.state;
-				res.btn:switch_state("active");
-			end,
-			out = function(ctx)
-				ctx:switch_state(res.btn.old_state and res.btn.old_state or "inactive");
-				res.btn.old_state = nil;
-			end
-		}
+		"lbar_tile", "lbar_tiletext", lbl, 0, hw,
+		active_display().font_resfn, 0, tileh, mh
 	);
 
 -- if ofs + width, compact left and add a "grow" offset on pop
@@ -1145,7 +1150,7 @@ local function hlp_add_btn(ctx, helper, lbl)
 	if (#helper > 0) then
 		helper[#helper].btn:switch_state("inactive");
 	end
-	res.ofs = res.ofs + res.btn.w + 5;
+	res.ofs = res.ofs + res.btn.w;
 	table.insert(helper, res);
 end
 

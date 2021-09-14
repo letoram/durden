@@ -604,7 +604,7 @@ local function lbar_helper(lbar, lbl)
 -- build text and bar, pad with 1 pt on each side
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	local txt_w, txt_h;
-	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 10);
+	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
 
 	if (not lbar.helper_bg) then
 		lbar.helper_bg = color_surface(64, barh, unpack(gconfig_get("lbar_helperbg")));
