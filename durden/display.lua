@@ -155,15 +155,16 @@ function display_maphint(disp)
 end
 
 local function autohome_windows(ndisp)
-
--- find all windows that belong to this display, and move them back
+-- find all windows that belong to this display, and move them back,
+-- this is done with an intermediate list to not nest all_displays_iter
+-- or all_tilers_iter recursively (which can break the active_display
+-- attachment).
 	for wnd in all_displays_iter() do
 		if wnd.adopt_display and wnd.adopt_display.ws_home == ndisp.name then
 			wnd:migrate(ndisp.tiler, ndisp);
 			if wnd.adopt_display.index then
 				wnd:reassign(wnd.adopt_display.index);
 			end
-
 			wnd.adopt_display = nil;
 		end
 	end
@@ -220,8 +221,15 @@ function display_action(disp, cb)
 end
 
 local function switch_active_display(ind)
+	if type(ind) == "table" then
+		if displays[ind] and displays[ind].id then
+			ind = displays[ind].id;
+		end
+	end
+
 	if (displays[ind] == nil or not
-		valid_vid(displays[ind].rt) or type(ind) 	~= "number") then
+		valid_vid(displays[ind].rt) or type(ind)	~= "number") then
+		warning("switch on bad display");
 		return;
 	end
 
@@ -628,10 +636,15 @@ end
 local function reorient_ddisp(disp, hint)
 -- is an explicit map hint set? then toggle the bits but preserve
 -- other ones like CROP or FILL or PRIMARY
+	local rotated = 0;
 	local mfl = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
+
 	if (hint ~= nil) then
 		local valid = bit.bor(HINT_ROTATE_CW_90, HINT_ROTATE_CCW_90);
 		valid = bit.bor(valid, HINT_YFLIP);
+		if (HINT_ROTATE_180) then
+			valid = bit.bor(valid, HINT_ROTATE_180);
+		end
 		hint = bit.band(valid, hint);
 		local mask = bit.band(disp.maphint, bit.bnot(valid));
 		disp.maphint = bit.bor(mask, hint);
@@ -650,6 +663,11 @@ local function reorient_ddisp(disp, hint)
 	if (bit.band(disp.maphint, mfl) > 0) then
 		neww = disp.rh;
 		newh = disp.rw;
+		if (bit.band(disp.maphint, HINT_ROTATE_CW_90)) then
+			rotated = 90;
+		else
+			rotated = -90;
+		end
 	end
 
 -- if the dimensions have changed, we should tell the tilers to reorg.
@@ -657,7 +675,7 @@ local function reorient_ddisp(disp, hint)
 		disp.w = neww;
 		disp.h = newh;
 		display_action(disp, function()
-			disp.tiler:resize(neww, newh);
+			disp.tiler:resize(neww, newh, false, rotated);
 			disp.tiler:update_scalef(disp.tiler.scalef);
 		end);
 
@@ -964,6 +982,7 @@ end
 function display_override_density(name, ppcm)
 	local disp, dispi = get_disp(name);
 	if (not disp) then
+		warning("override_density on unknown display");
 		return;
 	end
 
@@ -1391,8 +1410,11 @@ end
 -- need "all windows regardless of display".  Don't break- out of this or
 -- things may get the wrong attachment later.
 --
+local in_iter = nil
 local function aditer(rawdisp, showorph, showdis)
 	local tbl = {};
+	assert(in_iter == nil, in_iter)
+
 	for i,v in ipairs(displays) do
 		if ((not v.orphan or showorph) and (not v.disabled or showdis)) then
 			table.insert(tbl, {i, v});
@@ -1403,11 +1425,13 @@ local function aditer(rawdisp, showorph, showdis)
 	local save = display_main;
 
 	return function()
+		in_iter = debug.traceback();
 		i = i + 1;
 		if (i <= c) then
 			switch_active_display(tbl[i][1]);
 			return rawdisp and tbl[i][2] or tbl[i][2].tiler;
 		else
+			in_iter = nil;
 			switch_active_display(save);
 			return nil;
 		end
@@ -1420,6 +1444,16 @@ end
 
 function all_displays_iter()
 	return aditer(true);
+end
+
+function all_displays_list()
+	local res = {};
+	for _,v in ipairs(displays) do
+		if not v.orphan and not v.disabled then
+			table.insert(res, v);
+		end
+	end
+	return res;
 end
 
 function all_spaces_iter()
