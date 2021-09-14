@@ -119,6 +119,7 @@ local function accept_cancel(wm, accept, nofwd, m1)
 		ictx:on_accept(accept);
 	end
 
+	ictx.in_wheel = nil;
 	destroy(wm, ictx);
 
 -- the [nofwd] option is used to reset / trigger without causing
@@ -577,6 +578,8 @@ end
 
 local function lbar_helper(lbar, lbl)
 	local wm = active_display();
+	local disp = active_display(false, true);
+
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 
 	local dst;
@@ -598,31 +601,32 @@ local function lbar_helper(lbar, lbl)
 	end
 	lbar.last_helper = lbl;
 
--- build text and bar
+-- build text and bar, pad with 1 pt on each side
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
+	local txt_w, txt_h;
+	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 10);
+
 	if (not lbar.helper_bg) then
 		lbar.helper_bg = color_surface(64, barh, unpack(gconfig_get("lbar_helperbg")));
 		shader_setup(lbar.helper_bg, "ui", "rounded");
 		image_inherit_order(lbar.helper_bg, true);
 		link_image(lbar.helper_bg, lbar.text_anchor);
 		show_image(lbar.helper_bg);
-		local w;
-		lbar.helper_lbl, _, w = render_text(dst);
+		lbar.helper_lbl, _, txt_w, txt_h = render_text(dst);
 		image_inherit_order(lbar.helper_lbl, true);
 		link_image(lbar.helper_lbl, lbar.helper_bg);
 		show_image(lbar.helper_lbl);
-		move_image(lbar.helper_lbl, 2, pad);
 		nudge_image(lbar.helper_bg, 0, -barh);
-		resize_image(lbar.helper_bg, w + 4, barh);
 
 -- just re-render text and show bar
 	else
-		local w;
 		show_image(lbar.helper_bg);
-		_, _, w = render_text(lbar.helper_lbl, dst);
-		move_image(lbar.helper_lbl, 2, pad);
-		resize_image(lbar.helper_bg, w + 4, barh);
+		_, _, txt_w, txt_h = render_text(lbar.helper_lbl, dst);
 	end
+
+	move_image(lbar.helper_lbl, hw, pad + 0.5 * (barh - txt_h));
+	resize_image(lbar.helper_bg, txt_w + 2 * hw, barh);
+	resize_image(lbar.helper_bg, txt_w + 2 * hw, barh);
 end
 
 local function lbar_label(lbar, lbl)
@@ -846,12 +850,13 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 			accept_cancel(wm, true);
 		end,
 		rclick = function()
-			accept_cancel(wm, false);
+			accept_cancel(wm, false, false, res.in_wheel);
 		end,
 		button = function(ctx, vid, ind, act)
 			if (not act or ind > MOUSE_WHEELNX or ind < MOUSE_WHEELPY) then
 				return;
 			end
+			res.in_wheel = true;
 			local d = (ind == MOUSE_WHEELNX or ind == MOUSE_WHEELNY) and 1 or -1;
 			if (res.inp and res.inp.csel) then
 				res.inp.csel = res.inp.csel + d;
