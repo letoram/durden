@@ -17,7 +17,11 @@
 * added a tile-bsp mode that adds new windows based on the highest-level
   tile with less than 2 children (/global/workspace/layout/tile\_bsp)
 
-* statusbar - added vertical layout
+* statusbar / titlebar - added vertical layout
+
+* new path: global/input/keyboard/maps/platform added for platform translation controls (rmvo, ...)
+
+* new path: display/displays/current/orientation/flip_y,rotate_180
 
 * touch - added an empty (disable) classifier, exposed more profile
   values dynamically, option to hook profile picking on unknown device.
@@ -42,6 +46,8 @@ minor:
 * added font- size stepping control (/target/visual/font/step\_size)
 
 * uiprim/bar - label dominant-axis positioning fixed
+
+* uiprim/lbar - helper text padding and background size increased
 
 * swapping from fullscreen workspace to a non fullscreen one and back
   should no longer lose the surface canvas

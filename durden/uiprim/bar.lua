@@ -1117,6 +1117,14 @@ local function hlp_add_btn(ctx, helper, lbl)
 						ctx:on_cancel();
 					end
 				end
+			end,
+			over = function()
+				res.btn.old_state = res.btn.state;
+				res.btn:switch_state("active");
+			end,
+			out = function(ctx)
+				ctx:switch_state(res.btn.old_state and res.btn.old_state or "inactive");
+				res.btn.old_state = nil;
 			end
 		}
 	);
