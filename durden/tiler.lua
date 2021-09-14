@@ -127,6 +127,15 @@ local function tbar_geth(wnd)
 	return 0;
 end
 
+local function sbar_getpos(wm)
+	local pos = gconfig_get("sbar_position");
+	if wm.sbar_override then
+		return wm.sbar_override;
+	else
+		return pos;
+	end
+end
+
 local function sbar_geth(wm, ign)
 	if (ign) then
 		return math.clamp(
@@ -628,8 +637,8 @@ local function tiler_statusbar_update(wm)
 
 -- positioning etc. still needs the current size of the statusbar
 	bar_base = sbar_geth(wm);
+	local pos = sbar_getpos(wm);
 
-	local pos = gconfig_get("sbar_position")
 	if (pos == "top") then
 		wm.yoffset = bar_base + pad_v;
 		wm.xoffset = 0;
@@ -749,7 +758,7 @@ local function tiler_statusbar_update(wm)
 -- should stay and which should go
 	if gconfig_get("sbar_dispbuttons") then
 		local list = {}
-		for disp in all_displays_iter() do
+		for _, disp in ipairs(all_displays_list()) do
 			if disp.tiler ~= wm then
 				table.insert(list, {disp.name, disp.id})
 			end
@@ -2416,6 +2425,7 @@ local function wnd_repos(wnd)
 		if (wnd.space.mode == "tile") then
 			wnd.ofs_x = math.floor(0.5 * (wnd.max_w - wnd.width));
 			wnd.ofs_y = math.floor(0.5 * (wnd.max_h - wnd.height));
+
 			move_image(wnd.anchor, wnd.x + wnd.ofs_x, wnd.y + wnd.ofs_y, lm, interp);
 
 		elseif (is_tab_mode(wnd.space.mode)) then
@@ -5391,7 +5401,7 @@ local function tiler_input_lock(wm, dst, source)
 	end
 end
 
-local function tiler_resize(wm, neww, newh, norz)
+local function tiler_resize(wm, neww, newh, norz, rotated)
 -- special treatment for workspaces with float, we "fake" drop/set float
 	for i=1,10 do
 		if (wm.spaces[i] and wm.spaces[i].mode == "float") then
@@ -5407,8 +5417,7 @@ local function tiler_resize(wm, neww, newh, norz)
 
 	wm.width = neww;
 	wm.height = newh;
-
-	tiler_statusbar_update(wm);
+	wm.rotated = rotated;
 
 	if (valid_vid(wm.rtgt_id)) then
 		image_resize_storage(wm.rtgt_id, neww, newh);
@@ -5429,6 +5438,8 @@ local function tiler_resize(wm, neww, newh, norz)
 	for k,v in ipairs(wm.on_tiler_resize) do
 		v(v, neww, newh);
 	end
+
+	tiler_statusbar_update(wm);
 end
 
 -- drop whatever interactive/cursor state that is currently pending
@@ -5480,6 +5491,7 @@ end
 -- window sizes etc.
 local function tiler_scalef(wm, newf, disptbl)
 	wm.scalef = newf;
+
 	if (disptbl) then
 		for k,v in pairs(disptbl) do
 			wm.disptbl[k] = v;
@@ -5490,8 +5502,12 @@ local function tiler_scalef(wm, newf, disptbl)
 		tiler_debug(wm, string.format("scale:new=%f", newf));
 	end
 
+-- this will re-recreate some parts of the statusbar, and thus we need to be
+-- sure that new items gets attached to the right rendertarget
+
 	recalc_fsz(wm);
 	wm:rebuild_border();
+	wm:tile_update();
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title();
@@ -5500,7 +5516,13 @@ local function tiler_scalef(wm, newf, disptbl)
 		end
 	end
 
+-- wm resize will also rebuild the statusbar
+	local old_attach = set_context_attachment;
+	set_context_attachment = function(id)
+		return old_attach(id);
+	end
 	wm:resize(wm.width, wm.height);
+	set_context_attachment = old_attach;
 
 -- [removed, kept as a note]
 -- easier doing things like this than fixing the other dimensioning edgecases
@@ -5512,14 +5534,6 @@ local function tiler_scalef(wm, newf, disptbl)
 		mouse_querytarget(wm.rtgt_id);
 	end
 
-	local olddisp = active_display();
-
--- this will re-recreate some parts of the statusbar, and thus we need to be
--- sure that new items gets attached to the right rendertarget
-	set_context_attachment(wm.rtgt_id);
-		tiler_statusbar_build(wm);
-		wm:tile_update();
-	set_context_attachment(olddisp.rtgt_id);
 end
 
 local function tiler_fontres(wm)
