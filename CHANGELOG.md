@@ -49,6 +49,8 @@ minor:
 
 * uiprim/lbar - helper text padding and background size increased
 
+* clipboard/url paste scripting error
+
 * swapping from fullscreen workspace to a non fullscreen one and back
   should no longer lose the surface canvas
 
