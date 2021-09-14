@@ -26,6 +26,27 @@ local function orientation_menu(name)
 			handler = function()
 				display_reorient(name, HINT_ROTATE_CCW_90);
 			end
+		},
+		{
+			name = "180",
+			label = "180",
+			kind = "action",
+			description = "Invert the Y axis",
+			eval = function()
+				return HINT_ROTATE_180 ~= nil;
+			end,
+			handler = function()
+				display_reorient(name, HINT_ROTATE_180);
+			end,
+		},
+		{
+			name = "flip_y",
+			label = "Invert Y",
+			kind = "action",
+			description = "Invert the Y axis",
+			handler = function()
+				display_reorient(name, HINT_YFLIP);
+			end,
 		}
 	};
 end
