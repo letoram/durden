@@ -101,6 +101,7 @@ local function setup_lbar_handler(tiler)
 -- restore world
 			rendertarget_range(tiler.rtgt_id, -1, -1);
 
+			image_texfilter(buf, FILTER_BILINEAR);
 			opts.bg_shader = "vignette";
 			opts.bg_shader_group = "simple";
 			opts.bg_source = buf;
