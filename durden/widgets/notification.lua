@@ -135,8 +135,8 @@ local function build_entry(anchor, ent, max_w)
 	res.short_height = h + 5;
 
 -- Step word by word (until last) and split every time we overflow.
--- The results aren't very pretty and fails on internationalization,
--- but need to start somewhere.
+-- Also explicitly permit linefeeds. The results aren't very pretty
+-- and fails on internationalization, but need to start somewhere.
 	if (ent.long) then
 		local words = string.split(ent.long, " ");
 		local cstr = "";
@@ -145,7 +145,7 @@ local function build_entry(anchor, ent, max_w)
 			local newstr = cstr .. " " .. words[1];
 			local w, h = text_dimensions({fmt[1], newstr});
 			wc = wc + 1;
-			if (w < max_w) then
+			if (w < max_w and not string.find(cstr, "\n")) then
 				cstr = newstr;
 				table.remove(words, 1);
 				wc = wc + 1;
@@ -199,6 +199,42 @@ local function build_entry(anchor, ent, max_w)
 	return res;
 end
 
+-- Take the notification items on the top of the queue and check if
+-- their 'short' matches. If they do, increment a counter and join
+-- the long() text with that of the first.
+--
+-- This is mainly to handle 'storms' when plugging in a kvm where
+-- a lot of [device added] / [device removed] events may appear
+-- and overwhelm the widget.
+local function merge_top(queue)
+	local nent = 0;
+
+	for i=2,#queue do
+		if queue[i].short ~= queue[i].short then
+			break;
+		end
+		nent = nent + 1;
+	end
+
+	if nent == 0 then
+		return;
+	end
+
+	local long = {queue[1].long};
+	queue[1].short = string.format("%s (%d)", queue[1].short, nent+1);
+
+-- would be nice with some kind of other element separator than linefeed,
+-- but render_text is somewhat lacking in that regard - abuse line-drawing
+-- characters?
+	while nent > 0 do
+		local merge = table.remove(queue, 2);
+		table.insert(long, merge.long);
+		nent = nent - 1;
+	end
+
+	queue[1].long = table.concat(long, "\n");
+end
+
 -- flush as many as possible within the alloted budget
 local function show(ctx, anchor, ofs, yh)
 -- first-come / first-serve, should we force interactivity in order
@@ -213,7 +249,9 @@ local function show(ctx, anchor, ofs, yh)
 		return a.urgency > b.urgency;
 	end)
 
-	while(#queue > 0) do
+	while (#queue > 0) do
+		merge_top(queue);
+
 		local ent = build_entry(anchor, queue[1], max_w - 20);
 		if (not ent) then
 			break;
