@@ -58,6 +58,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 
 	local prefix = wm:font_resfn();
 	local shadow_h = 10;
+	local speed = gconfig_get("animation") * 0.5;
 
 	local popup = uiprim_popup_spawn(menu, {
 		border_attach =
@@ -145,8 +146,8 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 		text_invalid = prefix .. "\\#666666",
 		text_menu = prefix .. HC_PALETTE[2],
 		text_menu_suf = " »",
-		animation_in = gconfig_get("animation") * 0.5,
-		animation_out = gconfig_get("animation") * 0.5,
+		animation_in = speed,
+		animation_out = speed
 	});
 	if not popup then
 		return;
@@ -220,6 +221,32 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 		end
 		return true;
 	end, "uimap/popup");
+
+-- animate on spawn based on window position
+	local dx = x;
+	local dx2 = math.abs(wm.effective_width - x);
+	local dy = y;
+	local dy2 = math.abs(wm.effective_height - y);
+
+	local delta = 100 * wm.scalef;
+
+-- left
+	if (dx < dx2 and dx < dy and dx < dy2) then
+		nudge_image(popup.anchor, -delta, 0);
+		nudge_image(popup.anchor, delta, 0, speed);
+-- right
+	elseif (dx2 < dx and dx2 < dy and dx2 < dy2) then
+		nudge_image(popup.anchor, delta, 0);
+		nudge_image(popup.anchor, -delta, 0, speed);
+-- top
+	elseif (dy < dx and dy < dx2 and dy < dy2) then
+		nudge_image(popup.anchor, 0, -delta, 0);
+		nudge_image(popup.anchor, 0, delta, speed);
+-- bottom
+	else
+		nudge_image(popup.anchor, 0, delta, 0);
+		nudge_image(popup.anchor, 0, -delta, speed);
+	end
 
 -- block all possible interrupts from the menu path dispatch
 	dispatch_symbol_lock();
