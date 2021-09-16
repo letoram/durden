@@ -318,6 +318,10 @@ local function update_completion_set(wm, ctx, set)
 				ctx.inp.csel = i;
 				resize_image(ctx.ccursor, w, lbarsz);
 				move_image(ctx.ccursor, mctx.mofs, 0);
+				if (on_item) then
+					on_item(ctx, i, msgs[2], true, ctx.text_anchor,
+						mctx.mofs + mctx.mstep, mctx.mwidth, exit or i == #set);
+				end
 			end,
 			click = function()
 				if (exit) then

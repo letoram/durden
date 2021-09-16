@@ -54,6 +54,8 @@ minor:
 * swapping from fullscreen workspace to a non fullscreen one and back
   should no longer lose the surface canvas
 
+* resource browser preview on-select triggers for mouse motion as well
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
