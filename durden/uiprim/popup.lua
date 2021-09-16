@@ -343,11 +343,11 @@ function(menu, options)
 		return
 	end
 
-	show_image(res.anchor)
 	options = options and options or {}
 
-	local animation_in = options.animation_in and options.animation_in or 10
-	res.animation_out = options.animation_out and options.animation_out or 20
+	res.animation_in = options.animation_in and options.animation_in or 10;
+	res.animation_out = options.animation_out and options.animation_out or 20;
+	blend_image(res.anchor, 1.0, res.animation_in, INTERP_EXPIN);
 
 -- use a copy where eval switches into active
 	local lmenu = {}
