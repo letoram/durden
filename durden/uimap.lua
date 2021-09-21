@@ -109,7 +109,8 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 				local menu = type(ent.handler) ==
 					"function" and ent.handler() or ent.handler;
 				ctx:cancel();
-				uimap_popup(menu, x, y, anchor_vid);
+				opts.dir = "r";
+				uimap_popup(menu, x, y, anchor_vid, nil, opts);
 				return true;
 			end
 
@@ -118,7 +119,8 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 				if (ent.set or type(ent.preset) == "table") then
 					local menu = vent_to_menu(ent);
 					ctx:cancel();
-					uimap_popup(menu, x, y, anchor_vid);
+					opts.dir = "r";
+					uimap_popup(menu, x, y, anchor_vid, nil, opts);
 					return true;
 
 -- inject the preset
@@ -230,19 +232,28 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 
 	local delta = 100 * wm.scalef;
 
--- left
-	if (dx < dx2 and dx < dy and dx < dy2) then
+	local dir = opts.dir;
+	if not dir then
+		if (dx < dx2 and dx < dy and dx < dy2) then
+			dir = "l";
+		elseif (dx2 < dx and dx2 < dy and dx2 < dy2) then
+			dir = "r";
+		elseif (dy < dx and dy < dx2 and dy < dy2) then
+			dir = "t";
+		else
+			dir = "d";
+		end
+	end
+
+	if dir == "l" then
 		nudge_image(popup.anchor, -delta, 0);
 		nudge_image(popup.anchor, delta, 0, speed);
--- right
-	elseif (dx2 < dx and dx2 < dy and dx2 < dy2) then
+	elseif dir == "r" then
 		nudge_image(popup.anchor, delta, 0);
 		nudge_image(popup.anchor, -delta, 0, speed);
--- top
-	elseif (dy < dx and dy < dx2 and dy < dy2) then
+	elseif dir == "t" then
 		nudge_image(popup.anchor, 0, -delta, 0);
 		nudge_image(popup.anchor, 0, delta, speed);
--- bottom
 	else
 		nudge_image(popup.anchor, 0, delta, 0);
 		nudge_image(popup.anchor, 0, -delta, speed);
