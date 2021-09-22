@@ -1976,6 +1976,7 @@ local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
 	local new_vid = function(src)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(wm.width, wm.height);
+			image_mask_set(ws.background, MASK_UNPICKABLE);
 			image_tracetag(ws.background, "workspace_bg");
 			shader_setup(ws.background, "simple", "noalpha");
 		end
@@ -2162,12 +2163,15 @@ create_workspace = function(wm, anim)
 		vweight = 1.0,
 		last_action = CLOCK
 	};
+	res.wm = wm;
+
+	local mh = mouse_handler_factory.background(res);
+	mouse_addlistener(mh,  {"button", "motion", "click", "rclick"});
 
 	image_tracetag(res.anchor, "workspace_anchor");
 	show_image(res.anchor);
 	link_image(res.anchor, wm.anchor);
 	ent_count = ent_count + 1;
-	res.wm = wm;
 	workspace_set(res, gconfig_get("ws_default"));
 	if (wm.background_name) then
 		res:set_background(wm.background_name);
@@ -5425,6 +5429,7 @@ local function tiler_resize(wm, neww, newh, norz, rotated)
 	wm.width = neww;
 	wm.height = newh;
 	wm.rotated = rotated;
+	resize_image(wm.anchor, neww, newh);
 
 	if (valid_vid(wm.rtgt_id)) then
 		image_resize_storage(wm.rtgt_id, neww, newh);
@@ -5688,9 +5693,6 @@ function tiler_create(width, height, opts)
 	order_image(res.order_anchor, 2);
 	show_image({res.anchor, res.order_anchor});
 	link_image(res.order_anchor, res.anchor);
-
-	local mh = mouse_handler_factory.background(res);
-	mouse_addlistener(mh,  {"button", "motion", "click", "rclick"});
 
 -- unpack preset workspaces from saved keys
 	local mask = string.format("wsk_%s_%%", res.name);
