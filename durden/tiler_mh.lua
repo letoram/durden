@@ -297,7 +297,7 @@ local function try_swap(wnd, tgt, tgt_dir)
 	end
 end
 
-local function drop_swap(wnd, mode, tgt, tgt_dir)
+local function drop_swap(wnd, mode, tgt, tgt_dir, ostate)
 -- first clean up
 	wnd.drag_move_pos = nil;
 
@@ -319,6 +319,8 @@ local function drop_swap(wnd, mode, tgt, tgt_dir)
 	local x, y = mouse_xy();
 
 	wnd.in_drag_move = false;
+	wnd.in_drag_pos = nil;
+
 	if valid_vid(wnd.drag_move_preview) then
 		delete_image(wnd.drag_move_preview);
 		wnd.drag_move_preview = nil;
@@ -345,6 +347,7 @@ local function drop_swap(wnd, mode, tgt, tgt_dir)
 			break;
 		end
 	end
+
 	wnd.space:resize();
 end
 
@@ -497,7 +500,7 @@ local function build_canvas(wnd)
 		end
 
 -- it has been an established custom elsewhere to always allow 'canvas+meta'
--- drag as an interpretation of starting a move, so go with that
+-- drag as an interretation of starting a move, so go with that
 		if (not wnd.in_drag_move) then
 			local m1, m2 = dispatch_meta();
 			if (m1 or m2) then
@@ -505,6 +508,7 @@ local function build_canvas(wnd)
 				wnd.y = wnd.y + wnd.ofs_y;
 				wnd.in_drag_move = wnd.space:linearize();
 				wnd.in_drag_ts = CLOCK;
+				wnd.in_drag_pos = {x = wnd.x, y = wnd.y};
 				mouse_switch_cursor("drag");
 			end
 		end
@@ -541,7 +545,7 @@ local function build_canvas(wnd)
 
 	drop = function(ctx, vid)
 		if (wnd.in_drag_move) then
-			drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
+			drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.in_drag_pos);
 
 -- wm global drag handlers
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
@@ -794,7 +798,10 @@ local function symaction(wm, sym)
 	dispatch_symbol(action);
 end
 
-local function build_background(wm)
+local function build_background(ws)
+	local wm = ws.wm;
+	assert(wm);
+
 	local table = {
 	name = "workspace_background",
 	motion = function(ctx, vid, x, y, rx, ry)
@@ -848,8 +855,7 @@ local function build_background(wm)
 		symaction(wm, "float_bg_dblclick");
 	end,
 	own = function(ctx, vid, ...)
-		local sp = wm:active_space();
-		return sp and sp.background == vid and sp.mode == "float";
+		return vid == ws.anchor and ws.mode == "float";
 	end
 	};
 	return table;
