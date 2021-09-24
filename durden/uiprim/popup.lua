@@ -202,8 +202,14 @@ local function set_index(ctx, i)
 -- with a shader setting start-end s,t and simply modulate the color
 -- there.
 	if ctx.menu[i].active then
-		local h = ctx.index == #ctx.menu
-			and ctx.max_h - ctx.line_pos[i] or (ctx.line_pos[i+1] - ctx.line_pos[i])
+		local y = ctx.line_pos[i]
+		local h
+
+		if ctx.index == #ctx.menu then
+			h = ctx.max_h - ctx.line_pos[i]
+		else
+			h = ctx.line_pos[i+1] - ctx.line_pos[i]
+		end
 
 		if (valid_vid(ctx.cursor)) then
 			blend_image(ctx.cursor, 0.5)
@@ -214,6 +220,7 @@ local function set_index(ctx, i)
 		if ctx.options.cursor_at then
 			ctx.options.cursor_at(ctx, ctx.cursor, 0, ctx.line_pos[i], ctx.max_w, h);
 		end
+
 	elseif valid_vid(ctx.cursor) then
 		hide_image(ctx.cursor)
 	end

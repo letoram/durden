@@ -59,6 +59,8 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 	local prefix = wm:font_resfn();
 	local shadow_h = 10;
 	local speed = gconfig_get("animation") * 0.5;
+	local disp = active_display(false, true);
+	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
 
 	local popup = uiprim_popup_spawn(menu, {
 		border_attach =
@@ -68,11 +70,10 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			order_image(anchor, 65534);
 			position_popup(anchor, x, y, w, h, anchor_vid);
 
--- but set our own shadow/border/cursor thing, the offset calculations
--- aren't particularly nice though, and should probably also use wm.scalef
-			shadow_h = h + 20;
-			local ssurf = color_surface(w + 20, h + 20, 0, 0, 0);
-			move_image(ssurf, -10, -10);
+-- but set our own shadow/border/cursor
+			shadow_h = h + hw + hw;
+			local ssurf = color_surface(w + hw + hw, shadow_h, 0, 0, 0);
+			move_image(ssurf, -hw, -hw);
 			tbl.shid = shader_ui_lookup(ssurf, "ui", "popup", "active");
 			link_image(ssurf, anchor);
 			image_inherit_order(ssurf, true);
@@ -84,7 +85,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 				return;
 			end
 			shader_uniform(ctx.shid,
-				"range", "ff", (yofs + 10) / shadow_h, (yofs + 10 + h) / shadow_h);
+				"range", "ff", (yofs + hw) / shadow_h, (yofs + hw + h) / shadow_h);
 		end,
 -- all paths return true == we take control over invocation
 		on_finish =
@@ -106,10 +107,26 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 
 			if (ent.submenu) then
 				log("tool=popup:kind=chain:item=" .. ent.name);
+
+--
+-- There is a problematic nuance here in how to implement 'back' as we are so
+-- deep in generated trees of dynamic menus that events happening in the
+-- background might invalidate the contents of the current menu. The eval()
+-- function was intended to counter that, but it turned out that when it was
+-- applied to dynamic submenus, all local (to the menu) items assumed the
+-- eval() of the menu having been applied, so some items would just break.
+--
+-- On top of that, our popup root can be a dynamic set that comes from all
+-- over, so we'd actually need to rebuild the path up until the one we were
+-- at - so a stack is needed. Not impossible at all but just more work.
+--
+-- The other bit would be to revisit the paths that mutate their own
+-- circumstances as that set must be much smaller necessarily.
+--
+				opts.dir = "r";
 				local menu = type(ent.handler) ==
 					"function" and ent.handler() or ent.handler;
 				ctx:cancel();
-				opts.dir = "r";
 				uimap_popup(menu, x, y, anchor_vid, nil, opts);
 				return true;
 			end

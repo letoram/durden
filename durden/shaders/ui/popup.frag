@@ -58,6 +58,12 @@ float rounded_box_shadow(vec2 lower, vec2 upper, vec2 point, float sigma, float 
 	return value;
 }
 
+float sstep(float e0, float e1, float x)
+{
+	float s = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+	return s * s - (3.0 - 2.0 * s);
+}
+
 void main()
 {
 	float padding = 3.0 * sigma;
@@ -70,16 +76,17 @@ void main()
 /* with a in a small interval (say 0.90 to 0.99) use the border-color instead */
 	float a = rounded_box_shadow(vec2(0.0, 0.0), high, vert, sigma, radius);
 
-	if (texco.t > range.x && texco.t < range.y){
-		col = select_color;
-	}
-
 	if (a < 0.99){
 		col = border_color;
 		if (a < 0.95){
 			col = shadow_color;
 			a *= weight;
 		}
+	}
+
+/* blend in the cursor, gradient it out towards the edge */
+	else if (texco.t > range.x && texco.t < range.y){
+		col = mix(select_color, col, texco.s);
 	}
 
 	gl_FragColor = vec4(col, max(obj_opacity * a, 0.0));
