@@ -462,7 +462,7 @@ local function gen_disp_menu(disp)
 			elseif val == "deep" then
 				fmt = ALLOC_QUALITY_HIGH
 			elseif val == "fp16" then
-				fmpt = ALLOC_QUALITY_FLOAT16
+				fmt = ALLOC_QUALITY_FLOAT16
 			end
 
 			display_set_format(disp.name, fmt)
