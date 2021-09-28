@@ -62,7 +62,9 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 	local disp = active_display(false, true);
 	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
 
-	local popup = uiprim_popup_spawn(menu, {
+	local popup, popup_closure;
+	popup, popup_closure =
+	uiprim_popup_spawn(menu, {
 		border_attach =
 		function(tbl, anchor, w, h)
 -- now we can position the popup based on intended spawn
@@ -91,6 +93,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 		on_finish =
 		function(ctx, ent)
 			mouse_droplistener(ml);
+			popup_closure();
 			dispatch_symbol_unlock(true);
 			active_display():set_input_lock();
 

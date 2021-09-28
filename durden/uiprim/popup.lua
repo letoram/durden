@@ -466,8 +466,8 @@ function(menu, options)
 
 	local function closure()
 		if mh.name then
-			mh.name = nil
 			mouse_droplistener(mh);
+			mh.name = nil
 		end
 	end
 
