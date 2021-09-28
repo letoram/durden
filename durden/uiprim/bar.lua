@@ -231,7 +231,7 @@ local function button_mh(ctx, mh)
 			table.insert(lbltbl, v);
 		end
 	end
-	ctx.name = "uiprim_button_handler";
+	ctx.name = "uiprim_btn_" .. tostring(ctx.bg);
 	ctx.own = function(ign, vid)
 		return vid == ctx.bg;
 	end
@@ -888,7 +888,6 @@ local function bar_updatemh(bar, mouseh)
 		end
 
 		local lsttbl = {};
-		bar.name = "uiprim_bar_handler";
 		for k,v in pairs(mouseh) do
 			bar[k] = function(ctx, ...)
 				v(bar, ...);
@@ -896,6 +895,7 @@ local function bar_updatemh(bar, mouseh)
 			table.insert(lsttbl, k);
 		end
 
+		bar.name = "uiprim_bar_handler";
 		mouse_addlistener(bar, lsttbl);
 	else
 		image_mask_set(bar.anchor, MASK_UNPICKABLE);
