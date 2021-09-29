@@ -14,6 +14,9 @@
 * display composition output format can now be set per display, at runtime:
   565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR
 
+* display scanout and refresh preferences can be set (globally) through:
+  global/display/variable\_refresh and global/displays/.../direct\_scanout
+
 * added a tile-bsp mode that adds new windows based on the highest-level
   tile with less than 2 children (/global/workspace/layout/tile\_bsp)
 
@@ -31,6 +34,8 @@
 * flair - add background effect to HUD (darken, blur+vignette)
 
 minor:
+
+* dropped 'simple' display mode in favor of the direct scanout control
 
 * added dracula/gruvbox/gruvbox-light colorschemes
 

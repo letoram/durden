@@ -414,7 +414,7 @@ return {
 		submenu = true,
 		handler = migrate_ws_bydsp,
 		eval = function()
-			return gconfig_get("display_simple") == false and #(displays_alive()) > 1;
+			return #(displays_alive()) > 1;
 		end
 	},
 	{

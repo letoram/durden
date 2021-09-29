@@ -297,7 +297,6 @@ local function gen_disp_menu(disp)
 		label = "Shader",
 		kind = "value",
 		description = "Change display postprocessing ruleset",
-		eval = function() return not display_simple(); end,
 		set = function() return shader_list({"display"}); end,
 		hint = function() return "(" .. display_shader(disp.name) .. ")"; end,
 		handler = function(ctx, val)
@@ -313,7 +312,7 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		submenu = true,
 		description = "Tune the current display postprocessing ruleset",
-		eval = function() return not display_simple() and #shader_uform_menu(
+		eval = function() return #shader_uform_menu(
 			display_shader(disp.name),"display", disp.name) > 0; end,
 		handler = function()
 			return shader_uform_menu(display_shader(disp.name),
@@ -345,7 +344,7 @@ local function gen_disp_menu(disp)
 		label = "Orientation",
 		kind = "action",
 		description = "Set the display output orientation",
-		eval = function() return not display_simple() and disp.id ~= nil; end,
+		eval = function() return disp.id ~= nil; end,
 		submenu = true,
 		handler = function() return orientation_menu(disp.name); end
 		},
@@ -361,6 +360,27 @@ local function gen_disp_menu(disp)
 		eval = function() return disp.ledctrl ~= nil; end,
 		},
 		{
+		name = "direct_scanout",
+		label = "Direct Scanout",
+		kind = "value",
+		description = "Attempt to map composited output direct to display",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return bit.band(disp.maphint_prefix, HINT_DIRECT) > 0;
+		end,
+		handler = function(ctx, val)
+			local new = bit.band(disp.maphint_prefix, HINT_DIRECT);
+			if val == LBL_FLIP then
+				disp.maphint_prefix = bit.bxor(disp.maphint_prefix, HINT_DIRECT);
+			elseif val == LBL_YES then
+				disp.maphint_prefix = bit.bor(disp.maphint_prefix, HINT_DIRECT);
+			else
+				disp.maphint_prefix = bit.band(disp.maphint_prefix, bit.bnot(HINT_DIRECT));
+			end
+			display_shader(disp.name, disp.shader); -- will cause a remap
+		end,
+	},
+	{
 		name = "background",
 		label = "Background",
 		kind = "action",
@@ -385,7 +405,6 @@ local function gen_disp_menu(disp)
 		kind = "value",
 		description = "Set this display as a synch-master",
 		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		eval = function() return not display_simple(); end,
 		initial = function()
 			return disp.primary and LBL_YES or LBL_NO;
 		end,
@@ -414,9 +433,6 @@ local function gen_disp_menu(disp)
 		label = "Window",
 		kind = "action",
 		description = "Create a window with display contents as canvas",
-		eval = function()
-			return not display_simple();
-		end,
 		handler = function()
 			local nsrf = null_surface(disp.tiler.width, disp.tiler.height);
 			if not valid_vid(nsrf) then
@@ -445,9 +461,6 @@ local function gen_disp_menu(disp)
 		name = "format",
 		label = "Format",
 		description = "Change the underlying mapping format",
-		eval = function()
-			return not display_simple();
-		end,
 		kind = "value",
 		set = {"565", "888", "deep", "fp16"},
 		handler =
@@ -712,7 +725,6 @@ local res = {
 		label = "Cycle Active",
 		kind = "action",
 		description = "Switch input focus to the next display in line",
-		eval = function() return not display_simple(); end,
 		handler = function()
 			display_cycle_active();
 		end
@@ -755,6 +767,25 @@ local res = {
 		submenu = true,
 		kind = "action",
 		handler = gen_gpu_reset,
+	},
+	{
+		name = "variable_refresh",
+		label = "Variable Refresh",
+		description = "Enable variable refresh on displays by default (if supported)",
+		kind = "value",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("display_vrr") and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			local new = gconfig_get("display_vrr");
+			if val == LBL_FLIP then
+				new = not new;
+			else
+				new = val == LBL_YES;
+			end
+			gconfig_set("display_vrr", new);
+		end,
 	},
 	{
 		name = "color",

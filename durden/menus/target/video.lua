@@ -116,8 +116,9 @@ local advanced = {
 		label = "Source-Fullscreen",
 		description = "Mark the window for dedicated display fullscreen",
 		kind = "value",
-		eval = function() return not display_simple() and valid_vid(
-			active_display().selected.external, TYPE_FRAMESERVER); end,
+		eval = function()
+			return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+		end,
 		set = {"Stretch", "Hint-Pad", "Mode Switch"},
 		handler = function(ctx, val)
 			local wnd = active_display().selected;

@@ -269,19 +269,6 @@ local durden_system = {
 		end
 	},
 	{
-		name = "dispmode",
-		label = "Display Mode",
-		kind = "value",
-		set = {"Simple", "Normal"},
-		description = "(advanced/reset) Change display management mode",
-		initial = function() return gconfig_get("display_simple") and
-			"Simple" or "Normal"; end,
-		handler = function(ctx, val)
-			gconfig_set("display_simple", val == "Simple");
-			active_display():message("Switching Displaymode, Reset Required.");
-		end
-	},
-	{
 		name = "debuglevel",
 		label = "Debug Level",
 		kind = "value",
