@@ -17,7 +17,6 @@ local SIZE_UNIT = 38.4;
 local active_display_count = 0;
 local displays = {};
 
-local is_display_simple = false;
 local display_main = 1;
 
 local profiles = {};
@@ -36,12 +35,14 @@ local set_view_range;
 local display_log, fmt = suppl_add_logfn("display");
 
 local function disp_string(disp)
-	return string.format("id=%d:name=%s:maphint=%d:w=%d:h=%d:backlight=%d:ppcm=%f",
+	return string.format("id=%d:name=%s:maphint=%d,%d:w=%d:h=%d:backlight=%d:shader=%s:ppcm=%f",
 		disp.id and disp.id or -1, disp.name and disp.name or "broken",
+		disp.maphint_prefix and disp.maphint_prefix or -1,
 		disp.maphint and disp.maphint or -1,
 		disp.w and disp.w or -1,
 		disp.h and disp.h or -1,
 		disp.backlight and disp.backlight or -1,
+		disp.shader and disp.shader or 'DEFAULT',
 		disp.ppcm and disp.ppcm or -1
 	);
 end
@@ -142,6 +143,14 @@ end
 
 display_scanprofiles();
 
+local function display_modeopt(id, modeid, opt)
+	if API_VERSION_MAJOR == 0 and API_VERSION_MINOR <= 11 then
+		video_displaymodes(id, modeid);
+	else
+		video_displaymodes(id, modeid, opt);
+	end
+end
+
 function display_maphint(disp)
 	if (type(disp) == "string") then
 		disp = get_disp(disp);
@@ -151,7 +160,9 @@ function display_maphint(disp)
 		return HINT_NONE;
 	end
 
-	return bit.bor(disp.maphint, (disp.primary and HINT_PRIMARY or 0));
+	local res = bit.bor(disp.maphint, (disp.primary and HINT_PRIMARY or 0));
+	res = bit.bor(res, (disp.direct and HINT_DIRECT or 0));
+	return bit.bor(res, disp.maphint_prefix);
 end
 
 local function autohome_windows(ndisp)
@@ -302,7 +313,7 @@ local function set_best_mode(disp, desw, desh)
 		disp.id, list[1].width, list[1].height, list[1].refresh)
 	);
 
-	video_displaymodes(disp.id, list[1].modeid);
+	display_modeopt(disp.id, list[1].modeid, disp.modeopt);
 end
 
 local function get_ppcm(pw_cm, ph_cm, dw, dh)
@@ -320,6 +331,13 @@ function display_set_format(name, buffer_fmt)
 		return;
 	end
 
+-- There are two sides to this, the first is the buffer used as the source format
+-- and the second is the display >mode<. It is well possible to have an internal
+-- format of a lower or higher resolution than the actual mode of the display.
+--
+-- To enforce a pairing, we can repeat what is in display_ressw(name, disp.last_m
+-- with the same buffer format. It is also possible to use this to toggle VRR.
+--
 	local buf = alloc_surface(disp.rw, disp.rh, true, buffer_fmt)
 	if not valid_vid(buf) then
 		return
@@ -368,7 +386,7 @@ function display_fullscreen(name, vid, modesw)
 
 		map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		if (disp.last_m and disp.fs_modesw) then
-			video_displaymodes(disp.id, disp.last_m.modeid);
+			display_modeopt(disp.id, disp.last_m.modeid, disp.modeopt);
 		end
 
 		disp.monitor_vid = nil;
@@ -508,9 +526,13 @@ local function display_byname(name, id, w, h, ppcm)
 		id = id,
 		name = name,
 		shader = gconfig_get("display_shader"),
+		maphint_prefix = (gconfig_get("display_direct") and 1 or 0) * HINT_DIRECT,
 		maphint = HINT_NONE,
 		refresh = 60,
 		backlight = 1.0,
+		modeopt = {
+			vrr = gconfig_get("display_vrr")
+		},
 		view_range = set_view_range,
 		format = ALLOC_QUALITY_NORMAL,
 		zoom = {
@@ -936,29 +958,22 @@ function display_manager_init(alloc_fn)
 
 	displays[1] = ddisp;
 
-	is_display_simple = gconfig_get("display_simple");
 	display_main = 1;
 	ddisp.ind = 1;
 	ddisp.tiler.name = "default";
 
--- simple mode does not permit us to do much of the fun stuff, like
--- different color etc. correction shaders or rotate/fit/.. it's
--- essentially just for low powered nested use
-
-	if (not is_display_simple) then
-		rendertarget_forceupdate(WORLDID, 0);
-		if (not arcan_nested) then
-			delete_image(WORLDID);
-		end
-		ddisp.rt = ddisp.tiler:set_rendertarget(true);
-		ddisp.map_rt = ddisp.rt;
-
-		map_video_display(ddisp.map_rt, 0, 0);
-		shader_setup(ddisp.map_rt, "display", ddisp.shader, ddisp.name);
-		switch_active_display(1);
-		reorient_ddisp(ddisp, ddisp.maphint);
-		mouse_querytarget(ddisp.rt);
+	rendertarget_forceupdate(WORLDID, 0);
+	if (not arcan_nested) then
+		delete_image(WORLDID);
 	end
+	ddisp.rt = ddisp.tiler:set_rendertarget(true);
+	ddisp.map_rt = ddisp.rt;
+
+	map_video_display(ddisp.map_rt, 0, 0);
+	shader_setup(ddisp.map_rt, "display", ddisp.shader, ddisp.name);
+	switch_active_display(1);
+	reorient_ddisp(ddisp, ddisp.maphint);
+	mouse_querytarget(ddisp.rt);
 
 -- any deferred events from display events arriving before the caller
 -- has called init gets re-injected, this can also be used to test some
@@ -972,11 +987,7 @@ function display_manager_init(alloc_fn)
 end
 
 function display_attachment()
-	if (not is_display_simple) then
-		return nil;
-	else
-		return displays[1].rt;
-	end
+	return displays[1].rt;
 end
 
 function display_override_density(name, ppcm)
@@ -1008,16 +1019,18 @@ function display_shader(name, key)
 	end
 
 -- special path, the engine can optimize if we use the "DEFAULT" shader
-	if (key == "basic") then
+	if (not key or key == "basic") then
 		image_shader(disp.rt, 'DEFAULT');
-		disp.shader = key;
+		disp.shader = 'DEFAULT';
 	elseif (key) then
-		warning("shader" .. key);
 		shader_setup(disp.rt, "display", key, disp.name);
 		--set_key("disp_" .. hexenc(disp.name) .. "_shader", key);
 		disp.shader = key;
 	end
-	map_video_display(disp.map_rt, disp.id, disp.maphint);
+
+	display_log(disp_string(disp));
+	local hint = display_maphint(disp);
+	map_video_display(disp.map_rt, disp.id, hint);
 
 	return disp.shader;
 end
@@ -1025,7 +1038,6 @@ end
 function display_add(name, width, height, ppcm, id)
 	local found = get_disp(name);
 	local new = nil;
-	local maphint = HINT_NONE;
 	local backlight = 1.0;
 
 	name = string.gsub(name, ":", "/");
@@ -1224,7 +1236,8 @@ function display_remove(id)
 end
 
 -- special little hook in LWA mode that handles resize requests from
--- parent. We treat that as a 'normal' resolution switch.
+-- parent. We treat that as a 'normal' resolution switch. This is being
+-- reworked through the _display_state handler and should be removed.
 function VRES_AUTORES(w, h, vppcm, flags, source)
 	local disp = displays[1];
 	display_log(fmt(
@@ -1240,20 +1253,15 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 	end
 
 	if (gconfig_get("lwa_autores")) then
-		if (is_display_simple) then
-			resize_video_canvas(w, h);
-			disp.tiler:resize(w, h, true);
-		else
-			display_action(disp, function()
-				if (video_displaymodes(source, w, h)) then
-					map_video_display(disp.map_rt, 0, disp.maphint);
-					resize_video_canvas(w, h);
-					image_set_txcos_default(disp.rt);
-					disp.tiler:resize(w, h);
-					disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
-				end
-			end);
-		end
+		display_action(disp, function()
+			if (video_displaymodes(source, w, h)) then
+				map_video_display(disp.map_rt, 0, display_maphint(disp));
+				resize_video_canvas(w, h);
+				image_set_txcos_default(disp.rt);
+				disp.tiler:resize(w, h);
+				disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
+			end
+		end);
 	end
 end
 
@@ -1278,7 +1286,7 @@ function display_ressw(name, mode)
 		disp.h = mode.height;
 		disp.rw = disp.w;
 		disp.rh = disp.h;
-		video_displaymodes(disp.id, mode.modeid);
+		display_modeopt(disp.id, mode.modeid, disp.modeopt);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
 			map_video_display(disp.map_rt, disp.id, display_maphint(disp));
@@ -1288,9 +1296,7 @@ function display_ressw(name, mode)
 		set_mouse_scalef();
 	end);
 
-	if (disp.maphint) then
-		display_reorient(name, disp.maphint);
-	end
+	display_reorient(name, display_maphint(disp));
 
 -- as the dimensions have changed
 	if (active_display(true) == disp.rt) then
@@ -1344,10 +1350,6 @@ function display_migrate_ws(tiler, dstname)
 end
 
 function display_reorient(name, hint)
-	if (is_display_simple) then
-		return;
-	end
-
 	local disp = get_disp(name);
 	if (not disp) then
 		warning("display_reorient on missing display:" .. tostring(name));
@@ -1355,10 +1357,6 @@ function display_reorient(name, hint)
 	end
 
 	reorient_ddisp(disp, hint);
-end
-
-function display_simple()
-	return is_display_simple;
 end
 
 function display_share(disp, args, recfn)
@@ -1528,7 +1526,7 @@ function display_tick()
 		end
 
 -- periodically check source for dedicated fullscreen mode
-		if (not is_display_simple and v.monitor_vid) then
+		if (v.monitor_vid) then
 
 -- on death, set "BADID" (which will revert mapping to normal rt)
 			if (not valid_vid(v.monitor_vid, TYPE_FRAMESERVER)) then

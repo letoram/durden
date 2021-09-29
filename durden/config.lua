@@ -111,11 +111,12 @@ return {
 -- limit subwindows per connection, also covers hidden windows (e.g. clipboard)
 	subwnd_limit = 10,
 
--- MANUAL/REQUIRES RESTART: setting this to true possibly reduces latency,
--- Performance footprint etc. but prevents certain features like selective
--- desktop sharing and multiple displays.
-	display_simple = false,
 	display_shader = "basic",
+	display_vrr = false,
+
+-- enable for direct FBO scanout when possible, may cause glitches still so not
+-- the default.
+	display_direct = false,
 
 -- clear-color on display rendertarget when no wallpaper is set
 	display_color = {30, 30, 30},

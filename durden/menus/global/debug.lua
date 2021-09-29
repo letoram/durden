@@ -406,9 +406,6 @@ return {
 		label = "display_window",
 		kind = "action",
 		submenu = true,
-		eval = function()
-			return not gconfig_get("display_simple");
-		end,
 		handler = gen_displaywnd_menu
 	},
 	{
