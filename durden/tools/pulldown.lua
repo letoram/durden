@@ -209,8 +209,10 @@ local function drop()
 	dispatch_toggle(false);
 	mouse_lockto(unpack(dstate.lock));
 
-	target_displayhint(dstate.term, 0, 0,
-		bit.bor(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE));
+	if valid_vid(dstate.term, TYPE_FRAMESERVER) then
+		target_displayhint(dstate.term, 0, 0,
+			bit.bor(TD_HINT_UNFOCUSED, TD_HINT_INVISIBLE));
+	end
 end
 
 -- we intercept symbol- handling so our trigger path can be re-used
