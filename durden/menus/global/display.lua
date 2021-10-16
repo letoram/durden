@@ -247,7 +247,6 @@ local function gen_disp_menu(disp)
 			for v in all_displays_iter() do
 				if (v.id == disp.id) then
 					display_cycle_active(v.ind);
-					return;
 				end
 			end
 		end
@@ -312,11 +311,13 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		submenu = true,
 		description = "Tune the current display postprocessing ruleset",
-		eval = function() return #shader_uform_menu(
-			display_shader(disp.name),"display", disp.name) > 0; end,
+		eval = function()
+			local shname = disp.shader and disp.shader or "DEFAULT";
+			return #shader_uform_menu(shname ,"display", disp.name) > 0;
+		end,
 		handler = function()
-			return shader_uform_menu(display_shader(disp.name),
-				"display", disp.name,
+			local shname = disp.shader and disp.shader or "DEFAULT";
+			return shader_uform_menu(shname, "display", disp.name,
 -- callback on update
 			function(uniform, val)
 				display_shader_uniform(disp.name, uniform, val);
