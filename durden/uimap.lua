@@ -59,8 +59,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 	local prefix = wm:font_resfn();
 	local shadow_h = 10;
 	local speed = gconfig_get("animation") * 0.5;
-	local disp = active_display(false, true);
-	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
+	local hw = suppl_display_ui_pad();
 
 	local popup, popup_closure;
 	popup, popup_closure =

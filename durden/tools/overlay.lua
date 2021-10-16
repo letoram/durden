@@ -230,9 +230,6 @@ local overlays =
 		label = "Migrate",
 		description = "Move the overlay stack to another display",
 		submenu = true,
-		eval = function()
-			return gconfig_get("display_simple") == false;
-		end,
 		handler = function()
 			return gen_migrate_menu();
 		end
