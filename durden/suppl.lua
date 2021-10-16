@@ -1791,3 +1791,20 @@ function suppl_tgt_color(vid, cmap)
 	end
 	target_graphmode(vid, 0)
 end
+
+-- pattern repeated often enough, just get the trace of a specific api func.
+local logtbl = {};
+function suppl_log_intercept(name)
+	logtbl[name] = _G[name];
+	_G[name] =
+	function(...)
+		print(debug.traceback());
+		logtbl[name](...);
+	end
+end
+
+function suppl_display_ui_pad()
+	local disp = active_display(false, true);
+	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
+	return hw;
+end

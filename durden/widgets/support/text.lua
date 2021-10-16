@@ -199,18 +199,19 @@ return {
 			return;
 		end
 
+		local pad = suppl_display_ui_pad();
 		ctx.text_w = outw;
 		local bdw = outw;
-		local bdh = (heights[#heights]+outh) + outh;
+		local bdh = (heights[#heights]+outh);
 		local bdw = bdw > props.width and props.width or bdw;
 		local bdh = bdh > props.height and props.height or bdh;
-		local backdrop = color_surface(bdw + 4, bdh + 4, 20, 20, 20);
+		local backdrop = color_surface(bdw + pad + pad, bdh + pad + pad, 20, 20, 20);
 		shader_setup(backdrop, "ui", "rounded", "active");
 		link_image(backdrop, anchor);
 		link_image(vid, backdrop);
 		image_inherit_order(backdrop, true);
 		image_inherit_order(vid, true);
-		move_image(vid, 4, 4);
+		move_image(vid, pad, pad);
 --			center_image(tbl, anchor);
 --			center_image(backdrop, anchor);
 		show_image({backdrop, vid});
@@ -225,6 +226,6 @@ return {
 			setup_mh(ctx, bdw, bdh, vid, heights, ofs);
 		end
 
-		return bdw + 4, bdh + 4, vid, heights;
+		return bdw + pad + pad, bdh + pad + pad, vid, heights;
 	end
 };

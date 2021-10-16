@@ -4084,14 +4084,16 @@ local function wnd_suggest_size(wnd)
 			return wm.effective_width, wm.effective_height - nw * tbarh;
 
 	elseif space.mode == "tile" then
--- tile-mode is worse off as we need heuristics to figure out where it will
+-- Tile-mode is worse off as we need heuristics to figure out where it will
 -- be attached (the suggest_size doesn't account for that), the current
--- insertion mode
+-- insertion mode and so on. There is also no 'dry run' that would account
+-- for window scaling modes and so on. It is very likely that the suggested
+-- size will change almost immediately.
 
 	elseif space.mode == "float" then
 	end
 
-	return 300, 300;
+	return wm.effective_width * 0.3, wm.effective_height * 0.3;
 end
 
 local function find_leaf(node, depth)
