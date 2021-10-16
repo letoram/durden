@@ -313,6 +313,7 @@ local function set_best_mode(disp, desw, desh)
 		disp.id, list[1].width, list[1].height, list[1].refresh)
 	);
 
+	disp.last_m = list[1];
 	display_modeopt(disp.id, list[1].modeid, disp.modeopt);
 end
 
@@ -335,9 +336,6 @@ function display_set_format(name, buffer_fmt)
 -- and the second is the display >mode<. It is well possible to have an internal
 -- format of a lower or higher resolution than the actual mode of the display.
 --
--- To enforce a pairing, we can repeat what is in display_ressw(name, disp.last_m
--- with the same buffer format. It is also possible to use this to toggle VRR.
---
 	local buf = alloc_surface(disp.rw, disp.rh, true, buffer_fmt)
 	if not valid_vid(buf) then
 		return
@@ -348,6 +346,15 @@ function display_set_format(name, buffer_fmt)
 	image_sharestorage(buf, disp.map_rt)
 	image_sharestorage(buf, disp.rt)
 	map_video_display(disp.map_rt, hint)
+
+-- If direct mapping is used, the modeopt for switching actual scanout mode doesn't
+-- matter as it is the format of the mapped source that dictate what ouput surface
+-- we pick.
+	if disp.last_m and bit.band(disp.maphint_prefix, HINT_DIRECT) == 0 then
+		display_log(fmt("display=%d:set_scanout_fmt=%d", disp.id, buffer_fmt));
+		disp.modeopt.format = buffer_fmt;
+		display_modeopt(disp.id, disp.last_m.modeid, disp.modeopt);
+	end
 end
 
 -- "hard" fullscreen- mode where the window canvas is mapped directly to
