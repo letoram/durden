@@ -11,9 +11,6 @@
 * drag-resize in floating mode now has an 'silent' global option
   for using server-side selection, and a 'per-type' enable with tui default
 
-* display composition output format can now be set per display, at runtime:
-  565 (16-bit), 888 (xrgb, default 32-bit), deep (10-bit) and HDR
-
 * display scanout and refresh preferences can be set (globally) through:
   global/display/variable\_refresh and global/displays/.../direct\_scanout
 
@@ -35,6 +32,8 @@
 
 minor:
 
+* default HUD sort order split into two, one for browse/ and one for other paths
+
 * dropped 'simple' display mode in favor of the direct scanout control
 
 * added dracula/gruvbox/gruvbox-light colorschemes
@@ -54,12 +53,14 @@ minor:
 
 * uiprim/lbar - helper text padding and background size increased
 
-* clipboard/url paste scripting error
+* clipboard/url paste scripting error fixed
 
 * swapping from fullscreen workspace to a non fullscreen one and back
   should no longer lose the surface canvas
 
 * resource browser preview on-select triggers for mouse motion as well
+
+* added padding rules to hud widget borders, popups and other elements
 
 # 0.6.0 - 0.6.1
 * universal open/save:

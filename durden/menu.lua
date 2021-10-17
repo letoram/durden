@@ -53,25 +53,30 @@ local function sort_za(a, b)
 		string.lower((type(b) == "table" and a[3] or b));
 end
 
-local sort_mode = "normal";
+local sort_mode =
+{
+	normal = gconfig_get("lbar_fltfun"),
+	browse = gconfig_get("lbar_fltfun")
+};
+
 local sort_lut = {
-["normal"] = function()
-	sort_mode = "normal";
+["normal"] = function(n)
+	sort_mode[n] = "normal";
 end,
-["random"] = function()
-	sort_mode = "random";
+["random"] = function(n)
+	sort_mode[n] = "random";
 end,
-["fuzzy_relevance"] = function()
-	sort_mode = "fuzzy_relevance";
+["fuzzy_relevance"] = function(n)
+	sort_mode[n] = "fuzzy_relevance";
 end,
-["numeric(a->Z)"] = function()
-	sort_mode = sort_az;
+["numeric(a->Z)"] = function(n)
+	sort_mode[n] = sort_az;
 end,
-["natural(a->Z)"] = function()
-	sort_mode = sort_az_nat;
+["natural(a->Z)"] = function(n)
+	sort_mode[n] = sort_az_nat;
 end,
-["reverse(Z->a)"] = function()
-	sort_mode = sort_za;
+["reverse(Z->a)"] = function(n)
+	sort_mode[n] = sort_za;
 end
 };
 
@@ -305,10 +310,18 @@ function menu_query_value(ctx, mask)
 	return res;
 end
 
+local function path_prefix()
+	local path = cpath:get_path();
+	local prefix = "/browse";
+	local in_browse = string.find(path, prefix, 1, #prefix);
+	return in_browse and "browse" or "normal";
+end
+
 local function update_menu(ctx, instr, lastv, inp_st)
 -- special case, control character
 	local res = {};
 	local lstr = string.len(instr);
+
 	local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
 	ctx.subst = false;
 
@@ -333,8 +346,10 @@ local function update_menu(ctx, instr, lastv, inp_st)
 		end
 	end
 
+-- fuzzy finding is a bit special in that it both reduces the set
+-- and orders based on scoring
 	if (flt_fun == flt_fuzzy) then
-		sort_mode = "fuzzy_relevance"
+		sort_mode[path_prefix()] = "fuzzy_relevance";
 	end
 
 -- generate the subset of fields from the expected range
@@ -381,44 +396,18 @@ local function update_menu(ctx, instr, lastv, inp_st)
 		end
 	end
 
-	if (type(sort_mode) ~= "string") then
-		table.sort(res, sort_mode);
+	local smode = sort_mode[path_prefix()];
+	if (type(smode) ~= "string") then
+		table.sort(res, smode);
 	else
-		if (sort_mode == "random") then
+		if (smode == "random") then
 			local sz = #res;
 			for i=sz,1,-1 do
 				local rand = math.random(sz);
 				res[i], res[rand] = res[rand], res[i];
 			end
-		elseif (sort_mode == "fuzzy_relevance") then
-			local fuzzy_dist = function(val)
-				if (not val) then
-					return math.huge;
-				end
-
-				local dist = 0;
-				local last_pos = 0;
-				local i = string.utf8forward(instr, 0);
-				while i <= #instr do
-					local next_i = string.utf8forward(instr, i);
-					local ch = string.lower(string.sub(instr, i, next_i - 1));
-					local ok, msg = pcall(string.find, string.lower(val), ch, last_pos + 1);
-					if (not ok or not pos) then
-						break;
-					end
-
-					dist = dist + (pos - last_pos);
-					last_pos = pos;
-					i = next_i;
-				end
-				return dist;
-			end;
-			local relev_sort = function(a, b)
-				return
-					fuzzy_dist(type(a) == "table" and a[3] or a) <
-					fuzzy_dist(type(b) == "table" and b[3] or b);
-			end;
-			table.sort(res, relev_sort);
+		elseif (smode == "fuzzy_relevance") then
+			table.sort(res, suppl_sort_fuzzy(instr));
 		end
 	end
 
@@ -458,12 +447,11 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 	end
 
 -- we have had the substituted input (mode selection prefix), change the
--- global sorting method, question is if this should be applied to /browse/x/
--- only, as the random etc. make little sense.
+-- global sorting method for the appropriate namespace
 	if (ctx.subst) then
 		ctx.subst = false;
 		if (sort_lut[instr]) then
-			sort_lut[instr]();
+			sort_lut[instr](path_prefix());
 		end
 		dispatch_symbol(cpath:get_path(), {});
 		return;
