@@ -1808,3 +1808,35 @@ function suppl_display_ui_pad()
 	local hw = math.ceil(gconfig_get("font_sz") * 0.352778 * disp.ppcm / 20);
 	return hw;
 end
+
+local function fuzzy_dist(instr, val)
+	if (not val) then
+		return math.huge;
+	end
+
+	local dist = 0;
+	local last_pos = 0;
+	local i = string.utf8forward(instr, 0);
+	while i <= #instr do
+		local next_i = string.utf8forward(instr, i);
+		local ch = string.lower(string.sub(instr, i, next_i - 1));
+		local ok, msg = pcall(string.find, string.lower(val), ch, last_pos + 1);
+		if (not ok or not pos) then
+			break;
+		end
+
+		dist = dist + (pos - last_pos);
+		last_pos = pos;
+		i = next_i;
+	end
+	return dist;
+end;
+
+function suppl_sort_fuzzy(instr)
+	return
+	function(a, b)
+		return
+		fuzzy_dist(instr, type(a) == "table" and a[3] or a) <
+		fuzzy_dist(instr, type(b) == "table" and b[3] or b);
+	end
+end
