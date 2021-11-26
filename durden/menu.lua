@@ -183,7 +183,24 @@ end
 local function set_input(ctx, instr, done, lastv)
 	local m1, m2 = dispatch_meta();
 	if (not done) then
-		local dset = ctx.set;
+		local dset = {"error_broken"}
+
+		local setkey = "set"
+		if ctx.suggestions then
+			setkey = "suggestions"
+		end
+
+-- there might be multiple set types in an entry, so let a key decide.
+-- similarly, there might be a static or dynamic set to consider.
+		if type(ctx[setkey] == "function") then
+			local res = ctx[setkey]()
+			if res then
+				dset = res
+			end
+		elseif type(ctx[setkey]) == "table" then
+			dset = ctx[setkey]
+		end
+
 		local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
 		if (type(ctx.set) == "function") then
 			dset = ctx.set();
@@ -285,9 +302,10 @@ function menu_query_value(ctx, mask)
 
 -- explicit set to chose from?
 	local res;
-	if (ctx.set) then
-		res = active_display():lbar(set_input,
-			ctx, {label = hintstr, force_completion = true, prefill = ctx.prefill});
+	if (ctx.set or ctx.suggestions) then
+
+		res = active_display():lbar(set_input, ctx,
+			{label = hintstr, force_completion = not ctx.suggestions, prefill = ctx.prefill});
 	else
 -- or a "normal" run with custom input and validator feedback
 		res = active_display():lbar(
