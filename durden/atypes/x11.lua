@@ -15,7 +15,7 @@ return {
 		scalemode = "normal",
 		filtermode = FILTER_NONE,
 		rate_unlimited = true,
-		clipboard_block = true,
+		clipboard_block = false,
 		font_block = true,
 	},
 	dispatch = {
