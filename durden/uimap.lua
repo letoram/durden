@@ -262,6 +262,13 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 		else
 			dir = "d";
 		end
+
+-- override if we are not at the edges
+		local edge_w = wm.effective_width * 0.1;
+		local edge_h = wm.effective_height * 0.1;
+		if dx > edge_w and dx2 > edge_w and dy > edge_h and dy2 > edge_h then
+			dir = "l"; -- RTL langs would probably pref. 'r' here..
+		end
 	end
 
 	if dir == "l" then
