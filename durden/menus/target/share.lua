@@ -296,6 +296,19 @@ return {
 		setup_sharing(recstr, srate, nosound,
 			"output/" .. val .. ".mkv", false, "rec_" .. active_display().selected.name);
 	end
+}
+,
+{
+	name = "custom",
+	kind = "value",
+	label = "Custom",
+	description = "Specify custom (raw) encode arguments",
+	validator = function(a) return a and #a > 0 end,
+	handler =
+	function(ctx, val)
+		local srate = gconfig_get("enc_srate");
+		setup_sharing(val, srate, nosound, "", false, "custom_" .. active_display().selected.name);
+	end
 }};
 end
 
