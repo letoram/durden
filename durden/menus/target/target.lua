@@ -31,7 +31,7 @@ local shared_actions = {
 		description = "Clipboard control and actions",
 		eval = function()
 			return active_display().selected and
-				active_display().selected.clipboard_block == nil;
+				active_display().selected.clipboard_block ~= true;
 		end,
 		handler = system_load("menus/target/clipboard.lua")()
 	},
