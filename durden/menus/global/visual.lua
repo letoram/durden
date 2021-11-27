@@ -138,16 +138,5 @@ return {
 		kind = "action",
 		submenu = true,
 		handler = system_load("menus/global/colors.lua")
-	},
-	{
-		name = "menu_helper",
-		label = "Menu Descriptions",
-		description = "Set if this helper text should be shown or not",
-		kind = "value",
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		initial = function()
-			return gconfig_get("menu_helper") and LBL_YES or LBL_NO;
-		end,
-		handler = suppl_flip_handler("menu_helper")
 	}
 };

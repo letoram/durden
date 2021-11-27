@@ -192,7 +192,7 @@ local function set_input(ctx, instr, done, lastv)
 
 -- there might be multiple set types in an entry, so let a key decide.
 -- similarly, there might be a static or dynamic set to consider.
-		if type(ctx[setkey] == "function") then
+		if type(ctx[setkey]) == "function" then
 			local res = ctx[setkey]()
 			if res then
 				dset = res
