@@ -799,8 +799,8 @@ local function tiler_statusbar_build(wm)
 		wm.statusbar:destroy();
 	end
 
-	wm.statusbar = uiprim_bar(
-		wm.order_anchor, ANCHOR_UL, wm.width, sbsz, "statusbar");
+	wm.statusbar = uiprim_bar(wm.order_anchor,
+		ANCHOR_UL, wm.width, sbsz, "statusbar", nil, "sbar");
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	wm.statusbar.owner = wm;
 	wm.sbar_ws = {};
@@ -5036,7 +5036,8 @@ local wnd_setup = function(wm, source, opts)
 	local tbh = math.floor(wm.scalef * gconfig_get("tbar_sz"));
 	res.titlebar = uiprim_bar(res.anchor, ANCHOR_UL,
 		res.width - 2 * bw, tbh, "titlebar",
-		mouse_handler_factory.titlebar(res)
+		mouse_handler_factory.titlebar(res),
+		"tbar"
 	);
 
 	res.titlebar.tag = res;

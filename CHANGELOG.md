@@ -30,6 +30,8 @@
 
 * flair - add background effect to HUD (darken, blur+vignette)
 
+* compact-mode for statusbar and titlebar (global/settings/titlebar,statusbar/compact)
+
 minor:
 
 * default HUD sort order split into two, one for browse/ and one for other paths
