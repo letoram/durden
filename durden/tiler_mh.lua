@@ -156,7 +156,7 @@ local function wnd_drag_preview_synch(wnd)
 	local dmp;
 	local dpos = wnd.drag_move_pos;
 	if not valid_vid(wnd.drag_move_preview) then
-		wnd.drag_move_preview = color_surface(64, 64, unpack(gconfig_get("titlebar_color")));
+		wnd.drag_move_preview = color_surface(64, 64, unpack(gconfig_get("tbar_color")));
 		image_inherit_order(wnd.drag_move_preview, true);
 		order_image(wnd.drag_move_preview, 1);
 		dmp = wnd.drag_move_preview;

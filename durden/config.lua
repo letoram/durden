@@ -22,7 +22,7 @@ return {
 	bordert_float = 1,
 	borderw_float = 4,
 	border_color = {60, 104, 135},
-	titlebar_color = {60, 104, 135},
+	tbar_color = {60, 104, 135},
 
 -- quite expensive so need to be 'none' at start (or have a GPU probe stage)
 	shadow_style = "none",
@@ -146,14 +146,9 @@ return {
 -- per window toggle, global default here
 	hide_titlebar = false,
 
--- if titlebars are "hidden" and this is true, merge the selected window
--- titlebar into the statusbar center area and recursively relayout
-	titlebar_statusbar = false,
-
 -- %(fmt-char) p (tag) t (title) i (ident) a (archetype)
 -- optional character limit after each entry, whitespace breaks out of fmt-char
 	titlebar_ptn = "%p %t - %i",
-	titlebar_sidepad = 5,
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating
@@ -309,6 +304,8 @@ return {
 	sbar_dispbutton_prefix = "D", -- any valid vsym
 	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
 	sbar_prefixcolor = "dynamic", -- "\\#ffffff ",
+	sbar_compact = false, -- shrink the statusbar to fit only the contents
+	sbar_sidepad = 0,
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes
@@ -318,6 +315,8 @@ return {
 	tbar_textstr = "\\#ffffff ",
 	tbar_rclick = "/global/tools/popup/menu=/target",
 	tbar_position = "top",
+	tbar_compact = false, -- shrink titlebar to fit contents
+	tbar_sidepad = 0,
 
 -- icons
 	icon_set = "default",

@@ -324,10 +324,25 @@ function uiprim_button(anchor, bgshname,
 	return res;
 end
 
+local function bar_dimensions(bar)
+	local w = 2 * bar.sidepad;
+	for _,group in ipairs({"left", "right", "center"}) do
+		for _,v in ipairs(bar.buttons[group]) do
+			w = w + v:dimensions();
+		end
+	end
+	return w;
+end
+
 local function bar_relayout_horiz(bar)
+	if bar.compact then
+		bar.width = bar_dimensions(bar) +
+		(bar.nested and bar_dimensions(bar.nested) or 0);
+	end
+	local width = bar.width;
+
 	reset_image_transform(bar.anchor);
-	resize_image(bar.anchor,
-		bar.width, bar.height, bar.anim_time, bar.anim_func);
+	resize_image(bar.anchor, width, bar.height, bar.anim_time, bar.anim_func);
 
 -- default hide center as it will matter later
 	local nvis = 0;
@@ -352,7 +367,7 @@ local function bar_relayout_horiz(bar)
 			lx = lx + w;
 		end
 
-		local rx = bar.width - bar.sidepad;
+		local rx = width - bar.sidepad;
 		for k,v in ipairs(bar.buttons.right) do
 			local w, h = v:dimensions();
 			rx = rx - w;
@@ -372,7 +387,7 @@ local function bar_relayout_horiz(bar)
 
 	local lx, rx = relay(
 		function(vid, v, w, h, x, y, ...)
-			if (x + w > bar.width) then
+			if (x + w > width) then
 				hide_image(vid);
 			elseif (not v.hidden) then
 				show_image(vid);
@@ -426,7 +441,7 @@ local function bar_relayout_horiz(bar)
 			button_labelupd(v, nil, v.timeout, v.timeout_str);
 			v.anim_func = nil;
 			v.anim_time = nil;
-			if (lx + v.maxw <= bar.width) then
+			if (lx + v.maxw <= width) then
 				show_image(v.bg);
 			end
 			move_image(v.bg, lx, 0);
@@ -1003,21 +1018,32 @@ end
 
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
-function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh)
+function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 	assert(anchor);
 	assert(anchorp);
 	width = width > 0 and width or 1;
 	height = height > 0 and height or 1;
 
+	local compact = false;
+	local color = {127, 127, 127};
+	local sidepad = 0;
+
+-- the same code is used for multiple UI components with different settings
+	if keyprefix then
+		compact = gconfig_get(keyprefix .. "_compact");
+		sidepad = gconfig_get(keyprefix .. "_sidepad");
+		color = gconfig_get(keyprefix .. "_color");
+	end
+
 	local res = {
--- normal visual tracking options, the scale-factor used comes
--- from the display we are attached to, a tiler- scale invokes
--- rebuild
-		anchor = color_surface(width, height, unpack(gconfig_get("titlebar_color"))),
+-- normal visual tracking options, the scale-factor used comes from the display
+-- we are attached to, a tiler- scale invokes rebuild
+		anchor = color_surface(width, height, unpack(color)),
 		shader = shdrtgt,
 		width = width,
 		height = height,
-		sidepad = gconfig_get("titlebar_sidepad"),
+		compact = compact,
+		sidepad = sidepad,
 
 -- split the bar into three groups, left and right take priority,
 -- while the center area act as 'fill'.

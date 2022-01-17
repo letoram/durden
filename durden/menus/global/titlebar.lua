@@ -145,7 +145,7 @@ return
 		hint = "(r g b)[0..255]",
 		widget = "special:colorpick_r8g8b8",
 		initial = function()
-			local bc = gconfig_get("titlebar_color");
+			local bc = gconfig_get("tbar_color");
 			return string.format("%.0f %.0f %.0f", bc[1], bc[2], bc[3]);
 		end,
 		validator = suppl_valid_typestr("fff", 0, 255, 0),
@@ -155,7 +155,7 @@ return
 			for wnd in all_windows(nil, true) do
 				image_color(wnd.titlebar.anchor, tbl[1], tbl[2], tbl[3]);
 			end
-			gconfig_set("titlebar_color", tbl);
+			gconfig_set("tbar_color", tbl);
 		end,
 	},
 	{
@@ -219,4 +219,28 @@ return
 			gconfig_set("tbar_position", val);
 		end
 	},
+	{
+		name = "sidepad",
+		label = "Sidepad",
+		kind = "value",
+		description = "Px to insert to the left and right edge or the bar",
+		initial = function()
+			return gconfig_get("tbar_sidepad");
+		end,
+		validator = gen_valid_num(0, 100),
+		handler = function()
+			gconfig_set(ctx, "tbar_sidepad", tonumber(val));
+		end
+	},
+	{
+		name = "compact",
+		label = "Compact",
+		kind = "value",
+		description = "Resize the bar to fit only its buttons and sidepad",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("tbar_compact") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("tbar_compact")
+	}
 };

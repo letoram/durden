@@ -800,7 +800,7 @@ local titlebar_table = {
 -- these have a common factroy as we really want to provide a more advanced
 -- picking widget later that can take both various common swatches and cubes,
 -- but also grab from clients and quantized versions of clients
-suppl_append_color_menu(gconfig_get("titlebar_color"), titlebar_table[1],
+suppl_append_color_menu(gconfig_get("tbar_color"), titlebar_table[1],
 function(fmt, r, g, b)
 	image_color(active_display().selected.titlebar.anchor, r, g, b);
 end

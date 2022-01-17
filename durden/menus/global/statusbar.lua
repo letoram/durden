@@ -430,5 +430,29 @@ return {
 				tiler:resize();
 			end
 		end
+	},
+	{
+		name = "sidepad",
+		label = "Sidepad",
+		kind = "value",
+		description = "Px to insert to the left and right edge or the bar",
+		initial = function()
+			return gconfig_get("sbar_sidepad");
+		end,
+		validator = gen_valid_num(0, 100),
+		handler = function()
+			gconfig_set(ctx, "sbar_sidepad", tonumber(val));
+		end
+	},
+	{
+		name = "compact",
+		label = "Compact",
+		kind = "value",
+		description = "Resize the bar to fit only its buttons and sidepad",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("sbar_compact") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("sbar_compact")
 	}
 };
