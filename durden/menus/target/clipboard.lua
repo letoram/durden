@@ -6,8 +6,6 @@ local function pastefun(wnd, msg)
 			return;
 		end
 
-		local dst = alloc_surface(1, 1);
-
 -- this approach triggers an interesting bug that may be worthwhile to explore
 --		wnd.clipboard_out = define_recordtarget(alloc_surface(1, 1),
 --			wnd.external, "", {null_surface(1,1)}, {},
