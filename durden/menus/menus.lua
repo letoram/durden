@@ -132,6 +132,15 @@ function menus_register(root, path, entry)
 			return;
 		end
 	end
+
+-- replace if one already exists, this will work poorly for dynamically generated
+	for i, v in ipairs(level) do
+		if v.name == entry.name then
+			level[i] = entry
+			return
+		end
+	end
+
 	table.insert(level, entry);
 end
 

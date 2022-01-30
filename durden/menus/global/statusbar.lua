@@ -1,6 +1,11 @@
 local function button_query_path(vsym, dir, group)
+	dispatch_user_message("Pick Button Action");
 	dispatch_symbol_bind(
 		function(path)
+			dispatch_user_message("");
+			if not path then
+				return
+			end
 			table.insert(gconfig_statusbar_buttons, {
 				label = vsym,
 				direction = dir,
@@ -47,8 +52,10 @@ local function alt_button(dir, group)
 				description = "Button Label: " .. v.label,
 				kind = "action",
 				handler = function()
+					dispatch_user_message("Pick Button Alt-action");
 					dispatch_symbol_bind(
 						function(path)
+							dispatch_user_message("");
 							v.alt_command = path;
 							gconfig_statusbar_rebuild();
 							for disp in all_tilers_iter() do

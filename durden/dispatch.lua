@@ -313,6 +313,14 @@ function dispatch_bindtarget(path)
 	bindpath = path;
 end
 
+local msg;
+function dispatch_user_message(set)
+	if set ~= nil and type(set) == "string" or type(set) == "table" then
+		msg = #set > 0 and set or nil
+	end
+	return msg
+end
+
 -- Setup menu navigation (interactively unless bindtarget is set) in a way that
 -- we can hook rather than activated a selected path or even path/key=value.
 -- There is a special case for a tiler where the lbar is currently active

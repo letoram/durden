@@ -13,16 +13,26 @@ local function list_timers(tag, hfun, group, active)
 	return res;
 end
 
-local function query_timer_name(n, cb)
+local function query_timer_name(n, cb, msg)
 	local paths = {};
 	local bind_fun;
+	if msg and msg[1] then
+		dispatch_user_message(msg[1]);
+		table.remove(msg, 1);
+	end
+
 	bind_fun = function(path)
+		dispatch_user_message("");
 		if (not path) then
 			return;
 		end
 		n = n - 1;
 		table.insert(paths, path);
 		if (n > 0) then
+			if msg and msg[1] then
+				dispatch_user_message(msg[1]);
+				table.remove(msg, 1);
+			end
 			dispatch_symbol_bind(bind_fun);
 		else
 			cb(paths);
@@ -62,7 +72,8 @@ local timer_add = {
 		interactive = true,
 		description = "Add a periodic timer that repeats after a certain amount of time",
 		validator = timer_valid,
-		handler = function(ctx, val)
+		handler =
+		function(ctx, val)
 			local period, name = parse_timer(val);
 			query_timer_name(1,
 				function(paths)
@@ -70,7 +81,7 @@ local timer_add = {
 					function()
 						dispatch_symbol(paths[1])
 					end);
-				end);
+				end, {"Pick Periodic Timer Action"})
 		end
 	},
 	{
@@ -89,7 +100,7 @@ local timer_add = {
 					function()
 						dispatch_symbol(paths[1]);
 					end);
-				end
+				end, {"Pick One-time Timer Action"}
 			);
 		end
 	},
@@ -109,7 +120,9 @@ local timer_add = {
 						function() dispatch_symbol(paths[1]); end,
 						function() dispatch_symbol(paths[2]); end, false
 					);
-			end);
+			end, {
+				"Pick Idle-ENTER action", "Pick Idle-EXIT action"
+			});
 		end
 	},
 	{
@@ -128,7 +141,9 @@ local timer_add = {
 						function() dispatch_symbol(paths[1]); end,
 						function() dispatch_symbol(paths[2]); end, false
 					);
-				end
+				end, {
+				"Pick Single Use Idle-ENTER Action",
+				"Pick Single Use Idle-EXIT Action"}
 			);
 		end
 	}

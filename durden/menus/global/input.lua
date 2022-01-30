@@ -517,10 +517,11 @@ end
 
 local function keymap_actions(id, verb, ...)
 	local ok = false
+	local id = -1
 	repeat
 		ok = input_remap_translation(id, verb, ...)
 		id = id - 1
-	until id >= -1 or not ok
+	until not ok
 end
 
 local devid_opts = {}
