@@ -387,8 +387,10 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		description = "Set a default background for all new workspaces on the display",
 		handler = function()
+			dispatch_user_message("Pick Default Display Background");
 			dispatch_symbol_bind(
 				function(path)
+					dispatch_user_message("");
 					local ln, kind = resource(path);
 					if (kind ~= "file") then
 						active_display():set_background();

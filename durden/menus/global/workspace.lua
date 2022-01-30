@@ -247,9 +247,11 @@ local function load_bg(fn)
 end
 
 local function query_bg_media()
+	dispatch_user_message("Workspace-Background");
 	dispatch_symbol_bind(
 	function(path)
 		if not path then
+			dispatch_user_message("");
 			return;
 		end
 		load_bg(path);

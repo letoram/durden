@@ -1213,11 +1213,14 @@ function suppl_binding_helper(prefix, suffix, bind_fn)
 			return;
 		end
 
+		local symname = prefix .. sym .. suffix;
+		dispatch_user_message("Pick a path or value to bind to " .. symname)
 		dispatch_symbol_bind(function(path)
 			if (not path) then
+				dispatch_user_message("")
 				return;
 			end
-			bind_fn(prefix .. sym .. suffix, path);
+			bind_fn(symname, path);
 		end);
 	end
 
@@ -1675,7 +1678,12 @@ function suppl_widget_path(ctx, anchor, ident, barh)
 				dy = th;
 			end
 
-			blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
+--
+-- NOTE: removed the animation here as it would cause flickering if the
+-- same widget would be recreated / repopulated across menu entries
+-- blend_image(anch, 1.0, gconfig_get("animation") * 0.5, INTERP_SINE);
+--
+			show_image(anch);
 			image_inherit_order(anch, true);
 			image_mask_set(anch, MASK_UNPICKABLE);
 			local w, h = match[start][1]:show(anch, match[start][2], rh);

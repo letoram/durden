@@ -1,4 +1,4 @@
-# 0.7.0:
+# 0.7.0 (ongoing):
 
 * split out target/open into target/open and target/open\_tag
 
@@ -63,6 +63,8 @@ minor:
 * resource browser preview on-select triggers for mouse motion as well
 
 * added padding rules to hud widget borders, popups and other elements
+
+* navigation menu for binding timer or input now shows helper status text (widget/helper)
 
 # 0.6.0 - 0.6.1
 * universal open/save:
