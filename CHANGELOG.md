@@ -66,6 +66,8 @@ minor:
 
 * navigation menu for binding timer or input now shows helper status text (widget/helper)
 
+* display helper widget now shows buffer mapping format (LDR, SDR, HDR)
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
