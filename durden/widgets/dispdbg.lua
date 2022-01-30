@@ -82,8 +82,21 @@ local function probe(ctx, yh, tag)
 		table.insert(lines, string.format("Scale: %f", disp.tiler.scalef))
 	end
 
+	local fmt = "Normal(888)"
+	if disp.modeopt and disp.modeopt.format then
+		if disp.modeopt.fmt == ALLOC_QUALITY_HIGH then
+			fmt = "Deep (10b)"
+		elseif disp.modeopt.fmt == ALLOC_QUALITY_LOW then
+			fmt = "Low (565)"
+		elseif disp.modeopt.fmt == ALLOC_QUALITY_FLOAT16 then
+			fmt = "HDR (fp16)"
+		end
+	end
+
 	if #lines == 0 then
 		table.insert(lines, "Not Found")
+	else
+		table.insert(lines, string.format("Format: %s", fmt))
 	end
 
 	return tsupp.setup(ctx, {lines}, yh);
