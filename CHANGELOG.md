@@ -68,6 +68,8 @@ minor:
 
 * display helper widget now shows buffer mapping format (LDR, SDR, HDR)
 
+* client subwindows can now have requests for parent-relative position honored
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
