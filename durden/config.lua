@@ -141,6 +141,9 @@ return {
 
 -- [parent] or [current]
 	ws_child_default = "parent",
+
+-- let subsegment window allocation control size/position/ws behaviour
+	child_ws_control = true, -- or none
 	ws_popup = "wsbtn",
 
 -- per window toggle, global default here
@@ -149,6 +152,9 @@ return {
 -- %(fmt-char) p (tag) t (title) i (ident) a (archetype)
 -- optional character limit after each entry, whitespace breaks out of fmt-char
 	titlebar_ptn = "%p %t - %i",
+
+-- merge hidden window titlebars into the statusbar
+	titlebar_statusbar = false,
 
 -- we repeat regular mouse/mstate properties here to avoid a separate
 -- path for loading / restoring / updating

@@ -146,6 +146,17 @@ return {
 		handler = suppl_flip_handler("ws_autoadopt")
 	},
 	{
+		name = "autochild",
+		label = "Child control",
+		kind = "value",
+		description = "Respect child windows requests for split-axis, position and ws mode",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("child_ws_control") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("child_ws_control")
+	},
+	{
 		name = "tiled",
 		label = "Tiled",
 		description = "Configuration options for tiled workspace layouts",

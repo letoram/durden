@@ -3992,6 +3992,7 @@ end
 -- within the same workspace
 local function wnd_tochild(w1, w2, sibling)
 	if (w1.space ~= w2.space) then
+		print("no tochild")
 		return;
 	end
 
@@ -4264,6 +4265,17 @@ local function wnd_ws_attach(res, from_hook)
 				if ind then
 					attach_point = ind + 1
 				end
+-- there might also be a need to attach left or right of a specific sibling
+			elseif res.attach_left then
+				local ind = table.find_i(set, res.attach_left)
+				if ind then
+					attach_point = ind
+				end
+			elseif res.attach_right then
+				local ind = table.find_i(set, res.attach_right)
+				if ind then
+					attach_point = ind + 1
+				end
 			end
 
 			table.insert(set, attach_point, res);
@@ -4383,6 +4395,11 @@ local function wnd_ws_attach(res, from_hook)
 				expire_image(csurf, wanim);
 			end
 		end
+	end
+
+	if res.adopt_window and res.adopt_window.reparent then
+		print("should fucking reparent")
+		res.adopt_window:reparent(res)
 	end
 
 	for k,v in ipairs(wm.on_wnd_create) do
@@ -4625,6 +4642,7 @@ local function wnd_synch_overlays(wnd)
 			local h = math.clamp(
 				wnd.effective_h - v.yofs - v.hofs, 1, wnd.effective_h);
 			resize_image(v.vid, w, h);
+		elseif (v.force) then
 		end
 	end
 end
@@ -4677,6 +4695,7 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	local overent = {
 		vid = vid,
 		stretch = opts.stretch,
+		constrain = opts.constrain,
 		xofs = opts.xofs and opts.xofs or 0,
 		yofs = opts.yofs and opts.yofs or 0,
 		wofs = opts.wofs and opts.wofs or 0,
@@ -4975,6 +4994,9 @@ local wnd_setup = function(wm, source, opts)
 		scalemode = opts.scalemode and opts.scalemode or "normal",
 		default_workspace = opts.default_workspace,
 		attach_parent = opts.attach_parent,
+		attach_left = opts.attach_left,
+		attach_right = opts.attach_right,
+		adopt_window = opts.adopt_window,
 		swallow_window = opts.swallow_window,
 
 -- external displayhint offsets to mask cropping actions

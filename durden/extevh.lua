@@ -48,6 +48,92 @@ end
 
 load_archetypes();
 
+local function embed_surface(wnd, vid, cookie)
+	wnd:add_overlay(vid, vid,
+	{
+		noclip = false,
+		blend = false,
+		detachable = true,
+-- mouse_handler = ... <- if we want something custom, default block
+	})
+
+-- terminate should just remove
+	target_updatehandler(vid,
+	function(source, status)
+	end
+	)
+end
+
+local function apply_split_position(wnd, vid, cookie, split, position)
+	local res =
+	{
+		default_workspace = wnd.default_workspace
+			and wnd.default_workspace or wnd.space_ind
+	}
+	local ws = wnd.wm.spaces[wnd.space_ind]
+	client_log(fmt("segreq:position:vid=%d:cookie=%d:split=%s:position=%s",
+		vid, cookie, split and split or "no", position and position or "no"))
+
+-- unattached parent
+	if not ws then
+		return res
+	end
+
+-- tile can be treated the same for both split and position
+	if ws.mode == "tile" then
+		local dir = split or position
+		if dir == "left" then
+			res.attach_parent = wnd.parent
+			res.attach_left = wnd
+			return res
+		elseif dir == "right" then
+			res.attach_parent = wnd.parent
+			res.attach_right = wnd
+		elseif dir == "top" then
+			res.attach_parent = wnd.parent
+			res.adopt_window = wnd
+			return res
+		elseif dir == "bottom" then
+			res.attach_parent = wnd
+			return res
+		end
+	end
+
+-- tiling right now does not support 'tab' in children, it's been debated
+-- back and forth - in principle the easiest way to support it is as a
+-- 'swallowed' window with some auto-button tricks.
+--
+-- This can be done by setting the swallow_window property/
+	if position then
+		if position == "tab" then
+			if #ws.children == 1 then
+				ws:tab()
+			end
+
+-- This will actually block the new window from being created entirely
+-- and added as a subsurface to [wnd]
+		elseif position == "embed" then
+			embed_surface(wnd, vid, cookie)
+			res.block = true
+
+-- This is currently resolved at request time, and might not be synchronised to
+-- resizes or changes to the parent, similarly overflow / size hint aren't yet
+-- influenced - just placeholder
+		elseif ws.mode == "float" then
+				res.defer_x = wnd.x + wnd.width
+				res.defer_y = wnd.y
+		end
+
+		return res
+	end
+
+--  for float we need to both split and position
+	if ws.mode == "float" then
+	end
+
+	return res
+end
+
 local function cursor_handler(wnd, source, status)
 -- for cursor layer, we reuse some events to indicate hotspot
 -- and implement local warping..
@@ -70,14 +156,19 @@ local function default_reqh(wnd, source, ev)
 
 -- clients want to negotiate a connection on behalf of a new process,
 	if (ev.segkind == "handover") then
-		local hover = accept_target(32, 32, function(source, stat) end);
+		local hover, _, cookie = accept_target(32, 32, function(source, stat) end);
 		if (not valid_vid(hover)) then
 			client_log("segreq:name=" .. wnd.name .. ":kind=handover:state=oom");
 			return;
 		end
 
 		client_log("segreq:name=" .. wnd.name .. ":state=handover");
-		durden_launch(hover, "", "external", nil, {attach_parent = wnd});
+		if gconfig_get("child_ws_control") and (ev.split or ev.position) then
+			opts = apply_split_position(wnd, vid, cookie, ev.split, ev.position)
+		end
+		if not opts.block then
+			durden_launch(hover, "", "external", nil, opts);
+		end
 
 -- special handling, cursor etc. maybe we should permit subtype handler override
 	elseif (ev.segkind == "cursor") then
@@ -112,7 +203,7 @@ local function default_reqh(wnd, source, ev)
 -- something that should map to a new / normal window?
 		if (wnd.allowed_segments or
 			(not wnd.allowed_segments and table.find_i(normal, ev.segkind))) then
-			local vid = accept_target();
+			local vid, _, cookie = accept_target();
 			if (not valid_vid(vid)) then
 				client_log("segreq:name=" .. wnd.name
 					.. ":kind=" .. ev.segkind .. ":state=oom");
@@ -121,18 +212,25 @@ local function default_reqh(wnd, source, ev)
 			client_log("segreq:name=" .. wnd.name
 				.. ":kind=" .. ev.segkind .. ":state=ok");
 
--- inherit workspace if that is set
+-- new window has preferences on relation to parent, depending on the
+-- current ws mode there are different was of handling this
 			local opts;
-			if (gconfig_get("ws_child_default") == "parent" or
-				gconfig_get("tile_insert_child") == "child") then
-				opts = {
-					default_workspace = wnd.default_workspace,
-					attach_parent = wnd
-				};
+			if gconfig_get("child_ws_control") and (ev.split or ev.position) then
+				opts = apply_split_position(wnd, vid, cookie, ev.split, ev.position)
+			else
+				if (gconfig_get("ws_child_default") == "parent" or
+					gconfig_get("tile_insert_child") == "child") then
+					opts = {
+						default_workspace = wnd.default_workspace,
+						attach_parent = wnd
+					};
+				end
 			end
 
 -- inherit the attached workspace for the child (vid, prefix, title, wnd, wargs)
-			durden_launch(vid, "", "external", nil, opts);
+			if not opts.block then
+				durden_launch(vid, "", "external", nil, opts);
+			end
 		else
 			client_log("segreq:name=" .. wnd.name
 				.. ":kind=" .. ev.segkind .. ":state=blocked");
@@ -567,7 +665,7 @@ end
 
 defhtbl["content_state"] =
 function(wnd, source, stat)
-	client_log("content_state:unhandled:name=" .. wnd.name);
+--	client_log("content_state:unhandled:name=" .. wnd.name);
 end
 
 defhtbl["segment_request"] =
