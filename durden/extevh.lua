@@ -164,7 +164,7 @@ local function default_reqh(wnd, source, ev)
 
 		client_log("segreq:name=" .. wnd.name .. ":state=handover");
 		if gconfig_get("child_ws_control") and (ev.split or ev.position) then
-			opts = apply_split_position(wnd, vid, cookie, ev.split, ev.position)
+			opts = apply_split_position(wnd, hover, cookie, ev.split, ev.position)
 		end
 		if not opts.block then
 			durden_launch(hover, "", "external", nil, opts);
