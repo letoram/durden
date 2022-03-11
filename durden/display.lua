@@ -588,7 +588,9 @@ local function display_byname(name, id, w, h, ppcm)
 
 -- profile takes precedence over cached database key
 	local prof = find_profile(name);
+
 	if (prof) then
+		display_log(fmt("profile=found:display=%s", name));
 		if (prof.width) then
 			res.w = prof.width;
 		end
@@ -607,6 +609,8 @@ local function display_byname(name, id, w, h, ppcm)
 		end
 		res.tag = prof.tag;
 		res.wm = prof.wm;
+	else
+		display_log(fmt("profile=not_found:display=%s", name));
 	end
 
 -- distinguish between real-width and effective-width (rotation)
@@ -813,7 +817,12 @@ local function display_added(id)
 -- load possible overrides since before, note that this is slightly
 -- inefficient as it will force rebuild of underlying rendertargets
 -- etc. but it beats have to cover a number of corner cases / races
-	ddisp.ppcm = ppcm;
+	if ddisp.ppcm_override then
+		ddisp.ppcm = ddisp.ppcm_override;
+	else
+		ddisp.ppcm = ppcm;
+	end
+
 	ddisp.subpx = subpx;
 
 -- get the current state of the color ramps and attach to the disp-
@@ -1428,9 +1437,9 @@ local function aditer(rawdisp, showorph, showdis)
 	local c = #tbl;
 	local i = 0;
 	local save = display_main;
+	in_iter = debug.traceback();
 
 	return function()
-		in_iter = debug.traceback();
 		i = i + 1;
 		if (i <= c) then
 			switch_active_display(tbl[i][1]);
