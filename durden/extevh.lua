@@ -140,6 +140,7 @@ local function cursor_handler(wnd, source, status)
 end
 
 local function default_reqh(wnd, source, ev)
+	local opts = {}
 	local normal = {
 		"lwa", "multimedia", "game", "vm",
 		"application", "remoting", "browser",
@@ -166,6 +167,7 @@ local function default_reqh(wnd, source, ev)
 		if gconfig_get("child_ws_control") and (ev.split or ev.position) then
 			opts = apply_split_position(wnd, hover, cookie, ev.split, ev.position)
 		end
+
 		if not opts.block then
 			durden_launch(hover, "", "external", nil, opts);
 		end
@@ -214,7 +216,6 @@ local function default_reqh(wnd, source, ev)
 
 -- new window has preferences on relation to parent, depending on the
 -- current ws mode there are different was of handling this
-			local opts;
 			if gconfig_get("child_ws_control") and (ev.split or ev.position) then
 				opts = apply_split_position(wnd, vid, cookie, ev.split, ev.position)
 			else
