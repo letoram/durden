@@ -90,17 +90,17 @@ local shared_actions = {
 		submenu = true,
 		description = "Sharing, Streaming and Recording Options",
 		handler = system_load("menus/target/share.lua")()
-	}
-};
-
-if (DEBUGLEVEL > 0) then
-	table.insert(shared_actions, {
+	},
+	{
 		name = "debug",
 		label = "Debug",
 		kind = "action",
+		eval = function()
+			return DEBUGLEVEL > 0;
+		end,
 		submenu = true,
 		handler = system_load("menus/target/debug.lua")();
-	});
-end
+	}
+}
 
 return shared_actions;
