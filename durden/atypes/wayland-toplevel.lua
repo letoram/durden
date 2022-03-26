@@ -145,10 +145,6 @@ local function float_reparent(wnd, parent)
 				parent:move(dx, dy, false, false, true, false);
 			end
 		},
-		xofs = xofs,
-		yofs = yofs,
-		wofs = wofs,
-		hofs = hofs
 	});
 
 	parent.old_protect = parent.delete_protect;
@@ -221,15 +217,9 @@ local function set_parent(wnd, id)
 		wnd:select();
 	end
 
-	local xofs = 0;
-	local yofs = 0;
-	local wofs = 0;
-	local hofs = 0;
 	if (parent.geom) then
-		xofs = parent.geom[1];
-		yofs = parent.geom[2];
-		wofs = parent.effective_w - parent.geom[3] - xofs;
-		hofs = parent.effective_h - parent.geom[4] - yofs;
+-- geom isn't respected, viewport tests should do something with this
+		log("toplevel:geom_eimpl");
 	end
 
 -- let reparented window inherit crop values, unless other ones have been
