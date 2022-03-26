@@ -49,17 +49,52 @@ end
 load_archetypes();
 
 local function embed_surface(wnd, vid, cookie)
-	wnd:add_overlay(vid, vid,
+	local embed_drag = false
+
+	wnd:add_overlay(cookie, vid,
 	{
 		noclip = false,
 		blend = false,
-		detachable = true,
--- mouse_handler = ... <- if we want something custom, default block
+		mouse_handler =
+		{
+			drag =
+			function(ctx, dx, dy)
+				if dispatch_meta() then
+					if not embed_drag then
+						embed_drag = {0, 0}
+					end
+					embed_drag[1] = embed_drag[1] + dx
+					embed_drag[2] = embed_drag[2] + dy
+				end
+			end,
+			drop =
+			function(ctx, dx, dy)
+				if embed_drag then
+					if math.abs(embed_drag[1]) > 10 or math.abs(embed_drag[2]) > 10 then
+						local props = image_storage_properties(vid);
+						local new = null_surface(props.width, props.height);
+						image_sharestorage(vid, new);
+						local cw = active_display():add_window(new, {scalemode = "aspect"})
+						if not cw then
+							delete_image(new)
+						end
+					end
+				end
+				embed_drag = nil
+			end
+		}
 	})
 
--- terminate should just remove
+-- actual anchoring comes via the viewport handler
 	target_updatehandler(vid,
 	function(source, status)
+		if status.kind == "terminated" then
+			if wnd.drop_overlay then
+				wnd:drop_overlay(cookie)
+			else
+				delete_image(source)
+			end
+		end
 	end
 	)
 end
@@ -355,7 +390,27 @@ end
 
 defhtbl["viewport"] =
 function(wnd, source, stat)
--- need different behavior for popup here (invisible, parent, ...),
+	if stat.parent > 0 and wnd.overlays[stat.parent] then
+		local overlay = wnd.overlays[stat.parent]
+		overlay.xofs = stat.rel_x
+		overlay.yofs = stat.rel_y
+
+-- find defined or dominant axis, map that against source storage aspect
+-- then find the safe aspect scale to fit the overlay surface, same calc.
+-- used in tiler.lua for ar-scale mode
+		local props = image_storage_properties(overlay.vid);
+		if stat.anchor_w > 0 and stat.anchor_h > 0 then
+			local props = image_storage_properties(overlay.vid)
+			local ar = props.width / props.height;
+			local wr = props.width / stat.anchor_w;
+			local hr = props.height / stat.anchor_h;
+			overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
+			overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
+			overlay.stretch = true
+		end
+
+		wnd:synch_overlays()
+	end
 end
 
 -- got updated ramps from a client, still need to decide what to

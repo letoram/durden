@@ -2613,7 +2613,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 		return;
 	end
 
-	force = force and force or (wnd.space.mode == "float" and true) or false;
+	force = force and force or
+		(wnd.space.mode == "float" and true) or false;
 
 -- Now we have the desired [neww, newh], the current [props],
 -- the scalemode, the size of the decration areas. Combine to calculate
@@ -4637,11 +4638,7 @@ local function wnd_synch_overlays(wnd)
 		move_image(v.vid, v.xofs - xofs, v.yofs - yofs);
 
 		if (v.stretch) then
-			local w = math.clamp(
-				wnd.effective_w - v.xofs - v.wofs, 1, wnd.effective_w);
-			local h = math.clamp(
-				wnd.effective_h - v.yofs - v.hofs, 1, wnd.effective_h);
-			resize_image(v.vid, w, h);
+			resize_image(v.vid, v.w, v.h);
 		elseif (v.force) then
 		end
 	end
@@ -4698,15 +4695,15 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		constrain = opts.constrain,
 		xofs = opts.xofs and opts.xofs or 0,
 		yofs = opts.yofs and opts.yofs or 0,
-		wofs = opts.wofs and opts.wofs or 0,
-		hofs = opts.hofs and opts.hofs or 0,
+		w = opts.w and opts.w or 0,
+		h = opts.h and opts.h or 0,
 		mh = opts.mouse_handler,
 		closure = opts.closure
 	};
 
 	tiler_debug(wnd.wm, string.format(
 		"overlay_added:name=%s:key=%s:x=%.0f:y=%0.f:w=%0.f:h=%0.f",
-		wnd.name, key, overent.xofs, overent.yofs, overent.wofs, overent.hofs));
+		wnd.name, key, overent.xofs, overent.yofs, overent.w, overent.h));
 
 	wnd.overlays[key] = overent;
 	wnd:synch_overlays();

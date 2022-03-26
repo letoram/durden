@@ -76,7 +76,12 @@ local function wnd_attach(wm, wnd)
 			activate_pending();
 			local w = x2 - x1;
 			local h = y2 - y1;
+
+-- set the drawing constraints to keep the window in check
+-- (or the scalemode might just fill)
 			if (w > 64 and h > 64) then
+				wnd.max_w = w
+				wnd.max_h = h
 				wnd:resize(w, h, true);
 			end
 			wnd:move(x1, y1, false, true, 0);
