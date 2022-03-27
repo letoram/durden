@@ -85,7 +85,8 @@ local function embed_surface(wnd, vid, cookie)
 		}
 	})
 
--- actual anchoring comes via the viewport handler
+	hide_image(vid);
+-- actual anchoring comes via the viewport handler, and it starts hidden
 	target_updatehandler(vid,
 	function(source, status)
 		if status.kind == "terminated" then
@@ -408,7 +409,7 @@ function(wnd, source, stat)
 			overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
 			overlay.stretch = true
 		end
-
+		blend_image(overlay.vid, stat.hidden and 0 or 1)
 		wnd:synch_overlays()
 	end
 end
