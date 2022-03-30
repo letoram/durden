@@ -610,7 +610,7 @@ local region_menu = {
 		label = "Snapshot",
 		kind = "action",
 		external_block = true,
-		description = "Take a snapshot of a screen region",
+		description = "Take a snapshot of a screen region and bind to a new window",
 		handler = function()
 			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[1]);
 			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
@@ -621,6 +621,29 @@ local region_menu = {
 				wnd:set_title("Snapshot" .. tostring(CLOCK));
 			end);
 		end,
+	},
+	{
+		name = "screenshot",
+		label = "Screenshot",
+		kind = "value",
+		validator = function(val)
+			return string.len(val) > 0 and not resource("output/" .. val) and
+				not string.match(val, "%.%.");
+		end,
+		hint = "(stored in output/)",
+		description = "Save a display region into a PNG",
+		external_block = true,
+		handler = function(ctx, val)
+			local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[2]);
+			suppl_region_select(r, g, b, function(x1, y1, x2, y2)
+				local dvid = suppl_region_setup(x1, y1, x2, y2, false, true);
+				if not valid_vid(dvid) then
+					return
+				end
+				save_screenshot("output/" .. val, FORMAT_PNG, dvid);
+				delete_image(dvid);
+			end);
+		end
 	},
 	{
 		name = "monitor",
