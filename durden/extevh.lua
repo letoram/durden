@@ -486,11 +486,20 @@ function(wnd, source, stat)
 
 -- this means we have a oneshot request for immediate data
 --
--- so respond to that y either immediately triggering the proper
--- target/state/open,save with the temporary set of extensions
+-- so respond to that either immediately trigger the proper
+-- target/state/open,save with the temporary set of extensions or hook an alert
+-- on and set the next 'on_select'
+--
+-- if wildcard is provided, we shouldn't just tag with the selected extension
+-- from the set but with the actual one of the picked source (or just wildcard
+-- back, it is a hint for parser selection when needed)
 --
 	if not stat.hint then
-		wnd.ephemeral_ext = stat.extensions and stat.extensions or "*";
+		if stat.wildcard then
+			wnd.ephemeral_ext = "*"
+		else
+			wnd.ephemeral_ext = stat.extensions and stat.extensions or "*"
+		end
 		local fun =
 		function()
 			dispatch_symbol_wnd(wnd,
@@ -569,15 +578,6 @@ end
 function extevh_apply_atype(wnd, atype, source, stat)
 	local atbl = archetypes[atype];
 	if (atbl == nil or wnd.atype ~= nil) then
-		return;
-	end
-
--- some odd archetype handlers (clipboard, ...) want to evaluate and
--- intercept the normal creation process
-	if (atbl.intercept) then
-		if (not atbl:intercept(wnd, source, stat)) then
-			wnd:destroy();
-		end
 		return;
 	end
 

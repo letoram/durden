@@ -28,6 +28,18 @@ local function imgwnd(fn, pctx)
 	end);
 end
 
+local function pdfwnd(fn, path)
+	lastpath = path;
+	local vid = launch_decode(fn, "protocol=pdf", function(s, st) end);
+
+	if (valid_vid(vid)) then
+		durden_launch(vid, "", fn);
+		durden_devicehint(vid);
+	else
+		active_display():message("decode- frameserver broken or out-of-resources");
+	end
+end
+
 local function decwnd(fn, path)
 	lastpath = path;
 	local vid = launch_decode(fn, function(s, st) end);
@@ -80,14 +92,17 @@ end
 -- slight defect here is that if the decode source actually
 -- resizes during runtime after the first time, it won't be
 -- reflected in the aspect ratio
-local function asynch_decode(state, self)
+local function asynch_decode(state, self, append)
 	if (not valid_vid(state.vid)) then
 		return;
 	end
 
-	local cmd = string.format(
+	local cmd = append
+	if not cmd then
+		cmd = string.format(
 		"pos=%f:noaudio:loop", gconfig_get("browser_position") * 0.01);
-	cmd = string.gsub(cmd, ",", ".");
+		cmd = string.gsub(cmd, ",", ".");
+	end
 
 	local vid = launch_decode(self.preview_path, cmd,
 		function(source, status)
@@ -107,6 +122,10 @@ local function asynch_decode(state, self)
 	if (valid_vid(vid)) then
 		link_image(vid, state.vid);
 	end
+end
+
+local function asynch_pdf(state, self)
+	return asynch_decode(state, self, "proto=pdf")
 end
 
 local function asynch_image(state, self)
@@ -191,30 +210,88 @@ local function prepare_preview(callback, self, anchor, ofs, width)
 	return state;
 end
 
--- list of default behaviors per extension, this should be extended
--- with some context- option where we can chose the destination, and
--- an option for decode frameserver to 'probe' if it is a supported
--- format or not.
+-- list of default behaviors per extension, this should be extended with some
+-- context- option where we can chose the destination, and an option for decode
+-- frameserver to 'probe' if it is a supported format or not.
 local handlers = {
 ["image"] = {
 	run = imgwnd,
 	col = HC_PALETTE[1],
 	selcol = HC_PALETTE[1],
-	preview = gconfig_get("browser_preview") == "none" and nil or
-	function(...) return prepare_preview(asynch_image, ...); end
+	preview = function(...)
+		if gconfig_get("browser_preview") == "none" then
+			return
+		end
+		return prepare_preview(asynch_image, ...);
+	end
 },
 ["audio"] = {
 	run = decwnd,
 	col = HC_PALETTE[2],
 	selcol = HC_PALETTE[2]
 },
+["pdf"] = {
+	run = pdfwnd,
+	col = HC_PALETTE[4],
+	selcol = HC_PALETTE[4],
+	preview = function(...)
+		if gconfig_get("browser_preview") == "none" then
+			return
+		end
+		return prepare_preview(asynch_pdf, ...);
+	end
+
+},
 ["video"] = {
 	run = decwnd,
 	col = HC_PALETTE[3],
 	selcol = HC_PALETTE[3],
-	preview = gconfig_get("browser_preview") == "none" and nil or
-	function(...) return prepare_preview(asynch_decode, ...); end
+	preview = function(...)
+		if gconfig_get("browser_preview") == "none" then
+			return
+		end
+		return prepare_preview(asynch_decode, ...);
+	end
 }};
+
+-- alternative lookup- handler hook, used when something wants to pick a
+-- specific extension and integrate with the browser enough to allow normal
+-- navigation, but override preview handler behaviour
+local alth = nil
+function browse_override_ext(v)
+	local fake_entry = {
+		run =
+		function()
+		end,
+		col = HC_PALETTE[4],
+		selcol = HC_PALETTE[4]
+	}
+
+	if not v then
+		alth = nil
+
+	elseif v == "*" then
+-- the regular hook (on_entry) will take over so this is moot
+		alth = function(simple, ext)
+			if handlers[simple] then
+				return handlers[simple];
+			else
+				return fake_entry;
+			end
+		end
+	else
+		alth =
+		function(simple, ext)
+			if ext == v then
+				if handlers[simple] then
+					return handlers[simple];
+				else
+					return fake_entry;
+				end
+			end
+		end
+	end
+end
 
 -- These menus act like normal menus, but they install separate
 -- handlers that override preview behavior, add additional input/
@@ -223,6 +300,7 @@ local handlers = {
 local gen_menu_for_path;
 local function gen_menu_for_resource(path, v, descr, prefix, ns)
 	local fqn = path .. (path == "/" and "" or "/") .. v;
+
 	if (descr == "directory") then
 		return {
 			label = v,
@@ -234,10 +312,22 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 				return gen_menu_for_path(fqn, prefix);
 			end
 		};
+
+-- custom preview/selection handlers can be returned to expose more formats
 	elseif (descr == "file") then
-		local exth = handlers[suppl_ext_type(v, ffmts)];
-		if (not exth) then
-			return;
+-- grab the .extension part
+		local simple, ext = suppl_ext_type(v);
+
+		if not ext or #ext == 0 then
+			return
+		end
+
+-- match against default set of handlers (with preview function) or temp- hook
+		local exth = (alth and alth(tbl, ext)) or handlers[simple];
+
+-- and if it passes, add
+		if not exth then
+			return
 		end
 
 		local res = {

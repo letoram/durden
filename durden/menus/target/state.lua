@@ -20,7 +20,8 @@ local function gen_restore_menu()
 	return res;
 end
 
-local function grab_file(handler, open)
+local function grab_file(id, handler, open)
+	browse_override_ext(id)
 	dispatch_symbol_bind(
 -- callback (on entry)
 		function(path)
@@ -43,6 +44,7 @@ local function grab_file(handler, open)
 		{ show_invisible = false,
 			force_completion = open and true or false,
 			on_entry = function(ctx, path)
+				browse_override_ext();
 				if (#path > 0) then
 					handler(path);
 				end
@@ -69,7 +71,7 @@ local function gen_type_menu(wnd, open)
 
 	local grab =
 	function(identifier)
-		grab_file(
+		grab_file(identifier,
 		function(path)
 			if valid_vid(source, TYPE_FRAMESERVER) then
 				if open then
@@ -94,7 +96,7 @@ local function gen_type_menu(wnd, open)
 			label = v,
 			kind = "action",
 			handler = function()
-				grab(name);
+				grab(v);
 			end
 		})
 	end
