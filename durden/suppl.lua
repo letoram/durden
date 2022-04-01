@@ -492,31 +492,33 @@ local ffmts =
 	ogg = "audio", m4a = "audio", flac = "audio", mp3 = "audio",
 	mp4 = "video", wmv = "video", mkv = "video", avi = "video",
 	flv = "video", mpg = "video", mpeg = "video", mov = "video",
+	pdf = "pdf", ps = "pdf",
 	webm = "video", ["*"] = "file",
 };
 
 local function match_ext(v, tbl)
 	if (tbl == nil) then
-		return true;
+		return;
 	end
 
 	local ext = string.match(v, "^.+(%..+)$");
 	ext = ext ~= nil and string.sub(ext, 2) or ext;
 	if (ext == nil or string.len(ext) == 0) then
-		return false;
+		return tbl["*"], ext;
 	end
 
 	local ent = tbl[string.lower(ext)];
 	if ent then
-		return ent;
+		return ent, ext;
 	else
-		return tbl["*"];
+		return tbl["*"], ext;
 	end
 end
 
 -- filename to classifier [media, image, audio]
 function suppl_ext_type(fn)
-	return match_ext(fn, ffmts);
+	local tbl, ext = match_ext(fn, ffmts);
+	return tbl, ext;
 end
 
 local function defer_spawn(wnd, new, t, l, d, r, w, h, closure)
