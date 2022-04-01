@@ -68,7 +68,7 @@ local root =
 	interactive = true,
 	handler = function(ctx)
 		dispatch_symbol_bind(function(path)
-			if path and #path > 0 then
+			if path and #path > 0 and path ~= "/global/settings/tools/autostart/run" then
 				log("name=autostart:kind=added:path=" .. path);
 				table.insert(items, path);
 				synch_table();
