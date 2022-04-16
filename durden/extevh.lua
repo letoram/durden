@@ -95,6 +95,9 @@ local function embed_surface(wnd, vid, cookie)
 			else
 				delete_image(source)
 			end
+		elseif status.kind == "resized" then
+-- FIXME: if hintfwd is set, displayhint to wnd-external with the form that
+-- sets target cookie
 		end
 	end
 	)
@@ -407,8 +410,13 @@ function(wnd, source, stat)
 			local hr = props.height / stat.anchor_h;
 			overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
 			overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
-			overlay.stretch = true
+			if stat.scaled then
+				overlay.stretch = true
+			else
+				overlay.stretch = false
+			end
 		end
+
 		blend_image(overlay.vid, stat.hidden and 0 or 1)
 		wnd:synch_overlays()
 	end
