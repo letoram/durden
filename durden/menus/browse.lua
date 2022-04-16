@@ -323,7 +323,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 		end
 
 -- match against default set of handlers (with preview function) or temp- hook
-		local exth = (alth and alth(tbl, ext)) or handlers[simple];
+		local exth = (alth and alth(simple, ext)) or handlers[simple];
 
 -- and if it passes, add
 		if not exth then
