@@ -389,14 +389,27 @@ return {
 		label = "Screenshot",
 		kind = "value",
 		hint = "(stored in output/)",
-		description = "Save the current buffer state as a PNG",
+		description = "Save the current buffer state as a PNG, suffix counter on collision",
 		validator = function(val)
-			return string.len(val) > 0 and not resource("output/" .. val) and
-				not string.match(val, "%.%.");
+			return string.len(val) > 0 and not string.match(val, "%.%.");
 		end,
 		handler = function(ctx, val)
-			save_screenshot("output/" .. val, FORMAT_PNG,
-				active_display().selected.canvas);
+			local ind = 0
+
+	-- remove extension if user added it
+			if string.sub(val, -4) == ".png" then
+				val = string.sub(val, 1, -5)
+			end
+
+			val = "output/" .. val
+			local tn = val .. ".png"
+
+			while resource(tn) do
+				tn = val .. tostring(ind) .. ".png"
+				ind = ind + 1
+			end
+
+			save_screenshot(tn, FORMAT_PNG, active_display().selected.canvas);
 		end
 	},
 	{
