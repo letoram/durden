@@ -296,18 +296,27 @@ return {
 		setup_sharing(recstr, srate, nosound,
 			"output/" .. val .. ".mkv", false, "rec_" .. active_display().selected.name);
 	end
-}
-,
+},
 {
 	name = "custom",
 	kind = "value",
 	label = "Custom",
 	description = "Specify custom (raw) encode arguments",
+	hint = "(file=fname:arg1=val1:arg2:arg3=val4...) -> (output/fname)",
 	validator = function(a) return a and #a > 0 end,
 	handler =
 	function(ctx, val)
+		local fn = ""
+		local prefix = string.sub(val, 1, 5)
+		if prefix == "file=" then
+			local splitp = string.find(val, ":")
+			if splitp then
+				fn = "output/" .. string.sub(val, 6, splitp - 1)
+				val = string.sub(val, splitp + 1)
+			end
+		end
 		local srate = gconfig_get("enc_srate");
-		setup_sharing(val, srate, nosound, "", false, "custom_" .. active_display().selected.name);
+		setup_sharing(val, srate, nosound, fn, false, "custom_" .. active_display().selected.name);
 	end
 }};
 end
