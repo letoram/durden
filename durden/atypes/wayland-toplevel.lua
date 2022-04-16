@@ -303,7 +303,7 @@ function wayland_toplevel_handler(wnd, source, status)
 				wnd.show_titlebar = true
 				wnd:set_titlebar(true, true)
 				wnd.want_shadow = gconfig_get("shadow_style") ~= "none"
-				wnd:resize()
+				wnd:resize(wnd.width, wnd.height, true, true);
 			else
 				wnd.show_titlebar = false
 				wnd:set_titlebar(false, true)
@@ -311,7 +311,7 @@ function wayland_toplevel_handler(wnd, source, status)
 				if valid_vid(wnd.shadow) then
 					delete_image(wnd.shadow)
 				end
-				wnd:resize()
+				wnd:resize(wnd.width, wnd.height, true, true);
 			end
 		else
 			log(fmt("toplevel:error=unknown type:raw=%s", status.message));
