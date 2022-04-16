@@ -44,8 +44,8 @@ local function grab_file(id, handler, open)
 		{ show_invisible = false,
 			force_completion = open and true or false,
 			on_entry = function(ctx, path)
-				browse_override_ext();
 				if (#path > 0) then
+					browse_override_ext();
 					handler(path);
 				end
 			end
