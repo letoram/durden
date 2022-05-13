@@ -23,6 +23,8 @@
 
 * new path: display/displays/current/orientation/flip_y,rotate_180
 
+* the browse/ path now supports basic user-defined namespaces
+
 * touch - added an empty (disable) classifier, exposed more profile
   values dynamically, option to hook profile picking on unknown device.
 

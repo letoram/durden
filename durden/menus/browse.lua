@@ -300,6 +300,11 @@ end
 local gen_menu_for_path;
 local function gen_menu_for_resource(path, v, descr, prefix, ns)
 	local fqn = path .. (path == "/" and "" or "/") .. v;
+	local nsfqn = fqn;
+
+	if type(ns) == "string" then
+		nsfqn = ns .. ":/" .. fqn;
+	end
 
 	if (descr == "directory") then
 		return {
@@ -309,7 +314,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			description = v,
 			submenu = true,
 			handler = function()
-				return gen_menu_for_path(fqn, prefix);
+				return gen_menu_for_path(fqn, prefix, ns);
 			end
 		};
 
@@ -338,11 +343,11 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			select_format = exth.selcol,
 			kind = "action",
 			preview = exth.preview,
-			preview_path = fqn,
+			preview_path = nsfqn,
 		};
 		res.handler = function(ctx)
 -- currently no way of querying the preview handler for a decoded resource
-			exth.run(fqn, res.last_state);
+			exth.run(nsfqn, res.last_state);
 		end
 		return res;
 	else
@@ -358,7 +363,12 @@ gen_menu_for_path = function(path, prefix, ns)
 
 	for i,v in ipairs(files) do
 		if (v ~= "." and v ~= "..") then
-			local _, descr = resource(path .. "/" .. v, ns);
+			local descr
+			if type(ns) == "string" then
+				_, descr = resource(ns .. ":/" .. path .. "/" .. v);
+			else
+				_, descr = resource(path .. "/" .. v, ns);
+			end
 			if (descr) then
 				local menu = gen_menu_for_resource(path, v, descr, prefix, ns);
 				if (menu) then
@@ -388,7 +398,7 @@ gen_menu_for_path = function(path, prefix, ns)
 end
 
 return function()
-	return {
+	local res = {
 	{
 		name = "shared",
 		label = "Shared",
@@ -404,7 +414,8 @@ return function()
 		label = "Durden",
 		kind = "action",
 		description = "Durden generated output",
-		submenu = function()
+		submenu = true,
+		handler = function()
 			return gen_menu_for_path("output", "/browse/durden", APPL_TEMP_RESOURCE);
 		end
 	},
@@ -418,4 +429,22 @@ return function()
 		end
 	}
 	};
+
+	if list_namespaces then
+		for _,v in ipairs(list_namespaces()) do
+			table.insert(res,
+				{
+					label = v.label,
+					name = v.name,
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return gen_menu_for_path("", "/browse/" .. v.name, v.name);
+					end
+				}
+			)
+		end
+	end
+
+	return res;
 end
