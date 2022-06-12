@@ -1122,7 +1122,7 @@ local function lbar_props()
 	return yp, barh, dir;
 end
 
-local function hlp_add_btn(ctx, helper, lbl)
+local function hlp_add_btn(ctx, helper, lbl, action)
 	local yp, tileh, dir = lbar_props();
 	local pad = gconfig_get("lbar_tpad") * active_display().scalef;
 	local disp = active_display(false, true);
@@ -1134,7 +1134,7 @@ local function hlp_add_btn(ctx, helper, lbl)
 
 	local mh = {
 		click = function()
-			local nstep = #helper - dsti;
+			local nstep = (#helper - ctx.popcount + 1) - dsti;
 			if (nstep > 0) then
 				for i=1,nstep do
 					ctx:on_cancel();
@@ -1150,6 +1150,10 @@ local function hlp_add_btn(ctx, helper, lbl)
 			res.btn.old_state = nil;
 		end
 	}
+
+	if action then
+		mh.click = action
+	end
 
 -- click is iterate cancel the same amount of times as current count to index,
 -- use of menu_cancel here is unfortunate - we should propagate the right esc-
@@ -1180,10 +1184,10 @@ local function hlp_add_btn(ctx, helper, lbl)
 	table.insert(helper, res);
 end
 
-local function buttonlist_push(ctx, new, lbl, meta)
+local function buttonlist_push(ctx, new, lbl, meta, action)
 	table.insert(ctx.path, new);
 	table.insert(ctx.meta, meta and meta or {});
-	hlp_add_btn(ctx, ctx.helper, lbl);
+	hlp_add_btn(ctx, ctx.helper, lbl, action);
 	return ctx:get_path();
 end
 
@@ -1216,6 +1220,10 @@ local function buttonlist_pop(ctx)
 		helper[#helper].btn:switch_state("active");
 	end
 
+	if (ctx.popcount > 1) then
+		ctx.popcount = ctx.popcount - 1
+		return buttonlist_pop(ctx)
+	end
 	return res, meta;
 end
 
@@ -1298,16 +1306,26 @@ local function buttonlist_get_path(ctx, trail)
 	end
 end
 
+-- allow the next pop operation to consume multiple items and just return
+-- the state of the older one in the queue
+local function buttonlist_popcount(ctx, n)
+	if n and type(n) == "number" and n >= 1 then
+		ctx.popcount = n
+	end
+end
+
 function uiprim_buttonlist()
 	return {
 		helper = {}, -- for managing activated helpers etc.
 		path = {}, -- track namespace path
 		meta = {}, -- for meta-data history (input message, filter settings, pos)
+		popcount = 1,
 		get_path = buttonlist_get_path,
 		reset = buttonlist_reset,
 		pop = buttonlist_pop,
 		push = buttonlist_push,
 		set_path = buttonlist_set,
+		set_popcount = buttonlist_popcount,
 		on_cancel = function() end -- override for click to escape
 	};
 end
