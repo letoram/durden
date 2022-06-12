@@ -295,6 +295,7 @@ local function add_hex_dynamic(tbl, name, label, descr, key)
 		name = name,
 		label = label,
 		description = descr,
+		widget = "special:colorpick_r8g8b8",
 		kind = "value",
 		hint = "dynamic | hex: r g b",
 		initial = function()
