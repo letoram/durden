@@ -814,7 +814,10 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		get_cb = completion,
 		cb_ctx = comp_ctx,
 		destroy = lbar_destroy,
-
+		accept_cancel =
+		function(bar, accept, keep)
+			accept_cancel(wm, accept, false, keep)
+		end,
 -- own caret tracking, should probably just be moved to using suppl_input
 		cofs = 1,
 		csel = 1,

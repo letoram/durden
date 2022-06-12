@@ -8,6 +8,8 @@
 local menu_hook;
 local cpath = uiprim_buttonlist();
 local menu_path_pop;
+local force_m1 = false;
+
 cpath = uiprim_buttonlist();
 
 local function sort_az(a, b)
@@ -157,6 +159,11 @@ end
 local function menu_cancel(wm, m1_overr, dangerous)
 	local m1, m2 = dispatch_meta();
 
+	if force_m1 then
+		m1 = true;
+		force_m1 = false;
+	end
+
 -- the dangerous path is a special one, and that if is there is a menu
 -- path that will perform state transition on activation in the chain,
 -- as "going up" would reactivate that one. Can possibly be deprecated
@@ -182,6 +189,7 @@ end
 --
 local function set_input(ctx, instr, done, lastv)
 	local m1, m2 = dispatch_meta();
+
 	if (not done) then
 		local dset = {"error_broken"}
 
@@ -217,7 +225,6 @@ local function set_input(ctx, instr, done, lastv)
 			warning("broken menu entry");
 		end
 
-		local m1, m2 = dispatch_meta();
 		menu_cancel(active_display(), false, ctx.dangerous);
 	end
 end
@@ -323,7 +330,22 @@ function menu_query_value(ctx, mask)
 		suppl_widget_path(res, res.text_anchor, ctx.widget);
 	end
 
--- add OK / Cancel to the button bar so touch / mouse-only output can continue
+-- add Commit/Commit-Back
+		cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
+		function()
+			res:accept_cancel(true, false)
+		end);
+			cpath:push("commit_return", "Accept:Back", cpath.meta[#cpath.meta],
+		function()
+			force_m1 = true;
+			res:accept_cancel(true, true)
+		end);
+
+		cpath.helper[#cpath.helper-2].btn:switch_state("active")
+		cpath.helper[#cpath.helper-1].btn:switch_state("inactive")
+		cpath.helper[#cpath.helper-0].btn:switch_state("inactive")
+
+		cpath:set_popcount(3);
 
 	return res;
 end
@@ -506,6 +528,7 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 -- we explicitly want to bind the value-query and not the final value
 	local m1, m2 = dispatch_meta();
 
+-- for value, add two extra helper buttons for [accept:close and accept:return]
 	if (tgt.kind == "value") then
 		cpath:push(tgt.name, tgt.label, inp_st);
 		if (m1 and not run_hook(cpath:get_path())) then
