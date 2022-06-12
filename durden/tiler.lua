@@ -720,16 +720,17 @@ local function tiler_statusbar_update(wm)
 -- and this is used for underline or border
 			image_color(wm.sbar_ws[i].bg, r, g, b);
 			local label = wm.spaces[i].label;
+			local fontstr, _ = wm:font_resfn()
 
 -- is there a custom workspace tag to use?
 			if (label and #label > 0) then
 				if use_prefix then
-					table.insert(lbltbl, "");
+					table.insert(lbltbl, fontstr);
 					table.insert(lbltbl, ":");
 				end
 
 -- differentiate the coloring between user and generated content
-				local prefix = gconfig_get("sbar_lblcolor");
+				local prefix = fontstr .. gconfig_get("sbar_lblcolor");
 				table.insert(lbltbl, prefix == "dynamic" and hccolor or prefix);
 				table.insert(lbltbl, label);
 			end
@@ -5541,7 +5542,7 @@ local function tiler_scalef(wm, newf, disptbl)
 
 	recalc_fsz(wm);
 	wm:rebuild_border();
-	wm:tile_update();
+	wm:rebuild_statusbar_custom(wm.sbar_custom);
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title();
