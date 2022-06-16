@@ -1302,7 +1302,8 @@ local function buttonlist_get_path(ctx, trail)
 	if (#ctx.path == 0) then
 		return "/";
 	else
-		return "/" .. table.concat(ctx.path, "/") .. (trail and "/" or "");
+		return "/" .. table.concat(ctx.path,
+			"/", 1, #ctx.path - ctx.popcount + 1) .. (trail and "/" or "");
 	end
 end
 
