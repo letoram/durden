@@ -151,10 +151,10 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 					return true;
 
 -- fallback to trigger the HUD on the entry path, this should be replaced
--- with different helpers depending on value type
+-- with different helpers depending on value type.
 				else
 					ctx:cancel();
-					menu_query_value(ent);
+					menu_query_value(ent, nil, true);
 				end
 
 				return true;
