@@ -1218,8 +1218,8 @@ function suppl_binding_helper(prefix, suffix, bind_fn)
 		local symname = prefix .. sym .. suffix;
 		dispatch_user_message("Pick a path or value to bind to " .. symname)
 		dispatch_symbol_bind(function(path)
+			dispatch_user_message("")
 			if (not path) then
-				dispatch_user_message("")
 				return;
 			end
 			bind_fn(symname, path);
