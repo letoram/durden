@@ -283,7 +283,7 @@ function menu_hook_launch(fun)
 	menu_hook = fun;
 end
 
-function menu_query_value(ctx, mask)
+function menu_query_value(ctx, mask, block_back)
 	local helper = {
 		active_display().font_delta .. gconfig_get("lbar_helperstr"),
 		(ctx.description and ctx.description .. " ") or ""
@@ -331,21 +331,25 @@ function menu_query_value(ctx, mask)
 	end
 
 -- add Commit/Commit-Back
+	if not block_back then
 		cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
 		function()
 			res:accept_cancel(true, false)
 		end);
-			cpath:push("commit_return", "Accept:Back", cpath.meta[#cpath.meta],
+		cpath:push("commit_return", "Accept:Back", cpath.meta[#cpath.meta],
 		function()
 			force_m1 = true;
 			res:accept_cancel(true, true)
 		end);
 
-		cpath.helper[#cpath.helper-2].btn:switch_state("active")
-		cpath.helper[#cpath.helper-1].btn:switch_state("inactive")
-		cpath.helper[#cpath.helper-0].btn:switch_state("inactive")
+		if (#cpath.helper > 2) then
+			cpath.helper[#cpath.helper-2].btn:switch_state("active")
+			cpath.helper[#cpath.helper-1].btn:switch_state("inactive")
+			cpath.helper[#cpath.helper-0].btn:switch_state("inactive")
+		end
 
 		cpath:set_popcount(3);
+	end
 
 	return res;
 end
