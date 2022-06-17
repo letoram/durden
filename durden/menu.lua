@@ -331,11 +331,14 @@ function menu_query_value(ctx, mask, block_back)
 	end
 
 -- add Commit/Commit-Back
+	cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
+	function()
+		res:accept_cancel(true, false)
+	end);
+	cpath.helper[#cpath.helper-0].btn:switch_state("inactive");
+	cpath:set_popcount(2);
+
 	if not block_back then
-		cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
-		function()
-			res:accept_cancel(true, false)
-		end);
 		cpath:push("commit_return", "Accept:Back", cpath.meta[#cpath.meta],
 		function()
 			force_m1 = true;
