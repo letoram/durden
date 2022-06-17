@@ -118,8 +118,14 @@ local function apply_type_size(wnd, source, status)
 		end
 
 -- never attach the window, but don't delete the external vid
+		local mx, my = mouse_xy();
 		wnd.external = nil;
 		wnd:destroy();
+
+-- workaround the possible meta-window destruction causing another warp
+-- from the parent window becoming selected, while our new popup-handler
+-- might attach to another window (which does not track 'last xy')
+		mouse_absinput_masked(mx, my, true);
 
 	elseif (wnd.surface_type == "icon") then
 -- this could be set to just wnd.icon and that should propagate throughout,
