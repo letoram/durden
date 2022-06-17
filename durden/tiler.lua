@@ -1106,11 +1106,18 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 
 -- recurse downwards
 		node.max_h = math.floor(fairh * node.vweight);
-		level_resize(node, x,
-			y + tpad_h + node.max_h,
-			node.max_w, h - tpad_h - node.max_h,
-			repos, fairh
-		);
+
+		local children = {};
+		visible_children(node, children);
+		if #children == 0 then
+			node.max_h = h;
+		else
+			level_resize(node, x,
+				y + tpad_h + node.max_h,
+				node.max_w, h - tpad_h - node.max_h,
+				repos, fairh
+			);
+		end
 
 		node:resize(node.max_w, node.max_h, true);
 
