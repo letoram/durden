@@ -250,8 +250,8 @@ local function query_bg_media()
 	dispatch_user_message("Workspace-Background");
 	dispatch_symbol_bind(
 	function(path)
+		dispatch_user_message("");
 		if not path then
-			dispatch_user_message("");
 			return;
 		end
 		load_bg(path);
