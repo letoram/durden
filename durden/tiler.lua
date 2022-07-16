@@ -863,6 +863,7 @@ local function tiler_statusbar_custom(wm, bar)
 	wm.sbar_custom = bar;
 	if (wm.statusbar) then
 		tiler_statusbar_build(wm);
+		tiler_statusbar_update(wm);
 	end
 end
 
@@ -1553,7 +1554,7 @@ local function set_htab(space, repos)
 		hide_image(v.border);
 
 -- forces titlebar, sizes to the number of windows
-		v.titlebar:switch_group("htab", true);
+		v.titlebar:switch_group("htab", true, true);
 		v.titlebar:reanchor(space.anchor, 2, lpad, ofs);
 		v.titlebar:resize(tbarw, tbar_sz);
 		ofs = ofs + tbar_sz;
@@ -1599,7 +1600,7 @@ local function set_tab(space, repos)
 		move_image(v.canvas, 0, tbar_sz);
 		hide_image(v.anchor);
 		hide_image(v.border);
-		v.titlebar:switch_group("tab", true);
+		v.titlebar:switch_group("tab", true, true);
 		v.titlebar:reanchor(space.anchor, 2, ofs, 0);
 		v.titlebar:resize(fairw, tbar_sz);
 		ofs = ofs + fairw;
@@ -1649,7 +1650,7 @@ local function set_vtab(space, repos)
 		move_image(v.canvas, 0, 0);
 		hide_image(v.anchor);
 		hide_image(v.border);
-		v.titlebar:switch_group("vtab", true);
+		v.titlebar:switch_group("vtab", true, true);
 		v.titlebar:reanchor(space.anchor, 2, 0, (k-1) * tbar_sz);
 		v.titlebar:resize(wm.effective_width, tbar_sz);
 		ofs = ofs + tbar_sz;
@@ -1781,7 +1782,7 @@ local function set_float(space)
 		v.max_w = neww;
 		v.min_h = newh;
 
-		v.titlebar:switch_group("float", true);
+		v.titlebar:switch_group("float", true, false);
 		v:resize(neww, newh, false);
 	end
 end
@@ -1797,7 +1798,7 @@ local function set_tile(space, repos)
 	local tbl = linearize(space);
 	for _,v in ipairs(tbl) do
 		if (v.titlebar) then
-			v.titlebar:switch_group("tile", true);
+			v.titlebar:switch_group("tile", true, true);
 		end
 	end
 
@@ -1879,7 +1880,7 @@ local function workspace_set(space, mode)
 -- enforce titlebar changes (some modes need them to work..)
 	local lst = linearize(space);
 	for k,v in ipairs(lst) do
-		v.titlebar:switch_group(mode, true);
+		v.titlebar:switch_group(mode, true, mode ~= "float");
 		v:set_title();
 	end
 
@@ -2469,10 +2470,12 @@ end
 local function wnd_recalc_pad(wnd)
 	local tbh = tbar_geth(wnd);
 	local bw = wnd:border_width();
+
 	wnd.pad_top = bw;
 	wnd.pad_left = bw;
 	wnd.pad_right = bw;
 	wnd.pad_bottom = bw;
+
 	local pos = gconfig_get("tbar_position")
 	if pos == "left" then
 		wnd.pad_left = wnd.pad_left + tbh;
@@ -2514,10 +2517,13 @@ local function wnd_size_decor(wnd, w, h, animate)
 	reset_image_transform(wnd.anchor);
 	resize_image(wnd.anchor, w, h, at);
 
+	local border_ofs_y = 0;
+	local border_ofs_x = 0;
+
 	if (wnd.show_titlebar or not tbar_mode(wnd.space.mode)) then
 		wnd.titlebar:show();
 
-		local pos = gconfig_get("tbar_position")
+		local pos = gconfig_get("tbar_position");
 		if pos == "left" then
 			wnd.titlebar:set_vertical();
 			wnd.titlebar:resize(tbh,
@@ -2535,6 +2541,10 @@ local function wnd_size_decor(wnd, w, h, animate)
 			wnd.titlebar:reanchor(wnd.anchor, 4, wnd.pad_left, -tbh - bw, ANCHOR_LL);
 		else
 			wnd.titlebar:set_horizontal();
+			if wnd.titlebar:is_compact() then
+				border_ofs_y = tbh;
+			end
+
 			wnd.titlebar:resize(
 				wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
 			wnd.titlebar:reanchor(wnd.anchor, 4, wnd.pad_left, bw, ANCHOR_UL);
@@ -2547,7 +2557,10 @@ local function wnd_size_decor(wnd, w, h, animate)
 
 	if (wnd.show_border) then
 		reset_image_transform(wnd.border);
-		resize_image(wnd.border, w + wnd.dh_pad_w, h + wnd.dh_pad_h, at, af);
+		resize_image(wnd.border,
+			w + wnd.dh_pad_w - border_ofs_x,
+			h + wnd.dh_pad_h - border_ofs_y, at, af);
+		move_image(wnd.border, border_ofs_x, border_ofs_y, af);
 		show_image(wnd.border);
 	else
 		hide_image(wnd.border);
@@ -2938,7 +2951,7 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 
 -- and with a new mode, the set of titlebar icons might be different
-	wnd.titlebar:switch_group(newspace.mode, true);
+	wnd.titlebar:switch_group(newspace.mode, true, newspace.mode ~= "float");
 
 -- grab any swallow targets as well
 	if wnd.swallow_window then
@@ -4320,7 +4333,7 @@ local function wnd_ws_attach(res, from_hook)
 		end
 	end
 
-	res.titlebar:switch_group(space.mode, true);
+	res.titlebar:switch_group(space.mode, true, space.mode ~= "float");
 
 -- if we are attaching on the workspace that is currently selected, and
 -- there is no selected window (and the space is not in fullscreen state)

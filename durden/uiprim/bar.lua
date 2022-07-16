@@ -328,6 +328,13 @@ local function bar_dimensions(bar)
 	local w = 2 * bar.sidepad;
 	for _,group in ipairs({"left", "right", "center"}) do
 		for _,v in ipairs(bar.buttons[group]) do
+
+-- this edge case comes from a compacted bar where the 'fill' center area
+-- otherwise is sized / clamped to the bar size (which basically works
+-- for icons) but would get poorly cropped otherwise
+			if bar:is_compact() and group == "center" then
+			end
+
 			w = w + v:dimensions();
 		end
 	end
@@ -335,11 +342,12 @@ local function bar_dimensions(bar)
 end
 
 local function bar_relayout_horiz(bar)
-	if bar.compact then
-		bar.width = bar_dimensions(bar) +
-		(bar.nested and bar_dimensions(bar.nested) or 0);
-	end
 	local width = bar.width;
+
+	if bar:is_compact() then
+		width = bar_dimensions(bar) +
+			(bar.nested and bar_dimensions(bar.nested) or 0);
+	end
 
 	reset_image_transform(bar.anchor);
 	resize_image(bar.anchor, width, bar.height, bar.anim_time, bar.anim_func);
@@ -674,8 +682,9 @@ local function btn_insert(bar, align,
 end
 
 -- mass-delete / mass-add grouped buttons
-local function bar_group(bar, group, keep_center)
+local function bar_group(bar, group, keep_center, ignore_compact)
 	local lst = {};
+	bar.ignore_compact = ignore_compact;
 
 -- expensive, so early out on noop
 	if (bar.group == group) then
@@ -1016,6 +1025,10 @@ local function layout_switch_vert(bar)
 	bar.relayout = bar_relayout_vert;
 end
 
+local function bar_is_compact(bar)
+	return bar.compact and not bar.ignore_compact;
+end
+
 -- work as a horizontal stack of uiprim_buttons,
 -- manages allocation, positioning, animation etc.
 function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
@@ -1083,6 +1096,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 		swap_impostor = bar_impostor_swap,
 		destroy_impostor = bar_impostor_destroy,
 		set_nested = bar_nested,
+		is_compact = bar_is_compact,
 
 -- mark all buttons and the bar as having a specific state (e.g. alert)
 		switch_state = bar_state,

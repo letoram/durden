@@ -451,7 +451,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 
 -- assume we can patch ctx and that it has an anchor
 		blend_image(ctx.shadow, 1.0, time);
-		link_image(ctx.shadow, ctx.anchor);
+		link_image(ctx.shadow, ctx.anchor, ANCHOR_UL, ANCHOR_SCALE_WH);
 		image_inherit_order(ctx.shadow, true);
 		order_image(ctx.shadow, -1);
 
@@ -470,7 +470,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 	end
 
 	image_color(ctx.shadow, cr, cg, cb);
-	resize_image(ctx.shadow, w + l + r, h + t + d, time, interp);
+	resize_image(ctx.shadow, l + r, t + d, time, interp);
 	move_image(ctx.shadow, -l, -t);
 end
 
@@ -1528,12 +1528,15 @@ end
 
 local widgets = {};
 
-function suppl_flip_handler(key)
+function suppl_flip_handler(key, chain)
 	return function(ctx, val)
 		if (val == LBL_FLIP) then
 			gconfig_set(key, not gconfig_get(key));
 		else
 			gconfig_set(key, val == LBL_YES);
+		end
+		if chain then
+			chain()
 		end
 	end
 end
