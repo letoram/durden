@@ -43,7 +43,6 @@ local function gen_key(dev, prefix, thresh, dx, dy, nf)
 end
 
 local function run_drag(dev, dx, dy, nf, thresh)
-
 -- special case for mapping to analog mouse wheels, possibly that we should
 -- have a scrolling inertia to block small transitions because peoples fingers
 -- aren't that precise
@@ -90,6 +89,10 @@ local function memu_digital(devtbl, iotbl)
 -- warping is needed for a combination of a touch display that should
 -- only give gestures and "touch-press" but have normal behavior with
 -- a mouse or trackpad
+	if not devtbl.in_active and not devtbl.buttons_held[iotbl.subid] then
+		return
+	end
+
 	local mx, my = mouse_xy();
 	touchm_evlog(string.format(
 		"device=%d:button=%d:pressed=%d:mask=%d:warp=%d",
@@ -175,7 +178,6 @@ end
 -- aggregate samples with a variable number of ticks as sample period
 -- and then feed- back into _input as a relative mouse input event
 local function memu_sample(devtbl, iotbl)
-
 -- poorly documented hack, subid is indexed higher for touch to handle
 -- devices that emit both emulated mouse and touch events
 	local ind = iotbl.subid - 128;

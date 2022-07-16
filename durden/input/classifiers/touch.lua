@@ -24,6 +24,7 @@ local function sample(dev, io)
 -- match to active display (assuming that the inputs come from there),
 -- might want the option to pair this to a specific display (dynamically)
 -- as there are use-cases for both, i.e. using one device as a preview
+-- (asus screenpad or a smartphone docked).
 	local ad = active_display();
 	local rt = active_display(true);
 	local rx = x * ad.width;
