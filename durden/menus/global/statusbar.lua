@@ -461,6 +461,8 @@ return {
 		initial = function()
 			return gconfig_get("sbar_compact") and LBL_YES or LBL_NO;
 		end,
-		handler = suppl_flip_handler("sbar_compact")
+		handler = suppl_flip_handler("sbar_compact", function()
+			gconfig_statusbar_rebuild();
+		end)
 	}
 };
