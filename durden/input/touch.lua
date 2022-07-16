@@ -395,10 +395,9 @@ local function menu_for_device(dev)
 		description = "Normalized range for first valid input value between resets",
 		validator = function(val)
 			local tbl = suppl_unpack_typestr("ffff", val, 0, 1);
-			if tbl == nil then
+			if tbl == nil or #tbl < 4 then
 				return false;
 			end
-
 			return tbl[1] < tbl[3] and tbl[2] < tbl[4];
 		end,
 		hint = "(x1 y1 x2 y2)(0..1, x1y1 < x2y2)",
