@@ -2432,10 +2432,26 @@ local function wnd_repos(wnd)
 	wnd.ofs_y = 0;
 
 	if (wnd.centered and wnd.space.mode ~= "float") then
-
 -- this means that the anchor won't actually be at wnd.x, wnd.y, which affects
 -- the mode-switch from tile to something else and for temporary- drag
 		if (wnd.space.mode == "tile") then
+-- centering operation can be visually annoying during a cascaded tile relayout
+-- when a resize operation has just occured on an external window. In that case,
+-- defer the reposition based on displayhint timestamp.
+			if wnd.hint_ts and CLOCK - wnd.hint_ts <= 2 then
+				if not wnd.relayout_queued then
+					wnd.relayout_queued = true
+					timer_add_periodic(
+						"relayout_" .. wnd.name, 1, true, function()
+							wnd.relayout_queued = nil
+							if wnd.reposition then
+								wnd:reposition()
+							end
+						end, true)
+					end
+				return
+			end
+
 			wnd.ofs_x = math.floor(0.5 * (wnd.max_w - wnd.width));
 			wnd.ofs_y = math.floor(0.5 * (wnd.max_h - wnd.height));
 
@@ -2656,6 +2672,7 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 -- but we may want different actual size arguments to the canvas itself
 	wnd.resize_w = rzw;
 	wnd.resize_h = rzh;
+	wnd.resize_ts = CLOCK;
 
 	wnd.width = wnd.effective_w + decw - wnd.dh_pad_w;
 	wnd.height = wnd.effective_h + dech - wnd.dh_pad_h;
@@ -4763,6 +4780,9 @@ local function default_displayhint(wnd, hw, hh, dm, tbl, ...)
 	hw = math.clamp(hw, 0, MAX_SURFACEW);
 	hh = math.clamp(hh, 0, MAX_SURFACEH);
 	if (hw > 0 and hh > 0) then
+		if wnd.hint_w ~= hw or wnd.hint_h ~= hh then
+			wnd.hint_ts = CLOCK;
+		end
 		wnd.hint_w = hw;
 		wnd.hint_h = hh;
 	end
@@ -5020,6 +5040,7 @@ local wnd_setup = function(wm, source, opts)
 -- external displayhint offsets to mask cropping actions
 		dh_pad_w = 0,
 		dh_pad_h = 0,
+		dh_ts = 0,
 
 -- weights used for balancing tile tree
 		weight = 1.0,
