@@ -83,6 +83,7 @@ local res = {
 -- and clipping correctly for tui surfaces we can reconsider..
 		scalemode = "client",
 		autocrop = true,
+		centered = false,
 		font_block = true,
 		filtermode = FILTER_NONE,
 		allowed_segments = {"tui", "handover"}
