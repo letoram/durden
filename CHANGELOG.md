@@ -38,6 +38,8 @@
 
 * add m2- drag to cursortag (drag-share behaviour)
 
+* new path, global/workspace/import to retrieve a workspace from an inaccessible display
+
 minor:
 
 * default HUD sort order split into two, one for browse/ and one for other paths

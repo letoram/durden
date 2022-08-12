@@ -317,6 +317,54 @@ local function swap_ws_menu()
 	return res;
 end
 
+local function gen_ws_menu(dsp)
+	local spaces = {};
+	for i=1,10 do
+		if dsp.tiler.spaces[i] then
+			table.insert(spaces,
+			{
+				name = "ws_" .. tostring(i),
+				label = tostring(i),
+				kind = "action",
+				handler =
+				function()
+					local dsp2 = active_display(false, true)
+					dsp.tiler.spaces[i]:migrate(
+						dsp2.tiler,
+						{
+							ppcm = dsp2.ppcm,
+							width = dsp2.tiler.width,
+							height = dsp2.tiler.height
+						});
+					dsp.tiler:tile_update();
+					dsp2.tiler:tile_update();
+				end
+			})
+		end
+	end
+	return spaces;
+end
+
+local function import_ws_bydsp()
+	local dsp = displays_alive(true, true);
+	local res = {};
+	for i,v in ipairs(dsp) do
+		table.insert(res, {
+			name = "import_disp_" .. tostring(i),
+			label = v.name,
+			kind = "action",
+			submenu = true,
+			eval = function()
+				return #gen_ws_menu(v) > 0;
+			end,
+			handler = function()
+				return gen_ws_menu(v);
+			end,
+		});
+	end
+	return res;
+end
+
 local function migrate_ws_bydsp()
 	local dsp = displays_alive(true);
 	local res = {};
@@ -412,9 +460,20 @@ return {
 		name = "migrate",
 		label = "Migrate Display",
 		kind = "action",
-		description = "Move the workspace and all its windows to another display",
+		description = "Move the current workspace and all its windows to another display",
 		submenu = true,
 		handler = migrate_ws_bydsp,
+		eval = function()
+			return #(displays_alive()) > 1;
+		end
+	},
+	{
+		name = "import",
+		label = "Import Display",
+		kind = "action",
+		description = "Import a workspace and all its windows from another display",
+		submenu = true,
+		handler = import_ws_bydsp,
 		eval = function()
 			return #(displays_alive()) > 1;
 		end

@@ -1291,7 +1291,7 @@ end
 --
 local function workspace_migrate(ws, newt, disptbl)
 	local oldt = ws.wm;
-	if (oldt == display) then
+	if (oldt == newt) then
 		return;
 	end
 
