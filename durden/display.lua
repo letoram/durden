@@ -1524,12 +1524,12 @@ function all_windows(atype, noswitch)
 	end
 end
 
-function displays_alive(filter)
+function displays_alive(filter, raw)
 	local res = {};
 
 	for k,v in ipairs(displays) do
 		if (not (v.orphan or v.disabled) and (not filter or k ~= display_main)) then
-			table.insert(res, v.name);
+			table.insert(res, raw and v or v.name);
 		end
 	end
 	return res;
