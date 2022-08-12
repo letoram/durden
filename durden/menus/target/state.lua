@@ -104,6 +104,29 @@ local function gen_type_menu(wnd, open)
 	return res;
 end
 
+local function gen_statedst_wnd()
+	local lst = {};
+	local sel = active_display().selected;
+
+-- enumerate all windows and add the external ones that aren't the source
+	for wnd in all_windows() do
+		if (wnd ~= sel and valid_vid(wnd.external, TYPE_FRAMESERVER)) and
+			wnd.stateinf and wnd.stateinf.typeid == sel.stateinf.typeid then
+			table.insert(lst, {
+				name = wnd.name,
+				label = wnd.name,
+				description = wnd:get_name(),
+				kind = "action",
+				handler = function(ctx, val)
+					bond_target(sel.external, wnd.external)
+				end
+			});
+		end
+	end
+
+	return lst;
+end
+
 return {
 	{
 		name = "suspend",
@@ -207,7 +230,6 @@ return {
 		name = "snapshot",
 		label = "Snapshot",
 		kind = "value",
-		submenu = true,
 		initial = "",
 		description = "Request that the client makes a snapshot of its state",
 		validator = function(str) return str and string.len(str) > 0; end,
@@ -218,6 +240,23 @@ return {
 			local wnd = active_display().selected;
 			return active_display().selected.stateinf ~= nil;
 		end
+	},
+	{
+		name = "bond",
+		label = "Bond",
+		kind = "action",
+		description = "Forward the state of one client to another",
+		submenu = true,
+		eval =
+		function()
+			return
+				active_display().selected.stateinf ~= nil and
+				#gen_statedst_wnd() > 0;
+		end,
+		handler =
+		function()
+			return gen_statedst_wnd();
+		end,
 	},
 	{
 	name = "push_debug",

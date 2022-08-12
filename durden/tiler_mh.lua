@@ -497,15 +497,19 @@ local function build_canvas(wnd)
 
 -- it has been an established custom elsewhere to always allow 'canvas+meta'
 -- drag as an interretation of starting a move, so go with that
-		if (not wnd.in_drag_move) then
+		if (not wnd.in_drag_move and not wnd.in_drag_tag) then
 			local m1, m2 = dispatch_meta();
-			if (m1 or m2) then
+			if (m1 or (m2 and not gconfig_get("mouse_m2_cursortag"))) then
 				wnd.x = wnd.x + wnd.ofs_x;
 				wnd.y = wnd.y + wnd.ofs_y;
 				wnd.in_drag_move = wnd.space:linearize();
 				wnd.in_drag_ts = CLOCK;
 				wnd.in_drag_pos = {x = wnd.x, y = wnd.y};
 				mouse_switch_cursor("drag");
+
+			elseif m2 then
+				wnd.in_drag_tag = true;
+				dispatch_symbol_wnd(wnd, "/target/window/cursortag")
 			end
 		end
 
@@ -548,6 +552,10 @@ local function build_canvas(wnd)
 				v(wnd.space.wm, wnd, 0, 0, true);
 			end
 			wnd:recovertag();
+
+		elseif wnd.in_drag_tag then
+			mouse_cursortag_drop();
+			wnd.in_drag_tag = false;
 		end
 
 		wnd.in_drag_rz = false;
