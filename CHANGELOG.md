@@ -34,6 +34,10 @@
 
 * compact-mode for statusbar and titlebar (global/settings/titlebar,statusbar/compact)
 
+* expose bond-target between windows of the same state identifier
+
+* add m2- drag to cursortag (drag-share behaviour)
+
 minor:
 
 * default HUD sort order split into two, one for browse/ and one for other paths

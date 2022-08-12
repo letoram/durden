@@ -353,6 +353,16 @@ local mouse_menu = {
 			end
 		end
 	},
+	{
+		name = "m2_ctag",
+		kind = "value",
+		label = "M2+drag canvas tag",
+		description = "Set meta2 with canvas drag as window state drag and drop source",
+		initial = function()
+			return gconfig_get("mouse_m2_cursortag") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("mouse_m2_cursortag")
+	}
 };
 local function list_keymaps()
 	local km = SYMTABLE:list_keymaps();

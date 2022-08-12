@@ -680,7 +680,7 @@ defhtbl["state_size"] =
 function(wnd, source, stat)
 	client_log("state_size:name=" ..
 		wnd.name .. ":size=" .. tostring(stat.state_size));
-	wnd.stateinf = {size = stat.state_size, typeid = stat};
+	wnd.stateinf = {size = stat.state_size, typeid = stat.typeid};
 end
 
 -- simple key / preset-val store of options that could persist between
