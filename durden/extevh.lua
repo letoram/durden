@@ -50,6 +50,7 @@ load_archetypes();
 
 local function embed_surface(wnd, vid, cookie)
 	local embed_drag = false
+	local embed_highlight = false
 
 	wnd:add_overlay(cookie, vid,
 	{
@@ -65,11 +66,30 @@ local function embed_surface(wnd, vid, cookie)
 					end
 					embed_drag[1] = embed_drag[1] + dx
 					embed_drag[2] = embed_drag[2] + dy
+					shader_setup(vid, "ui", "regmark")
 				end
+			end,
+			motion =
+			function()
+				if dispatch_meta() then
+					if not embed_highlight then
+						shader_setup(vid, "ui", "regmark")
+						embed_highlight = true
+					end
+				elseif embed_highlight then
+					image_shader(vid, "DEFAULT")
+					embed_highlight = false
+				end
+			end,
+			out =
+			function()
+				image_shader(vid, "DEFAULT")
+				embed_highlight = false
 			end,
 			drop =
 			function(ctx, dx, dy)
 				if embed_drag then
+					image_shader(vid, "DEFAULT")
 					if math.abs(embed_drag[1]) > 10 or math.abs(embed_drag[2]) > 10 then
 						local props = image_storage_properties(vid);
 						local new = null_surface(props.width, props.height);

@@ -613,11 +613,13 @@ local function tiler_statusbar_update(wm)
 	if (gconfig_get("sbar_visible") == "hud") then
 		sb_invisible = not tiler_lbar_isactive();
 	elseif (gconfig_get("sbar_visible") == "hidden") then
+		bar_base = sbar_geth(wm);
 		sb_invisible = true;
+	else
+		bar_base = sbar_geth(wm);
 	end
-	wm.statusbar[invisible and "hide" or "show"](wm.statusbar);
 
-	assert(wm.width);
+	wm.statusbar[sb_invisible and "hide" or "show"](wm.statusbar);
 
 	if (not sb_invisible) then
 		pad_l = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
@@ -636,7 +638,6 @@ local function tiler_statusbar_update(wm)
 		"ui", "col", { r / 255, g / 255, b / 255, alpha});
 
 -- positioning etc. still needs the current size of the statusbar
-	bar_base = sbar_geth(wm);
 	local pos = sbar_getpos(wm);
 
 	if (pos == "top") then
