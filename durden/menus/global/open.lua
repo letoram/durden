@@ -338,7 +338,7 @@ return {
 {
 	name = "terminal",
 	label = "Terminal",
-	description = "Open a new console shell",
+	description = "A CLI shell running through a terminal emulator",
 	kind = "value",
 	hint = "(append arguments)",
 	default = "",
@@ -347,6 +347,15 @@ return {
 	end,
 	handler = function(ctx, val)
 		spawn_terminal(val);
+	end
+},
+{
+	name = "lash",
+	label = "Lash",
+	description = "A terminal liberated shell",
+	kind = "action",
+	handler = function(ctx)
+		spawn_terminal("cli=lua")
 	end
 },
 {

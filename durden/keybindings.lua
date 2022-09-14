@@ -39,6 +39,7 @@ SYSTEM_KEYS = {
 --
 local tbl = {};
 tbl["m1_RETURN"] = "/global/open/terminal";
+tbl["m1_m2_RETURN"] = "/global/open/lash";
 tbl["m1_d"] = "/global/open/target";
 tbl["m1_c"] = "/global/display/cycle";
 tbl["m1_g"] = "/global";
