@@ -48,6 +48,143 @@ end
 
 load_archetypes();
 
+local function overlay_apply_viewport(ol)
+end
+
+-- used to make sure that the embedder knows the current state of an
+-- embedded overlay that is backed by an external source
+local function overlay_synch(ol)
+	local lh = ol.last_hint
+	if lh and lh.w == ol.w and lh.h == ol.h and lh.detached == ol.detached then
+		return;
+	end
+
+	if not valid_vid(ol.external, TYPE_FRAMESERVER) then
+		return;
+	end
+
+	ol.last_hint =
+	{
+		w = ol.w,
+		h = ol.h,
+		detached = ol.detached
+	};
+
+	target_displayhint(
+		ol.external,
+		ol.w, ol.h,
+		ol.detached and TD_HINT_DETACHED or 0, ol.vid
+	);
+end
+
+local function overlay_mouse_handler(wnd, vid, cookie)
+	local mh = {};
+	function mh.drag(ctx, dx, dy)
+		if dispatch_meta() then
+			if not ctx.embed_drag then
+				ctx.embed_drag = {0, 0};
+			end
+			ctx.embed_drag[1] = ctx.embed_drag[1] + dx;
+			ctx.embed_drag[2] = ctx.embed_drag[2] + dy;
+			shader_setup(vid, "ui", "regmark");
+		end
+	end
+
+	function mh.motion(ctx)
+		if dispatch_meta() then
+			if not ctx.embed_highlight then
+				shader_setup(vid, "ui", "regmark")
+				ctx.embed_highlight = true
+			end
+		elseif ctx.embed_highlight then
+			image_shader(vid, "DEFAULT")
+			ctx.embed_highlight = false
+		end
+	end
+
+-- need to repeat the tiler mouse handlers for the overlay to support the
+-- drag to decompose action while still respecting selection of the parent
+	function mh.over(ctx)
+		if wnd.wm and wnd.wm.selected ~= wnd and
+			gconfig_get("mouse_focus_event") == "motion" then
+			wnd:select();
+		else
+			wnd:mouseactivate();
+		end
+	end
+
+	function mh.press()
+		wnd:select();
+	end
+
+	function mh.out()
+		image_shader(vid, "DEFAULT");
+		embed_highlight = false;
+	end
+
+	function mh.drop(ctx, dx, dy)
+		if not ctx.embed_drag then
+			return
+		end
+
+		image_shader(vid, "DEFAULT");
+-- Detaching an embedded surface into a new window. This is made more complicated
+-- due to scaling options, where we both want to forward resize hints as well as
+-- delegate them.
+		if math.abs(ctx.embed_drag[1]) < 10 and math.abs(ctx.embed_drag[2]) < 10 then
+			return
+		end
+
+		local ol = wnd.overlays[cookie]
+		if ol.detach then
+			ol:detach();
+		end
+		ctx.embed_drag = nil;
+	end
+
+	return mh;
+end
+
+local function overlay_detach(ol)
+	if not valid_vid(ol.external) or not valid_vid(ol.vid) then
+		return
+	end
+
+--	local props = image_storage_properties(ol.vid);
+--	local new = null_surface(props.width, props.height);
+--	image_sharestorage(ol.vid, new);
+	local cw = active_display():add_window(
+		ol.vid, {scalemode = "client", external_prot = true});
+	if not cw then
+		delete_image(new);
+		return;
+	end
+
+-- now convert it to a regular durden window so resize events and other handlers
+-- propagate correctly, and inject a fake registered event so the segment type
+-- handlers apply correctly
+	durden_launch(ol.vid, "", "", cw);
+	if (ol.registered) then
+		extevh_default(ol.vid, ol.registered);
+	end
+
+	cw:add_handler(
+	"destroy",
+		function()
+			if not valid_vid(ol.external,TYPE_FRAMESERVER) or
+				not valid_vid(ol.vid, TYPE_FRAMESERVER) then
+				return
+			end
+			ol.detached = false;
+			target_displayhint(ol.external, 0, 0, 0, ol.vid);
+		end
+	)
+
+-- Destroying the window should re-set the embedding if possible
+	ol.detached = true;
+	target_displayhint(ol.external, 0, 0, TD_HINT_DETACHED, ol.vid);
+end
+
 local function embed_surface(wnd, vid, cookie)
 	local embed_drag = false
 	local embed_highlight = false
@@ -56,92 +193,47 @@ local function embed_surface(wnd, vid, cookie)
 -- meta+drag it out into its own window (collaborative decomposition) and how
 -- that is synched with the embedded source actually being tied to an external
 -- producer that might not be cooperative
+	local overent =
 	wnd:add_overlay(cookie, vid,
 	{
 		stretch = true,
 		noclip = false,
 		blend = false,
-		mouse_handler =
-		{
-			drag =
-			function(ctx, dx, dy)
-				if dispatch_meta() then
-					if not embed_drag then
-						embed_drag = {0, 0}
-					end
-					embed_drag[1] = embed_drag[1] + dx
-					embed_drag[2] = embed_drag[2] + dy
-					shader_setup(vid, "ui", "regmark")
-				end
-			end,
-			motion =
-			function()
-				if dispatch_meta() then
-					if not embed_highlight then
-						shader_setup(vid, "ui", "regmark")
-						embed_highlight = true
-					end
-				elseif embed_highlight then
-					image_shader(vid, "DEFAULT")
-					embed_highlight = false
-				end
-			end,
--- need to repeat the tiler mouse handlers for the overlay to support the
--- drag to decompose action while still respecting selection of the parent
-			over =
-			function()
-				if wnd.wm.selected ~= wnd and
-					gconfig_get("mouse_focus_event") == "motion" then
-					wnd:select();
-				else
-					wnd:mouseactivate();
-				end
-			end,
-			press = function()
-				wnd:select();
-			end,
-			out =
-			function()
-				image_shader(vid, "DEFAULT")
-				embed_highlight = false
-			end,
-			drop =
-			function(ctx, dx, dy)
-				if embed_drag then
-					image_shader(vid, "DEFAULT")
--- Detaching an embedded surface into a new window. This is made more complicated
--- due to scaling options, where we both want to forward resize hints as well as
--- delegate them.
-					if math.abs(embed_drag[1]) > 10 or math.abs(embed_drag[2]) > 10 then
-						local props = image_storage_properties(vid);
-						local new = null_surface(props.width, props.height);
-						image_sharestorage(vid, new);
-						local cw = active_display():add_window(new, {scalemode = "client"})
-						if not cw then
-							delete_image(new)
-							return
-						end
--- Destroying the window should re-set the embedding if possible
-						wnd.overlays[cookie].detached = true
-					end
-				end
-				embed_drag = nil
-			end
-		}
+		mouse_handler = overlay_mouse_handler(wnd, vid, cookie)
 	})
+
+	if not overent then
+		return;
+	end
+
+	overent.synch = overlay_synch;
+	overent.external = wnd.external;
+	overent.detach = overlay_detach;
 
 	hide_image(vid);
 -- actual anchoring comes via the viewport handler, and it starts hidden
 	target_updatehandler(vid,
 	function(source, status)
 		if status.kind == "terminated" then
+			print("should terminated overlay")
 			if wnd.drop_overlay then
 				wnd:drop_overlay(cookie)
+				print("drop", cookie)
 			else
+				print("just delete")
 				delete_image(source)
 			end
--- forward the resized state, and apply the update to the overlay itself
--- unless we have set it to be scaled.
+
+-- the atype is problematic here as the detached window should apply the related
+-- set of controls, but we can't do that now, save it for a possible detached.
+		elseif status.kind == "registered" then
+			wnd.overlays[cookie].registered = status
+
+-- Forward the resized state. if the other end is slow to respond, there will
+-- be a visual glitch here when the resize state is in flux. one option to deal
+-- with that is to swap in an imposter data-source pre-resize or set the target
+-- flag for the source to use the two-phase commit, and only release the resize
+-- when the other end has acknowledged with a new viewport.
 		elseif status.kind == "resized" then
 			if valid_vid(wnd.external, TYPE_FRAMESERVER) then
 				target_displayhint(
@@ -351,7 +443,8 @@ function(wnd, source, tbl)
 -- and update can come periodically. If that ever becomes an actual problem, using
 -- frame delivery as an indicator that the burst is over works.
 	client_log(fmt(
-		"input_label:name=%s:type=%s:sym=%s", tbl.labelhint, tbl.datatype, tbl.vsym));
+		"input_label:name=%s:type=%s:sym=%s:initial=%d:mods=%d",
+		tbl.labelhint, tbl.datatype, tbl.vsym, tbl.initial, tbl.modifiers));
 	if (not wnd.input_labels or #tbl.labelhint == 0) then
 		wnd.input_labels = {};
 		client_log("reset_labels")
@@ -384,6 +477,7 @@ function(wnd, source, tbl)
 
 -- keep track of the translated string as we might want to present it
 		if (not wnd.labels[sym]) then
+			client_log(fmt("label:name=%s:default=%s", tbl.labelhint, sym));
 			wnd.labels[sym] = tbl.labelhint;
 			ent.input = sym;
 		end
@@ -462,7 +556,7 @@ function(wnd, source, stat)
 			stat.scaled and 1 or 0,
 			stat.anchor_w,
 			stat.anchor_h,
-			stat.hidden and 1 or 0,
+			stat.invisible and 1 or 0,
 			stat.rel_x,
 			stat.rel_y
 		)
@@ -471,6 +565,10 @@ function(wnd, source, stat)
 -- if it matches a supported overlay though, we first need to anchor and
 -- position, then respect the flags on how it is to be embedded.
 	local overlay = wnd.overlays[stat.parent];
+	if not overlay.synch then
+		return
+	end
+
 	overlay.xofs = stat.rel_x;
 	overlay.yofs = stat.rel_y;
 
@@ -480,13 +578,13 @@ function(wnd, source, stat)
 	stat.anchor_h = stat.anchor_h <= 0 and props.height or stat.anchor_h
 
 -- if embedding is scaled, it should also be aspect corrected.
+	image_set_txcos_default(overlay.vid)
 	if stat.scaled then
 		local ar = props.width / props.height;
 		local wr = props.width / stat.anchor_w;
 		local hr = props.height / stat.anchor_h;
 		overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
 		overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
-		image_set_txcos_default(overlay.vid)
 
 -- with hint forwarding we also send that onwards to the embedded so that
 -- it is given a chance to adapt (but doesn't have to)
@@ -509,16 +607,9 @@ function(wnd, source, stat)
 		target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
 	end
 
-	blend_image(overlay.vid, stat.hidden and 0 or 1);
+	blend_image(overlay.vid, stat.invisible and 0 or 1);
 	wnd:synch_overlays();
-
--- overlay layouting is synched, forward the resolved dimensions so that
--- the embedder can layout based on the embedding
-	target_displayhint(
-		wnd.external,
-		overlay.w, overlay.h,
-		overlay.detached and TD_HINT_DETACHED or 0, overlay.vid
-	);
+	overlay:synch();
 end
 
 -- got updated ramps from a client, still need to decide what to

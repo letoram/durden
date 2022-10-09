@@ -4032,7 +4032,6 @@ end
 -- within the same workspace
 local function wnd_tochild(w1, w2, sibling)
 	if (w1.space ~= w2.space) then
-		print("no tochild")
 		return;
 	end
 
@@ -4438,7 +4437,6 @@ local function wnd_ws_attach(res, from_hook)
 	end
 
 	if res.adopt_window and res.adopt_window.reparent then
-		print("should fucking reparent")
 		res.adopt_window:reparent(res)
 	end
 
@@ -4746,6 +4744,7 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 
 	wnd.overlays[key] = overent;
 	wnd:synch_overlays();
+	return overent;
 end
 
 local function wnd_identstr(wnd)
@@ -5068,6 +5067,10 @@ local wnd_setup = function(wm, source, opts)
 	res.height = opts.height and opts.height or wm.min_height;
 	res.want_shadow =
 		(not opts.block_shadow) and gconfig_get("shadow_style") ~= "none";
+
+	if opts.external_prot then
+		res.external_prot = opts.external_prot;
+	end
 
 	if (opts.show_titlebar ~= nil) then
 		res.show_titlebar = opts.show_titlebar;
