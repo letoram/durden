@@ -4831,8 +4831,7 @@ local function wnd_drop_overlay(wnd, key)
 	tiler_debug(wnd.wm,
 		string.format("overlay_destroyed:name=%s:key=%s", wnd.name, key));
 
-	blend_image(wnd.overlays[key].vid, 0.0, gconfig_get("wnd_animation"));
-	expire_image(wnd.overlays[key].vid, gconfig_get("wnd_animation"));
+	delete_image(wnd.overlays[key].vid);
 
 	local closure = wnd.overlays[key].closure;
 	wnd.overlays[key] = nil;
