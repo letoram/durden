@@ -52,8 +52,13 @@ local function embed_surface(wnd, vid, cookie)
 	local embed_drag = false
 	local embed_highlight = false
 
+-- overlay creation, most of this is the mouse handler that is used to
+-- meta+drag it out into its own window (collaborative decomposition) and how
+-- that is synched with the embedded source actually being tied to an external
+-- producer that might not be cooperative
 	wnd:add_overlay(cookie, vid,
 	{
+		stretch = true,
 		noclip = false,
 		blend = false,
 		mouse_handler =
@@ -81,6 +86,20 @@ local function embed_surface(wnd, vid, cookie)
 					embed_highlight = false
 				end
 			end,
+-- need to repeat the tiler mouse handlers for the overlay to support the
+-- drag to decompose action while still respecting selection of the parent
+			over =
+			function()
+				if wnd.wm.selected ~= wnd and
+					gconfig_get("mouse_focus_event") == "motion" then
+					wnd:select();
+				else
+					wnd:mouseactivate();
+				end
+			end,
+			press = function()
+				wnd:select();
+			end,
 			out =
 			function()
 				image_shader(vid, "DEFAULT")
@@ -90,14 +109,20 @@ local function embed_surface(wnd, vid, cookie)
 			function(ctx, dx, dy)
 				if embed_drag then
 					image_shader(vid, "DEFAULT")
+-- Detaching an embedded surface into a new window. This is made more complicated
+-- due to scaling options, where we both want to forward resize hints as well as
+-- delegate them.
 					if math.abs(embed_drag[1]) > 10 or math.abs(embed_drag[2]) > 10 then
 						local props = image_storage_properties(vid);
 						local new = null_surface(props.width, props.height);
 						image_sharestorage(vid, new);
-						local cw = active_display():add_window(new, {scalemode = "aspect"})
+						local cw = active_display():add_window(new, {scalemode = "client"})
 						if not cw then
 							delete_image(new)
+							return
 						end
+-- Destroying the window should re-set the embedding if possible
+						wnd.overlays[cookie].detached = true
 					end
 				end
 				embed_drag = nil
@@ -115,9 +140,18 @@ local function embed_surface(wnd, vid, cookie)
 			else
 				delete_image(source)
 			end
+-- forward the resized state, and apply the update to the overlay itself
+-- unless we have set it to be scaled.
 		elseif status.kind == "resized" then
--- FIXME: if hintfwd is set, displayhint to wnd-external with the form that
--- sets target cookie
+			if valid_vid(wnd.external, TYPE_FRAMESERVER) then
+				target_displayhint(
+					wnd.external,
+					status.width, status.height,
+					wnd.overlays[cookie].detached and TD_HINT_DETACHED or 0,
+					source
+				);
+			end
+			wnd:synch_overlays();
 		end
 	end
 	)
@@ -169,8 +203,8 @@ local function apply_split_position(wnd, vid, cookie, split, position)
 				ws:tab()
 			end
 
--- This will actually block the new window from being created entirely
--- and added as a subsurface to [wnd]
+-- This will actually block the new window from being created entirely and
+-- added as a subsurface to [wnd], scaled/hintfwd.
 		elseif position == "embed" then
 			embed_surface(wnd, vid, cookie)
 			res.block = true
@@ -414,32 +448,77 @@ end
 
 defhtbl["viewport"] =
 function(wnd, source, stat)
-	if stat.parent > 0 and wnd.overlays[stat.parent] then
-		local overlay = wnd.overlays[stat.parent]
-		overlay.xofs = stat.rel_x
-		overlay.yofs = stat.rel_y
+-- default viewport hints are ignored, could be used to inform cropping and
+-- scaling but the clients that actually need that are atype based so look
+-- in the respective atype/.lua for the implementation of that
+	if stat.parent <= 0 or not wnd.overlays[stat.parent] then
+		return;
+	end
 
--- find defined or dominant axis, map that against source storage aspect
--- then find the safe aspect scale to fit the overlay surface, same calc.
--- used in tiler.lua for ar-scale mode
-		local props = image_storage_properties(overlay.vid);
-		if stat.anchor_w > 0 and stat.anchor_h > 0 then
-			local props = image_storage_properties(overlay.vid)
-			local ar = props.width / props.height;
-			local wr = props.width / stat.anchor_w;
-			local hr = props.height / stat.anchor_h;
-			overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
-			overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
-			if stat.scaled then
-				overlay.stretch = true
-			else
-				overlay.stretch = false
-			end
+	client_log(
+		string.format(
+			"viewport:parent=%d:scaled=%d:w=%d:h=%d:hidden=%d:x=%d:y=%d",
+			stat.parent,
+			stat.scaled and 1 or 0,
+			stat.anchor_w,
+			stat.anchor_h,
+			stat.hidden and 1 or 0,
+			stat.rel_x,
+			stat.rel_y
+		)
+	);
+
+-- if it matches a supported overlay though, we first need to anchor and
+-- position, then respect the flags on how it is to be embedded.
+	local overlay = wnd.overlays[stat.parent];
+	overlay.xofs = stat.rel_x;
+	overlay.yofs = stat.rel_y;
+
+-- ensure sane anchor constraints
+	local props = image_storage_properties(overlay.vid);
+	stat.anchor_w = stat.anchor_w <= 0 and props.width or stat.anchor_w
+	stat.anchor_h = stat.anchor_h <= 0 and props.height or stat.anchor_h
+
+-- if embedding is scaled, it should also be aspect corrected.
+	if stat.scaled then
+		local ar = props.width / props.height;
+		local wr = props.width / stat.anchor_w;
+		local hr = props.height / stat.anchor_h;
+		overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
+		overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
+		image_set_txcos_default(overlay.vid)
+
+-- with hint forwarding we also send that onwards to the embedded so that
+-- it is given a chance to adapt (but doesn't have to)
+		if stat.hintfwd and valid_vid(overlay.vid, TYPE_FRAMESERVER) then
+			target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
 		end
 
-		blend_image(overlay.vid, stat.hidden and 0 or 1)
-		wnd:synch_overlays()
+-- otherwise it'll just be clipped against the window itself
+	else
+		overlay.w = props.width > stat.anchor_w and stat.anchor_w or props.width;
+		overlay.h = props.height > stat.anchor_h and stat.anchor_h or props.height;
+		resize_image(overlay.vid, overlay.w, overlay.h);
+
+-- this is incorrect for sources that has a _ll origo, crop is missing a flag
+-- section when doing these calculations but it should really be fixed in engine
+-- rather than worked around here
+		crop_image(overlay.vid, overlay.w, overlay.h);
+
+-- for non-scaled we always hint-forward
+		target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
 	end
+
+	blend_image(overlay.vid, stat.hidden and 0 or 1);
+	wnd:synch_overlays();
+
+-- overlay layouting is synched, forward the resolved dimensions so that
+-- the embedder can layout based on the embedding
+	target_displayhint(
+		wnd.external,
+		overlay.w, overlay.h,
+		overlay.detached and TD_HINT_DETACHED or 0, overlay.vid
+	);
 end
 
 -- got updated ramps from a client, still need to decide what to
