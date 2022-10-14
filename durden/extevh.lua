@@ -48,7 +48,82 @@ end
 
 load_archetypes();
 
-local function overlay_apply_viewport(ol)
+local function overlay_apply_viewport(wnd, overlay, stat)
+-- ensure sane anchor constraints
+	local props = image_storage_properties(overlay.vid);
+	local hint = not stat.invisible and not overlay.detached;
+	stat.anchor_w = stat.anchor_w <= 0 and props.width or stat.anchor_w;
+	stat.anchor_h = stat.anchor_h <= 0 and props.height or stat.anchor_h;
+
+-- if embedding is scaled, it should also be aspect corrected.
+	image_set_txcos_default(overlay.vid);
+	if stat.scaled then
+		local ar = props.width / props.height;
+		local wr = props.width / stat.anchor_w;
+		local hr = props.height / stat.anchor_h;
+		overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
+		overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
+
+-- with hint forwarding we also send that onwards to the embedded so that
+-- it is given a chance to adapt (but doesn't have to)
+		if stat.hintfwd and hint then
+			target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
+		end
+
+-- otherwise it'll just be clipped against the window itself
+	else
+		overlay.w = props.width > stat.anchor_w and stat.anchor_w or props.width;
+		overlay.h = props.height > stat.anchor_h and stat.anchor_h or props.height;
+		resize_image(overlay.vid, overlay.w, overlay.h);
+
+-- this is incorrect for sources that has a _ll origo, crop is missing a flag
+-- section when doing these calculations but it should really be fixed in engine
+-- rather than worked around here
+		crop_image(overlay.vid, overlay.w, overlay.h);
+
+-- for non-scaled we always hint-forward
+		if hint then
+			target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
+		end
+	end
+
+	blend_image(overlay.vid, stat.invisible and 0 or 1);
+	wnd:synch_overlays();
+end
+
+-- detach will update the handler so need to also be able to restore it
+local function overlay_handler(wnd, cookie)
+	return
+	function(source, status)
+		if status.kind == "terminated" then
+			if wnd.drop_overlay then
+				wnd:drop_overlay(cookie)
+			else
+				delete_image(source)
+			end
+
+-- the atype is problematic here as the detached window should apply the related
+-- set of controls, but we can't do that now, save it for a possible detached.
+		elseif status.kind == "registered" then
+			wnd.overlays[cookie].registered = status
+
+-- Forward the resized state. if the other end is slow to respond, there will
+-- be a visual glitch here when the resize state is in flux. one option to deal
+-- with that is to swap in an imposter data-source pre-resize or set the target
+-- flag for the source to use the two-phase commit, and only release the resize
+-- when the other end has acknowledged with a new viewport.
+--
+-- Furthermore, if this is the first resize it should also trigger the same
+-- viewport calculation as a viewport event for clients to be able to figure
+-- out that they should reanchor.
+		elseif status.kind == "resized" then
+			local olay = wnd.overlays[cookie];
+			if olay and olay.viewport then
+				overlay_apply_viewport(wnd, olay, olay.viewport);
+			end
+			wnd.overlays[cookie]:synch();
+		end
+	end
 end
 
 -- used to make sure that the embedder knows the current state of an
@@ -135,7 +210,7 @@ local function overlay_mouse_handler(wnd, vid, cookie)
 			return
 		end
 
-		local ol = wnd.overlays[cookie]
+		local ol = wnd.overlays[cookie];
 		if ol.detach then
 			ol:detach();
 		end
@@ -176,6 +251,7 @@ local function overlay_detach(ol)
 				return
 			end
 			ol.detached = false;
+			target_updatehandler(ol.vid, overlay_handler(ol.wnd, ol.key));
 			target_displayhint(ol.external, 0, 0, 0, ol.vid);
 		end
 	)
@@ -209,44 +285,11 @@ local function embed_surface(wnd, vid, cookie)
 	overent.synch = overlay_synch;
 	overent.external = wnd.external;
 	overent.detach = overlay_detach;
+	overent.wnd = wnd;
 
 	hide_image(vid);
 -- actual anchoring comes via the viewport handler, and it starts hidden
-	target_updatehandler(vid,
-	function(source, status)
-		if status.kind == "terminated" then
-			print("should terminated overlay")
-			if wnd.drop_overlay then
-				wnd:drop_overlay(cookie)
-				print("drop", cookie)
-			else
-				print("just delete")
-				delete_image(source)
-			end
-
--- the atype is problematic here as the detached window should apply the related
--- set of controls, but we can't do that now, save it for a possible detached.
-		elseif status.kind == "registered" then
-			wnd.overlays[cookie].registered = status
-
--- Forward the resized state. if the other end is slow to respond, there will
--- be a visual glitch here when the resize state is in flux. one option to deal
--- with that is to swap in an imposter data-source pre-resize or set the target
--- flag for the source to use the two-phase commit, and only release the resize
--- when the other end has acknowledged with a new viewport.
-		elseif status.kind == "resized" then
-			if valid_vid(wnd.external, TYPE_FRAMESERVER) then
-				target_displayhint(
-					wnd.external,
-					status.width, status.height,
-					wnd.overlays[cookie].detached and TD_HINT_DETACHED or 0,
-					source
-				);
-			end
-			wnd:synch_overlays();
-		end
-	end
-	)
+	target_updatehandler(vid, overlay_handler(wnd, cookie))
 end
 
 local function apply_split_position(wnd, vid, cookie, split, position)
@@ -569,46 +612,13 @@ function(wnd, source, stat)
 		return
 	end
 
+-- remember the viewport properties so it can be re-used on a resize call
+	overlay.viewport = stat;
+
 	overlay.xofs = stat.rel_x;
 	overlay.yofs = stat.rel_y;
+	overlay_apply_viewport(wnd, overlay, stat);
 
--- ensure sane anchor constraints
-	local props = image_storage_properties(overlay.vid);
-	stat.anchor_w = stat.anchor_w <= 0 and props.width or stat.anchor_w
-	stat.anchor_h = stat.anchor_h <= 0 and props.height or stat.anchor_h
-
--- if embedding is scaled, it should also be aspect corrected.
-	image_set_txcos_default(overlay.vid)
-	if stat.scaled then
-		local ar = props.width / props.height;
-		local wr = props.width / stat.anchor_w;
-		local hr = props.height / stat.anchor_h;
-		overlay.w = hr > wr and stat.anchor_h * ar or stat.anchor_w;
-		overlay.h = hr < wr and stat.anchor_w / ar or stat.anchor_h;
-
--- with hint forwarding we also send that onwards to the embedded so that
--- it is given a chance to adapt (but doesn't have to)
-		if stat.hintfwd and valid_vid(overlay.vid, TYPE_FRAMESERVER) then
-			target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
-		end
-
--- otherwise it'll just be clipped against the window itself
-	else
-		overlay.w = props.width > stat.anchor_w and stat.anchor_w or props.width;
-		overlay.h = props.height > stat.anchor_h and stat.anchor_h or props.height;
-		resize_image(overlay.vid, overlay.w, overlay.h);
-
--- this is incorrect for sources that has a _ll origo, crop is missing a flag
--- section when doing these calculations but it should really be fixed in engine
--- rather than worked around here
-		crop_image(overlay.vid, overlay.w, overlay.h);
-
--- for non-scaled we always hint-forward
-		target_displayhint(overlay.vid, stat.anchor_w, stat.anchor_h);
-	end
-
-	blend_image(overlay.vid, stat.invisible and 0 or 1);
-	wnd:synch_overlays();
 	overlay:synch();
 end
 
