@@ -4735,6 +4735,8 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		w = opts.w and opts.w or 0,
 		h = opts.h and opts.h or 0,
 		mh = opts.mouse_handler,
+		wnd = wnd,
+		key = key,
 		closure = opts.closure
 	};
 
