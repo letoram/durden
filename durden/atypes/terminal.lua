@@ -43,21 +43,19 @@ local res = {
 			wnd:displayhint(status.max_w, status.max_h, wnd.dispmask)
 		end,
 
--- add a sub- protocol for communicating cell dimensions, this is
--- used to cut down on resize calls (as they are ** expensive in
--- terminal land) vs just using shader based cropping.
+-- message is used for notifications or prompt hints (still in flux, idea
+-- was for readline widget to communicate the actual prompt part to integrate
+-- with the HUD style prompt but it might just turn out to be a bad idea).
 		message = function(wnd, source, tbl)
-			local props = string.split(tbl.message, ":");
-			if (#props ~= 4) then
+			if string.sub(tbl.message, 1, 1) == ">" then
 				return;
 			end
-			if (props[1] == "cell_w" and props[3] == "cell_h") then
-				local cw = tonumber(props[2]);
-				local ch = tonumber(props[4]);
-				if (cw and ch and cw > 0 and ch > 0) then
-					wnd.sz_delta = {cw, ch};
-				end
-			end
+			notification_add(
+				wnd:get_name(),
+				nil,
+				#tbl.message < 24 and tbl.message or "terminal notification",
+				tbl.message, 1
+			)
 			return true;
 		end
 	},
