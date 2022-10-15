@@ -228,8 +228,7 @@ local function overlay_detach(ol)
 --	local props = image_storage_properties(ol.vid);
 --	local new = null_surface(props.width, props.height);
 --	image_sharestorage(ol.vid, new);
-	local cw = active_display():add_window(
-		ol.vid, {scalemode = "client", external_prot = true});
+	local cw = active_display():add_window(ol.vid, {external_prot = true});
 	if not cw then
 		delete_image(new);
 		return;
@@ -242,6 +241,10 @@ local function overlay_detach(ol)
 	if (ol.registered) then
 		extevh_default(ol.vid, ol.registered);
 	end
+
+-- but override the scalemode default while afsrv_decode lacks the ability to
+-- hint which scalemode it actually desires
+	cw.scalemode = "client";
 
 	cw:add_handler(
 	"destroy",
