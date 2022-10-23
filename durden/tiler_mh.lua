@@ -8,6 +8,10 @@
 local tiler_logfun = suppl_add_logfn("wm");
 local function tiler_debug(wm, msg)
 	msg = msg and msg or "bad message";
+	if type(msg) == "table" then
+		msg = table.concat(msg, "");
+		return
+	end
 	tiler_logfun(wm.name .. ":" .. msg);
 end
 
@@ -795,7 +799,8 @@ end
 
 local function symaction(wm, sym)
 	local action = gconfig_get(sym);
-	tiler_logfun(string.format("action: %s, fallthrough: %s", action, tostring(fallthrough(wm))));
+	local msg = string.format("action=%s:fallthrough=%s", action, tostring(fallthrough(wm)));
+	tiler_logfun(msg);
 	if not action or #action == 0 or fallthrough(wm) then
 		return;
 	end

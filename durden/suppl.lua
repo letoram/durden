@@ -451,9 +451,10 @@ function suppl_region_shadow(ctx, w, h, opts)
 
 -- assume we can patch ctx and that it has an anchor
 		blend_image(ctx.shadow, 1.0, time);
-		link_image(ctx.shadow, ctx.anchor, ANCHOR_UL, ANCHOR_SCALE_WH);
+		link_image(ctx.shadow, ctx.anchor, ANCHOR_UL);
 		image_inherit_order(ctx.shadow, true);
 		order_image(ctx.shadow, -1);
+		image_mask_set(ctx.shadow, MASK_UNPICKABLE);
 
 -- This is slightly problematic as the uniforms are shared, thus
 -- the option of colour vs texture source etc. will be shared.
@@ -470,7 +471,7 @@ function suppl_region_shadow(ctx, w, h, opts)
 	end
 
 	image_color(ctx.shadow, cr, cg, cb);
-	resize_image(ctx.shadow, l + r, t + d, time, interp);
+	resize_image(ctx.shadow, w + l + r, h + t + d, time, interp);
 	move_image(ctx.shadow, -l, -t);
 end
 
