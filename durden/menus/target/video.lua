@@ -232,6 +232,24 @@ local advanced = {
 	end
 	},
 	{
+		name = "autocrop",
+		label = "Autocrop",
+		kind = "value",
+		description = "Modify texture coordinates to crop rather than scale on size mismatch",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return active_display().selected.autocrop and LBL_YES or LBL_NO;
+		end,
+		handler = function(ctx, val)
+			local wnd = active_display().selected;
+			if (val == LBL_FLIP) then
+				wnd.autocrop = not wnd.autocrop;
+			else
+				wnd.autocrop = val == LBL_YES;
+		end
+		end
+	},
+	{
 	name = "fallback",
 	label = "Fallback",
 	kind = "value",
