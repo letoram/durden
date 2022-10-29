@@ -16,7 +16,20 @@ local function relayout()
 
 	local maxw = ddisplay.width * gconfig_get("overlay_size");
 	local maxh = ddisplay.height * gconfig_get("overlay_size");
+	local sbp = gconfig_get("sbar_position");
 	local cy = 0;
+	local cx = gconfig_get("overlay_corner") == "left" and 0 or ddisplay.width - maxw;
+
+-- make sure we don't occlude the statusbar
+	if sbp == "top" then
+		cy = ddisplay.statusbar.height;
+	elseif sbp == "left" and gconfig_get("overlay_corner") == "left" then
+		cx = ddisplay.statusbar.width;
+	elseif sbp == "right" and gconfig_get("overlay_corner") == "right" then
+		cx = ddisplay.width - ddisplay.statusbar.width - maxw;
+	end
+
+-- the overlays are tied to the overlay anchor, this needs
 	for i=1,#active do
 		local props = image_storage_properties(active[i].vid);
 		link_image(active[i].vid, active_display().order_anchor);
@@ -30,8 +43,7 @@ local function relayout()
 		local outh = hr < wr and maxw / ar or maxh;
 		shader_setup(active[i].vid, "simple", gconfig_get("overlay_shader"));
 		resize_image(active[i].vid, outw, outh);
-		move_image(active[i].vid, gconfig_get("overlay_corner") == "left"
-			and 0 or ddisplay.width - outw, cy);
+		move_image(active[i].vid, cx, cy);
 		cy = cy + outh;
 	end
 end
@@ -103,6 +115,7 @@ gconfig_listen("overlay_opacity", "overlay", relayout);
 gconfig_listen("overlay_corner", "overlay", relayout);
 gconfig_listen("overlay_shader", "overlay", relayout);
 gconfig_listen("overlay_size", "overlay", relayout);
+gconfig_listen("sbar_position", "overlay", relayout);
 
 local overlay_cfg = {
 {
@@ -115,7 +128,8 @@ local overlay_cfg = {
 	end,
 	set = {"Left", "Right"},
 	handler = function(ctx, val)
-		gconfig_set("overlay_corner", val);
+		gconfig_set("overlay_corner", string.lower(val));
+		relayout();
 	end
 },
 {
@@ -160,6 +174,7 @@ local overlay_cfg = {
 	validator = gen_valid_num(0.05, 0.5),
 	handler = function(ctx, val)
 		gconfig_set("overlay_size", tonumber(val));
+		relayout();
 	end
 }
 };
