@@ -1306,6 +1306,7 @@ local function buttonlist_reset(ctx, prefix)
 	ctx.helper = {};
 	ctx.path = {};
 	ctx.meta = {};
+	ctx.popcount = 1;
 	iostatem_restore();
 end
 
