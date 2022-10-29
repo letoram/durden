@@ -42,6 +42,8 @@
 
 minor:
 
+* statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches
+
 * overlay tool updated to respect statusbar size and side orientations
 
 * default HUD sort order split into two, one for browse/ and one for other paths
