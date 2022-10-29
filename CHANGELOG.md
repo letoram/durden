@@ -42,6 +42,8 @@
 
 minor:
 
+* overlay tool updated to respect statusbar size and side orientations
+
 * default HUD sort order split into two, one for browse/ and one for other paths
 
 * dropped 'simple' display mode in favor of the direct scanout control
