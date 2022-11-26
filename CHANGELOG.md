@@ -40,6 +40,8 @@
 
 * new path, global/workspace/import to retrieve a workspace from an inaccessible display
 
+* new path, target/clipoard/autopaste\_on,off: autopaste messages added to the global clipboard
+
 minor:
 
 * statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches

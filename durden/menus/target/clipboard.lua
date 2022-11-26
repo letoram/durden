@@ -171,6 +171,40 @@ return {
 		handler = clipboard_paste
 	},
 	{
+		name = "autopaste_on",
+		label = "Autopaste",
+		kind = "action",
+		description = "paste new global clipboard items into this window",
+		eval = function()
+			local wnd = active_display().selected;
+			return
+				valid_vid(wnd.external, TYPE_FRAMESERVER) and
+				wnd.clipboard_monitor == nil;
+		end,
+		handler = function()
+			local wnd = active_display().selected;
+			wnd.clipboard_monitor =
+			function(msg, src)
+				pastefun(wnd, msg);
+			end
+			CLIPBOARD:add_monitor(wnd.clipboard_monitor);
+		end
+	},
+	{
+		name = "autopaste_off",
+		label = "Disable Autopaste",
+		kind = "action",
+		description = "Disable automatically pasting new global clipboard items",
+		eval = function()
+			return active_display().selected.clipboard_monitor ~= nil;
+		end,
+		handler = function()
+			local wnd = active_display().selected;
+			CLIPBOARD:del_monitor(wnd.clipboard_monitor);
+			wnd.clipboard_monitor = false;
+		end
+	},
+	{
 		name = "lpaste",
 		label = "Paste-Local",
 		kind = "action",
