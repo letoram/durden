@@ -304,7 +304,7 @@ function iostatem_tick()
 		return;
 	end
 
-	if (devstate.iotbl and devstate.period) then
+	if (devstate.iotbl and devstate.period and devstate.period > 0) then
 		devstate.counter = devstate.counter - 1;
 
 -- undocumented quirk, ARKMOD_REPEAT is provided by some platforms but not

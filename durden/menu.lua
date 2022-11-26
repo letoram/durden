@@ -327,7 +327,11 @@ function menu_query_value(ctx, mask, block_back)
 
 -- if a menu path has a special widget trigger for input assistance
 	if (ctx.widget) then
-		suppl_widget_path(res, res.text_anchor, ctx.widget);
+		durden_clock_block(
+			function()
+				suppl_widget_path(res, res.text_anchor, ctx.widget);
+			end
+		);
 	end
 
 -- add Commit/Commit-Back
@@ -1055,10 +1059,14 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 		return;
 	end
 
--- activate any path triggered widget and synch helper buttons
+-- activate any path triggered widget and synch helper buttons, run these
+-- as a critical section as they can be prone to stalling causing compound
+-- actions (keyrepeat, ...)
 	if (path) then
 		cpath:set_path(path, path_lookup);
-		suppl_widget_path(bar, bar.text_anchor, path);
+		durden_clock_block(function()
+			suppl_widget_path(bar, bar.text_anchor, path)
+		end);
 		cpath.on_cancel = function()
 			bar:destroy(true);
 			menu_cancel(active_display(), true, false);

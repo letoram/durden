@@ -823,6 +823,21 @@ local function flush_pending()
 	end
 end
 
+-- some code need to be run in contexts where timer based processing won't
+-- accidentally trigger another path, allow the clock-pulse to be masked out
+local clock_blocked;
+function durden_clock_block(cb)
+	if clock_blocked then
+		cb();
+		return;
+	end
+	clock_blocked = durden_clock_pulse;
+	durden_clock_pulse = function() end;
+	cb();
+	durden_clock_pulse = clock_blocked;
+	clock_blocked = nil;
+end
+
 function durden_clock_pulse(n, nt)
 -- if we experience stalls that give us multiple batched ticks
 -- we don't want to forward this to the iostatem_ as that can
