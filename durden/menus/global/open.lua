@@ -127,7 +127,7 @@ function spawn_terminal(cmd, group)
 end
 
 local function run_uri(val, feedmode)
-	local vid = launch_avfeed(val, feedmode);
+	local vid = launch_decode("stream=" .. string.gsub(val, ":", "\t"), feedmode);
 	if (valid_vid(vid)) then
 		durden_launch(vid, "", feedmode);
 		durden_devicehint(vid);
