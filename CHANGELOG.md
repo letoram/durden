@@ -42,6 +42,8 @@
 
 * new path, target/clipoard/autopaste\_on,off: autopaste messages added to the global clipboard
 
+* added option to pick terminal state machine priority
+
 minor:
 
 * statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches

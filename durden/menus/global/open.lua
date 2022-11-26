@@ -5,11 +5,12 @@ function terminal_build_argenv(group)
 	local palette = gconfig_get("term_palette");
 	local cursor = gconfig_get("term_cursor");
 	local blink = gconfig_get("term_blink");
+	local interp = gconfig_get("term_interp");
 
 	local lstr = string.format(
-		"%scursor=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		"%scursor=%s:interp=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
 		gconfig_get("term_tpack") and "tpack:" or "",
-		cursor, blink,
+		cursor, interp, blink,
 		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
 		fc[1], fc[2], fc[3],
 			(cp and string.len(cp) > 0) and ("env=ARCAN_CONNPATH="..cp) or "",
@@ -76,9 +77,15 @@ local function setup_group_cp(pwnd, group, limit)
 end
 
 function spawn_terminal(cmd, group)
-	local lstr = terminal_build_argenv(group);
-	if (cmd) then
-		lstr = lstr .. ":" .. cmd;
+	local lstr = ""
+
+	if cmd ~= "cli=lua" then
+		lstr = terminal_build_argenv(group);
+		if (cmd) then
+			lstr = lstr .. ":" .. cmd;
+		end
+	else
+		lstr = "cli=lua";
 	end
 
 	local guid;

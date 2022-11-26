@@ -243,12 +243,12 @@ return {
 	term_font_sz = 12,
 	term_font_hint = 2,
 	term_blink = 0,
-	term_tpack = true,
 	term_cursor = "block",
 	term_font = "hack.ttf",
 	term_bgcol = {0x00, 0x00, 0x00},
 	term_fgcol = {0xff, 0xff, 0xff},
 	term_opa = 1.0,
+	term_interp = "tsm",
 	term_bitmap = false,
 	term_palette = "", -- deprecated
 	term_append_arg = "", -- ci=ind,r,g,b to override individual colors
