@@ -6,7 +6,7 @@
 local log, fmt = suppl_add_logfn("clipboard");
 local cm = nil;
 
-local function clipboard_event(ctx, msg, source)
+local function clipboard_event(msg, source)
 	if (not cm or source == cm) then
 		return;
 	end
@@ -19,7 +19,7 @@ local function clipboard_event(ctx, msg, source)
 	end
 end
 
-CLIPBOARD:set_monitor(clipboard_event);
+CLIPBOARD:add_monitor(clipboard_event);
 
 local clipboard_dispatch =
 {

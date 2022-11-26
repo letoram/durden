@@ -75,8 +75,9 @@ local function clipboard_setglobal(ctx, msg, src)
 		table.remove(ctx.globals, #ctx.globals);
 	end
 
-	if (ctx.monitor and type(ctx.monitor) == "function") then
-		ctx:monitor(msg, true, src);
+-- notify in reverse order to handle _del calls as a reaction to the event
+	for i=#ctx.monitors,1,-1 do
+		ctx.monitors[i](msg, src);
 	end
 end
 
@@ -109,12 +110,17 @@ local function clipboard_save(ctx, fn)
 	return true;
 end
 
-local function clipboard_monitor(ctx, fctx)
--- set or drop?
-	if (ctx.monitor) then
-		ctx.monitor();
+local function clipboard_del_monitor(ctx, fctx)
+	table.remove_match(ctx.monitors, fctx);
+end
+
+local function clipboard_add_monitor(ctx, fctx)
+	if type(fctx) == "function" then
+		table.remove_match(ctx.monitors, fctx);
+		table.insert(ctx.monitors, fctx);
+	else
+		log(fmt("add:kind=error:source=add_monitor:message=bad argument"));
 	end
-	ctx.monitor = fctx;
 end
 
 local function clipboard_load(ctx, fn)
@@ -255,6 +261,7 @@ return {
 	globals = {},
 	urls = {},
 	providers = {},
+	monitors = {},
 	modes = pastemodes,
 	history_size = 10,
 	mpt_cutoff = 10,
@@ -263,7 +270,8 @@ return {
 	lost = clipboard_lost,
 	save = clipboard_save,
 	load = clipboard_load,
-	set_monitor = clipboard_monitor,
+	add_monitor = clipboard_add_monitor,
+	del_monitor = clipboard_del_monitor,
 	pastemodes = clipboard_pastemodes,
 	set_global = clipboard_setglobal,
 	list_local = clipboard_locals,
