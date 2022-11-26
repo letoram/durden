@@ -35,18 +35,6 @@ local config_terminal_font = {
 		end
 	},
 	{
-		name = "tpack",
-		label = "Server Side Text",
-		kind = "value",
-		description = "Enable the use of server-side text rendering",
-		hint = "(new terminals only, temporary)",
-		initial = function()
-			return gconfig_get("term_tpack") and LBL_YES or LBL_NO;
-		end,
-		set = {LBL_YES, LBL_NO, LBL_FLIP},
-		handler = suppl_flip_handler("term_tpack")
-	},
-	{
 		name = "force_bitmap",
 		label = "Force Bitmap",
 		kind = "value",
@@ -143,6 +131,21 @@ return {
 			for wnd in all_windows("terminal", true) do
 				suppl_tgt_color(wnd.external, val)
 			end
+		end
+	},
+	{
+		name = "engine",
+		label = "Engine",
+		kind = "value",
+		set = {"st", "tsm"},
+		description = "Set the default state machine for terminal emulation",
+		initial =
+		function()
+			return gconfig_get("term_interp");
+		end,
+		handler =
+		function(ctx, val)
+			gconfig_set("term_interp", val);
 		end
 	},
 	{
