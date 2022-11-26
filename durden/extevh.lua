@@ -347,12 +347,15 @@ local function apply_split_position(wnd, vid, cookie, split, position)
 			embed_surface(wnd, vid, cookie)
 			res.block = true
 
+		elseif position == "swallow" then
+			res.swallow_window = wnd
+
 -- This is currently resolved at request time, and might not be synchronised to
 -- resizes or changes to the parent, similarly overflow / size hint aren't yet
 -- influenced - just placeholder
 		elseif ws.mode == "float" then
-				res.defer_x = wnd.x + wnd.width
-				res.defer_y = wnd.y
+			res.defer_x = wnd.x + wnd.width
+			res.defer_y = wnd.y
 		end
 
 		return res
