@@ -6,7 +6,7 @@ return {
  {0xa8, 0x99, 0x84}, -- primary (base color/foreground)
  {}, -- secondary (alternate base color)
  {0x28, 0x28, 0x28}, -- background
- {}, -- text (foreground+background)
+ {0xa8, 0x99, 0x84, 0x28, 0x28, 0x28}, -- text (foreground+background)
  {}, -- cursor (normal state)
  {}, -- alt-cursor (scrollback/special state)
  {}, -- highlight selection, active-word (foreground+background)
