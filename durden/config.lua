@@ -100,6 +100,13 @@ return {
 	gamma_access = "none",
 	clipboard_access = "none",
 
+-- SECURITY:
+-- Set to true to mark any Xarcan instance as valid for clipboard synching. This
+-- means that any item added to the global clipboard will be sent to the Xarcan
+-- instance as well. This can also be triggered per instance dynamically through
+-- (same path) /target/clipboard/autopaste.
+	xarcan_clipboard_autopaste = false,
+
 -- if > 0, wait n ticks before re-activating external connection path
 -- (default clock, ~25 == 1s.)
 	extcon_rlimit = 25,
@@ -324,6 +331,12 @@ return {
 	tbar_position = "top",
 	tbar_compact = false, -- shrink titlebar to fit contents
 	tbar_sidepad = 0,
+
+-- for an Xarcan bridge, autocreate a new workspace for it, set it in
+-- float mode and fit to screen
+	xarcan_autows = "float",
+	xarcan_autows_nodecor = true,
+	xarcan_autows_tagname = true,
 
 -- icons
 	icon_set = "default",

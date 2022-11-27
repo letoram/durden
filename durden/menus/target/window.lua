@@ -738,7 +738,7 @@ local titlebar_table = {
 		description = "Toggle the server-side decorated titlebar on/off",
 		handler = function()
 			local wnd = active_display().selected;
-			wnd:set_titlebar(not wnd.show_titlebar, true);
+			wnd:set_titlebar(not wnd.show_titlebar);
 		end
 	},
 	{
