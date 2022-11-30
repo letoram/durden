@@ -369,8 +369,39 @@ local function apply_split_position(wnd, vid, cookie, split, position)
 end
 
 local function cursor_handler(wnd, source, status)
--- for cursor layer, we reuse some events to indicate hotspot
--- and implement local warping..
+	if status.kind == "resized" then
+		resize_image(source, status.width, status.height);
+
+		if wnd.custom_cursor then
+			wnd.custom_cursor.width = status.width;
+			wnd.custom_cursor.height = status.height;
+		end
+
+-- apply it immediately if cursor is actually on the window
+		if wnd.space.selected == wnd then
+			local x, y = mouse_xy();
+			if image_hit(wnd.canvas, x, y) then
+				wnd:mouseactivate();
+			end
+		end
+
+-- warp (x, y) if wnd is in control of that (or remember last mouse)
+-- and use anchor_x,y to change the hotspot
+	elseif status.kind == "viewport" then
+		if wnd.space.selected == wnd then
+				local x, y = mouse_xy();
+				local props = image_surface_resolve(wnd.canvas);
+
+				if image_hit(wnd.canvas, x, y) then
+					wnd:mouseactivate();
+				end
+--				mouse_absinput_masked(props.x + status.rel_x, props.y + status.rel_y, true);
+				if wnd.last_ms then
+					wnd.last_ms[1] = status.rel_x + props.x;
+					wnd.last_ms[2] = status.rel_y + props.y;
+			end
+		end
+	end
 end
 
 local function default_reqh(wnd, source, ev)

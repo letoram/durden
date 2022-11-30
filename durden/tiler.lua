@@ -1907,13 +1907,6 @@ local function workspace_resize(space, external)
 end
 
 local function workspace_label(space, lbl)
-	local ind = 1;
-	repeat
-		if (space.wm.spaces[ind] == space) then
-			break;
-		end
-		ind = ind + 1;
-	until (ind > 10);
 	space.label = lbl;
 
 -- update identifiers
@@ -3598,65 +3591,39 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 		return;
 	end
 
--- with mouse grab @ center only send the relative samples
--- and only if they have changed
+-- for center-lock we do the warping that some clients would otherwise do
 	if (wnd.mouse_lock_center) then
 		local rt = {
 			kind = "analog",
 			mouse = true,
 			relative = true,
 			devid = 0,
-			subid = 0;
-			samples = {rx}
+			subid = 2;
+			samples = {rx, 0, ry, 0};
 		};
-		if rx ~= 0 then
-			target_input(wnd.external, rt);
-		end
-
-		rt.subid = 1;
-		rt.samples = {ry};
-		if ry ~= 0 then
-			target_input(wnd.external, rt);
-		end
+		target_input(wnd.external, rt);
 		return;
 	end
 
 -- apply coordinate transforms to reach surface-local coordinates
-	local mv = wnd.wm.convert_mouse_xy(wnd, x, y, rx, ry);
 	local iotbl = {
 		kind = "analog",
 		mouse = true,
 		devid = 0,
-		subid = 0,
-		samples = {mv[1], mv[2]}
-	};
-	local iotbl2 = {
-		kind = "analog",
-		mouse = true,
-		devid = 0,
-		subid = 1,
-		samples = {mv[3], mv[4]}
+		subid = 2,
+		samples = wnd.wm.convert_mouse_xy(wnd, x, y, rx, ry)
 	};
 
 -- with rate limited mouse events (those 2khz gaming mice that likes to saturate
 -- things even when not needed), we accumulate relative samples and flush on timer
 	if (not wnd.rate_unlimited) then
-		local ep = EVENT_SYNCH[wnd.external] and EVENT_SYNCH[wnd.external].pending;
-		if (ep) then
-			ep[1].samples[1] = mv[1];
-			ep[1].samples[2] = ep[1].samples[2] + mv[2];
-			ep[2].samples[1] = mv[3];
-			ep[2].samples[2] = ep[2].samples[2] + mv[4];
-		elseif EVENT_SYNCH[wnd.external] then
-			EVENT_SYNCH[wnd.external].pending = {iotbl, iotbl2};
+		if EVENT_SYNCH[wnd.external] then
+			EVENT_SYNCH[wnd.external].pending = {iotbl};
 		end
 		return;
 	end
 
--- finally send samples for axis, there are some legacy details to verify first,
--- but this should really come in the 4/samples per packet format instead of two
 	target_input(wnd.external, iotbl);
-	target_input(wnd.external, iotbl2);
 end
 
 local function wnd_mousehover(wnd)
@@ -5229,6 +5196,8 @@ local function tiler_switchws(wm, ind)
 		(cursp.label == nil or string.len(cursp.label) == 0 ) and
 		(cursp.background_name == nil or cursp.background_name == wm.background_name)) then
 		cursp:destroy();
+
+		wm.sbar_ws[wm.space_ind].last_lbl = nil;
 		wm.spaces[wm.space_ind] = nil;
 		wm.sbar_ws[wm.space_ind]:hide();
 	else
