@@ -31,6 +31,8 @@ function durden(argv)
 	rendertarget_reconfigure(WORLDID, 38.4, 38.4);
 
 	system_load("builtin/mouse.lua")(); -- mouse gestures (in distribution)
+	system_load("builtin/string.lua")();
+	system_load("builtin/table.lua")();
 	system_load("suppl.lua")(); -- convenience functions
 	system_load("gconf.lua")(); -- configuration management
 	system_load("listen.lua")(); -- rate-limiting for external connection points
