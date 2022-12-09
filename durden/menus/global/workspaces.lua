@@ -128,7 +128,7 @@ return {
 		name = "defmode",
 		label = "Default Mode",
 		kind = "value",
-		set = {"tile", "tab", "vtab", "float"},
+		set = {"tile", "tab", "vtab", "float", "tile_bsp"},
 		initial = function() return tostring(gconfig_get("ws_default")); end,
 		handler = function(ctx, val)
 			gconfig_set("ws_default", val);
