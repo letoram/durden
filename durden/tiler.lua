@@ -8,7 +8,7 @@
 -- of functions and members in pseudo-OO style.
 
 -- number of Z values reserved for each window
-local WND_RESERVED = 10;
+local WND_RESERVED = 100;
 
 local ent_count = 1;
 
@@ -379,8 +379,10 @@ local function wnd_destroy(wnd, message)
 	tb:destroy();
 
 -- external references are tracked separate from the canvas
-	if (valid_vid(wnd.external) and not wnd.external_prot) then
-		delete_image(wnd.external);
+	if valid_vid(wnd.external) then
+		if not wnd.external_prot then
+			delete_image(wnd.external);
+		end
 		EVENT_SYNCH[wnd.external] = nil;
 	end
 
@@ -1433,7 +1435,7 @@ local function drop_fullscreen(space)
 	end
 
 -- restore 'full-screen only' properties
-	space.hook_block = true;
+	space.hook_block = "drop_fullscreen";
 	local dw = space.selected;
 	blend_image(dw.titlebar.anchor, dw.fs_copy.tbar);
 
@@ -1457,7 +1459,7 @@ local function drop_fullscreen(space)
 	dw.fs_copy = nil;
 	dw.fullscreen = nil;
 	space.switch_hook = nil;
-	space.hook_block = false;
+	space.hook_block = nil;
 
 	sbar_show(space.wm);
 	workspace_activate(space, true);
@@ -1665,10 +1667,20 @@ local function set_vtab(space, repos)
 end
 
 local function set_fullscreen(space)
-	if (not space.selected or space.hook_block) then
+	local dw = space.selected;
+
+	if not dw then
 		return;
 	end
-	local dw = space.selected;
+
+	local in_space = dw.wm:active_space() == space;
+
+	if space.hook_block then
+		if in_space then
+			show_image(dw.anchor);
+		end
+		return;
+	end
 
 -- keep a copy of properties we may want to change during fullscreen
 	if (not dw.fs_copy) then
@@ -1691,10 +1703,17 @@ local function set_fullscreen(space)
 -- not all clients provide a canvas surface that match
 	dw.centered = true;
 	dw.fullscreen = space.last_mode;
-	space.hook_block = true;
 
--- hide all images + statusbar
-	sbar_hide(dw.wm);
+-- prevent any hooks on wnd_resize that might also trigger space actions
+	space.hook_block = "set_fullscreen";
+
+-- hide all images + statusbar > if we are active <, someone could force
+-- the fullscreen setting on a space in the background
+	if in_space then
+		sbar_hide(dw.wm);
+		show_image(dw.anchor);
+	end
+
 	if valid_vid(dw.shadow) then
 		hide_image(dw.shadow);
 		delete_image(dw.shadow);
@@ -1706,7 +1725,6 @@ local function set_fullscreen(space)
 		hide_image(v.anchor);
 	end
 
-	show_image(dw.anchor);
 	dw:set_border(false);
 	dw:set_titlebar(false);
 	dw:set_dispmask(TD_HINT_FULLSCREEN);
@@ -1725,7 +1743,7 @@ local function set_fullscreen(space)
 
 -- and send relayout / fullscreen hints that match the size of the WM
 	dw:resize(dw.wm.width, dw.wm.height);
-	space.hook_block = false;
+	space.hook_block = nil;
 end
 
 -- floating mode has different rulesets for spawning, sizing and all windows
@@ -2175,7 +2193,15 @@ create_workspace = function(wm, anim)
 	show_image(res.anchor);
 	link_image(res.anchor, wm.anchor);
 	ent_count = ent_count + 1;
-	workspace_set(res, gconfig_get("ws_default"));
+
+-- special treat 'bsp' as it is treated as an insertion mode on tile
+	local mode = gconfig_get("ws_default");
+	if mode == "tile_bsp" then
+		mode = "tile";
+		res.insert = "bsp";
+	end
+	workspace_set(res, mode);
+
 	if (wm.background_name) then
 		res:set_background(wm.background_name);
 	end
@@ -2931,8 +2957,11 @@ local function wnd_reassign(wnd, ind, ninv)
 		wnd:deselect();
 	end
 
+-- the hook might consume the window, and then we can do nothing more
 	if (oldspace.reassign_hook and newspace.mode ~= oldspace.mode) then
-		oldspace:reassign_hook(wnd);
+		if oldspace:reassign_hook(wnd) then
+			return
+		end;
 	end
 
 -- subtle resize in order to propagate resize events while still hidden
@@ -4643,7 +4672,6 @@ local function wnd_synch_overlays(wnd)
 
 		if (v.stretch) then
 			resize_image(v.vid, v.w, v.h);
-		elseif (v.force) then
 		end
 	end
 end
@@ -4696,7 +4724,6 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 	local overent = {
 		vid = vid,
 		stretch = opts.stretch,
-		constrain = opts.constrain,
 		xofs = opts.xofs and opts.xofs or 0,
 		yofs = opts.yofs and opts.yofs or 0,
 		w = opts.w and opts.w or 0,
