@@ -258,6 +258,7 @@ return {
 	term_interp = "tsm",
 	term_bitmap = false,
 	term_palette = "", -- deprecated
+	term_popup_height = 0.3,
 	term_append_arg = "", -- ci=ind,r,g,b to override individual colors
 	tui_colorscheme = "dracula", -- takes precedence over terminal palette
 
@@ -332,11 +333,21 @@ return {
 	tbar_compact = false, -- shrink titlebar to fit contents
 	tbar_sidepad = 0,
 
--- for an Xarcan bridge, autocreate a new workspace for it, set it in
--- float mode and fit to screen
+-- for an Xarcan bridge, autocreate a new workspace for it,
+-- set it in float mode and fit to screen
 	xarcan_autows = "float",
+
+-- drop titlebar / border
 	xarcan_autows_nodecor = true,
 	xarcan_autows_tagname = true,
+
+-- let the Xarcan bridge synch wm state back and forth, letting the Xorg
+-- window manager partially control how windows behave on the assigned
+-- workspace
+	xarcan_metawm = false,
+
+-- hide Xarcan bridges and treat clients as regular arcan windows
+	xarcan_seamless = false,
 
 -- icons
 	icon_set = "default",

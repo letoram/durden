@@ -454,6 +454,14 @@ return {
 		handler = system_load("menus/global/hud.lua")(),
 	},
 	{
+		name = "x11",
+		label = "X11",
+		kind = "action",
+		submenu = true,
+		description = "Change how X11 clients over Xarcan behaves",
+		handler = system_load("menus/global/x11.lua")()
+	},
+	{
 		name = "commit",
 		label = "Commit",
 		kind = "action",

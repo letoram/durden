@@ -1,28 +1,68 @@
---
--- Terminal archetype, settings and menus specific for terminal-
--- frameserver session (e.g. keymapping, state control)
---
-local action_menu = {
-	{
-		name = "hide_reveal",
-		kind = "value",
-		description = "Hide parent and swap in child on new connection",
-		label = "Hide/Reveal",
-		set = {LBL_YES, LBL_NO},
-		initial = function()
-		end,
-		handler = function()
-		end,
-	},
-	{
-		name = "swap_active",
-		kind = "action",
-		description = "Toggle between parent and child",
-		label = "Swap",
-		handler = function()
-		end,
-	},
-}
+local function segreq(wnd, source, status)
+	if status.segkind ~= "popup" then
+-- chain-call to the default handler, we just want to cha
+		local tmp = wnd.dispatch;
+		wnd.dispatch = {};
+		local rv = extevh_default(source, status);
+		wnd.dispatch = tmp;
+		return rv;
+	end
+
+-- for popup, track one in a dedicated slot and a new request kills the previous
+	if wnd.popup_handler then
+		wnd.popup_handler:destroy();
+		wnd.popup_handler = nil;
+	end
+
+	local vid = accept_target();
+	if not valid_vid(vid) then
+		return;
+	end
+
+-- immediately preroll the parent font property as well as the desired colour
+-- scheme with the option of actually having a default alpha in order for some
+-- cutesy popup with blur, dropshadow and rounded border to dazzle and amaze.
+	if gconfig_get("tui_colorscheme") then
+		suppl_tgt_color(source, gconfig_get("tui_colorscheme"))
+	end
+
+	if wnd.last_font then
+		for i=1,#wnd.last_font[3] do
+			target_fonthint(vid,
+				wnd.last_font[3][i],
+				wnd.last_font[1] * FONT_PT_SZ,
+				wnd.last_font[2], i ~= 1
+			);
+		end
+	end
+
+	wnd.popup_handler = wnd:add_popup(vid, false, function() wnd.popup_handler = nil; end)
+	target_updatehandler(vid,
+		function(source, status)
+			if status.kind == "terminated" then
+				if wnd.popup_handler then
+					wnd.popup_handler:destroy();
+				else
+					delete_image(source);
+				end
+			elseif status.kind == "resized" then
+				resize_image(source, status.width, status.height);
+			elseif status.kind == "viewport" then
+				if status.invisible then
+					wnd.popup_handler:hide();
+				else
+					wnd.popup_handler:show();
+				end
+				wnd.popup_handler:reposition(
+					status.rel_x, status.rel_y,
+					status.rel_x + status.anchor_w,
+					status.rel_y + status.anchor_h,
+					status.edge
+				);
+			end
+		end
+	)
+end
 
 local res = {
 	dispatch = {
@@ -30,25 +70,28 @@ local res = {
 			if gconfig_get("tui_colorscheme") then
 				suppl_tgt_color(source, gconfig_get("tui_colorscheme"))
 			end
+			return true;
 		end,
 		content_state = function(wnd, source, status)
 			if status.max_w <= 0 or status.max_h <= 0 or
 				not wnd.space or not wnd.space.in_float then
-				return
+				return true;
 			end
 
 -- could have other strategies here for tiled at least where any children or
 -- siblings get more space allocated to them, but would take some refactoring
 -- of the layout code
-			wnd:displayhint(status.max_w, status.max_h, wnd.dispmask)
+			wnd:displayhint(status.max_w, status.max_h, wnd.dispmask);
+			return true;
 		end,
+		segment_request = segreq,
 
 -- message is used for notifications or prompt hints (still in flux, idea
 -- was for readline widget to communicate the actual prompt part to integrate
 -- with the HUD style prompt but it might just turn out to be a bad idea).
 		message = function(wnd, source, tbl)
 			if string.sub(tbl.message, 1, 1) == ">" then
-				return;
+				return true;
 			end
 			notification_add(
 				wnd:get_name(),
@@ -61,16 +104,6 @@ local res = {
 	},
 -- actions are exposed as target- menu
 	actions = {
-		{
-			name = "group_action",
-			label = "Group Action",
-			kind = "action",
-			handler = action_menu,
-			submenu = true,
-			eval = function()
-				return active_display().selected.terminal_group
-			end,
-		}
 	},
 -- labels is mapping between known symbol and string to forward
 	labels = {},
@@ -84,7 +117,7 @@ local res = {
 		centered = false,
 		font_block = true,
 		filtermode = FILTER_NONE,
-		allowed_segments = {"tui", "handover"}
+		allowed_segments = {"tui", "handover", "popup", "dock"}
 	},
 };
 

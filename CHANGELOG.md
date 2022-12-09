@@ -40,9 +40,12 @@
 
 * new path, global/workspace/import to retrieve a workspace from an inaccessible display
 
-* new path, target/clipoard/autopaste\_on,off: autopaste messages added to the global clipboard
+* new path, target/clipboard/autopaste\_on,off: autopaste messages added to the global clipboard
 
 * added option to pick terminal state machine priority
+
+* atypes/x11 - multiple choices for x11 client integration: sepaate 'wm as
+	exclusive workspace', dynamic single client, extract specific toplevels
 
 minor:
 

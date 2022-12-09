@@ -31,6 +31,11 @@ end
 local function wnd_attach(wm, wnd)
 	local res = wnd:ws_attach(true);
 
+-- died during attach
+	if not wnd.wm then
+		return;
+	end
+
 	if (wnd.wm:active_space().mode ~= "float") then
 		return res;
 	end
