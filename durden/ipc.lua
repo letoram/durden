@@ -18,6 +18,9 @@ local control_socket;
 -- TIMERS: [timers] - when fired
 -- CLIENTS: [clients] - events related
 -- TOOLS: [tools] - domain used for toolscripts, prefix with name=xxx:"
+-- X11: [atyles/x11] - Xarcan bridging
+-- CONFIG: gconfig settings changes
+-- STDOUT: wraps print calls
 --
 local debug_count = 0;
 local all_categories = {
@@ -35,6 +38,7 @@ local all_categories = {
 	"TOOLS",
 	"WARNING",
 	"CONFIG",
+	"X11",
 	"STDOUT"
 };
 
@@ -75,7 +79,8 @@ local function toggle_monitoring(on)
 		tools = "TOOLS:",
 		warning = "WARNING:",
 		config = "CONFIG:",
-		stdout = "STDOUT:"
+		stdout = "STDOUT:",
+		x11 = "X11:"
 	};
 
 -- see suppl_add_logfn for the function that constructs the logger,

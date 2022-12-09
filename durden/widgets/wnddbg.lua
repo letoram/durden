@@ -112,7 +112,11 @@ local function probe(ctx, yh)
 		table.insert(lst, k);
 	end
 	if (#lst > 0) then
-		table.insert(lines, string.format("overlays: %s", table.concat(lst, ", ")));
+		if (#lst > 4) then
+			table.insert(lines, string.format("overs: [%d]", #lst));
+		else
+			table.insert(lines, string.format("overlays: %s", table.concat(lst, ", ")));
+		end
 	end
 
 	if (#wnd.popups > 0) then

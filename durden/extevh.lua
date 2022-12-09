@@ -1053,7 +1053,7 @@ function extevh_default(source, stat)
 			end
 		end
 
-		if (res) then
+		if (res == nil) then
 			return;
 		end
 	end
