@@ -541,16 +541,16 @@ function(wnd, source, tbl)
 
 	local ent = {
 		label = tbl.labelhint,
-		datatype = tbl.idatatype,
+		datatype = tbl.datatype,
 		description = tbl.description,
 		symbol = tbl.vsym and tbl.vsym or "",
 		input = ""
 	};
 
 -- add the default as binding unless there's a collision
-	if (tbl.initial > 0 and type(SYMTABLE[tbl.initial]) == "string" and
-		(tbl.idatatype == "translated" or tbl.idatatype == "digital")) then
-		local sym = SYMTABLE[tbl.initial];
+	if (tbl.initial > 0 and type(SYMTABLE.tochar(tbl.initial)) == "string" and
+		(tbl.datatype == "translated" or tbl.datatype == "digital")) then
+		local sym = SYMTABLE.tochar(tbl.initial);
 		if (tbl.modifiers > 0) then
 			sym = table.concat(decode_modifiers(tbl.modifiers), "_") .. "_" .. sym;
 		end
