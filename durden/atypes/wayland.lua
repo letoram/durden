@@ -95,7 +95,7 @@ local function period(wnd, source)
 		return
 	end
 
-	if #inbuf > 0 then
+	if inbuf and #inbuf > 0 then
 		wnd.buffer_sz = wnd.buffer_sz + #inbuf;
 		log("clipboard:count=" .. tostring(wnd.buffer_sz))
 		table.insert(wnd.clip_buffer, inbuf);
