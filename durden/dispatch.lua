@@ -110,6 +110,8 @@ function dispatch_binding_table(newtbl)
 	load_keys();
 end
 
+-- locktog is a system hook for whenever the dispatch is interactively
+-- locked, like the double-tap to toggle gesture.
 function dispatch_load(locktog)
 	dispatch_binding_table()
 
@@ -209,6 +211,8 @@ local function track_label(iotbl, keysym, hook_handler)
 		return rv1, rv2;
 	end
 
+-- cover meta gesture transitions, stick meta, double-tap to trigger
+-- lock to window, ...
 	if (keysym == SYSTEM_KEYS["meta_1"]) then
 		local m1, m1d = metatrack(mtrack.m1, mtrack.last_m1);
 		update_meta(m1, mtrack.m2);
@@ -238,6 +242,22 @@ local function track_label(iotbl, keysym, hook_handler)
 		return true, lutsym;
 	end
 
+--
+-- check that the meta key is 'working', i.e. have been used in the first n presses
+-- after a state transition that affects it - like rebinding, resetting and so on.
+--
+-- if triggered, this would cause the rebinding menu to re-appear allowing recovery
+-- where otherwise keyboard input might be lost or only partially work.
+--
+-- there are some annoyances with this, as going in-out of power save etc. also
+-- cause the mass plug/unplug event storm even though everything else is fine. A
+-- compromise (other than disabling entirely) might be to ignore it if mouse + go
+-- button is present or detect on the 'angry user frantically hitting keyboard or
+-- repeating the same press many times (though that also is viable for games ...)
+--
+-- statusbar could be used to convey what is about to happen (did in the past) but
+-- that one might also not be visible, ...
+--
 	if (metam or not meta_guard(mtrack.m1 ~= nil, mtrack.m2 ~= nil)) then
 		return true, lutsym;
 	end
@@ -434,9 +454,8 @@ function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
 
--- apply keymap (or possibly local keymap), note that at this stage,
--- iostatem_ has converted any digital inputs that are active to act
--- like translated
+-- apply keymap (or possibly local keymap), note that at this stage, iostatem_
+-- has converted any digital inputs that are active to act like translated
 	if (iotbl.translated or iotbl.dsym) then
 		if (iotbl.dsym) then
 			sym = iotbl.dsym;
@@ -450,6 +469,7 @@ function dispatch_translate(iotbl, nodispatch)
 		ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
 	end
 
+-- system keybindings are temporarily blocked and forwarded to a hook
 	if (not lutsym or mtrack.ignore) then
 		if (type(mtrack.ignore) == "function") then
 			return mtrack.ignore(lutsym, iotbl, tbl[lutsym]);

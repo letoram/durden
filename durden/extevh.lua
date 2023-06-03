@@ -378,7 +378,7 @@ local function cursor_handler(wnd, source, status)
 		end
 
 -- apply it immediately if cursor is actually on the window
-		if wnd.space.selected == wnd then
+		if wnd.space and wnd.space.selected == wnd then
 			local x, y = mouse_xy();
 			if image_hit(wnd.canvas, x, y) then
 				wnd:mouseactivate();
@@ -388,7 +388,7 @@ local function cursor_handler(wnd, source, status)
 -- warp (x, y) if wnd is in control of that (or remember last mouse)
 -- and use anchor_x,y to change the hotspot
 	elseif status.kind == "viewport" then
-		if wnd.space.selected == wnd then
+		if wnd.space and wnd.space.selected == wnd then
 				local x, y = mouse_xy();
 				local props = image_surface_resolve(wnd.canvas);
 

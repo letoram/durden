@@ -1,64 +1,37 @@
 --
 -- X11- bridge, for use with Xarcan.
 --
+-- This one is big as it supports quite a few ways of integrating.
+--
+-- One is the rootfull 'as a VM' where we either treat it as a normal window OR
+-- give it a workspace to control. In the later case it is then also allowed to
+-- adopt any window that migrates or is created in its workspace (referred to
+-- as proxies). Xorg will then annotate with viewport events where the regions
+-- for logical windows are and they are treated / created as window overlays.
+--
+-- Then it can be hybrid, where chosen windows are 'pulled out' into a logical
+-- arcan one and redirected away from the Xorg side.
+--
+-- Both of these modes allows X11 to manage its own windows.
+--
+-- Lastly it can be rootless, where the main x11 window isn't visible at all,
+-- and only acts as a mediator for its subwindows. Here we need to integrate
+-- with Durden's own workspace modes and decorations with two complications:
+--
+--  1. Multiple segments can refer to the same logical window, though only
+--     one is visible at any one time. Frame delivery events are used to
+--     indicate when we swap.
+--
+--  2. Segments are re-used (orphaned) when viewported to invisible. This
+--     cuts down on the noisy allocation bursts and stalls from resizing.
+--
+-- Then we need to integrate other features, clipboard is fairly easy as it
+-- behaves as expected. Colour management is an opt-in where we allow the main
+-- x11 connection to control the display it is on. This is the SUBPROTO_CM.
+--
 local log, fmt = suppl_add_logfn("x11");
 local metawm = {};
-
---
--- walk the tree in reverse order, reset z- value when unobscured toplevel
---
-local
-function walk_tree(wnd, node, order, top)
-	if node.order == 0 and top then
-		order = 1
-	end
-
-	if node.overlay then
-		order_image(node.overlay.vid, order);
-	end
-
-	for i=#node.children,1 do
-		order = order + 1;
-		local xid = node.children[i];
-		local child = wnd.xmeta.nodes[xid];
-
-		if not child then
-			log("kind=error:source=reorder:message=inconsistent:id=" .. tostring(xid));
-		else
-			if node.overlay then
-				log(fmt("kind=order:xid=%d:order=%d", xid, order));
-				order_image(node.overlay.vid, order);
-			end
-			order = walk_tree(wnd, child, order, false);
-		end
-	end
-
-	return order;
-end
-
-local counter = 0;
-local function dump(wnd, name)
-	zap_resource(name);
-	local io = open_nonblock(name, true);
-	io:write("digraph g {")
-	for k,v in pairs(wnd.xmeta.nodes) do
-			io:write(string.format(
-				"%.0f[label=\"%.0f\" shape=\"%s\"];\n",
-				k, k, v.overlay and (v.proxy and "triangle" or "square") or "circle"
-			));
-	end
-
-	for k,v in pairs(wnd.xmeta.nodes) do
-		for i,v in ipairs(v.children) do
-			io:write(string.format("%.0f->%.0f;\n", k, v));
-			if wnd.xmeta.nodes[v].next then
-				io:write(string.format("%.0f->%.0f;\n", v, wnd.xmeta.nodes[v].next));
-			end
-		end
-	end
-	io:write("}");
-	io:close();
-end
+local enable_xmeta;
 
 local function resize_proxy(tbl)
 	if not tbl.paired then
@@ -82,7 +55,8 @@ end
 -- regular hierarchy and keeping it hidden forever but there are so many
 -- possible edge conditions that this is the safer bet. It is a fairly niche
 -- feature in this context. This code was written to be split out into a
--- separate
+-- separate support script eventually that could be added to the base
+-- distribution.
 local
 function build_handler(wnd, tbl)
 	return
@@ -126,69 +100,83 @@ function import_surface(wnd, vid)
 		string.format("kind=new:w=%0.f:h=%0.f:id=%d", props.width, props.height, vid));
 end
 
+-- used for .frame handler in degenerated composition
+local function synch_overlay(wnd, ent, i, v)
+	local dirty = false;
+	log(fmt("viewport:target_frame=%d:frame=%d", v.frame, tbl.number));
+	ent.viewport = v;
+	local vid = ent.overlay.vid;
+	blend_image(vid, v.invisible and 0 or 1);
+
+-- track the window with focus for redirect and for proxying
+	if v.focus and ent ~= wnd.xmeta.focus then
+		wnd.xmeta.focus = ent;
+	end
+
+	if ent.proxy then
+		image_sharestorage(ent.proxy.vid, ent.overlay.vid);
+		image_set_txcos_default(ent.overlay.vid, ent.proxy.origo_ll);
+		shader_setup(ent.overlay.vid, "simple", "stretchcrop");
+
+-- to apply we clip the active region to the surface and skew the texture coordinates
+	elseif v.frame <= tbl.number then
+		local x2 = v.rel_x + v.anchor_w;
+		local y2 = v.rel_y + v.anchor_h;
+		if v.rel_x < 0 then
+			v.anchor_w = v.anchor_w + v.rel_x;
+			v.rel_x = 0;
+		elseif x2 > props.width then
+			v.anchor_w = v.anchor_w - (x2 - props.width);
+		end
+
+		if v.rel_y < 0 then
+			v.anchor_h = v.anchor_h + v.rel_y;
+			v.rel_y = 0;
+		elseif y2 > props.height then
+			v.anchor_h = v.anchor_h - (y2 - props.height);
+		end
+
+		local bx = v.rel_x * ss;
+		local by = v.rel_y * st;
+		local bx2 = bx + v.anchor_w * ss;
+		local by2 = by + v.anchor_h * st;
+
+		image_set_txcos(vid, {bx, by, bx2, by, bx2,  by2, bx,  by2});
+		dirty = i;
+	end
+
+	move_image(vid, v.rel_x, v.rel_y);
+	resize_image(vid, v.anchor_w, v.anchor_h);
+	return dirty;
+end
+
 function metawm.frame(wnd, src, tbl)
 -- Sweep wnd.xmeta queue and update the overlays for wnd, ignore / wait if the
 -- event frameid match the current. We can get here without the structures in
--- place if the user resets durden (target_flags are retained).
+-- place if the user resets durden (target_flags are retained) or toggles the
+-- xmeta on/off while running.
 	if not wnd.xmeta or #wnd.xmeta.queue == 0 then
 		return;
 	end
 
+-- queue is filled with the set of changes to the degenerate rectangles that
+-- are sampled out of the surface, so for them to be accurate the window src
+-- rectangle need to be updated aligned with the new frame.
 	local dirty = false
 	local props = image_storage_properties(wnd.external);
 	local ss = 1.0 / props.width;
 	local st = 1.0 / props.height;
 
+-- apply each pedning, mark the queue index of the last applied frame-matched
+-- (as the queue can contain updates from different timeslices, ones that apply
+-- to the current frame and those for future ones.
 	for i,v in ipairs(wnd.xmeta.queue) do
 		local ent = wnd.xmeta.nodes[v.ext_id];
-
--- we can update the overlay positioning immediately since we composite, but
--- the changed sampling coordinates should be aligned to the frame update
 		if ent and ent.overlay then
-			log(fmt("viewport:target_frame=%d:frame=%d", v.frame, tbl.number));
-			ent.viewport = v;
-			local vid = ent.overlay.vid;
-			blend_image(vid, v.invisible and 0 or 1);
-
--- track the window with focus for redirect and for proxying
-			if v.focus and ent ~= wnd.xmeta.focus then
-				wnd.xmeta.focus = ent;
+			local old = synch_overlay(wnd, ent, i, v);
+			if old ~= false then
+				dirty = old;
 			end
-
-			if ent.proxy then
-				image_sharestorage(ent.proxy.vid, ent.overlay.vid);
-				image_set_txcos_default(ent.overlay.vid, ent.proxy.origo_ll);
-				shader_setup(ent.overlay.vid, "simple", "stretchcrop");
-
--- to apply we clip the active region to the surface and skew the texture coordinates
-			elseif v.frame <= tbl.number then
-				local x2 = v.rel_x + v.anchor_w;
-				local y2 = v.rel_y + v.anchor_h;
-				if v.rel_x < 0 then
-					v.anchor_w = v.anchor_w + v.rel_x;
-					v.rel_x = 0;
-				elseif x2 > props.width then
-					v.anchor_w = v.anchor_w - (x2 - props.width);
-				end
-
-				if v.rel_y < 0 then
-					v.anchor_h = v.anchor_h + v.rel_y;
-					v.rel_y = 0;
-				elseif y2 > props.height then
-					v.anchor_h = v.anchor_h - (y2 - props.height);
-				end
-
-				local bx = v.rel_x * ss;
-				local by = v.rel_y * st;
-				local bx2 = bx + v.anchor_w * ss;
-				local by2 = by + v.anchor_h * st;
-
-				image_set_txcos(vid, {bx, by, bx2, by, bx2,  by2, bx,  by2});
-				dirty = i
-			end
-
-			move_image(vid, v.rel_x, v.rel_y);
-			resize_image(vid, v.anchor_w, v.anchor_h);
 		end
 	end
 
@@ -196,14 +184,15 @@ function metawm.frame(wnd, src, tbl)
 		if dirty == #wnd.xmeta.queue then
 			wnd.xmeta.queue = {};
 		else
-			for i=1,dirty do
+			while dirty > 0 do
 				table.remove(wnd.xmeta.queue, 1);
 			end
 		end
 	end
 
 -- The stacking order has changed, since this is rare 'enough' we should be
--- able to just walk the tree and re-order accordingly.
+-- able to just walk the tree and re-order accordingly. This will repeatedly
+-- call order_image that act as an insert-re-insert which can cascade.
 	if wnd.xmeta.queue.restacked then
 		if not wnd.xmeta.root then
 			log("restack:broken_root");
@@ -216,7 +205,8 @@ function metawm.frame(wnd, src, tbl)
 end
 
 -- pair tells about a new association between Xorg drawable ID and arcan
--- vid for the cases where we inject a proxy window
+-- vid for the cases where we inject a proxy window and need to compose
+-- ourselves.
 function metawm.pair(wnd, args)
 	local xid = tonumber(args.xid);
 	local vid = tonumber(args.vid);
@@ -228,6 +218,7 @@ function metawm.pair(wnd, args)
 		log("kind=error:source=pair:reason=window not in xmeta state");
 		return;
 	end
+
 -- pair can arrive before the actual window creation
 	if not wnd.xmeta.nodes[xid] then
 		wnd.xmeta.nodes[xid] = {children = {}};
@@ -244,18 +235,27 @@ function metawm.pair(wnd, args)
 		return;
 	end
 
--- set ut the reverse mapping
+-- reverse-mapping tracking
 	wnd.xmeta.nodes[xid].proxy = wnd.xmeta.proxy[vid];
 	if wnd.xmeta.nodes[xid].overlay then
 --		setup_overlay_mh(wnd.xmeta[xid]);
 	end
+	log(fmt("kind=status:source=pair:xid=%d:vid=%d", xid, vid));
 	proxy.paired = xid;
 	proxy.wnd = wnd;
 end
 
 function metawm.viewport(wnd, src, tbl)
+-- 'dynamic redirect' only is indicated by invisible state on root window
+	if wnd.ext_id == 0 then
+		if wnd.invisible then
+			log(fmt("kind=status:vid=%d:redirect_only", src));
+			return;
+		end
+	end
+
 	if not wnd.xmeta or not wnd.xmeta.nodes[tbl.ext_id] then
-		log("kind=error:source=viewport:reason=ext_id missing or unexpected");
+		log(fmt("kind=error:source=viewport:ext_id:%d:reason=ext_id not in table", tbl.ext_id));
 		return;
 	end
 
@@ -313,7 +313,8 @@ function metawm.create(wnd, args)
 	local new = {
 		children = {},
 		parent = wnd.xmeta.nodes[parent],
-		next = next
+		next = next,
+		xid = xid
 	};
 
 	if not new.parent then
@@ -364,8 +365,10 @@ function metawm.restack(wnd, args)
 	wnd.xmeta.queue.restacked = true;
 end
 
--- map new surfaces as overlays as that feature already takes care of
--- anchoring, stacking, clipping and input routing so all we need to do is use viewport
+-- Mapped 'windows' in x11 are treated as 'overlays' here, drawn and processed
+-- as part of the durden logical window. This is useful when Xarcan gets its
+-- own workspace to treat 'as a VM'. We can still logically manipulate, compose
+-- and otherwise use the different surfaces but they are presented as a whole.
 function metawm.realize(wnd, args)
 	local xid = tonumber(args.xid);
 	if not xid then
@@ -435,49 +438,78 @@ function metawm.message(wnd, src, tbl)
 	log(fmt("kind=error:source=message:reason=missing_handler:id=%s", args.kind));
 end
 
-local function toggle_meta(wnd)
+local function disable_xmeta(wnd)
+	target_flags(source, TARGET_VERBOSE, false);
+	target_flags(source, TARGET_DRAINQUEUE, false);
+	target_input(source, "kind=desynch");
+	wnd.xmeta.queue = nil;
+	wnd.xmeta.root = nil;
+
+	for k,_ in pairs(wnd.xmeta.nodes) do
+		wnd:drop_overlay(k);
+	end
+	for k,v in pairs(wnd.xmeta.proxy) do
+		if valid_vid(v.vid) then
+			delete_image(v.vid);
+		end
+	end
+
+	wnd.xmeta = nil;
+	wnd.input_table = wnd.old_input_table;
+	wnd.old_input_table = nil;
+end
+
+enable_xmeta =
+function(wnd)
 	local wnd = wnd or active_display().selected;
 	local source = wnd.external;
 
-	if wnd.xmeta then
-		target_flags(source, TARGET_VERBOSE, false);
-		target_flags(source, TARGET_DRAINQUEUE, false);
-		target_input(source, "kind=desynch");
-		wnd.xmeta.queue = nil;
-		wnd.xmeta.root = nil;
-		for k,_ in pairs(wnd.xmeta.nodes) do
-			wnd:drop_overlay(k);
-		end
-		for k,v in pairs(wnd.xmeta.proxy) do
-			if valid_vid(v.vid) then
-				delete_image(v.vid);
-			end
-		end
-		wnd.xmeta = nil;
-		wnd.input_table = wnd.old_input_table;
-		wnd.old_input_table = nil;
-	else
-		wnd.xmeta = {queue = {}, proxy = {}, nodes = {}, root = {children = {}}};
-		target_flags(source, TARGET_VERBOSE);
-		target_flags(source, TARGET_DRAINQUEUE);
-		target_input(source, "kind=synch");
-		wnd.old_input_table = wnd.input_table;
-		wnd.input_table =
-			function(wnd, tbl, ...)
-				if wnd.xmeta.focus and wnd.xmeta.focus.proxy then
-					if valid_vid(wnd.xmeta.focus.proxy.vid, TYPE_FRAMESERVER) then
-						target_input(wnd.xmeta.focus.proxy.vid, tbl);
-					end
-				else
-					return wnd.old_input_table(wnd, tbl, ...);
+	wnd.xmeta = {
+		queue = {},
+		redirect = {},
+		proxy = {},
+		nodes = {},
+		root = {children = {}}
+	};
+
+-- these give better timing and input characteristics
+	target_flags(source, TARGET_VERBOSE);
+	target_flags(source, TARGET_DRAINQUEUE);
+	target_input(source, "kind=synch");
+	wnd.old_input_table = wnd.input_table;
+
+-- Swap out the input handler for the X11 'root' window. For new inputs, check
+-- if the focused window is associated with a proxy (arcan window injected as
+-- an overlay). If it is, send the input to the arcan client instead of X11.
+	wnd.input_table =
+		function(wnd, tbl, ...)
+			if wnd.xmeta.focus and wnd.xmeta.focus.proxy then
+				if valid_vid(wnd.xmeta.focus.proxy.vid, TYPE_FRAMESERVER) then
+					target_input(wnd.xmeta.focus.proxy.vid, tbl);
 				end
+			else
+				return wnd.old_input_table(wnd, tbl, ...);
 			end
+		end
+end
+
+local function toggle_meta(wnd)
+	if wnd.xmeta then
+		disable_xmeta(wnd);
+	else
+		enable_xmeta(wnd);
 	end
 end
 
+-- this handler
 local
-function on_space_event(space, key, action, wnd)
-	if action ~= "attach" then
+function on_space_event(wmwnd)
+return function(space, key, action, wnd)
+	if action ~= "attach" or not wmwnd.xmeta then
+		return;
+	end
+
+	if wnd.external and wmwnd.xmeta.redirect[wnd.external] then
 		return;
 	end
 
@@ -490,11 +522,65 @@ function on_space_event(space, key, action, wnd)
 		image_sharestorage(wnd.canvas, surf);
 	end
 
+-- now the window is dead but surf lives on, import it
+	log("import_surface:vid=" .. tostring(surf));
 	wnd:destroy();
-
+	import_surface(wmwnd, surf);
+end
 end
 
-function metawm.preroll(wnd, source, tbl)
+local
+function build_redirwnd(parent, vid, aid, cookie, xid)
+	if not valid_vid(vid) then
+		return nil;
+	end
+
+-- block the registered event and force the type, otherwise the same handler
+-- as we are in now would be applied and we really just want it to be like
+-- any other window
+	local new = durden_launch(vid, "");
+	new.dispatch["registered"] =
+	function()
+		return nil;
+	end
+
+-- if something is marked as invisible we drop the backing window, and if an
+-- invisible window goes visible again, create one
+	new.dispatch["viewport"] =
+	function()
+		return nil;
+	end;
+
+	extevh_apply_atype(new, "x11-redirect", vid);
+
+-- make sure the vid doesn't get removed on termination
+	new.external_prot = true;
+	new:add_handler("move",
+		function(wnd, x, y)
+			if wnd.in_drag_move then
+				return;
+			end
+			local space = image_surface_resolve(wnd.space.anchor);
+			local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
+			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
+
+-- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
+-- the current resolved anchor position so that other clients and tools know where
+-- it is at.
+			if target_anchorhint then
+				target_anchorhint(vid, ANCHORHINT_SEGMENT, WORLDID, rx, ry);
+			end
+		end
+	);
+
+-- remember that this window now owns the vid, when VIEWPORT to invisible we
+-- kill off the window but keep the vid to reduce allocation pressure
+	parent.xmeta.redirect[vid] = new;
+	return nil;
+end
+
+local
+function autows_rootwnd(wnd, source)
 	local auto = gconfig_get("xarcan_autows");
 	wnd.synch_overlays = function() end;
 
@@ -507,98 +593,111 @@ function metawm.preroll(wnd, source, tbl)
 				break
 			end
 		end
+	end
 
 -- actually create / attach before we have contents which isn't the default
 -- otherwise but now the space would have been created and can be forced to the
 -- auto mode with some special sauce for the floating layout.
-		if wnd.ws_attach then
-			wnd:ws_attach();
-			wnd.last_float = {width = 1.0, height = 1.0, x = 0, y = 0};
-		end
-
-		if gconfig_get("xarcan_autows_nodecor") then
-			wnd.want_shadow = false;
-			wnd:set_titlebar(false);
-			wnd:set_border(false, true, 0);
-		end
+	if wnd.ws_attach then
+		wnd:ws_attach();
+		wnd.last_float = {width = 1.0, height = 1.0, x = 0, y = 0};
+	end
 
 -- automatically disable the border / shadow / titlebar so it effectively becomes
 -- fullscreen with statusbar for float-mode. workaround for window not being
 -- 'selected' in the workspace until after it has submitted a frame causing
 -- fullscreen to early out.
-		if wnd.space and wnd.space[auto] then
-			wnd.space.selected = wnd;
-			wnd.space[auto](wnd.space);
+	if gconfig_get("xarcan_autows_nodecor") then
+		wnd.want_shadow = false;
+		wnd:set_titlebar(false);
+		wnd:set_border(false, true, 0);
+	end
 
-			if not wnd.space.listeners["x11"] then
-				wnd.space.listeners["x11"] = on_space_event;
-			end
+	if wnd.space and wnd.space[auto] then
+		wnd.space.selected = wnd;
+		wnd.space[auto](wnd.space);
+
+		if not wnd.space.listeners["x11"] then
+			wnd.space.listeners["x11"] = on_space_event(wnd);
+		end
 
 -- automatically tag the workspace name with the instance identity so that we see
 -- what the corresponding DISPLAY=: should be.
-			if gconfig_get("xarcan_autows_tagname") then
-				local label = ""
-				wnd.set_ident =
-				function(wnd, msg)
-					wnd.ident = ident
-					label = "X11:" .. (msg or "")
-					wnd.space:set_label(label)
-				end
+		if gconfig_get("xarcan_autows_tagname") then
+			local label = ""
+			wnd.set_ident =
+			function(wnd, msg)
+				wnd.ident = ident
+				label = "X11:" .. (msg or "")
+				wnd.space:set_label(label)
+			end
 
 -- untag the label on destruction so workspace autopruning won't try to save it
-			table.insert(
-				wnd.handlers.destroy,
-				function()
-					wnd.space:set_label()
-				end
-			)
+		table.insert(
+			wnd.handlers.destroy,
+			function()
+				wnd.space:set_label("")
 			end
-		end
-
-		if gconfig_get("xarcan_clipboard_autopaste") then
-			dispatch_symbol_wnd(wnd, "/target/clipboard/autopaste_on");
+		)
 		end
 	end
+end
 
+function metawm.preroll(wnd, source, tbl)
+-- (his synchs the clipboard so that any new items are automatically 'pasted' into
+-- the x11 window, giving the x11 clipboard access to it.
+	if gconfig_get("xarcan_clipboard_autopaste") then
+		dispatch_symbol_wnd(wnd, "/target/clipboard/autopaste_on");
+	end
+
+-- forward the current display constraints as we don't have a 'normal' window now
+-- that would send this on relayout / migration
 	target_displayhint(source, wnd.max_w, wnd.max_h, 0, display_output_table(nil));
+
+-- allow-gpu is from older dri stacks where there is a challenge response scheme
+-- for authenticating accellerated GPU access, some might still make use of it
+-- though.
 	if (TARGET_ALLOWGPU ~= nil and gconfig_get("gpu_auth") == "full") then
 		target_flags(source, TARGET_ALLOWGPU);
 	end
 end
 
-function metawm.resized(wnd)
--- metawm synch can't be enabled until after the preroll stage is over
--- as the 'message' event is ignored in preroll
-	if not wnd.first_resize then
-		if gconfig_get("xarcan_metawm") then
-			toggle_meta(wnd);
-		end
-		wnd.first_resize = true;
+function metawm.resized(wnd, src, tbl)
+-- first frame submitted means that Xarcan is not 'redirect-only' and has a
+-- composited root to work through.
+	if not wnd.space then
+		log("enable_composited_root");
+		autows_rootwnd(wnd, src);
 	end
-	return false;
 end
 
-local function colorize(wnd)
--- sweep through the set of windows and set a colored backing store based
--- on type (toplevel or not) and opacity on depth.
-	local wnd = active_display().selected;
-	local top = fill_surface(1, 1, 0, 255, 0);
-	local other = fill_surface(1, 1, 255, 255, 0);
+function metawm.segment_request(wnd, source, status)
+-- there are two reasons for bridge-x11 to be requested.
+--
+-- 1. it is running in -redirect mode where a pool of segments are used to
+--    represent windows, and viewport hints to position and toggle on / off.
+--
+-- 2. A window has explicitly been redirected at our behest.
+--
+-- both mostly behave the same in that they can be treated as a window with
+-- slightly different lifecycle - avoid delete_image on it, provide feedback
+-- on its position (target_anchorhint) and 'fake-delete' on unrealize.
+--
+	if status.segkind == "bridge-x11" then
+		log("kind=redirect:xid=" .. tonumber(status.reqid));
 
-	for k,v in pairs(wnd.xmeta.nodes) do
-		if v.txcos and v.overlay then
-			image_sharestorage(wnd.external, v.overlay.vid);
-			image_set_txcos(v.overlay.vid, v.txcos);
-			v.txcos = nil;
-		elseif v.overlay then
-			v.txcos = image_get_txcos(v.overlay.vid);
-			image_sharestorage(
-				(v.viewport and v.viewport.embedded and other) or top, v.overlay.vid);
+		if not wnd.xmeta then
+			enable_xmeta(wnd);
 		end
+
+		local vid, aid, cookie =
+			accept_target(source, status.width, status.height);
+			return build_redirwnd(wnd, vid, aid, cookie, status.reqid);
 	end
 
-	delete_image(top);
-	delete_image(other);
+-- this will chain back to the regular segment_request handler with default
+-- subtype handler for clipboard and cursor.
+	return false;
 end
 
 local function redirect()
@@ -618,34 +717,42 @@ local function redirect()
 		end
 	end
 
-	for _,v in ipairs(unsorted) do
+	local focus = wnd.xmeta.focus;
+	if focus then
 		table.insert(res,
 			{
-				name = "tl_" .. tostring(v),
-				label = tostring(v),
+				name = "focus",
+				label = "Focus",
+				description = tostring(focus.xid),
 				kind = "action",
-				description = tostring(v),
 				handler =
 				function()
-					log("kind=eimpl:redirect");
+					target_input(wnd.external, "kind=redirect:id=" .. tostring(focus.xid));
+				end
+			}
+		);
+	end
+
+-- The actual entry just sends a redirect rather than a new segment immediately
+-- (e.g. target_alloc). The reason for this is to be able to have the exact same
+-- allocation path for a 'redirected default' as for this 'dynamic rootless'.
+	for _,v in ipairs(unsorted) do
+		local strv = tostring(v.xid);
+		table.insert(res,
+			{
+				name = "tl_" .. strv,
+				label = strv,
+				kind = "action",
+				description = strv,
+				handler =
+				function()
+					target_input(wnd.external, "kind=redirect:id=" .. strv);
 				end
 			}
 		);
 	end
 
 	return res;
--- get toplevel xid with input focus
--- target_alloc into bridge (wnd.external)
--- bind to window
---    hook motion and resize to forwarded actions, route input to
---    bridge
-end
-
-local function assign_hook(space, wnd)
--- 'save' external or canvas and kill (or hide?) the window
--- update any external handler to act as a more simplified one
--- register the proxy window
--- pair xid to proxy
 end
 
 -- test the proxy code with a terminal emulator
@@ -664,28 +771,10 @@ local x11_menu =
 		handler = toggle_meta,
 	},
 	{
-		eval = function() return DEBUGLEVEL > 0; end,
-		name = "colorize",
-		label = "Colorize",
-		description = "Swap backing stores for overlay surfaces to depth-colored",
-		kind = "action",
-		handler = colorize,
-	},
-	{
-		name = "dump",
-		kind = "value",
-		label = "Dump",
-		description = "Save tree as .dot",
-		eval = function() return DEBUGLEVEL > 0; end,
-		handler = function(ctx, val)
-			dump(active_display().selected, val)
-		end,
-	},
-	{
 		name = "create_proxy",
 		kind = "action",
 		label = "DebugProxy",
-		description = "Create a Proxy window with a random surface",
+		description = "Create a Proxy window with a afsrv_terminal",
 		eval = function() return DEBUGLEVEL > 0; end,
 		handler = create_proxy,
 	},
@@ -700,6 +789,26 @@ local x11_menu =
 		description = "Redirect a toplevel window",
 		handler = redirect
 	},
+	{
+		name = "kbd_layout",
+		kind = "value",
+		label = "Layout",
+		description = "Request that the server load a specific key layout",
+		handler = function(ctx, val)
+			target_input(active_display().selected.external, "kind=layout:arg=" .. val);
+		end
+	},
+	{
+		name = "xresource",
+		kind = "value",
+		label = "Resource",
+		description = "Set .Xresource property string",
+		validator = shared_valid_str,
+		handler = function(ctx, val)
+			local kv = string.split(val, "=");
+			target_input(active_display().selected.external, "kind=xresource:val=" .. val);
+		end
+	}
 };
 
 local bridge_menu =
@@ -717,9 +826,9 @@ local bridge_menu =
 return {
 	atype = "bridge-x11",
 	default_shader = {"simple", "noalpha"},
+	allowed_segments = {},
 	actions = bridge_menu,
--- props will be projected upon the window during setup (unless there
--- are overridden defaults)
+-- props will be projected upon the window during setup (unless there are overridden defaults)
 	props =
 	{
 		kbd_period = 0,
@@ -732,4 +841,4 @@ return {
 		font_block = true,
 	},
 	dispatch = metawm
-};
+}
