@@ -31,7 +31,7 @@ local durden_font = {
 		kind = "value",
 		description = "Change anti-aliasing hinting algorithm",
 		set = {"none", "mono", "light", "normal", "subpixel"},
-		initial = function() return hint_lut[gconfig_get("font_hint")]; end,
+		initial = function() return hint_rlut[gconfig_get("font_hint")]; end,
 		handler = function(ctx, val)
 			gconfig_set("font_hint", hint_lut[val]);
 		end
