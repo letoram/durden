@@ -82,6 +82,11 @@ local function wnd_attach(wm, wnd)
 			local w = x2 - x1;
 			local h = y2 - y1;
 
+-- dangling ref to a window that got deleted while we were picking
+			if not wnd.move or not wnd.resize or not wnd.show then
+				return;
+			end
+
 -- set the drawing constraints to keep the window in check
 -- (or the scalemode might just fill)
 			if (w > 64 and h > 64) then
