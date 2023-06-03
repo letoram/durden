@@ -409,7 +409,8 @@ end
 
 --
 -- triggered by meta- state tracker, we need the hook here to also trigger
--- mouse locking and update border states
+-- mouse locking and update border states. This is setup through the dispatch
+-- initialisation and can be reached through a number of paths and gestures.
 --
 function durden_lock_toggle(newst, state)
 	if ((not active_display().selected and
@@ -418,9 +419,14 @@ function durden_lock_toggle(newst, state)
 		return;
 	end
 
+-- in some patterns the default 'disable' can only be reached through a keyboard
+-- device, which means some might not know / understand the effect or reason.
 	for i in all_tilers_iter() do
 		i.sbar_ws["msg"]:switch_state(newst and "locked" or "active");
 	end
+
+--reflect the lock state in the statusbar for the input-grab display
+	active_display():tile_update();
 end
 
 -- there is a ton of "per window" input state when it comes to everything from

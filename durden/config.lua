@@ -317,6 +317,9 @@ return {
 	sbar_dispbuttons = true, -- controls for multidisplay
 	sbar_dispbutton_dir = "right", -- keep in the tray side
 	sbar_dispbutton_prefix = "D", -- any valid vsym
+	sbar_lockbutton_visible = "locked", -- "always", "never", "locked"
+	sbar_lockbutton_symbol = "Lock", -- unicode padlock glyph if we have?
+	sbar_lockbutton_dir = "left", -- keep it with workspace icons
 	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
 	sbar_prefixcolor = "dynamic", -- "\\#ffffff ",
 	sbar_compact = false, -- shrink the statusbar to fit only the contents

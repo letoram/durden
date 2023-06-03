@@ -760,6 +760,8 @@ local function tiler_statusbar_update(wm)
 
 -- now we have the dynamic list of 'display buttons', time to see which ones
 -- should stay and which should go
+
+		local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	if gconfig_get("sbar_dispbuttons") then
 		local list = {}
 		for _, disp in ipairs(all_displays_list()) do
@@ -774,7 +776,6 @@ local function tiler_statusbar_update(wm)
 		for i,v in ipairs(list) do
 			local dn_hex = string.hexenc(v[1]);
 			local dn_path = "/global/display/displays/disp_" .. dn_hex .. "/";
-			local pad = gconfig_get("sbar_tpad") * wm.scalef;
 
 -- the icon-management needs to be a little bit better here so that we can
 -- take a base icon and overlay a number or text on it
@@ -787,11 +788,50 @@ local function tiler_statusbar_update(wm)
 				mouse_handler_factory.statusbar_icon(wm, dn_path .. "focus", "")
 			);
 			btn.drag_command = "/target/window/migrate/migrate_" .. dn_hex;
-			btn.display = v
+			btn.display = v;
 			btn:switch_state("inactive");
 		end
 	else
 		prune_missing_known(wm, {})
+	end
+
+-- look for a tagged lockbutton
+	local lockbtn;
+	for btn in wm.statusbar:all_buttons() do
+		if btn.lockstate then
+			lockbtn = btn;
+			break;
+		end
+	end
+
+--update its state
+	local want_lock = false;
+	local lock_cfg = gconfig_get("sbar_lockbutton_visible");
+	local want_lock =
+		(lock_cfg ~= "never") and
+		(lock_cfg == "always" or (dispatch_locked()));
+
+-- create if it is desired, note that the default mouse handler for statusbar
+-- will clear the alert on mouse over, interpreting it as if the user had ack:ed
+-- and that is a behaviour to reconsider (patch over/out)
+	if want_lock and not lockbtn then
+		lockbtn = wm.statusbar:add_button(
+			gconfig_get("sbar_lockbutton_dir"),
+			"sbar_item_bg", "sbar_item",
+			resolve_vsymbol(wm, gconfig_get("sbar_lockbutton_symbol"), sbsz),
+			pad, wm.font_resfn, sbsz, nil,
+			mouse_handler_factory.statusbar_icon(wm, "", "")
+		)
+		lockbtn.lockstate = true;
+	end
+
+-- and update its state
+	if lockbtn then
+		if not want_lock then
+			lockbtn:destroy();
+		else
+			lockbtn:switch_state(dispatch_locked() and "alert" or "inactive")
+		end
 	end
 
 	update_sbar_shadow(wm);
