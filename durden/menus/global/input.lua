@@ -593,7 +593,7 @@ local function get_keymap_menu(devid)
 		end,
 		handler = function(ctx, val)
 			ensure_set(devid, 3, val);
-			keymap_actions(devid, EVENT_TRANSLATION_SET, unpack(devid_opts[devid]));
+			keymap_actions(devid, TRANSLATION_SET, unpack(devid_opts[devid]));
 		end
 	},
 	{
