@@ -16,14 +16,34 @@
 --
 -- Lastly it can be rootless, where the main x11 window isn't visible at all,
 -- and only acts as a mediator for its subwindows. Here we need to integrate
--- with Durden's own workspace modes and decorations with two complications:
+-- with Durden's own workspace modes and decorations with four complications:
 --
---  1. Multiple segments can refer to the same logical window, though only
---     one is visible at any one time. Frame delivery events are used to
---     indicate when we swap.
+--  1. Respecting 'embedded' viewport property is a bit different as what we
+--     are embedding to is the entire x11 space. This represents
+--     'overrideRedirect'.
+--     'focused' is used to indicate if something has the global input grab.
+--     'ext_id' conveys the XID identifier.
+--     'parent' refers to the XID of a transient_for parent (if present).
+--     'order' the resolved stacking order if something is not toplevel or
+--     occluded.
 --
---  2. Segments are re-used (orphaned) when viewported to invisible. This
---     cuts down on the noisy allocation bursts and stalls from resizing.
+--  2. the 'invisible' viewport property is used for windows that go into an
+--     unmapped state. This is used to cut down on allocations. Although it
+--     is possible to treat the redirected windows as regular ones that are
+--     suceptible to delete_image, new segments might get allocated very
+--     often. It is safer to reset_target them as a way of marking that the
+--     window was closed and let Xarcan take it from there.
+--
+--  3. detailed feeback on stacking and position. For input to route correctly
+--     and windows to be spawned 'right', feedback is needed about is current
+--     state. This is done through the 'target_anchorhint' calls.
+--
+--  4. X has a different type/hint model. To support conveying the less
+--     relevant such metadata, 'message' is used with string.unpack_shmif_argstr
+--     to get a key-value table.
+--
+-- Follow -build_redirwnd- for how an active redirected window is treated,
+-- and -build_pending- for the ready-to-be-reused state.
 --
 -- Then we need to integrate other features, clipboard is fairly easy as it
 -- behaves as expected. Colour management is an opt-in where we allow the main
@@ -247,6 +267,8 @@ end
 
 function metawm.viewport(wnd, src, tbl)
 -- 'dynamic redirect' only is indicated by invisible state on root window
+	log("metawm_viewport");
+
 	if wnd.ext_id == 0 then
 		if wnd.invisible then
 			log(fmt("kind=status:vid=%d:redirect_only", src));
@@ -439,9 +461,12 @@ function metawm.message(wnd, src, tbl)
 end
 
 local function disable_xmeta(wnd)
-	target_flags(source, TARGET_VERBOSE, false);
-	target_flags(source, TARGET_DRAINQUEUE, false);
-	target_input(source, "kind=desynch");
+	local source = wnd.external;
+	if valid_vid(source, TYPE_FRAMESERVER) then
+		target_flags(source, TARGET_VERBOSE, false);
+		target_flags(source, TARGET_DRAINQUEUE, false);
+		target_input(source, "kind=desynch");
+	end
 	wnd.xmeta.queue = nil;
 	wnd.xmeta.root = nil;
 
@@ -529,10 +554,145 @@ return function(space, key, action, wnd)
 end
 end
 
+-- a segment that was marked invisible wait for the new viewport and a frame
+-- or resized being delived after it.
+local build_redirwnd;
+
+-- handler that will be used on a new segment for redirection, slightly
+-- different from reusing an existing segment activated via a viewport event as
+-- this is triggered by the first frame resized.
 local
-function build_redirwnd(parent, vid, aid, cookie, xid)
+function build_pending_first(parent, vid, aid, cookie, xid)
+	local last_viewport = {invisible = false};
+	if not valid_vid(vid, TYPE_FRAMESERVER) then
+		return;
+	end
+	target_flags(vid, TARGET_VERBOSE, true);
+	hide_image(vid);
+
+	if not parent.xmeta then
+		delete_image(vid);
+		return
+	end
+
+-- redirect table can track window backed surfaces and override-redirects,
+-- the later needs their own mouse cursor handler
+	local ictx = parent.xmeta.redirect[vid];
+	if ictx then
+		mouse_droplistener(ictx);
+		parent.xmeta.redirect[vid] = nil;
+	end
+
+	target_updatehandler(vid,
+		function(source, status)
+			if status.kind == "terminated" then
+				delete_image(vid);
+
+			elseif status.kind == "viewport" then
+				last_viewport = status;
+
+			elseif status.kind == "frame" and not last_viewport.invisible then
+				build_redirwnd(parent, vid, aid, cookie, xid, last_viewport);
+
+			elseif status.kind == "resized" and not last_viewport.invisible then
+				log(fmt("new_window:vid=%d:xid=%d", vid, xid));
+				build_redirwnd(parent, vid, aid, cookie, xid, last_viewport);
+			end
+		end
+	);
+end
+
+local
+function build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport)
+	log("build_redirwnd:surface_override_redirect");
+
+-- just to be safe, shouldn't happen (pending_first should clear)
+	if parent.xmeta.redirect[vid] then
+		mouse_droplistener(parent.xmeta.redirect[vid]);
+	end
+
+	local mx, my = mouse_xy();
+	local tbl =
+	{
+		name = "override_redirect_x11_" .. tostring(vid),
+		own = function(ctx, tgt)
+			return tgt == vid;
+		end,
+		lx = mx,
+		ly = my,
+		motion =
+		function(ctx, vid, x, y)
+			target_input(parent.external, {
+				kind = "analog", devid = 0, subid = 2, mouse = true,
+				samples = {x, x - ctx.lx, y, y - ctx.ly},
+			});
+			ctx.lx = x;
+			ctx.ly = y;
+		end,
+		button =
+		function(ctx, vid, ind, pressed, x, y)
+			target_input(parent.external, {
+				kind = "digital", devid = 0, subid = ind, mouse = true,
+				active = pressed});
+		end
+	};
+
+-- the 'parent' here is an unattached window and thus does not have a workspace,
+-- so we have to make do with the one that is currently active
+	link_image(vid, active_display():active_space().anchor);
+	image_mask_clear(vid, MASK_POSITION);
+
+	mouse_addlistener(tbl);
+	parent.xmeta.redirect[vid] = tbl;
+
+	local handler =
+	function(source, status)
+		if status.kind == "viewport" then
+			if status.invisible then
+				build_pending_first(parent, source, aid, cookie, status.ext_id);
+				return;
+			end
+
+			log(fmt("viewport_parent:%d", status.parent));
+			local pwnd = parent.xmeta.redirect[status.parent];
+			if status.parent > 0 and pwnd then
+				link_image(source, parent.anchor);
+				image_mask_clear(source, MASK_LIVING);
+			end
+
+			local props = image_storage_properties(source);
+			resize_image(source, props.width, props.height);
+
+			move_image(source, status.rel_x, status.rel_y);
+			order_image(source, 65530);
+			show_image(source);
+
+		elseif status.kind == "resized" then
+			resize_image(source, status.width, status.height);
+
+		elseif status.kind == "terminated" then
+			delete_image(vid);
+		end
+	end
+
+	target_updatehandler(vid, handler);
+	if viewport then
+		handler(vid, viewport);
+	end
+end
+
+build_redirwnd =
+function(parent, vid, aid, cookie, xid, viewport)
 	if not valid_vid(vid) then
 		return nil;
+	end
+
+	viewport = viewport and viewport or {};
+
+-- override-redirect / embedded, shouldn't have a window of its own, if a
+-- parent is set overlay and link to that, if not,
+	if viewport.embedded then
+		return build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport);
 	end
 
 -- block the registered event and force the type, otherwise the same handler
@@ -544,14 +704,55 @@ function build_redirwnd(parent, vid, aid, cookie, xid)
 		return nil;
 	end
 
--- if something is marked as invisible we drop the backing window, and if an
--- invisible window goes visible again, create one
-	new.dispatch["viewport"] =
-	function()
-		return nil;
+-- save and interpose the actual attach so that when the first-frame is
+-- delivered we first evaluate how to treat it based on x-typed behaviour (e.g.
+-- parent overlay/embed)
+	local new_attach = new.ws_attach;
+	new.ws_attach = function(...)
+		return new_attach(...);
 	end;
 
 	extevh_apply_atype(new, "x11-redirect", vid);
+
+-- as an optimisation we are interested in a surface going mapped / unmapped,
+-- this could be part of the atypes/x11-redirect instead
+	new.dispatch["viewport"] =
+	function(wnd, source, status)
+		wnd.last_viewport = status;
+
+		if status.invisible then
+			new:destroy();
+		elseif status.embed then
+		end
+
+		return nil;
+	end;
+
+-- Sort-reset on destroy, this causes Xarcan to repeat-loop try and tell the
+-- source to kill the window and eventually force-kill it. Another option would
+-- be to track it as a set of mispaired surface and delete_image it on timer
+-- or at least track it.
+	new:add_handler("destroy",
+	function(wnd)
+		if valid_vid(wnd.external) then
+			build_pending_first(parent, vid, aid, cookie, xid);
+			reset_target(wnd.external, false);
+		end
+	end);
+
+	local send_anchorhint =
+	function(wnd, x, y)
+	local space = image_surface_resolve(wnd.space.anchor);
+		local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
+		local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
+
+-- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
+-- the current resolved anchor position so that other clients and tools know where
+-- it is at.
+		if target_anchorhint then
+			target_anchorhint(vid, ANCHORHINT_SEGMENT, WORLDID, rx, ry);
+		end
+	end
 
 -- make sure the vid doesn't get removed on termination
 	new.external_prot = true;
@@ -560,22 +761,24 @@ function build_redirwnd(parent, vid, aid, cookie, xid)
 			if wnd.in_drag_move then
 				return;
 			end
-			local space = image_surface_resolve(wnd.space.anchor);
-			local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
-			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
+			send_anchorhint(wnd, x, y);
+		end
+	);
 
--- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
--- the current resolved anchor position so that other clients and tools know where
--- it is at.
-			if target_anchorhint then
-				target_anchorhint(vid, ANCHORHINT_SEGMENT, WORLDID, rx, ry);
-			end
+	new:add_handler("resize",
+		function(wnd)
+			send_anchorhint(wnd, wnd.x, wnd.y);
 		end
 	);
 
 -- remember that this window now owns the vid, when VIEWPORT to invisible we
 -- kill off the window but keep the vid to reduce allocation pressure
 	parent.xmeta.redirect[vid] = new;
+
+	if new.ws_attach then
+		new:ws_attach();
+	end
+
 	return nil;
 end
 
@@ -692,12 +895,13 @@ function metawm.segment_request(wnd, source, status)
 
 		local vid, aid, cookie =
 			accept_target(source, status.width, status.height);
-			return build_redirwnd(wnd, vid, aid, cookie, status.reqid);
+
+		build_pending_first(wnd, vid, aid, cookie, status.reqid);
 	end
 
 -- this will chain back to the regular segment_request handler with default
 -- subtype handler for clipboard and cursor.
-	return false;
+	return nil;
 end
 
 local function redirect()
