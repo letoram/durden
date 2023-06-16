@@ -816,8 +816,10 @@ function autows_rootwnd(wnd, source)
 		wnd:set_border(false, true, 0);
 	end
 
+-- and set the desired automode, like fullscreen
 	if wnd.space and wnd.space[auto] then
 		wnd.space.selected = wnd;
+		wnd.wm:switch_ws(wnd.space);
 		wnd.space[auto](wnd.space);
 
 		if not wnd.space.listeners["x11"] then
