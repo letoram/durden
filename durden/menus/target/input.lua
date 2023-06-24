@@ -102,6 +102,32 @@ local kbd_menu = {
 		handler = function(ctx, num)
 			iostatem_repeat(nil, tonumber(num));
 		end
+	},
+	{
+		name = "send_map",
+		label = "Send Keymap",
+		description = "Send active or specified input platform keymap",
+		kind = "value",
+		eval = function()
+			return string.match(API_ENGINE_BUILD, "evdev") ~= nil and
+			       valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
+		end,
+		hint = "(us,cz,de pc104 basic grp:alt_shift_toggle)",
+		handler =
+		function(ctx, val)
+			local ios, msg;
+			if val and #val > 0 then
+				local set = string.split(val, " ");
+-- we need layout, model, variant, options
+				ios, msg = input_remap_translation(-1, TRANSLATION_SET, true, unpack(set));
+			else
+				ios, msg = input_remap_translation(-1, TRANSLATION_REMAP, true);
+			end
+
+			if type(ios) == "userdata" then
+				open_nonblock(active_display().selected.external, true, "xkb", ios);
+			end
+		end
 	}
 };
 

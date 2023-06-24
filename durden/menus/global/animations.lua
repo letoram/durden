@@ -5,7 +5,7 @@ return {
 		kind = "value",
 		hint = "(1..100)",
 		description = "Change the animation speed used for UI elements",
-		validator = gen_valid_num(1, 100),
+		validator = gen_valid_num(0, 100),
 		initial = function() return tostring(gconfig_get("animation")); end,
 		handler = function(ctx, val)
 			gconfig_set("animation", tonumber(val));
@@ -17,7 +17,7 @@ return {
 		kind = "value",
 		hint = "(1..100)",
 		description = "Change the animation speed used in state transitions",
-		validator = gen_valid_num(1, 100),
+		validator = gen_valid_num(0, 100),
 		initial = function() return tostring(gconfig_get("transition")); end,
 		handler = function(ctx, val)
 			gconfig_set("transition", tonumber(val));

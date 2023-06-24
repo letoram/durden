@@ -298,8 +298,9 @@ end
 
 local function drop_swap(wnd, mode, tgt, tgt_dir, ostate)
 -- first clean up
-	local dir = wnd.drag_move_pos
+	local dir = wnd.drag_move_pos;
 	wnd.drag_move_pos = nil;
+	wnd.in_drag_move = false;
 
 	if valid_vid(wnd.drag_move_preview) then
 		delete_image(wnd.drag_move_preview);
@@ -329,6 +330,9 @@ local function drop_swap(wnd, mode, tgt, tgt_dir, ostate)
 -- gather / repack the suspects
 	local items = pick_items(x, y, 8, true, active_display(true));
 	if not items or #items == 0 then
+
+-- no picking result, send a last move event without the in_drag_move
+		wnd:move(0, 0);
 		return;
 	end
 
@@ -337,8 +341,9 @@ local function drop_swap(wnd, mode, tgt, tgt_dir, ostate)
 		set[v] = true;
 	end
 
--- this could also be used for individual window titlebar buttons or
--- the bar itself, e.g. drag to dock into titlebar for pseudo- tabbed
+-- this could also be used for individual window titlebar buttons or the bar
+-- itself, e.g. drag to dock into titlebar for pseudo- tabbed, or border to
+-- link coordinate systems
 	for btn in wnd.wm.statusbar:all_buttons()	do
 		if set[btn.bg] then
 			if (btn.drag_command) then
@@ -660,9 +665,11 @@ local function build_titlebar(wnd)
 		if (mode == "float" or mode == "tile") then
 			mouse_switch_cursor("grabhint");
 
+-- cascade to space event handler as well (window is in drop_swap)
 			for k,v in ipairs(wnd.wm.on_wnd_drag) do
 				v(wnd.wm, wnd, 0, 0, true);
 			end
+
 -- make sure new position gets saved
 			wnd:recovertag();
 		end

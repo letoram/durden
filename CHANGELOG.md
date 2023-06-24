@@ -47,6 +47,9 @@
 * atypes/x11 - multiple choices for x11 client integration: sepaate 'wm as
 	exclusive workspace', dynamic single client, extract specific toplevels
 
+* target/input/keyboard/send\_keymap - extract current or factory-str platform keymap and send to
+    client, useful for x11/wayland.
+
 minor:
 
 * statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches

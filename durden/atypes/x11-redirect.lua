@@ -7,7 +7,7 @@ return {
 		scalemode = "client",
 		font_block = true,
 		filtermode = FILTER_NONE,
-		clipboard_block = true,
+		clipboard_block = false,
 		rate_unlimited = true,
 		allowed_segments = {}
 	},

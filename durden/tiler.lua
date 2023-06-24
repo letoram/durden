@@ -2674,6 +2674,7 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 
 -- programming error, invoked on not-attached
 	if (not valid_vid(wnd.canvas) or not wnd.space) then
+		tiler_debug("kind=error:message=resize_unattached");
 		return false;
 	end
 

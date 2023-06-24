@@ -1,4 +1,4 @@
-local function pastefun(wnd, msg)
+function clipboard_paste_default(wnd, msg)
 	local dst = wnd.clipboard_out;
 
 	if not dst or not valid_vid(dst) then
@@ -33,7 +33,7 @@ local function clipboard_paste()
 	if wnd.paste then
 		wnd:paste(CLIPBOARD.globals[1]);
 	else
-		pastefun(wnd, CLIPBOARD.globals[1]);
+		clipboard_paste_default(wnd, CLIPBOARD.globals[1]);
 	end
 end
 
@@ -42,7 +42,7 @@ local function clipboard_paste_local()
 	if wnd.paste then
 		wnd:paste(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 	else
-		pastefun(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
+		clipboard_paste_default(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 	end
 end
 
@@ -65,7 +65,7 @@ local function clipboard_histgen(wnd, lst, promote)
 					if wnd.paste then
 						wnd:paste(v);
 					else
-						pastefun(wnd, v);
+						clipboard_paste_default(wnd, v);
 					end
 				end
 			end

@@ -408,7 +408,7 @@ function metawm.realize(wnd, args)
 		return;
 	end
 
--- there will be a viewport event close to next frame so keep hidden
+-- there will be a viewport event close to next erame so keep hidden
 	local new = null_surface(1, 1);
 	wnd.xmeta.nodes[xid].overlay = wnd:add_overlay(xid, new, {block_mouse = true});
 	image_sharestorage(wnd.external, new);
@@ -754,7 +754,8 @@ function(parent, vid, aid, cookie, xid, viewport)
 		end
 	end
 
--- make sure the vid doesn't get removed on termination
+-- make sure the vid doesn't get removed on termination, but also don't forward
+-- the anchor until it has been dropped (if dragged) to cut down on event storms
 	new.external_prot = true;
 	new:add_handler("move",
 		function(wnd, x, y)
@@ -775,8 +776,19 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- kill off the window but keep the vid to reduce allocation pressure
 	parent.xmeta.redirect[vid] = new;
 
+-- the cursor is actually tied to the parent, so work through that
+	new.custom_cursor = parent.custom_cursor;
+
+-- same with the clipboard, reroute
+	new.paste =
+	function(wnd, ...)
+		clipboard_paste_default(wnd, ...);
+	end
+
 	if new.ws_attach then
 		new:ws_attach();
+		local props = image_storage_properties(vid);
+		new:resize(props.width, props.height);
 	end
 
 	return nil;
