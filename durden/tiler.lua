@@ -1981,7 +1981,7 @@ local function workspace_empty(wm, i)
 		(#wm.spaces[i].children == 0 and wm.spaces[i].label == nil));
 end
 
-local function workspace_save(ws, shallow)
+local function workspace_save(ws)
 
 	local ind;
 	for k,v in pairs(ws.wm.spaces) do
@@ -2007,10 +2007,9 @@ local function workspace_save(ws, shallow)
 	drop_keys(prefix .. "%");
 	store_key(keys);
 
-	if (shallow) then
-		return;
-	end
--- depth serialization and metastructure missing
+-- depth serialization and metastructure missing, some of this come implicitly
+-- through how windows are saved and their attempts at recreating known
+-- structure during adopt phase
 end
 
 local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
@@ -5701,6 +5700,19 @@ local function on_display_event(event, name, tiler, id)
 	end
 end
 
+local function tiler_shutdown(tiler)
+	for i=0,10 do
+		if tiler.spaces[i] then
+			tiler.spaces[i]:save()
+		end
+	end
+
+	local keys = {};
+	local prefix = "tiler_" .. tiler.name;
+	keys[prefix .. "_sel"] = tiler.space_ind;
+	store_key(keys);
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 	counter = counter + 1;
@@ -5760,6 +5772,7 @@ function tiler_create(width, height, opts)
 		fallthrough_input = tiler_fallthrough_input,
 		cancellation = tiler_cancellation,
 		convert_mouse_xy = tiler_convert_mousexy,
+		shutdown = tiler_shutdown,
 
 -- shared event handlers, primarily for effects and layouting
 		on_wnd_create = {},
@@ -5847,6 +5860,9 @@ function tiler_create(width, height, opts)
 		display_add_listener(on_display_event)
 		got_display_listener = true;
 	end
+
+-- with the tiler created, see if there are any persistence options to restore
+--
 
 	return res;
 end

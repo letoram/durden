@@ -662,6 +662,10 @@ function display_manager_shutdown()
 			ktbl[pref .. "refresh"] = v.refresh;
 		end
 		ktbl[pref .. "primary"] = v.primary and 1 or 0;
+
+		if v.tiler and v.tiler.shutdown then
+			v.tiler:shutdown();
+		end
 	end
 	store_key(ktbl);
 end

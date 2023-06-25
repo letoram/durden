@@ -92,6 +92,8 @@ minor:
 
 * client subwindows can now have requests for parent-relative position honored
 
+* reset or crash recovery should now restore active workspace index
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints

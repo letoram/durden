@@ -88,6 +88,7 @@ function durden(argv)
 	function(ddisp)
 		local res = tiler_create(ddisp.w, ddisp.h,
 			{
+				name = string.hexenc(ddisp.name),
 				scalef = ddisp.ppcm / 38.4,
 				disptbl = {ppcm = ddisp.ppcm, width = ddisp.w, h = ddisp.h},
 				sbar_custom = gconfig_statusbar_buttons
@@ -95,7 +96,6 @@ function durden(argv)
 		);
 
 -- default click actions
-		res.name = ddisp.name;
 		res.buttons = gconfig_buttons;
 		res.status_lclick = function() dispatch_symbol("/global"); end
 		res.status_rclick = function() dispatch_symbol("/target"); end
@@ -583,6 +583,12 @@ function durden_adopt(vid, kind, title, parent, last)
 -- an ugly hack to reset selection state
 		disp:switch_ws(2);
 		disp:switch_ws(1);
+
+		local key = get_key("tiler_" .. disp.name .. "_sel");
+
+		if key and tonumber(key) then
+			disp:switch_ws(tonumber(key));
+		end
 	end
 
 	adopt_new = {};
