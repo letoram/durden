@@ -489,6 +489,12 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 		end
 	end
 
+-- simulate rclick on item which should trigger a popup
+	if (sym == 'TAB') then
+		print("lbar tab");
+		return;
+	end
+
 -- first allow whatever thing that is using the lbar to override the
 -- meta + accept/l/r/n/p in order to implement more advanced actions
 --

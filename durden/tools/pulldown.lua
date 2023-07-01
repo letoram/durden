@@ -272,7 +272,7 @@ local function dterm()
 -- the spawn_terminal() function from global/open takes care of initial
 -- font setup, it's only for dynamic changes the rest is needed
 	if (not valid_vid(dstate.term)) then
-		local targ = terminal_build_argenv();
+		local targ = suppl_terminal_build_argenv();
 		dstate.term = launch_avfeed(targ, "terminal",
 		function(source, status)
 			if (status.kind == "preroll") then

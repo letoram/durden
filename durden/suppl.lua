@@ -1537,3 +1537,30 @@ function suppl_sort_fuzzy(instr)
 		fuzzy_dist(instr, type(b) == "table" and b[3] or b);
 	end
 end
+
+function suppl_terminal_build_argenv(group)
+	local bc = gconfig_get("term_bgcol");
+	local fc = gconfig_get("term_fgcol");
+	local cp = group and group or gconfig_get("extcon_path");
+	local palette = gconfig_get("term_palette");
+	local cursor = gconfig_get("term_cursor");
+	local blink = gconfig_get("term_blink");
+	local interp = gconfig_get("term_interp");
+
+	local lstr = string.format(
+		"%scursor=%s:interp=%s:blink=%s:bgalpha=%d:bgr=%d:bgg=%d:bgb=%d:fgr=%d:fgg=%d:fgb=%d:%s%s%s",
+		gconfig_get("term_tpack") and "tpack:" or "",
+		cursor, interp, blink,
+		gconfig_get("term_opa") * 255.0 , bc[1], bc[2], bc[3],
+		fc[1], fc[2], fc[3],
+			(cp and string.len(cp) > 0) and ("env=ARCAN_CONNPATH="..cp) or "",
+		string.len(palette) > 0 and (":palette="..palette) or "",
+		gconfig_get("term_append_arg")
+	);
+
+	if (gconfig_get("term_bitmap")) then
+		lstr = lstr .. ":" .. "force_bitmap";
+	end
+
+	return lstr;
+end
