@@ -194,9 +194,6 @@ local function set_input(ctx, instr, done, lastv)
 		local dset = {"error_broken"}
 
 		local setkey = "set"
-		if ctx.suggestions then
-			setkey = "suggestions"
-		end
 
 -- there might be multiple set types in an entry, so let a key decide.
 -- similarly, there might be a static or dynamic set to consider.
@@ -309,10 +306,9 @@ function menu_query_value(ctx, mask, block_back)
 
 -- explicit set to chose from?
 	local res;
-	if (ctx.set or ctx.suggestions) then
-
-		res = active_display():lbar(set_input, ctx,
-			{label = hintstr, force_completion = not ctx.suggestions, prefill = ctx.prefill});
+	if (ctx.set) then
+		res = active_display():lbar(
+			set_input, ctx, {label = hintstr, force_completion = true});
 	else
 -- or a "normal" run with custom input and validator feedback
 		res = active_display():lbar(

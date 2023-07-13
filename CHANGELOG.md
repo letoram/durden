@@ -52,6 +52,8 @@
 
 minor:
 
+* migrate control IPC to asynch-i/o
+
 * statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches
 
 * overlay tool updated to respect statusbar size and side orientations

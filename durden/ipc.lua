@@ -44,18 +44,19 @@ local all_categories = {
 
 local print_override = suppl_add_logfn("stdout");
 local warning_override = suppl_add_logfn("warning");
+local fmt = string.format;
 
 print = function(...)
 	local tbl = {...};
 	local fmtstr = string.rep("%s\t", #tbl);
-	local msg = string.format(fmtstr, ...);
+	local msg = fmt(fmtstr, ...);
 	print_override(msg);
 end
 
 warning = function(...)
 	local tbl = {...};
 	local fmtstr = string.rep("%s\t", #tbl);
-	local msg = string.format(fmtstr, ...);
+	local msg = fmt(fmtstr, ...);
 	warning_override(msg);
 end
 
@@ -93,7 +94,7 @@ local function toggle_monitoring(on)
 				function(msg)
 					for _, cl in ipairs(clients) do
 						if (cl.category_map and cl.category_map[string.upper(k)]) then
-							table.insert(cl.buffer, v .. msg);
+							cl.connection:write(v .. msg);
 						end
 					end
 				end or nil
@@ -347,69 +348,38 @@ local function remove_client(ind)
 	table.remove(clients, ind);
 end
 
-local do_line;
-local function client_flush(cl, ind)
-	while true do
-		local line, ok = cl.connection:read();
-		if (not ok) then
-			remove_client(ind);
-			return;
-		end
-		if (not line) then
-			break;
-		end
-		if (string.len(line) > 0) then
-			if (monitor_state) then
-				for _,v in ipairs(clients) do
-					if (v.category_map and v.category_map["IPC"]) then
-						table.insert(v.buffer, string.format(
-							"IPC:client=%d:command=%s\n", v.seqn, line));
-					end
-				end
-			end
-			do_line(line, cl, ind);
-		end
+local function get_cmderror()
+	local set = {};
+	for k,v in pairs(commands) do
+		table.insert(set, k);
 	end
-
-	while #cl.buffer > 0 do
-		local line = cl.buffer[1];
-		local i, ok = cl.connection:write(line);
-		if (not ok) then
-			remove_client(ind);
-			return;
-		end
-		if (i == string.len(line)) then
-			table.remove(cl.buffer, 1);
-		elseif (i == 0) then
-			break;
-		else
-			cl.buffer[1] = string.sub(line, i+1);
-		end
-	end
+	table.sort(set);
+	return table.concat(set, " ");
 end
 
 -- splint into "cmd argument", resolve argument as a menu path and forward
 -- to the relevant entry in commands, special / ugly handling for monitor
 -- which takes both forms.
-do_line = function(line, cl, ind)
+do_line = function(line, cl)
 	local ind = string.find(line, " ");
 
 	if (string.sub(line, 1, 7) == "monitor") then
 		for _,v in ipairs(commands.monitor(cl, string.sub(line, 9))) do
-			table.insert(cl.buffer, v .. "\n");
+			cl.connection:write(v .. "\n");
 		end
 		return;
 	end
 
 	if (not ind) then
+		cl.connection:write(fmt("EINVAL: missing cmd(%s) arg) - \n", get_cmderror()));
 		return;
 	end
+
 	cmd = string.sub(line, 1, ind-1);
 	line = string.sub(line, ind+1);
 
-	if (not commands[cmd]) then
-		table.insert(cl.buffer,
-			string.format("EINVAL: bad command(%s)\n", cmd));
+	if not (commands[cmd]) then
+		cl.connection:write(fmt("EINVAL: missing command(%s) - \n", get_cmderror()));
 		return;
 	end
 
@@ -419,20 +389,16 @@ do_line = function(line, cl, ind)
 	local res, msg, remainder = menu_resolve(line);
 
 	if (not res or type(res) ~= "table") then
-		table.insert(cl.buffer, string.format("EINVAL: %s\n", msg));
+		cl.connection:write(fmt("EINVAL: %s\n", msg));
 	else
 		for _,v in ipairs(commands[cmd](cl, line, res, remainder)) do
-			table.insert(cl.buffer, v .. "\n");
+			cl.connection:write(v .. "\n");
 		end
 	end
 end
 
--- Alas, arcan doesn't expose a decent asynch callback mechanism tied to
--- the socket (which should also be rate-limited and everything else like
--- that needed so we don't stall) so we have to make do with the normal
--- buffering for now, when it is added there we should only need to add
--- a function argument to the open_nonblock and to the write call
--- (table + callback, release when finished)
+-- The asio data-handler isn't portable on accept as it is strictly not
+-- data-in. Keep a polling approach going on a timer.
 local seqn = 1;
 local function poll_control_channel()
 	local nc = control_socket:accept();
@@ -440,15 +406,31 @@ local function poll_control_channel()
 	if (nc) then
 		local client = {
 			connection = nc,
-			buffer = {},
 			seqn = seqn
 		};
+		nc:lf_strip(true);
+
+-- This is a bit of a gamble, but since the feature is so 'fringe' and the
+-- actual set of paths with possible adverse effects so small, ignore the
+-- gpublock state and dispatch regardless. The bigger problem path to look
+-- out for is anything /display and we could add the safety just for that
+-- path explicitly.
+		nc:data_handler(
+			function(gpublock)
+				local line, ok = nc:read();
+				while line do
+					do_line(line, client);
+					line, ok = nc:read();
+				end
+				if not ok then
+					local ind = table.find_i(clients, client);
+					remove_client(ind);
+				end
+				return ok;
+			end
+		);
 		seqn = seqn + 1;
 		table.insert(clients, client);
-	end
-
-	for i=#clients,1,-1 do
-		client_flush(clients[i], i);
 	end
 end
 
