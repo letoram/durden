@@ -102,7 +102,7 @@ local function clipboard_urls()
 				if wnd.paste then
 					wnd:paste(v);
 				else
-					pastefun(wnd, v);
+					clipboard_paste_default(wnd, v);
 				end
 			end
 		});
@@ -185,7 +185,7 @@ return {
 			local wnd = active_display().selected;
 			wnd.clipboard_monitor =
 			function(msg, src)
-				pastefun(wnd, msg);
+				clipboard_paste_default(wnd, msg);
 			end
 			CLIPBOARD:add_monitor(wnd.clipboard_monitor);
 		end
