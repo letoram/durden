@@ -244,10 +244,12 @@ local function update_completion_set(wm, ctx, set)
 
 	for i=ctx.inp.cofs,#set do
 -- figure out the format string and the message based on selection status
--- and if the provided entry has a custom override or we should use def.
+-- and if the provided entry has a custom override or we should use default.
 		local selected = i == ctx.inp.csel;
 		local msgs;
 
+-- the returned table format includes:
+-- [fmt_prefix on inactive, fmt_prefix on active, value to present, (helper)]
 		if (type(set[i]) == "table") then
 			msgs = {wm.font_delta .. (set[i][selected and 2 or 1]), set[i][3]};
 		else

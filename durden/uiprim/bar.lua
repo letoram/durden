@@ -39,10 +39,8 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 	end
 
 -- might just need to repeat the last known label with new fontinfo
-	local replace;
 	if (lbl == nil) then
 		lbl = btn.last_lbl;
-		replace = true;
 	end
 
 -- keep this around so we can update if the fontfn changes
@@ -67,7 +65,9 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 		end
 
 		btn.lbl = txt;
-		btn.w, btn.h = btn_clamp(btn, w + btn.padw + btn.padw, h);
+		btn.real_w = w + btn.padw * 2;
+		btn.real_h = h;
+		btn.w, btn.h = btn_clamp(btn, btn.real_w, btn.real_h);
 
 -- just resize / relayout
 	elseif type(lbl) == "function" then
@@ -77,7 +77,6 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 -- vid should belong to the caller, as the linking and deleting will occur
 -- here
 		lbl = lbl(btn.minh);
-
 		if (not valid_vid(lbl)) then
 			return;
 		end
@@ -96,8 +95,9 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 			btn.w, btn.h = btn_clamp(btn, props.width, props.height);
 			rotate_image(lbl, btn.lbl_rotate);
 		else
-			btn.w, btn.h = btn_clamp(btn,
-				props.width + btn.padw + btn.padw, props.height);
+			btn.real_w = props.width + btn.padw * 2;
+			btn.real_h = props.height;
+			btn.w, btn.h = btn_clamp(btn, btn.real_w, btn.real_h);
 			rotate_image(lbl, 0);
 		end
 
@@ -326,6 +326,8 @@ end
 
 local function bar_dimensions(bar)
 	local w = 2 * bar.sidepad;
+	local h = 2 * bar.sidepad;
+
 	for _,group in ipairs({"left", "right", "center"}) do
 		for _,v in ipairs(bar.buttons[group]) do
 
@@ -333,12 +335,16 @@ local function bar_dimensions(bar)
 -- otherwise is sized / clamped to the bar size (which basically works
 -- for icons) but would get poorly cropped otherwise
 			if bar:is_compact() and group == "center" then
+				w = w + v.real_w;
+			else
+				local bw, bh = v:dimensions();
+				w = w + v:dimensions();
+				h = h < bh and bh or h;
 			end
-
-			w = w + v:dimensions();
 		end
 	end
-	return w;
+
+	return w, h;
 end
 
 local function bar_relayout_horiz(bar)
@@ -652,7 +658,6 @@ local function btn_insert(bar, align,
 		warning("couldn't create button");
 		return;
 	end
-	btn.autofill = true;
 
 	table.insert(bar.buttons[align], btn);
 -- chain to the destructor so we get removed immediately
@@ -992,8 +997,6 @@ end
 -- safely be :destroyed() when we are or when someone else replaces this
 -- one.
 local function bar_nested(bar, new, closure)
--- closure is responsible for restoring to old owner or destroying,
--- just forward the state if we are in destroy or simply replace
 	if (bar.nested_closure) then
 		if (bar.nested) then
 			bar.nested.parent = nil;
@@ -1097,6 +1100,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 		destroy_impostor = bar_impostor_destroy,
 		set_nested = bar_nested,
 		is_compact = bar_is_compact,
+		dimensions = bar_dimensions,
 
 -- mark all buttons and the bar as having a specific state (e.g. alert)
 		switch_state = bar_state,
