@@ -5,7 +5,7 @@
 --
 
 local listeners = {};
-local note_debug = suppl_add_logfn("notification");
+local log, fmt = suppl_add_logfn("notification");
 
 function notification_register(key, handler)
 	listeners[key] = handler;
@@ -29,15 +29,20 @@ end
 -- short   [short description],
 -- long    [longer description, if present],
 -- urgency [1 = normal, 2 = important, 3 = urgent, 4 = critical]
+-- pathref [/some/optional/menu/path]
 --
-function notification_add(source, symref, short, long, urgency)
+function notification_add(source, symref, short, long, urgency, pathref)
 	if (not gconfig_get("notifications_enable")) then
 		return;
 	end
 
-	note_debug(string.format(
-		"source=%s:urgency=%d:msg=%s %s",
-		source, urgency, short, long and long or "")
+	log(
+		fmt(
+				"source=%s:urgency=%d:msg=%s:path=%s:long=%s",
+				source, urgency, short,
+				pathref and pathref or "",
+				long and long or ""
+			)
 	);
 
 	if (type(urgency) ~= "number") then
@@ -47,7 +52,7 @@ function notification_add(source, symref, short, long, urgency)
 
 -- decent place to introduce some rate-limiting here
 	for _,v in pairs(listeners) do
-		v(source, symref, short, long, urgency);
+		v(source, symref, short, long, urgency, pathref);
 	end
 
 	if (valid_vid(symref)) then

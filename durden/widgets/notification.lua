@@ -37,7 +37,7 @@ local test_queue = {
 };
 
 notification_register("notification_widget",
-	function(source, sym, short, long, urgency)
+	function(source, sym, short, long, urgency, pathref)
 		if (valid_vid(sym)) then
 			local lsym = null_surface(sym, 64, 64);
 			image_sharestorage(sym, lsym);
@@ -48,7 +48,8 @@ notification_register("notification_widget",
 			sym = sym,
 			short = short,
 			long = long,
-			urgency = urgency
+			urgency = urgency,
+			pathref = pathref
 		});
 	end
 );
