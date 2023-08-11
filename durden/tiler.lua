@@ -12,7 +12,8 @@ local WND_RESERVED = 100;
 
 local ent_count = 1;
 
-local mouse_handler_factory = system_load("tiler_mh.lua")();
+mouse_handler_factory = system_load("tiler_mh.lua")();
+
 local create_workspace = function() end
 local tiler_logfun, tiler_fmt = suppl_add_logfn("wm");
 
@@ -198,6 +199,7 @@ local function wnd_titlebar_to_statusbar(wnd)
 
 			local bw = wnd:border_width();
 			wnd.titlebar:reanchor(wnd.anchor, 4, bw, bw);
+
 			if (wnd.show_titlebar) then
 				wnd.titlebar:show();
 			else
@@ -550,7 +552,8 @@ local function update_sbar_shadow(wm)
 		method = gconfig_get("sbar_shadow")
 	};
 
-	suppl_region_shadow(sb, sb.width, sb.height, opts);
+	local w, h = sb:dimensions();
+	suppl_region_shadow(sb, w, h, opts);
 end
 
 local function prune_missing_known(wm, list)
@@ -758,9 +761,8 @@ local function tiler_statusbar_update(wm)
 		wm.sbar_ws[11]:hide();
 	end
 
--- now we have the dynamic list of 'display buttons', time to see which ones
--- should stay and which should go
-
+-- now we have the dynamic list of 'display buttons',
+-- time to see which ones should stay and which should go
 		local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	if gconfig_get("sbar_dispbuttons") then
 		local list = {}
@@ -1857,7 +1859,7 @@ local function set_tile(space, repos)
 	local tbl = linearize(space);
 	for _,v in ipairs(tbl) do
 		if (v.titlebar) then
-			v.titlebar:switch_group("tile", true, true);
+			v.titlebar:switch_group("tile", true, false);
 		end
 	end
 
@@ -2622,7 +2624,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 
 			wnd.titlebar:resize(
 				wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
-			wnd.titlebar:reanchor(wnd.anchor, 4, wnd.pad_left, bw, ANCHOR_UL);
+			wnd.titlebar:reanchor(wnd.anchor, 4, 0, bw, ANCHOR_UL);
 		end
 
 -- only hide if we are not in a nested state. otherwise parent decides
@@ -2673,7 +2675,7 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 
 -- programming error, invoked on not-attached
 	if (not valid_vid(wnd.canvas) or not wnd.space) then
-		tiler_debug("kind=error:message=resize_unattached");
+		tiler_debug(active_display(), "kind=error:message=resize_unattached");
 		return false;
 	end
 
@@ -5613,18 +5615,19 @@ local function tiler_scalef(wm, newf, disptbl)
 		for k,v in pairs(disptbl) do
 			wm.disptbl[k] = v;
 		end
-		tiler_debug(wm, string.format(
-			"scale:new=%f:ppcm=%f", newf, disptbl.ppcm and disptbl.ppcm or VPPCM));
-	else
-		tiler_debug(wm, string.format("scale:new=%f", newf));
 	end
 
 -- this will re-recreate some parts of the statusbar, and thus we need to be
 -- sure that new items gets attached to the right rendertarget
-
 	recalc_fsz(wm);
 	wm:rebuild_border();
 	wm:rebuild_statusbar_custom(wm.sbar_custom);
+
+	tiler_debug(wm, string.format(
+		"scale:new=%f:ppcm=%f:font_sz=%d",
+		newf, (disptbl and disptbl.ppcm and disptbl.ppcm) or VPPCM,
+		wm.font_deltav
+	));
 
 	for k,v in ipairs(wm.windows) do
 		v:set_title();
@@ -5729,7 +5732,6 @@ function tiler_create(width, height, opts)
 -- for multi-DPI handling
 		font_delta = "\\f,+0",
 		font_deltav = 0,
-		font_sf = gconfig_get("font_defsf"),
 		scalef = opts.scalef and opts.scalef or 1.0,
 		disptbl = opts.disptbl and opts.disptbl or {ppcm = VPPCM},
 
@@ -5773,6 +5775,12 @@ function tiler_create(width, height, opts)
 		cancellation = tiler_cancellation,
 		convert_mouse_xy = tiler_convert_mousexy,
 		shutdown = tiler_shutdown,
+
+-- indirection to allow dynamic buttons to move to a separate tray
+		get_dock =
+		function(self)
+			return self.statusbar;
+		end,
 
 -- shared event handlers, primarily for effects and layouting
 		on_wnd_create = {},
