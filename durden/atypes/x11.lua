@@ -35,19 +35,27 @@
 --     window was closed and let Xarcan take it from there.
 --
 --  3. detailed feeback on stacking and position. For input to route correctly
---     and windows to be spawned 'right', feedback is needed about is current
+--     and windows to be spawned 'right', feedback is needed about its current
 --     state. This is done through the 'target_anchorhint' calls.
 --
 --  4. X has a different type/hint model. To support conveying the less
---     relevant such metadata, 'message' is used with string.unpack_shmif_argstr
---     to get a key-value table.
+--     relevant such metadata, 'message' is used with
+--     string.unpack_shmif_argstr to get a key-value table.
 --
 -- Follow -build_redirwnd- for how an active redirected window is treated,
 -- and -build_pending- for the ready-to-be-reused state.
 --
 -- Then we need to integrate other features, clipboard is fairly easy as it
--- behaves as expected. Colour management is an opt-in where we allow the main
--- x11 connection to control the display it is on. This is the SUBPROTO_CM.
+-- behaves as expected except for redirected windows. There is one clipboard
+-- per root so any window paste etc. action should redirect into that VID.
+--
+-- We could do that by setting each Xorg as a clipboard monitor, ensuring that
+-- they are all in synch but this won't trigger a paste in Xorg, it still needs
+-- an input event that would have the focused client actually act upon it.
+--
+-- Worse still is that we'd then need to synthesis whatever 'apropriate' paste
+-- input the client expects, but that might interfere with what the outer WM
+-- things.
 --
 local log, fmt = suppl_add_logfn("x11");
 local metawm = {};
@@ -749,7 +757,7 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
 -- the current resolved anchor position so that other clients and tools know where
 -- it is at.
-		if target_anchorhint then
+		if target_anchorhint and valid_vid(vid) then
 			target_anchorhint(vid, ANCHORHINT_SEGMENT, WORLDID, rx, ry);
 		end
 	end
@@ -779,11 +787,13 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- the cursor is actually tied to the parent, so work through that
 	new.custom_cursor = parent.custom_cursor;
 
--- same with the clipboard, reroute
+-- Same with the clipboard, reroute. This will only update the selection buffer
+-- on the other end, not actually paste anything. This does not indicate the
+-- intended target, e.g. primary or selection so Xarcan will just do both.
 	new.paste =
-	function(wnd, ...)
-		clipboard_paste_default(wnd, ...);
-	end
+		function(wnd, ...)
+			clipboard_paste_default(parent, ...);
+		end
 
 	if new.ws_attach then
 		new:ws_attach();
@@ -915,7 +925,7 @@ function metawm.segment_request(wnd, source, status)
 
 -- this will chain back to the regular segment_request handler with default
 -- subtype handler for clipboard and cursor.
-	return nil;
+	return false;
 end
 
 local function redirect()
@@ -1006,15 +1016,6 @@ local x11_menu =
 		submenu = true,
 		description = "Redirect a toplevel window",
 		handler = redirect
-	},
-	{
-		name = "kbd_layout",
-		kind = "value",
-		label = "Layout",
-		description = "Request that the server load a specific key layout",
-		handler = function(ctx, val)
-			target_input(active_display().selected.external, "kind=layout:arg=" .. val);
-		end
 	},
 	{
 		name = "xresource",
