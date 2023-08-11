@@ -48,9 +48,22 @@ local fmt = string.format;
 
 print = function(...)
 	local tbl = {...};
-	local fmtstr = string.rep("%s\t", #tbl);
-	local msg = fmt(fmtstr, ...);
-	print_override(msg);
+
+	local count = 0
+	for _, v in pairs(tbl) do
+		count = count + 1
+	end
+
+	local out = {};
+	for i=1,count do
+		if tbl[i] then
+			table.insert(out, tostring(tbl[i]));
+		else
+			table.insert(out, "(nil)");
+		end
+	end
+
+	print_override(table.concat(out, "\t"));
 end
 
 warning = function(...)
