@@ -2624,7 +2624,7 @@ local function wnd_size_decor(wnd, w, h, animate)
 
 			wnd.titlebar:resize(
 				wnd.width - wnd.pad_left - wnd.pad_right + wnd.dh_pad_w, tbh, at, af);
-			wnd.titlebar:reanchor(wnd.anchor, 4, 0, bw, ANCHOR_UL);
+			wnd.titlebar:reanchor(wnd.anchor, 4, bw, bw, ANCHOR_UL);
 		end
 
 -- only hide if we are not in a nested state. otherwise parent decides
