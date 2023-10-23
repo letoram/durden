@@ -77,5 +77,16 @@ return {
 			return gconfig_get("menu_helper") and LBL_YES or LBL_NO;
 		end,
 		handler = suppl_flip_handler("menu_helper")
+	},
+	{
+		name = "password_mask",
+		label = "Mask Password",
+		description = "Replace password entry inputs with asterisks ('*')",
+		kind = "value",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("passmask") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("passmask")
 	}
 };
