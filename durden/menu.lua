@@ -234,6 +234,11 @@ end
 local function value_entry_input(ctx, instr, done, lastv)
 	if (not done) then
 		if (ctx.validator ~= nil and not ctx.validator(instr)) then
+
+-- validators that reject empty strings should still use a possible helpset
+			if #instr == 0 and ctx.helpsel then
+				return {set = ctx.helpsel()};
+			end
 			return false;
 		end
 
@@ -285,6 +290,7 @@ function menu_query_value(ctx, mask, block_back)
 		active_display().font_delta .. gconfig_get("lbar_helperstr"),
 		(ctx.description and ctx.description .. " ") or ""
 	};
+
 	if (ctx.hint) then
 		local hint = type(ctx.hint) == "function" and ctx.hint() or ctx.hint;
 
@@ -312,7 +318,7 @@ function menu_query_value(ctx, mask, block_back)
 	else
 -- or a "normal" run with custom input and validator feedback
 		res = active_display():lbar(
-			value_entry_input, ctx, {password_mask = mask, label = hintstr});
+			value_entry_input, ctx, {set = {"fnurg", "burg"}, password_mask = mask, label = hintstr});
 	end
 	if (res) then
 		if (not res.on_cancel) then

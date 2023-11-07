@@ -2,6 +2,9 @@
 -- the open/a12_directory/active menu
 local log, fmt = suppl_add_logfn("tools");
 
+-- track references to known sinks and substitute that set into target/migrate
+local known_sink = {};
+
 local active_dir = {};
 local active_kind = {};
 
@@ -324,7 +327,7 @@ menus_register("target", "share", {
 		return string.len(val) > 0 and string.len(val) < 31;
 	end,
 	helpsel = function()
-		return known;
+		return known_sink;
 	end,
 	handler = function(ctx, val)
 		target_devicehint(active_display().selected.external, val, true);

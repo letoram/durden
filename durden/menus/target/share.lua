@@ -411,7 +411,8 @@ return {
 	name = "migrate",
 	label = "Migrate",
 	kind = "value",
-	description = "Request that the client connects to a different display server",
+	hint = "(a12://tag@ a12://host.name or local_name)",
+	description = "Request that the client connects to a different server",
 	eval = function()
 		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
 	end,
