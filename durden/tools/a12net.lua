@@ -389,7 +389,15 @@ menus_register("target", "share", {
 		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
 	end,
 	validator = function(val)
-		return string.len(val) > 0 and string.len(val) < 31;
+		if #val == 0 then
+			return false;
+		end
+		if string.sub(val, 1, 6) == "a12://" or
+			string.sub(val, 1, 7) == "a12s://" then
+			return #val < 76;
+		else
+			return #val < 31;
+		end
 	end,
 	helpsel = function()
 		return known_sink;

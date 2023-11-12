@@ -407,11 +407,12 @@ return {
 	submenu = true,
 	handler = share_menu,
 },
+-- tools/a12net will override this entry with metadata
 {
 	name = "migrate",
 	label = "Migrate",
 	kind = "value",
-	hint = "(a12://tag@ a12://host.name or local_name)",
+	hint = "(connpoint)",
 	description = "Request that the client connects to a different server",
 	eval = function()
 		return valid_vid(active_display().selected.external, TYPE_FRAMESERVER);
