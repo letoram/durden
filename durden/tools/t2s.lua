@@ -1,6 +1,5 @@
-local voices = {};
-
-local scan_voices = {};
+local voices = {}; -- set of active (vid ~= BADID) / configured voices
+local scan_voices = {}; -- set of known voice styles
 
 local function rescan()
 	scan_voices = {};
@@ -18,6 +17,14 @@ local function rescan()
 end
 
 rescan();
+
+local function load_voices(name)
+end
+
+local function save_voices(name)
+end
+
+load_voices("default");
 
 local function activate_voice(v)
 	if valid_vid(v.vid) then
@@ -165,6 +172,38 @@ local function gen_voice_menu()
 			end
 		});
 	end
+	if #res > 0 then
+		table.insert(res,
+		{
+			name = "reset",
+			kind = "action",
+			label = "Reset",
+			description = "Remove all active or configured voices",
+			handler =
+			function()
+				for _,v in ipairs(voices) do
+					if valid_vid(v.vid) then
+						delete_image(v.vid);
+					end
+				end
+				voices = {};
+			end
+		});
+		table.insert(res,
+		{
+			name = "save",
+			kind = "value",
+			label = "Save",
+			description = "Save all active voices and their configuration",
+			validator = suppl_valid_name,
+			handler =
+			function(ctx, val)
+				save_voices(val);
+			end
+		});
+	end
+-- glob to get set to load
+--
 	return res;
 end
 

@@ -23,7 +23,7 @@ return {
 	classifier = "relmouse",
 
 -- ignore samples until we get one inside (>= [1,2] <= [3,4])
-	activation = {0.1, 0.1, 0.9, 0.9},
+	activation = {0.2, 0.2, 0.8, 0.8},
 
 -- "pre-mouse" acceleration
 	scale_x = 3.0,

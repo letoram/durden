@@ -28,7 +28,9 @@ local function gen_dhandler(mode)
 end
 
 local function button_factory(side, label, path, altpath)
+	print("build_button", side);
 	local side = side == "button_left" and "left" or "right";
+
 	local wm = active_display();
 	local bar = wm:get_dock();
 	local sbh = math.clamp(
@@ -55,7 +57,7 @@ local function add_discover(mode, vid)
 	end
 
 	local tbl = {vid = vid};
-	local dmode = gconfig_get("a12net_on_update");
+	local dmode = gconfig_get("a12net_on_initial");
 
 	if dmode == "button_left" or dmode == "button_right" then
 		button_factory(dmode, mode, "", "");
@@ -74,7 +76,11 @@ local function launch_appl(v, id)
 	message_target(v, id);
 end
 
-local function get_applmenu_dir(k)
+local function attach_source(dir, v)
+	log("attach=" .. v);
+end
+
+local function get_dirmenu(k,v)
 	local res = {
 		{
 		name = "disconnect",
@@ -85,6 +91,9 @@ local function get_applmenu_dir(k)
 			if valid_vid(k) then
 				delete_image(k);
 			end
+			if v.closure then
+				v:closure();
+			end
 			active_dir[k] = nil;
 		end,
 		}
@@ -94,11 +103,67 @@ local function get_applmenu_dir(k)
 		return res;
 	end
 
+	table.insert(res, {
+		name = "sep_del",
+		kind = "action",
+		label = "--------",
+		separator = true,
+		eval = function() return false; end,
+		handler = function() end
+	});
+
+-- there should also be the option to directly source it
+	for i,v in ipairs(active_dir[k].dirs) do
+		table.insert(res, {
+			name = "open_" .. tostring(v),
+			kind = "action",
+			label = v .. "/",
+			description = "Open the linked " .. v .. " directory",
+			handler = function()
+				open_dir(k, v);
+			end
+		});
+	end
+
+	if #active_dir[k].dirs > 0 then
+		table.insert(res, {
+			name = "sep_src",
+			kind = "action",
+			label = "--------",
+			separator = true,
+			eval = function() return false; end,
+			handler = function() end
+		});
+	end
+
+	for i,v in ipairs(active_dir[k].sources) do
+		table.insert(res, {
+			name = "sink_" .. tostring(v),
+			kind = "action",
+			label = "< " .. v,
+			description = "Request to sink the " .. v .. " source",
+			handler = function()
+				attach_source(active_dir[k], v);
+			end
+		});
+	end
+
+	if #active_dir[k].sources > 0 then
+		table.insert(res, {
+			name = "sep_src",
+			kind = "action",
+			label = "--------",
+			separator = true,
+			eval = function() return false; end,
+			handler = function() end
+		});
+	end
+
 	for i,v in pairs(active_dir[k].appls) do
 		table.insert(res, {
 			name = "run_" .. tostring(v),
 			kind = "action",
-			description = "Download/Synch and run.",
+			description = "Download/Synch and run " .. i,
 			label = i,
 			handler = function()
 				launch_appl(k, v);
@@ -119,7 +184,7 @@ local function gen_a12dir_active()
 			kind = "action",
 			submenu = true,
 			handler = function()
-				return get_applmenu_dir(k);
+				return get_dirmenu(k, v);
 			end,
 		});
 	end
@@ -341,6 +406,7 @@ local function dir_list_trigger(status, dir, key, host)
 	if dir.known then
 		local mode = gconfig_get("a12net_on_update");
 		if mode == "alert" then
+
 		elseif mode == "notify" then
 
 		end
@@ -355,7 +421,7 @@ local function dir_list_trigger(status, dir, key, host)
 
 	if mode == "button_left" or mode == "button_right" then
 -- add the button and map to the same popup
-		dir.button = button_factory(side, host, popup_path, delta_path);
+		dir.button = button_factory(mode, host, popup_path, delta_path);
 		dir.button:switch_state("alert");
 
 	elseif mode == "popup" then
@@ -403,14 +469,28 @@ local function get_dir_cbh(key, host)
 				end
 			end
 
-		elseif status.kind == "discovered" then
+		elseif status.kind == "state" then
+			if status.source then
+				if status.name then
+					if status.lost then
+						log(fmt("a12net:source=%s:lost", status.name));
+						table.remove_match(active_dir[source].sources, status.name);
+					else
+						log(fmt("a12net:source=%s:found", status.name));
+						table.insert(active_dir[source].sources, status.name);
+						if active_dir[source].button then
+							active_dir[source].button:switch_state("alert")
+						end
+					end
+				else
+					log("a12net:pubk");
+				end
+			elseif status.sink then
 
--- there is a new or lost relative directory, source or sink
---
---       this needs to convey connection options
---       and we need to tell the directory service what we want (relay, natpunch, direct)
---       then get the connection data in return
---
+			elseif status.directory then
+				log("a12net:dir=%s", status.name);
+			end
+
 		elseif status.kind == "streamstatus" then
 
 -- completion progress of appl-download (relevant until segment_request)
@@ -454,7 +534,10 @@ local function gen_a12dir()
 			kind = "value",
 			description = "Specify a directory to connect to",
 			hint = "(host or @tag)",
-			helpsel = function() return {"arcan.divergent-desktop.org"}; end,
+			helpsel = function()
+	-- this should also cover discovered results
+				return {"arcan.divergent-desktop.org"};
+			end,
 			handler =
 			function(ctx, val)
 				if not val or #val == 0 then
@@ -465,7 +548,7 @@ local function gen_a12dir()
 				if valid_vid(vid) then
 					target_flags(vid, TARGET_BLOCKADOPT);
 					image_tracetag(vid, "net_discover");
-					active_dir[vid] = {appls = {}, path = val};
+					active_dir[vid] = {appls = {}, sources = {}, dirs = {}, path = val};
 				end
 			end
 		},
