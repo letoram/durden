@@ -28,7 +28,6 @@ local function gen_dhandler(mode)
 end
 
 local function button_factory(side, label, path, altpath)
-	print("build_button", side);
 	local side = side == "button_left" and "left" or "right";
 
 	local wm = active_display();
@@ -77,7 +76,9 @@ local function launch_appl(v, id)
 end
 
 local function attach_source(dir, v)
-	log("attach=" .. v);
+-- take dir.vid, message with |< or < depending on tunnel preference and append pubk
+	log("attach=" .. v.name);
+	message_target(dir.vid, "|<" .. v.pubk);
 end
 
 local function get_dirmenu(k,v)
@@ -127,7 +128,7 @@ local function get_dirmenu(k,v)
 
 	if #active_dir[k].dirs > 0 then
 		table.insert(res, {
-			name = "sep_src",
+			name = "sep_dir",
 			kind = "action",
 			label = "--------",
 			separator = true,
@@ -138,10 +139,10 @@ local function get_dirmenu(k,v)
 
 	for i,v in ipairs(active_dir[k].sources) do
 		table.insert(res, {
-			name = "sink_" .. tostring(v),
+			name = "sink_" .. tostring(v.name),
 			kind = "action",
-			label = "< " .. v,
-			description = "Request to sink the " .. v .. " source",
+			label = "< " .. v.name,
+			description = "Request to sink the " .. v.name .. " source",
 			handler = function()
 				attach_source(active_dir[k], v);
 			end
@@ -445,6 +446,7 @@ local function dir_list_trigger(status, dir, key, host)
 		end
 	end
 
+	dir.vid = key;
 	dir.known = true;
 end
 
@@ -480,12 +482,19 @@ local function get_dir_cbh(key, host)
 		elseif status.kind == "state" then
 			if status.source then
 				if status.name then
+					local slist = active_dir[source].sources;
+
 					if status.lost then
 						log(fmt("a12net:source=%s:lost", status.name));
-						table.remove_match(active_dir[source].sources, status.name);
+						for i,v in ipairs(slist) do
+							if v.name == status.name then
+								table.remove(slist, i)
+								break
+							end
+						end
 					else
-						log(fmt("a12net:source=%s:found", status.name));
-						table.insert(active_dir[source].sources, status.name);
+						log(fmt("a12net:source=%s:key=%s:found", status.name, status.pubk));
+						table.insert(active_dir[source].sources, status);
 						if active_dir[source].button then
 							active_dir[source].button:switch_state("alert")
 						end
