@@ -346,8 +346,10 @@ local function drop_swap(wnd, mode, tgt, tgt_dir, ostate)
 -- link coordinate systems
 	for btn in wnd.wm.statusbar:all_buttons()	do
 		if set[btn.bg] then
-			if (btn.drag_command) then
+			if type(btn.drag_command) == "string" then
 				dispatch_symbol_wnd(wnd, btn.drag_command);
+			elseif type(btn.drag_command) == "function" then
+				btn.drag_command(wnd)
 			end
 			break;
 		end

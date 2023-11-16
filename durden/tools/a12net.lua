@@ -433,6 +433,31 @@ local function dir_list_trigger(status, dir, key, host)
 		dir.button = button_factory(mode, host, popup_path, delta_path);
 		dir.button:switch_state("alert");
 
+-- compact the options into a popup, we don't want this to trigger on the drop
+-- directly as a misdrop is quite dangerous - also need control over 'return
+-- on exit' or not.
+		dir.button.drag_command =
+		function(wnd)
+			local x, y = mouse_xy()
+			local menu =
+			{
+				{
+					name = "migrate_abandon",
+					kind = "action",
+					label = "Migrate/Abandon",
+					handler =
+					function()
+						if valid_vid(wnd.external, TYPE_FRAMESERVER) then
+							target_devicehint(wnd.external, "a12://" .. dir.path, true);
+						else
+						end
+					end
+				}
+			}
+
+			uimap_popup(menu, x, y)
+		end
+
 	elseif mode == "popup" then
 		dispatch_symbol(popup_path);
 	elseif mode == "menu" then
@@ -455,6 +480,7 @@ local function get_dir_cbh(key, host)
 	function(source, status)
 		if status.kind == "terminated" then
 			delete_image(source);
+			table.remove_match(known_sink, active_dir[source].path);
 
 			if active_dir[source].closure then
 				active_dir[source]:closure();
