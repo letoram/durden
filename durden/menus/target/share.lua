@@ -160,6 +160,63 @@ local function merge_step(steptbl, stat)
 	steptbl.height = y2 - steptbl.y;
 end
 
+local function build_framefun(buf)
+-- One optimization missing here still and that is that any dirty rectangle state
+-- is actually lost when the client updates due to the rendertarget indirection
+-- and readback not being able to track those kinds of details. The fix should
+-- be in the engine by modifying stepframe_target to accept a scissor region,
+-- and propagate the dirty- update details in the frame delivery event.
+--
+-- For a12 specifically shmif and it can/will diff against previous frames, but
+-- that is costly and adds latency compared to if you already have the correct
+-- information.
+	local fun;
+	fun = function(wnd, stat, from_timer)
+		if not wnd.drop_handler or not wnd.name then
+			return;
+		end
+
+-- already have an update queued, wait for that one, this will automatically rate-
+-- limit updates to the 25Hz click when saturated - might want this as a frame hook
+-- instead. merging is necessary or we will lose partial updates.
+		if wnd.pending_step and not from_timer then
+			merge_step(wnd.pending_step, stat);
+			return;
+		end
+
+		if not valid_vid(buf, TYPE_EXTERNAL) then
+			wnd:drop_handler("frame", fun);
+			return;
+		end
+
+		rendertarget_forceupdate(buf);
+
+-- edge condition, we are producing frames too fast, set a timer and call into
+-- ourselves with the from_timer condition set
+		if (stepframe_target(buf, 1, false,
+			stat.x, stat.y, stat.width, stat.height) == false) then
+			if not from_timer then
+				wnd.pending_step = {
+					x = stat.x,
+					y = stat.y,
+					width = stat.width,
+					height = stat.height
+				};
+			end
+
+			timer_add_periodic("share_step_" .. wnd.name, 1, true,
+				function()
+					fun(wnd, stat, true);
+				end, nil, true
+			);
+		else
+			wnd.pending_step = nil;
+		end
+	end
+
+	return fun;
+end
+
 local function gen_sharemenu(label, proto, active, defport, defpass)
 return
 {
@@ -172,7 +229,8 @@ return
 	end,
 	hint = "(port:pass)",
 	validator = valid_portpass,
-	handler = function(ctx, val)
+	handler =
+	function(ctx, val)
 		local port = defport;
 		local pass = defpass;
 
@@ -194,66 +252,68 @@ return
 			"stream", active, proto .. (active and "_active" or "_inactive")
 		);
 
--- one optimization missing here still and that is that any dirty rectangle state
--- is actually lost when the client updates due to the rendertarget indirection
--- and readback not being able to track those kinds of details. The fix should be
--- in the engine by modifying stepframe_target to accept a scissor region, and
--- propagate the dirty- update details in the frame delivery event
-		local fun;
-		fun = function(wnd, stat, from_timer)
-			if not wnd.drop_handler then
-				return;
-			end
-
--- already have an update queued, wait for that one, this will automatically rate-
--- limit updates to the 25Hz click when saturated - might want this as a frame hook
--- instead. merging is necessary or we will lose partial updates.
-			if wnd.pending_step and not from_timer then
-				merge_step(wnd.pending_step, stat);
-				return;
-			end
-
-			if valid_vid(buf, TYPE_EXTERNAL) then
-				rendertarget_forceupdate(buf);
-
--- edge condition, we are producing frames too fast, set a timer and call into
--- ourselves with the from_timer condition set
-				if (stepframe_target(buf, 1, false,
-					stat.x, stat.y, stat.width, stat.height) == false) then
-					if not from_timer then
-						wnd.pending_step = {
-							x = stat.x,
-							y = stat.y,
-							width = stat.width,
-							height = stat.height
-						};
-					end
-
-					timer_add_periodic("share_step_" .. wnd.name, 1, true, function()
-						fun(wnd, stat, true);
-					end, nil, true);
-				else
-					wnd.pending_step = nil;
-				end
-			else
-				wnd:drop_handler("frame", fun);
-			end
-		end
-
 -- registering a frame handler event incs the event-handler refcount and enables
 -- the TARGET_VERBOSE that is required to get frame delivery events, we then use
 -- those events as a clock to update the rendertarget.
 		if wnd and wnd.add_handler then
-			wnd:add_handler("frame", fun);
+			wnd:add_handler("frame", build_framefun(buf));
 		end
 	end
 };
 end
 
+local function gen_pushmenu(label, name, active)
+-- layering violation compared to the other tools, but we have no dispatch for
+-- dynamically discovered A12 sources
+	return
+	{
+		name = name,
+		label = label,
+		kind = "value",
+		description = "Push a sharing context to an A12 sink",
+		hint = "(tag@ | tag@host | host:port)",
+		set = function()
+			local tbl = a12net_list_tags("sink");
+			local set = {};
+			for _,v in ipairs(tbl) do
+				table.insert(set, v.tag .. "@" .. v.host);
+			end
+			return set;
+		end,
+		eval = function()
+			return a12net_list_tags and #a12net_list_tags("sink") > 0;
+		end,
+		validator = function(str)
+			return str and #str > 0;
+		end,
+		handler = function(ctx, val)
+			local argstr = "container=stream:protocol=a12";
+			local tag, host = string.split_first(val, "@");
+			if #tag > 0 then
+				argstr = argstr .. ":tag=" .. tag;
+			end
+			argstr = argstr .. ":host=" .. host;
+
+			local wnd, buf =
+				setup_sharing(argstr,
+					active_display().selected.external and 0 or -1, true,
+					"stream", active,
+					string.format("a12-%s(%s)", active and "active" or "passive",
+					val)
+				);
+
+			if wnd and wnd.add_handler then
+				wnd:add_handler("frame", build_framefun(buf));
+			end
+		end
+	}
+end
+
 local function gen_share_menu(active)
 	return {
 		gen_sharemenu("VNC", "vnc", active, 5900, "guest"),
-		gen_sharemenu("A12", "a12", active, 6680, "guest")
+		gen_sharemenu("A12-inbound", "a12_in", active, 6680, "guest"),
+		gen_pushmenu("A12-outbound", "a12_out", active)
 	};
 end
 

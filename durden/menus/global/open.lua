@@ -135,15 +135,22 @@ local function get_remstr(val)
 	if first ~= "" then
 		if first == "a12" then
 		elseif first == "vnc" then
+			proto = "vnc"
 		else
 			return nil;
 		end
 	end
 
--- grab user credentials (optional)
+-- grab user credentials (optional), in a12 there's not a user:pass but
+-- rather a keytag with an optional authentication secret.
 	first, rest = string.split_first(rest, "@");
+	local suffix = "";
 	if first ~= "" then
-
+		if proto == "a12" then
+			suffix = ":tag=" .. first;
+		else
+			user = first;
+		end
 	end
 
 -- see if there is a host:port or only host
@@ -164,7 +171,7 @@ local function get_remstr(val)
 		return nil;
 	end
 
-	local res = string.format("protocol=%s:port=%s:host=%s", proto, port, host);
+	local res = string.format("protocol=%s:port=%s:host=%s" .. suffix, proto, port, host);
 	if #user > 0 then
 		res = "user=" .. string.sub(user, ":", "\t") .. ":" .. res;
 	end
@@ -278,7 +285,7 @@ return {
 	label = "Remote Desktop",
 	kind = "value",
 	helpsel = function() return CLIPBOARD.urls; end,
-	description = "Connect to a remote desktop session",
+	description = "Connect to a remote desktop session or generic a12 source",
 	initial = "a12://",
 	hint = "(vnc:// or a12:// user:pass@host:port)",
 	validator = function(val)

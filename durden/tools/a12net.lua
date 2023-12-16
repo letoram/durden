@@ -5,11 +5,16 @@ local log, fmt = suppl_add_logfn("tools");
 -- track references to known sinks and substitute that set into target/migrate
 local known_sink = {};
 
+local known_beacon = {}; -- should autoprune based on CLOCK
+
 local active_dir = {};
 local active_kind = {};
 
+-- this relies on passive being the only mode that need multipart pairing now
+local pending_multipart;
+
 local scanner_active = false;
-local trust_mode = TRUST_KNOWN;
+local trust_model = TRUST_KNOWN;
 
 local function gen_dhandler(mode)
 	return
@@ -21,9 +26,97 @@ local function gen_dhandler(mode)
 				active_kind[mode].button:destroy();
 			end
 			active_kind[mode] = nil;
-		elseif kind ~= "status" then
+			return;
+
+		elseif status.kind ~= "state" then
 			return;
 		end
+
+		if mode == "passive" then
+			if status.multipart then
+				pending_multipart = status;
+				return;
+			end
+
+-- new that appeared or a ping from an old known source?
+			local kb = known_beacon[status.name];
+			if not kb then
+				kb = {tags = {}, probed = 0, last_seen = CLOCK};
+				known_beacon[status.name] = kb;
+			end
+
+-- mark for re-probe if we haven't seen this source make a beacon for a while
+			kb.last_seen = CLOCK;
+			if CLOCK - kb.last_seen > 1000 * 180 then
+				kb.probed = 0;
+				kb.directory = false;
+				kb.source = false;
+				kb.sink = false;
+			end
+
+-- tag + ipv4,6 or just ipv4,ipv6
+			if pending_multipart then
+				local tag = pending_multipart.name;
+				pending_multipart = nil;
+
+				for i,v in ipairs(kb.tags) do
+					if v == tag then
+						return;
+					end
+				end
+
+				table.insert(kb.tags, tag);
+				kb.name = status.name;
+			end
+
+			local trigger_update =
+			function()
+
+			end
+
+-- probe is net_open in ? mode with the specified tag and a host override
+			if kb.probed < #kb.tags then
+				kb.probed = kb.probed + 1;
+				log(fmt("probe:tag=%s:source=%s", kb.tags[kb.probed], kb.name));
+
+				net_open("?" .. kb.tags[kb.probed], kb.name,
+					function(source, status)
+						if status.kind == "terminated" then
+							delete_image(source);
+							log(fmt("discover:probe=%s:fail", kb.name));
+
+-- if we set a rule for the passive, e.g. 'auto-connect new sources' here is the
+-- point to trigger for that.
+						elseif status.kind == "message" then
+							delete_image(source);
+							if status.message == "directory" then
+								kb.directory = kb.tags[kb.probed];
+							end
+							if status.message == "source" then
+								kb.source = kb.tags[kb.probed];
+							end
+							if status.message == "sink" then
+								kb.sink = kb.tags[kb.probed];
+							end
+							kb.probed = #kb.tags;
+							trigger_update();
+							log(fmt("discover:probe=%s:message=%s", kb.name, status.message));
+						end
+					end
+				)
+			end
+
+			log(fmt("discover:mode=%s:space=%s:key=%s:name=%s:tag=%s",
+				mode,
+				status.namespace,
+				status.pubk and status.pubk or "unknown",
+				status.name,
+				kb.tag and kb.tag or "no_tag"
+			));
+		end
+
+-- other interesting bits: source, sink or directory set (if known)
+-- for directory we get tag or ipv4/ipv6 (understands the format but unknown key)
 	end
 end
 
@@ -49,6 +142,37 @@ local function button_factory(side, label, path, altpath)
 	return res;
 end
 
+local function get_tag_host(mode, cb)
+	local res = {};
+
+	for k,v in pairs(known_beacon) do
+		if v[mode] then
+			table.insert(res,
+				{
+					label = string.format("%s @ (%s)", v[mode], v.name),
+					name = mode .. "_" .. tostring(#res+1),
+					kind = "action",
+					handler = function()
+						cb(v, v[mode]);
+					end
+				}
+			)
+		end
+	end
+
+	return res;
+end
+
+function a12net_list_tags(role)
+	local res = {};
+	for k,v in pairs(known_beacon) do
+		if v[role] then
+			table.insert(res, {tag = v[role], host = v.name});
+		end
+	end
+	return res;
+end
+
 local function add_discover(mode, vid)
 	if not valid_vid(vid) then
 		log("discover:deep:launch fail");
@@ -59,7 +183,62 @@ local function add_discover(mode, vid)
 	local dmode = gconfig_get("a12net_on_initial");
 
 	if dmode == "button_left" or dmode == "button_right" then
-		button_factory(dmode, mode, "", "");
+		tbl.button = button_factory(dmode, "Discover:" .. mode, "", "");
+
+		if mode == "passive" or mode == "sweep" then
+			tbl.button.drag_command =
+			function(wnd)
+				local x, y = mouse_xy()
+				uimap_popup({{
+					name = "migrate",
+					label = "Migrate/Redirect",
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return get_tag_host("sink",
+							function(ent, tag)
+	-- need a target_devicehint that takes tag@ent.name
+							end
+						)
+					end
+				},
+	-- if we have the virtual display tool, here would be the path to add support
+	-- for creating one that attaches to the device in question
+				{
+					name = "stream",
+					label = "Stream/Share (Active)",
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return get_tag_host("sink",
+							function(ent, tag)
+								local path =
+									string.format("/target/share/remoting/active/a12_out=%s@%s", tag, ent.name);
+								log(path);
+								dispatch_symbol_wnd(wnd, path);
+							end
+						);
+					end
+				},
+				{
+					name = "stream",
+					label = "Stream/Share (Passive)",
+					kind = "action",
+					submenu = true,
+					handler = function()
+						return get_tag_host("sink",
+							function(ent, tag)
+								local path =
+									string.format("/target/share/remoting/passive/a12_out=%s@%s", tag, ent.name);
+								log(path);
+								dispatch_symbol_wnd(wnd, path);
+							end
+						);
+					end
+				},
+			}, x, y)
+			end
+		end
 	end
 
 	target_flags(vid, TARGET_BLOCKADOPT);
@@ -192,53 +371,6 @@ local function gen_a12dir_active()
 	return res;
 end
 
-local function gen_menu_for_known(ent, ind)
--- might be a multipart in progress
-	if not ent.complete then
-		return;
-	end
-
--- preferred order:
-	local names = {};
-	local res = {};
-
-	for _,v in ipairs({"tag", "ipv4", "ipv6", "dns", "a12pub"}) do
-		if ent.names[v] then
-			table.insert(names, v);
-		end
-	end
-
--- only consider sources and directories
-	if not ent.source and not ent.directory then
-		return;
-	end
-
-	if #names == 0 then
-		log("kind=warning:source=a12net_discover:bad_entry");
-		return;
-	end
-
--- source / directory are still possible bitmasks, but directory takes priority
-	local npref = (ent.source and "source_" or "") .. (ent.directory and "dir_" or "");
-	local lpref = (ent.source and "Source:" or "") .. (ent.directory and "Directory:" or "");
-
-	res.name = npref .. tostring(ind);
-	res.description = table.concat(names, " / ");
-	res.kind = "action";
-	res.label = lpref .. names[i];
-
-	if ent.directory then
-	res.handler =
-		function()
-
-		end
-	else
-
-	end
-
-	return res;
-end
-
 local function gen_discover_menu(v)
 	local res =
 	{
@@ -258,13 +390,6 @@ local function gen_discover_menu(v)
 			end
 		}
 	};
-
-	for i,v in ipairs(v.known) do
-		local item = gen_menu_for_known(v, i);
-		if item then
-			table.insert(res, item);
-		end
-	end
 
 	return res;
 end
@@ -323,7 +448,7 @@ local function discover_menu()
 			name = "broadcast",
 			kind = "action",
 			label = "Broadcast",
-			description = "Transmit a challenge beacon in the local broadcast domain",
+			description = "Periodically broadcast a beacon making you discoverable by others",
 			eval = function()
 				return active_kind["broadcast"] == nil;
 			end,
