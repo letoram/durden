@@ -47,12 +47,6 @@ local function gen_dhandler(mode)
 
 -- mark for re-probe if we haven't seen this source make a beacon for a while
 			kb.last_seen = CLOCK;
-			if CLOCK - kb.last_seen > 1000 * 180 then
-				kb.probed = 0;
-				kb.directory = false;
-				kb.source = false;
-				kb.sink = false;
-			end
 
 -- tag + ipv4,6 or just ipv4,ipv6
 			if pending_multipart then
@@ -69,9 +63,17 @@ local function gen_dhandler(mode)
 				kb.name = status.name;
 			end
 
+-- trigger button alert, but cap it - we latch it to probe completions or other
+-- network conditions will make things too noisy regardless
+			local last_alert;
 			local trigger_update =
 			function()
-
+				if not last_alert or CLOCK - last_alert > 5000 then
+					last_alert = CLOCK;
+					if active_kind["passive"].button then
+						active_kind["passive"].button:switch_state("alert");
+					end
+				end
 			end
 
 -- probe is net_open in ? mode with the specified tag and a host override
@@ -135,9 +137,11 @@ local function button_factory(side, label, path, altpath)
 				label,
 				gconfig_get("sbar_tpad") * wm.scalef,
 				wm.font_resfn,
-				nil, nil,
+				nil,
+				nil,
 				mouse_handler_factory.statusbar_icon(wm, path, altpath)
 			);
+	res:switch_state("inactive");
 	wm:tile_update();
 	return res;
 end
@@ -183,7 +187,11 @@ local function add_discover(mode, vid)
 	local dmode = gconfig_get("a12net_on_initial");
 
 	if dmode == "button_left" or dmode == "button_right" then
-		tbl.button = button_factory(dmode, "Discover:" .. mode, "", "");
+		tbl.button = button_factory(dmode,
+			"Discover:" .. mode,
+			"/global/tools/popup/menu=/global/tools/networking/discovery/active/" .. mode,
+			""
+		);
 
 		if mode == "passive" or mode == "sweep" then
 			tbl.button.drag_command =
@@ -197,7 +205,9 @@ local function add_discover(mode, vid)
 					handler = function()
 						return get_tag_host("sink",
 							function(ent, tag)
-	-- need a target_devicehint that takes tag@ent.name
+								local path =
+									string.format("/target/share/migrate=%s@%s", tag, ent.name);
+								dispatch_symbol_wnd(wnd, path);
 							end
 						)
 					end
@@ -214,7 +224,6 @@ local function add_discover(mode, vid)
 							function(ent, tag)
 								local path =
 									string.format("/target/share/remoting/active/a12_out=%s@%s", tag, ent.name);
-								log(path);
 								dispatch_symbol_wnd(wnd, path);
 							end
 						);
@@ -382,6 +391,12 @@ local function gen_discover_menu(v)
 				if not active_kind[v] then
 					return;
 				end
+
+	-- flush completely
+				if v == "passive" then
+					known_beacon = {};
+				end
+
 				delete_image(active_kind[v].vid);
 				if active_kind[v].button then
 					active_kind[v].button:destroy();
@@ -779,6 +794,22 @@ local network_opts = {
 gconfig_register("a12net_on_initial", "button_left");
 gconfig_register("a12net_on_discover", "button_left");
 gconfig_register("a12net_on_update", "alert");
+
+timer_add_periodic(
+	"a12net", 1000, false,
+	function()
+		local keys = {};
+		for k,v in pairs(known_beacon) do
+			if CLOCK - v.last_seen > 25 * 180 then
+				table.insert(keys, k);
+			end
+		end
+		for _,v in ipairs(keys) do
+			known_beacon[v] = nil;
+		end
+	end,
+	true
+);
 
 menus_register("global", "settings/tools",
 {
