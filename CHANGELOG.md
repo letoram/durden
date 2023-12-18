@@ -50,6 +50,8 @@
 * target/input/keyboard/send\_keymap - extract current or factory-str platform keymap and send to
     client, useful for x11/wayland.
 
+* net tool: a12net, this adds tools/networking, open/a12\_directory and settings/networking for working with arcan >= 0.6.3
+
 minor:
 
 * migrate control IPC to asynch-i/o

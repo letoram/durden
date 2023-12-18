@@ -18,19 +18,6 @@ return {
 	end,
 },
 {
-	name = "seamless",
-	kind = "value",
-	label = "Seamless",
-	eval = function()
-		return gconfig_get("xarcan_autows") == "none";
-	end,
-	description = "Connected Xarcan instance will be hidden and set to bridge each X11 client",
-	handler =
-	function(ctx, val)
-		suppl_flip_handler("xarcan_seamless")(ctx, val);
-	end
-},
-{
 	name = "meta_wm",
 	kind = "value",
 	label = "WM Integration",

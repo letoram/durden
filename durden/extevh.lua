@@ -464,6 +464,7 @@ local function default_reqh(wnd, source, ev)
 -- something to activate if we are already over? just mouse_xy test against
 -- selected canvas?
 		link_image(cursor, wnd.anchor);
+		target_flags(cursor, TARGET_BLOCKADOPT);
 		return;
 
 	else
@@ -684,6 +685,9 @@ end
 
 defhtbl["resized"] =
 function(wnd, source, stat)
+	wnd.origo_ll = stat.origo_ll;
+	print("attach", wnd.origo_ll);
+
 	if (wnd.ws_attach) then
 -- edge conditions could fail to attach depending on the window type and
 -- certain widgets which hijack attachment, like draw-to-spawn modes
@@ -692,13 +696,13 @@ function(wnd, source, stat)
 			return;
 		end
 	end
+
 	wnd.source_audio = stat.source_audio;
 	audio_gain(stat.source_audio,
 		(gconfig_get("global_mute") and 0 or 1) *
 		gconfig_get("global_gain") * wnd.gain
 	);
 
-	wnd.origo_ll = stat.origo_ll;
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll == true);
 	if (wnd.shader_hook) then
 		wnd.shader_hook();
@@ -983,6 +987,7 @@ function(wnd, source, stat)
 			return;
 		end
 		link_image(wnd.clipboard, wnd.anchor);
+		target_flags(wnd.clipboard, TARGET_BLOCKADOPT);
 		target_updatehandler(wnd.clipboard,
 			function(source, status)
 				extevh_clipboard(wnd, source, status)

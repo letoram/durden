@@ -66,10 +66,16 @@ local function resize_proxy(tbl)
 		return;
 	end
 
--- easier than trying to tag all events going back and forth trying to translate
--- between configures and display hints, might want to schedule a timer though
+-- easier than trying to tag all events going back and forth trying to
+-- translate between configures and display hints MSCs, might want to schedule
+-- a timer though
 	if tbl.last_hint and math.abs(CLOCK - tbl.last_hint) < 5 then
 		return;
+	end
+
+	local olay = tbl.wnd.xmeta[tbl.paired];
+	if olay and valid_vid(olay.vid) then
+		image_set_txcos_default(olay.vid, tbl.origo_ll);
 	end
 
 	target_input(tbl.wnd.external, string.format(
@@ -93,13 +99,14 @@ function build_handler(wnd, tbl)
 			tbl.last_w = status.width;
 			tbl.last_h = status.height;
 			tbl.origo_ll = status.origo_ll;
+				log(fmt("proxy_resize:w=%d:h=%d", status.width, status.height));
 			resize_proxy(tbl);
 		end
 	end
 end
 
 local
-function import_surface(wnd, vid)
+function import_surface(wnd, vid, ll)
 	local props;
 	local tbl = {last_w = 0, last_h = 0};
 
@@ -107,6 +114,8 @@ function import_surface(wnd, vid)
 		props = image_storage_properties(vid);
 		tbl.last_w = props.width;
 		tbl.last_h = props.height;
+		tbl.origo_ll = ll;
+
 		target_updatehandler(vid, build_handler(wnd, tbl));
 	elseif valid_vid(vid) then
 		props = image_surface_properties(vid);
@@ -124,17 +133,24 @@ function import_surface(wnd, vid)
 	tbl.vid = vid;
 	wnd.xmeta.proxy[vid] = tbl;
 	link_image(vid, wnd.anchor);
+	log(fmt("imported:vid=%d", vid));
 	target_input(wnd.external,
 		string.format("kind=new:w=%0.f:h=%0.f:id=%d", props.width, props.height, vid));
 end
 
 -- used for .frame handler in degenerated composition
-local function synch_overlay(wnd, ent, i, v)
+local function synch_overlay(wnd, ent, i, v, force)
 	local dirty = false;
-	log(fmt("viewport:target_frame=%d:frame=%d", v.frame, tbl.number));
-	ent.viewport = v;
+	local xm = wnd.xmeta;
 	local vid = ent.overlay.vid;
+
+	log(fmt("viewport:target_frame=%d:frame=%d", v.frame, xm.last_frame));
+	ent.viewport = v;
 	blend_image(vid, v.invisible and 0 or 1);
+
+	if v.invisible then
+		log(fmt("invisible=%s", image_tracetag(vid)));
+	end
 
 -- track the window with focus for redirect and for proxying
 	if v.focus and ent ~= wnd.xmeta.focus then
@@ -142,14 +158,17 @@ local function synch_overlay(wnd, ent, i, v)
 	end
 
 	if ent.proxy then
-		image_sharestorage(ent.proxy.vid, ent.overlay.vid);
-		image_set_txcos_default(ent.overlay.vid, ent.proxy.origo_ll);
-		shader_setup(ent.overlay.vid, "simple", "stretchcrop");
+		image_sharestorage(ent.proxy.vid, vid);
+		image_set_txcos_default(vid, ent.proxy.origo_ll);
+		shader_setup(vid, "simple", "stretchcrop");
+		dirty = i;
 
 -- to apply we clip the active region to the surface and skew the texture coordinates
-	elseif v.frame <= tbl.number then
+	elseif v.frame <= wnd.xmeta.last_frame or force then
 		local x2 = v.rel_x + v.anchor_w;
 		local y2 = v.rel_y + v.anchor_h;
+		local props = xm.props;
+
 		if v.rel_x < 0 then
 			v.anchor_w = v.anchor_w + v.rel_x;
 			v.rel_x = 0;
@@ -164,10 +183,10 @@ local function synch_overlay(wnd, ent, i, v)
 			v.anchor_h = v.anchor_h - (y2 - props.height);
 		end
 
-		local bx = v.rel_x * ss;
-		local by = v.rel_y * st;
-		local bx2 = bx + v.anchor_w * ss;
-		local by2 = by + v.anchor_h * st;
+		local bx = v.rel_x * wnd.xmeta.ss;
+		local by = v.rel_y * wnd.xmeta.st;
+		local bx2 = bx + v.anchor_w * wnd.xmeta.ss;
+		local by2 = by + v.anchor_h * wnd.xmeta.st;
 
 		image_set_txcos(vid, {bx, by, bx2, by, bx2,  by2, bx,  by2});
 		dirty = i;
@@ -176,6 +195,46 @@ local function synch_overlay(wnd, ent, i, v)
 	move_image(vid, v.rel_x, v.rel_y);
 	resize_image(vid, v.anchor_w, v.anchor_h);
 	return dirty;
+end
+
+local function setup_overlay_mh(xmh)
+	local mx, my = mouse_xy();
+
+	local olv = xmh.overlay.vid;
+	local tgt = xmh.proxy.vid;
+
+	local tbl =
+	{
+		name = "proxy_x11_mh_" .. tostring(vid),
+		own = function(ctx, vid)
+			return vid == olv and valid_vid(tgt, TYPE_FRAMESERVER);
+		end,
+		lx = 0,
+		ly = 0,
+-- resolve 'absolute' and derive local-relative
+		motion =
+		function(ctx, _, x, y)
+			local p = image_surface_resolve(olv);
+			local x = x - p.x;
+			local y = y - p.y;
+			ctx.lx = x - ctx.lx;
+			ctx.ly = y - ctx.ly;
+			target_input(tgt, {
+				kind = "analog", devid = 0, subid = 2, mouse = true,
+				samples = {x, ctx.lx, y, ctx.ly},
+			});
+		end,
+		button =
+		function(ctx, _, ind, pressed)
+			target_input(tgt, {
+				kind = "digital", devid = 0, subid = ind, mouse = true,
+				active = pressed});
+		end
+	};
+
+	image_mask_clear(olv, MASK_UNPICKABLE);
+	mouse_addlistener(tbl);
+	xmh.mh = tbl;
 end
 
 function metawm.frame(wnd, src, tbl)
@@ -191,11 +250,9 @@ function metawm.frame(wnd, src, tbl)
 -- are sampled out of the surface, so for them to be accurate the window src
 -- rectangle need to be updated aligned with the new frame.
 	local dirty = false
-	local props = image_storage_properties(wnd.external);
-	local ss = 1.0 / props.width;
-	local st = 1.0 / props.height;
+	wnd.xmeta.last_frame = tbl.number;
 
--- apply each pedning, mark the queue index of the last applied frame-matched
+-- apply each pending, mark the queue index of the last applied frame-matched
 -- (as the queue can contain updates from different timeslices, ones that apply
 -- to the current frame and those for future ones.
 	for i,v in ipairs(wnd.xmeta.queue) do
@@ -214,6 +271,7 @@ function metawm.frame(wnd, src, tbl)
 		else
 			while dirty > 0 do
 				table.remove(wnd.xmeta.queue, 1);
+				dirty = dirty - 1;
 			end
 		end
 	end
@@ -226,7 +284,7 @@ function metawm.frame(wnd, src, tbl)
 			log("restack:broken_root");
 		else
 			log("restack");
-			walk_tree(wnd, wnd.xmeta.root, 1, true);
+--			walk_tree(wnd, wnd.xmeta.root, 1, true);
 		end
 		wnd.xmeta.queue.restacked = false;
 	end
@@ -263,11 +321,15 @@ function metawm.pair(wnd, args)
 		return;
 	end
 
--- reverse-mapping tracking
-	wnd.xmeta.nodes[xid].proxy = wnd.xmeta.proxy[vid];
-	if wnd.xmeta.nodes[xid].overlay then
---		setup_overlay_mh(wnd.xmeta[xid]);
+-- reverse-mapping tracking, handle both arrival orders
+	local node = wnd.xmeta.nodes[xid];
+	node.proxy = proxy;
+
+	if not node.mh and node.overlay then
+		setup_overlay_mh(node);
 	end
+
+	image_tracetag(vid, string.format("xid=%d:vid=%d", xid, vid));
 	log(fmt("kind=status:source=pair:xid=%d:vid=%d", xid, vid));
 	proxy.paired = xid;
 	proxy.wnd = wnd;
@@ -275,11 +337,12 @@ end
 
 function metawm.viewport(wnd, src, tbl)
 -- 'dynamic redirect' only is indicated by invisible state on root window
-	log("metawm_viewport");
+	log(fmt("metawm_viewport:id=%d:x=%d:y=%d", tbl.ext_id, tbl.rel_x, tbl.rel_y));
 
 	if wnd.ext_id == 0 then
-		if wnd.invisible then
+		if tbl.invisible then
 			log(fmt("kind=status:vid=%d:redirect_only", src));
+			hide_image(src);
 			return;
 		end
 	end
@@ -349,7 +412,9 @@ function metawm.create(wnd, args)
 
 	if not new.parent then
 		wnd.xmeta.root = new;
+		log("kind=new_root:xid=" .. tostring(xid));
 	else
+		log(fmt("kind=new_child:xid=%d:parent=%d", xid, parent));
 		insert_before(new.parent, xid, next);
 	end
 	wnd.xmeta.nodes[xid] = new;
@@ -416,12 +481,20 @@ function metawm.realize(wnd, args)
 		return;
 	end
 
--- there will be a viewport event close to next erame so keep hidden
+-- there will be a viewport event close to next frame so keep hidden
 	local new = null_surface(1, 1);
-	wnd.xmeta.nodes[xid].overlay = wnd:add_overlay(xid, new, {block_mouse = true});
+	local node = wnd.xmeta.nodes[xid];
+
+	node.overlay = wnd:add_overlay(xid, new, {block_mouse = true});
+	image_tracetag(new, "xid-" .. tostring(xid));
 	image_sharestorage(wnd.external, new);
-	hide_image(new);
+	show_image(new);
  	wnd.xmeta.queue.restacked = true;
+
+	if node.proxy and not node.mh then
+		setup_overlay_mh(node);
+	end
+
 	log(fmt("kind=status:source=realize:vid=%d:overlay", new));
 end
 
@@ -469,11 +542,16 @@ function metawm.message(wnd, src, tbl)
 end
 
 local function disable_xmeta(wnd)
+	log("disable_xmeta");
+	if not wnd.xmeta then
+		return;
+	end
+
 	local source = wnd.external;
 	if valid_vid(source, TYPE_FRAMESERVER) then
 		target_flags(source, TARGET_VERBOSE, false);
 		target_flags(source, TARGET_DRAINQUEUE, false);
-		target_input(source, "kind=desynch");
+		target_input(source, "kind=nosynch");
 	end
 	wnd.xmeta.queue = nil;
 	wnd.xmeta.root = nil;
@@ -494,6 +572,11 @@ end
 
 enable_xmeta =
 function(wnd)
+	log("enable_xmeta");
+	if (wnd.xmeta) then
+		return;
+	end
+
 	local wnd = wnd or active_display().selected;
 	local source = wnd.external;
 
@@ -502,8 +585,23 @@ function(wnd)
 		redirect = {},
 		proxy = {},
 		nodes = {},
-		root = {children = {}}
+		root = {children = {}},
+		last_frame = 0,
+		props = image_storage_properties(wnd.external),
+		ss = 1.0,
+		st = 1.0
 	};
+
+-- need to hook the overlay drop so our own mouse handler isn't leaked
+	local old_drop = wnd.drop_overlay;
+	wnd.drop_overlay =
+	function(wnd, id, ...)
+		if wnd.xmeta.nodes[id].mh then
+			mouse_droplistener(wnd.xmeta.nodes[id].mh);
+			wnd.xmeta.nodes[id].mh = nil;
+		end
+		return old_drop(wnd, id, ...);
+	end
 
 -- these give better timing and input characteristics
 	target_flags(source, TARGET_VERBOSE);
@@ -555,10 +653,13 @@ return function(space, key, action, wnd)
 		image_sharestorage(wnd.canvas, surf);
 	end
 
--- now the window is dead but surf lives on, import it
+-- now the window is dead but surf lives on, import it - the origo_ll prop
+-- needs to be tracked (alas not exposed through image_storage_properties and
+-- unless we trigger a resize the impostor won't see it
 	log("import_surface:vid=" .. tostring(surf));
+	local oll = wnd.origo_ll;
 	wnd:destroy();
-	import_surface(wmwnd, surf);
+	import_surface(wmwnd, surf, oll);
 end
 end
 
@@ -652,6 +753,7 @@ function build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport
 
 	mouse_addlistener(tbl);
 	parent.xmeta.redirect[vid] = tbl;
+	parent.xmeta.nodes[xid].mh = tbl;
 
 	local handler =
 	function(source, status)
@@ -896,6 +998,15 @@ function metawm.resized(wnd, src, tbl)
 		log("enable_composited_root");
 		autows_rootwnd(wnd, src);
 	end
+	if gconfig_get("xarcan_metawm") then
+		enable_xmeta(wnd);
+	end
+
+	if wnd.xmeta then
+		wnd.xmeta.props = image_storage_properties(src);
+		wnd.xmeta.ss = 1.0 / wnd.xmeta.props.width;
+		wnd.xmeta.st = 1.0 / wnd.xmeta.props.height;
+	end
 end
 
 function metawm.segment_request(wnd, source, status)
@@ -920,6 +1031,8 @@ function metawm.segment_request(wnd, source, status)
 		local vid, aid, cookie =
 			accept_target(source, status.width, status.height);
 
+-- Xarcan will rebuild all secondaries itself
+		target_flags(vid, TARGET_BLOCKADOPT);
 		build_pending_first(wnd, vid, aid, cookie, status.reqid);
 	end
 
@@ -989,6 +1102,22 @@ local function create_proxy()
 	import_surface(wnd, launch_avfeed("", "terminal", function() end));
 end
 
+local function color_overlay()
+	local wnd = active_display().selected;
+
+	for k,v in pairs(wnd.xmeta.nodes) do
+		if not v.proxy and v.overlay then
+			if image_matchstorage(wnd.external, v.overlay.vid) then
+				local surf = fill_surface(32, 32,
+					math.random(128, 255), math.random(128, 255), math.random(128, 255));
+				image_sharestorage(surf, v.overlay.vid);
+			else
+				synch_overlay(wnd, v, 0, v.viewport, true);
+			end
+		end
+	end
+end
+
 local x11_menu =
 {
 	{
@@ -996,7 +1125,9 @@ local x11_menu =
 		label = "Meta WM",
 		description = "Toggle workspace mapping on/off",
 		kind = "action",
-		handler = toggle_meta,
+		handler = function()
+			toggle_meta(active_display().selected);
+		end
 	},
 	{
 		name = "create_proxy",
@@ -1005,6 +1136,14 @@ local x11_menu =
 		description = "Create a Proxy window with a afsrv_terminal",
 		eval = function() return DEBUGLEVEL > 0; end,
 		handler = create_proxy,
+	},
+	{
+		name = "color_overlay",
+		kind = "action",
+		label = "Color Overlays",
+		description = "Swap storage on the overlays to random colors",
+		eval = function() return DEBUGLEVEL > 0; end,
+		handler = color_overlay
 	},
 	{
 		name = "redirect",
