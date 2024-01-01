@@ -242,6 +242,38 @@ local function wnd_border_width(wnd)
 	end
 end
 
+--
+-- Build an icon representation of the window
+--
+-- The lifecycle of the returned surface belongs to the caller and it won't
+-- be updated to reflect window 'liveness' or similar properties, for such
+-- tracking the caller should also subscribe to the relevant events.
+--
+local function wnd_iconify(wnd, opts)
+	local nsrf = null_surface(minh, minh);
+	if not valid_vid(nsrf) then
+		return;
+	end
+
+-- prefer icon segment if provided, otherwise fallback to canvas/contents
+	if valid_vid(wnd.icon) then
+		image_sharestorage(wnd.icon, nsrf);
+	else
+		image_sharestorage(wnd.canvas, nsrf);
+	end
+
+-- add a color-surface with a shader for the state (to indicate selection)
+	if opts.background then
+	end
+
+-- add a text-strip
+	if opts.label then
+
+	end
+
+	return nsrf;
+end
+
 local function wnd_destroy(wnd, message)
 	local wm = wnd.wm;
 	if (wnd.delete_protect) then
@@ -4902,8 +4934,7 @@ local function wnd_scroll(wnd, dx, dy)
 	tiler_debug(wnd.wm,	string.format("scroll:%d:%d", dx, dy));
 end
 
-local function wnd_set_vtable(wnd)
--- visual attribute- functions
+local function wnd_set_vtable_vattr(wnd)
 	wnd.alert = wnd_alert
 	wnd.show = wnd_show
 	wnd.hide = wnd_hide
@@ -4926,8 +4957,10 @@ local function wnd_set_vtable(wnd)
 	wnd.append_crop = wnd_crop_append
 	wnd.identstr = wnd_identstr
 	wnd.add_titlebar_button = wnd_tbar_btn
+	wnd.iconify = wnd_iconify
+end
 
--- position/hierarchy/selection
+local function wnd_set_vtable_hier(wnd)
 	wnd.reposition = wnd_repos
 	wnd.assign_ws = wnd_reassign
 	wnd.select = wnd_select
@@ -4944,6 +4977,25 @@ local function wnd_set_vtable(wnd)
 	wnd.drop_overlay = wnd_drop_overlay
 	wnd.add_overlay = wnd_add_overlay
 	wnd.synch_overlays = wnd_synch_overlays
+end
+
+local function wnd_set_vtable_input(wnd)
+	wnd.input_table = wnd_inputtable
+	wnd.mousebutton = wnd_mousebutton
+	wnd.mousemotion = wnd_mousemotion
+	wnd.mouseactivate = wnd_mouseactivate
+	wnd.mousepress = wnd_mousepress
+	wnd.mousedblclick = wnd_mousedblclick
+	wnd.mousehover = wnd_mousehover
+	wnd.mouseover = wnd_mouseover
+	wnd.scroll = wnd_scroll
+end
+
+-- split up into multiples to avoid LuaJit bailing on too many upvalues
+local function wnd_set_vtable(wnd)
+	wnd_set_vtable_hier(wnd)
+	wnd_set_vtable_vattr(wnd)
+	wnd_set_vtable_input(wnd)
 
 -- lifecycle
 	wnd.set_suspend = wnd_setsuspend
@@ -4956,17 +5008,6 @@ local function wnd_set_vtable(wnd)
 	wnd.migrate = wnd_migrate
 	wnd.resize_effective = wnd_effective_resize
 	wnd.recovertag = wnd_recovertag
-
--- input
-	wnd.input_table = wnd_inputtable
-	wnd.mousebutton = wnd_mousebutton
-	wnd.mousemotion = wnd_mousemotion
-	wnd.mouseactivate = wnd_mouseactivate
-	wnd.mousepress = wnd_mousepress
-	wnd.mousedblclick = wnd_mousedblclick
-	wnd.mousehover = wnd_mousehover
-	wnd.mouseover = wnd_mouseover
-	wnd.scroll = wnd_scroll
 
 -- special windows
 	wnd.add_popup = wnd_popup
