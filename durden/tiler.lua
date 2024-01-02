@@ -250,6 +250,8 @@ end
 -- tracking the caller should also subscribe to the relevant events.
 --
 local function wnd_iconify(wnd, opts)
+	local minh = opts.size and opts.size or 64;
+
 	local nsrf = null_surface(minh, minh);
 	if not valid_vid(nsrf) then
 		return;
@@ -268,7 +270,6 @@ local function wnd_iconify(wnd, opts)
 
 -- add a text-strip
 	if opts.label then
-
 	end
 
 	return nsrf;
