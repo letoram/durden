@@ -188,6 +188,12 @@ local function dsetup(shader, dst, group, name, state)
 	if (not shader.states[state]) then
 		shader.states[state] = shader_ugroup(shader.shid);
 	end
+
+	if (not shader.states[state]) then
+		warning("shdrmgmt: couldn't instantiate " .. name);
+		return;
+	end
+
 	image_shader(dst, shader.states[state]);
 end
 
