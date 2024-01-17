@@ -35,7 +35,7 @@ local set_view_range;
 local display_log, fmt = suppl_add_logfn("display");
 
 local function disp_string(disp)
-	return string.format("id=%d:name=%s:maphint=%d,%d:w=%d:h=%d:backlight=%d:shader=%s:ppcm=%f",
+	return string.format("id=%d:name=%s:maphint=%d,%d:w=%d:h=%d:backlight=%d:shader=%s:ppcm=%f:refresh=%f",
 		disp.id and disp.id or -1, disp.name and disp.name or "broken",
 		disp.maphint_prefix and disp.maphint_prefix or -1,
 		disp.maphint and disp.maphint or -1,
@@ -43,7 +43,8 @@ local function disp_string(disp)
 		disp.h and disp.h or -1,
 		disp.backlight and disp.backlight or -1,
 		disp.shader and disp.shader or 'DEFAULT',
-		disp.ppcm and disp.ppcm or -1
+		disp.ppcm and disp.ppcm or -1,
+		disp.refresh and disp.refresh or 0
 	);
 end
 
@@ -270,6 +271,11 @@ function display_output_table(name)
 		outtbl.width = disp.w
 		outtbl.height = disp.h
 		outtbl.refresh = disp.refresh
+		display_log(fmt(
+			"output_table:name=%s:w=%d:h=%d:refresh=%d", name and name or "main",
+			disp.w, disp.h, disp.refresh));
+	else
+		display_log("output_table:missing_display")
 	end
 
 	return outtbl;
@@ -314,6 +320,7 @@ local function set_best_mode(disp, desw, desh)
 	);
 
 	disp.last_m = list[1];
+	disp.refresh = list[1].refresh;
 	display_modeopt(disp.id, list[1].modeid, disp.modeopt);
 end
 
@@ -758,6 +765,7 @@ local function display_added(id)
 	local dh = VRESH;
 	local ppcm = VPPCM;
 	local subpx = "RGB";
+	local refresh = 60;
 
 -- map resolved display modes, assume [1] is the preferred one
 	if (modes and #modes > 0 and modes[1].width > 0) then
@@ -770,6 +778,7 @@ local function display_added(id)
 		dh = modes[1].height;
 		local wmm = modes[1].phy_width_mm;
 		local hmm = modes[1].phy_height_mm;
+		refresh = modes[1].refresh;
 
 		subpx = modes[1].subpixel_layout;
 		subpx = subpx == "unknown" and "RGB" or subpx;
