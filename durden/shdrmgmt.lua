@@ -431,7 +431,7 @@ local function smenu(shdr, grp, name)
 				delete_image(nsrf);
 			end
 
-			if (v.shid) then
+			if (v.shid and not v.hidden) then
 				table.insert(res, {
 					name = "state_" .. k,
 					label = k,
@@ -632,7 +632,7 @@ function shader_key(label, domain)
  	end
 end
 
-function shader_list(domain)
+function shader_list(domain, no_hide)
 	local res = {};
 
 	if (type(domain) ~= "table") then
@@ -642,7 +642,9 @@ function shader_list(domain)
 	for i,j in ipairs(domain) do
 		if (shdrtbl[j]) then
 			for k,v in pairs(shdrtbl[j]) do
-				table.insert(res, v.label);
+				if not v.hidden or no_hide then
+					table.insert(res, v.label);
+				end
 			end
 		end
 	end

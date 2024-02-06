@@ -52,6 +52,8 @@
 
 * net tool: a12net, this adds tools/networking, open/a12\_directory and settings/networking for working with arcan >= 0.6.3
 
+* tools/autolayouter: add the option to colorize side-columns scaled through the shader (simple/sidecol) from the high-contrast palette
+
 minor:
 
 * migrate control IPC to asynch-i/o

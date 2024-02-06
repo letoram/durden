@@ -1220,7 +1220,7 @@ function suppl_flip_handler(key, chain)
 			gconfig_set(key, val == LBL_YES);
 		end
 		if chain then
-			chain()
+			chain(gconfig_get(key) == LBL_YES);
 		end
 	end
 end

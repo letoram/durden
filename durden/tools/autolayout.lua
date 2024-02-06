@@ -1,5 +1,6 @@
 -- returning true means we took responsibility for attaching to parent
 local swap_focus;
+local add_counter = 0;
 
 local function save_wnd(wnd)
 	wnd.old = {
@@ -64,7 +65,7 @@ local function side_imgcfg(wnd, btime)
 		blend_image(wnd.canvas, gconfig_get("autolay_sideopa"));
 	end
 
-	if (wnd.space and not wnd.space.layouter.scaled) then
+	if wnd.space and not wnd.space.layouter.scaled then
 		return;
 	end
 
@@ -78,7 +79,12 @@ local function side_imgcfg(wnd, btime)
 
 	image_set_txcos_default(wnd.canvas, wnd.origo_ll);
 	if (gconfig_get("autolay_shader")) then
-		shader_setup(wnd.canvas, "simple", gconfig_get("autolay_sideshdr"));
+		if not wnd.accent_color_index then
+			wnd.accent_color_index = (add_counter % #HC_PALETTE) + 1;
+			add_counter = add_counter + 1;
+		end
+		local state = tostring(wnd.accent_color_index);
+		shader_setup(wnd.canvas, "simple", gconfig_get("autolay_sideshdr"), state);
 	end
 
 -- swap to side, maybe disable titlebar
@@ -663,9 +669,9 @@ local laycfg = {
 		return gconfig_get("autolay_shader");
 	end,
 	kind = "value",
-	set = function() return shader_list({"effect", "simple"}); end,
+	set = function() return shader_list({"effect", "simple"}, true); end,
 	handler = function(ctx, val)
-		local key, dom = shader_getkey(val, {"effect", "simple"});
+		local key, dom = shader_getkey(val, {"effect", "simple"}, true);
 		if (key ~= nil) then
 			gconfig_set("autolay_sideshdr", key);
 		end
