@@ -302,13 +302,22 @@ load_configure_mouse = function()
 
 -- preload cursor states
 	mouse_add_cursor("drag", load_cursor("drag", set), 0, 0); -- 7, 5
-	mouse_add_cursor("grabhint", load_cursor("grabhint", set), 0, 0); --, 7, 10);
-	mouse_add_cursor("rz_diag_l", load_cursor("rz_diag_l", set), 0, 0); --, 6, 5);
-	mouse_add_cursor("rz_diag_r", load_cursor("rz_diag_r", set), 0, 0); -- , 6, 6);
-	mouse_add_cursor("rz_down", load_cursor("rz_down", set), 0, 0); -- 5, 13);
-	mouse_add_cursor("rz_left", load_cursor("rz_left", set), 0, 0); -- 0, 5);
-	mouse_add_cursor("rz_right", load_cursor("rz_right", set), 0, 0); -- 13, 5);
-	mouse_add_cursor("rz_up", load_cursor("rz_up", set), 0, 0); -- 5, 0);
+	mouse_add_cursor("wait", load_cursor("wait", set), 0, 0);
+	mouse_add_cursor("forbidden", load_cursor("forbidden", set), 0, 0);
+	mouse_add_cursor("help", load_cursor("help", set), 0, 0);
+	mouse_add_cursor("hand", load_cursor("grabhint", set), 0, 0);
+	mouse_add_cursor("cell", load_cursor("cell", set), 0, 0);
+	mouse_add_cursor("alias", load_cursor("alias", set), 0, 0);
+	mouse_add_cursor("col-resize", load_cursor("col_resize", set), 0, 0);
+	mouse_add_cursor("sizeall", load_cursor("sizeall", set), 0, 0);
+	mouse_add_cursor("typefield", load_cursor("typefield", set), 0, 0);
+	mouse_add_cursor("grabhint", load_cursor("grabhint", set), 0, 0);
+	mouse_add_cursor("rz_diag_l", load_cursor("rz_diag_l", set), 0, 0);
+	mouse_add_cursor("rz_diag_r", load_cursor("rz_diag_r", set), 0, 0);
+	mouse_add_cursor("rz_down", load_cursor("rz_down", set), 0, 0);
+	mouse_add_cursor("rz_left", load_cursor("rz_left", set), 0, 0);
+	mouse_add_cursor("rz_right", load_cursor("rz_right", set), 0, 0);
+	mouse_add_cursor("rz_up", load_cursor("rz_up", set), 0, 0);
 	switch_default_texfilter(FILTER_NONE);
 
 	if (gconfig_get("mouse_block")) then

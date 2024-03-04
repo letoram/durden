@@ -385,23 +385,41 @@ local function cursor_handler(wnd, source, status)
 			end
 		end
 
+-- custom cursor segment can toggle themselves on and off by setting the
+-- hint to something normal and viewport to invisible
+	elseif status.kind == "cursorhint" then
+		wnd.cursor = status.cursor;
+		client_log("cursor_segment:cursor_set=" .. wnd.cursor);
+
+		if wnd.space and wnd.space.selected == wnd then
+			client_log("cursor_segment:activate");
+			wnd:mouseactivate();
+		end
+
 -- warp (x, y) if wnd is in control of that (or remember last mouse)
 -- and use anchor_x,y to change the hotspot
 	elseif status.kind == "viewport" then
-		if wnd.space and wnd.space.selected == wnd then
-				local x, y = mouse_xy();
-				local props = image_surface_resolve(wnd.canvas);
+--		client_log(fmt(
+--			"cursor_segment:viewport:window=%s:selected=%s:invisible=%d",
+--				wnd.name, wnd.space.selected.name, status.invisible and 1 or 0));
+		if not wnd.space or wnd.space.selected ~= wnd then
+			return
+		end
 
-				if image_hit(wnd.canvas, x, y) then
-					wnd:mouseactivate();
-				end
---				mouse_absinput_masked(props.x + status.rel_x, props.y + status.rel_y, true);
-				if wnd.last_ms then
-					wnd.last_ms[1] = status.rel_x + props.x;
-					wnd.last_ms[2] = status.rel_y + props.y;
-			end
+		local x, y = mouse_xy();
+		local props = image_surface_resolve(wnd.canvas);
+		wnd.custom_cursor.active = not status.invisible;
+
+		if image_hit(wnd.canvas, x, y) then
+			wnd:mouseactivate();
+		end
+
+		if wnd.last_ms then
+			wnd.last_ms[1] = status.rel_x + props.x;
+			wnd.last_ms[2] = status.rel_y + props.y;
 		end
 	end
+
 end
 
 local function default_reqh(wnd, source, ev)
@@ -450,9 +468,12 @@ local function default_reqh(wnd, source, ev)
 			return;
 		end
 
+-- some may have a shared global cursor segment where ownership moves with
+-- selection status, since 'parent' is spatial-hierarchy we can't use that
+-- so resolve to the current proxy.
 		client_log("segreq:name=" .. wnd.name .. ":kind=cursor:state=ok");
 		target_updatehandler(cursor, function(a, b)
-			cursor_handler(wnd, a, b);
+			cursor_handler(wnd.cursor_proxy and wnd.cursor_proxy or wnd, a, b);
 		end);
 
 		wnd.custom_cursor = {
@@ -686,7 +707,6 @@ end
 defhtbl["resized"] =
 function(wnd, source, stat)
 	wnd.origo_ll = stat.origo_ll;
-	print("attach", wnd.origo_ll);
 
 	if (wnd.ws_attach) then
 -- edge conditions could fail to attach depending on the window type and

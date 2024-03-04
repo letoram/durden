@@ -157,14 +157,8 @@ local function synch_overlay(wnd, ent, i, v, force)
 		wnd.xmeta.focus = ent;
 	end
 
-	if ent.proxy then
-		image_sharestorage(ent.proxy.vid, vid);
-		image_set_txcos_default(vid, ent.proxy.origo_ll);
-		shader_setup(vid, "simple", "stretchcrop");
-		dirty = i;
-
 -- to apply we clip the active region to the surface and skew the texture coordinates
-	elseif v.frame <= wnd.xmeta.last_frame or force then
+	if v.frame <= wnd.xmeta.last_frame or force then
 		local x2 = v.rel_x + v.anchor_w;
 		local y2 = v.rel_y + v.anchor_h;
 		local props = xm.props;
@@ -187,6 +181,17 @@ local function synch_overlay(wnd, ent, i, v, force)
 		local by = v.rel_y * wnd.xmeta.st;
 		local bx2 = bx + v.anchor_w * wnd.xmeta.ss;
 		local by2 = by + v.anchor_h * wnd.xmeta.st;
+
+-- to swap in the proxy surface we also need to deal with those that have lower-left origo
+-- the clipping base is also different
+		if ent.proxy then
+			if ent.proxy.origo_ll then
+				by = 1.0 - by
+				by2 = 1.0 - by2
+			end
+			image_sharestorage(ent.proxy.vid, vid);
+			shader_setup(vid, "simple", "stretchcrop");
+		end
 
 		image_set_txcos(vid, {bx, by, bx2, by, bx2,  by2, bx,  by2});
 		dirty = i;
@@ -720,6 +725,9 @@ function build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport
 		mouse_droplistener(parent.xmeta.redirect[vid]);
 	end
 
+--this ignores any special X11 cursor, uncertain if there is much use in actually
+--providing it versus just reverting to the default since it's going to be popups
+--tooltips etc.
 	local mx, my = mouse_xy();
 	local tbl =
 	{
@@ -782,6 +790,7 @@ function build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport
 
 		elseif status.kind == "terminated" then
 			delete_image(vid);
+			mouse_droplistener(tbl);
 		end
 	end
 
@@ -800,7 +809,7 @@ function(parent, vid, aid, cookie, xid, viewport)
 	viewport = viewport and viewport or {};
 
 -- override-redirect / embedded, shouldn't have a window of its own, if a
--- parent is set overlay and link to that, if not,
+-- parent is set overlay and link to that, if not, just tie to anchor
 	if viewport.embedded then
 		return build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport);
 	end
@@ -819,6 +828,7 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- parent overlay/embed)
 	local new_attach = new.ws_attach;
 	new.ws_attach = function(...)
+		log(fmt("attach:name=%s", new.name));
 		return new_attach(...);
 	end;
 
@@ -832,7 +842,6 @@ function(parent, vid, aid, cookie, xid, viewport)
 
 		if status.invisible then
 			new:destroy();
-		elseif status.embed then
 		end
 
 		return nil;
@@ -847,6 +856,10 @@ function(parent, vid, aid, cookie, xid, viewport)
 		if valid_vid(wnd.external) then
 			build_pending_first(parent, vid, aid, cookie, xid);
 			reset_target(wnd.external, false);
+		end
+
+		if parent.cursor_proxy == wnd then
+			parent.cursor_proxy = nil;
 		end
 	end);
 
@@ -879,6 +892,12 @@ function(parent, vid, aid, cookie, xid, viewport)
 	new:add_handler("resize",
 		function(wnd)
 			send_anchorhint(wnd, wnd.x, wnd.y);
+		end
+	);
+
+	new:add_handler("select",
+		function(wnd)
+			parent.cursor_proxy = new;
 		end
 	);
 
@@ -994,6 +1013,8 @@ end
 function metawm.resized(wnd, src, tbl)
 -- first frame submitted means that Xarcan is not 'redirect-only' and has a
 -- composited root to work through.
+	image_tracetag(src, "x11-root");
+
 	if not wnd.space then
 		log("enable_composited_root");
 		autows_rootwnd(wnd, src);
