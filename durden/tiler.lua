@@ -980,6 +980,9 @@ local function wnd_mouseactivate(wnd)
 
 -- switch to the desired mouse cursor
 	if (wnd.custom_cursor and wnd.custom_cursor.active) then
+		tiler_debug(wnd.wm,
+			string.format("mouse_activate:wnd=%s:custom_cursor", wnd.name));
+
 		if (valid_vid(wnd.custom_cursor.vid)) then
 			mouse_custom_cursor(wnd.custom_cursor);
 		else
@@ -987,8 +990,11 @@ local function wnd_mouseactivate(wnd)
 		end
 
 	elseif (type(wnd.cursor) == "string") then
+		tiler_debug(wnd.wm,
+			string.format("mouse_active:wnd=%s:cursor=%s", wnd.name, wnd.cursor));
+
 		if (wnd.cursor ~= "hidden") then
-			mouse_switch_cursor(wnd.cursor_label);
+			mouse_switch_cursor(wnd.cursor);
 		end
 	end
 
