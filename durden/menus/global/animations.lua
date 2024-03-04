@@ -36,6 +36,18 @@ return {
 		end
 	},
 	{
+		name = "popup_speed",
+		label = "Popup Animation Speed",
+		kind = "value",
+		hint = "(0..50)",
+		description = "Change the animation speed used for showing and hiding popup windows",
+		validator = gen_valid_num(0, 50),
+		initial = function() return tostring(gconfig_get("popup_animation")); end,
+		handler = function(ctx, val)
+			gconfig_set("popup_animation", tonumber(val));
+		end
+	},
+	{
 		name = "anim_in",
 		label = "Transition-In",
 		kind = "value",

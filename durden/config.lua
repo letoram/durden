@@ -137,6 +137,7 @@ return {
 	transition = 10,
 	animation = 10,
 	wnd_animation = 10,
+	popup_animation = 5,
 
 -- (none, move-h, move-v, fade)
 	ws_transition_in = "fade",
