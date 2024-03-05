@@ -18,6 +18,11 @@ local function probe(ctx, yh)
 	end
 	table.insert(lines, children);
 
+	if valid_vid(wnd.external) then
+		local tag = image_tracetag(wnd.external)
+		table.insert(lines, string.format("Tracetag: %s", tag and tag or "none"));
+	end
+
 	if (wnd.crop_values) then
 		local c = wnd.crop_values;
 		table.insert(lines, string.format(
