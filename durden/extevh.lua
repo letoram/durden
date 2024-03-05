@@ -467,6 +467,7 @@ local function default_reqh(wnd, source, ev)
 			client_log("segreq:name=" .. wnd.name .. ":kind=mouse_cursor:state=oom");
 			return;
 		end
+		target_flags(cursor, TARGET_BLOCKADOPT);
 
 -- some may have a shared global cursor segment where ownership moves with
 -- selection status, since 'parent' is spatial-hierarchy we can't use that
