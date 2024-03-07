@@ -81,23 +81,26 @@ end
 
 local function load_from_file(relp, lim, defs)
 	local res = {};
-	if (open_rawresource(relp)) then
-		if defs then
-			for k,v in ipairs(defs) do
-				table.insert(res, "#define " .. v);
-			end
-		end
+	local nbio = open_nonblock(relp, false);
+	local more = true;
 
-		local line = read_rawresource();
-		while (line ~= nil and lim -1 ~= 0) do
-			table.insert(res, line);
-			line = read_rawresource();
-			lim = lim - 1;
-		end
-		close_rawresource();
-	else
+	print("load_from_file", relp);
+	if not nbio then
 		warning(string.format("shader, load from file: %s failed, EEXIST", relp));
+		return;
 	end
+
+	if defs then
+		for i,v in ipairs(defs) do
+			table.insert(res, "#define " .. v);
+		end
+	end
+
+	while more and #res < lim do
+		_, more = nbio:read(false, res);
+	end
+
+	nbio:close();
 
 	return table.concat(res, "\n");
 end
@@ -113,9 +116,9 @@ local function setup_shader(shader, name, group)
 			"shaders/%s/%s", group, shader.vert_source), 1000, shader.vert_defs);
 	end
 
-	if (not shader.frag  and shader.frag_source) then
+	if (not shader.frag and shader.frag_source) then
 		shader.frag = load_from_file(string.format(
-			"shaders/%s/%s", group, shader.frag_source), 1000, shader.vert_defs);
+			"shaders/%s/%s", group, shader.frag_source), 1000, shader.frag_defs);
 	end
 
 	local dvf = (shader.vert and
