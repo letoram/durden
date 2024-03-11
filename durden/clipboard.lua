@@ -68,8 +68,20 @@ local function clipboard_add(ctx, source, msg, multipart)
 end
 
 local function clipboard_setglobal(ctx, msg, src)
-	table.insert_unique_i(ctx.globals, 1, msg);
-	log(fmt("global:message=%s", msg));
+	local insert = true
+
+-- if we are updating with a substring of the top entry, just swap it out
+	if #ctx.globals >= 1 then
+		local cap = #msg > #ctx.globals[1] and #msg or #ctx.globals[1]
+		if (string.sub(msg, 1, cap) == string.sub(ctx.globals[1], 1, cap)) then
+			insert = false;
+		end
+	end
+
+	if insert then
+		table.insert_unique_i(ctx.globals, 1, msg);
+		log(fmt("global:message=%s", msg));
+	end
 
 	if (#ctx.globals > ctx.history_size) then
 		table.remove(ctx.globals, #ctx.globals);
@@ -264,7 +276,7 @@ return {
 	monitors = {},
 	modes = pastemodes,
 	history_size = 10,
-	mpt_cutoff = 10,
+	mpt_cutoff = 100,
 	add = clipboard_add,
 	text = clipboard_text,
 	lost = clipboard_lost,
