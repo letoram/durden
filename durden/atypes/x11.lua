@@ -847,7 +847,7 @@ function(parent, vid, aid, cookie, xid, viewport)
 		return nil;
 	end;
 
--- Sort-reset on destroy, this causes Xarcan to repeat-loop try and tell the
+-- Soft-reset on destroy, this causes Xarcan to repeat-loop try and tell the
 -- source to kill the window and eventually force-kill it. Another option would
 -- be to track it as a set of mispaired surface and delete_image it on timer
 -- or at least track it.
@@ -865,9 +865,9 @@ function(parent, vid, aid, cookie, xid, viewport)
 
 	local send_anchorhint =
 	function(wnd, x, y)
-	local space = image_surface_resolve(wnd.space.anchor);
-		local rx = x + wnd.pad_left + wnd.ofs_x + space.x;
-		local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
+		local rx = x + wnd.pad_left + wnd.ofs_x;
+		local ry = y + wnd.pad_top + wnd.wm.yoffset;
+		log(fmt("anchorhint:x=%.0f:y=%.0f:rx=%.0f:ry=%.0f", x, y, rx, ry));
 
 -- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
 -- the current resolved anchor position so that other clients and tools know where

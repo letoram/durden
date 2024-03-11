@@ -557,6 +557,7 @@ local function build_canvas(wnd)
 	drop = function(ctx, vid)
 		if (wnd.in_drag_move) then
 			drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
+			wnd:move(0, 0, false, false, true);
 
 -- wm global drag handlers
 			for k,v in ipairs(wnd.space.wm.on_wnd_drag) do
