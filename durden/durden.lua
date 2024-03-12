@@ -305,11 +305,11 @@ load_configure_mouse = function()
 	mouse_add_cursor("wait", load_cursor("wait", set), 0, 0);
 	mouse_add_cursor("forbidden", load_cursor("forbidden", set), 0, 0);
 	mouse_add_cursor("help", load_cursor("help", set), 0, 0);
-	mouse_add_cursor("hand", load_cursor("grabhint", set), 0, 0);
+	mouse_add_cursor("hand", load_cursor("pointer", set), 0, 0);
 	mouse_add_cursor("cell", load_cursor("cell", set), 0, 0);
 	mouse_add_cursor("alias", load_cursor("alias", set), 0, 0);
-	mouse_add_cursor("col-resize", load_cursor("col_resize", set), 0, 0);
-	mouse_add_cursor("sizeall", load_cursor("sizeall", set), 0, 0);
+	mouse_add_cursor("col-resize", load_cursor("rz_col", set), 0, 0);
+	mouse_add_cursor("sizeall", load_cursor("rz_all", set), 0, 0);
 	mouse_add_cursor("typefield", load_cursor("typefield", set), 0, 0);
 	mouse_add_cursor("grabhint", load_cursor("grabhint", set), 0, 0);
 	mouse_add_cursor("rz_diag_l", load_cursor("rz_diag_l", set), 0, 0);
@@ -318,6 +318,9 @@ load_configure_mouse = function()
 	mouse_add_cursor("rz_left", load_cursor("rz_left", set), 0, 0);
 	mouse_add_cursor("rz_right", load_cursor("rz_right", set), 0, 0);
 	mouse_add_cursor("rz_up", load_cursor("rz_up", set), 0, 0);
+	mouse_add_cursor("zoom-in", load_cursor("zoom-in.png", set), 0, 0);
+	mouse_add_cursor("zoom-out", load_cursor("zoom-out.png", set), 0, 0);
+
 	switch_default_texfilter(FILTER_NONE);
 
 	if (gconfig_get("mouse_block")) then

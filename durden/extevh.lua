@@ -392,7 +392,6 @@ local function cursor_handler(wnd, source, status)
 		client_log("cursor_segment:cursor_set=" .. wnd.cursor);
 
 		if wnd.space and wnd.space.selected == wnd then
-			client_log("cursor_segment:activate");
 			wnd:mouseactivate();
 		end
 
@@ -401,14 +400,14 @@ local function cursor_handler(wnd, source, status)
 	elseif status.kind == "viewport" then
 --		client_log(fmt(
 --			"cursor_segment:viewport:window=%s:selected=%s:invisible=%d",
---				wnd.name, wnd.space.selected.name, status.invisible and 1 or 0));
+--			wnd.name, wnd.space.selected.name, status.invisible and 1 or 0));
+		wnd.custom_cursor.active = not status.invisible;
 		if not wnd.space or wnd.space.selected ~= wnd then
 			return
 		end
 
 		local x, y = mouse_xy();
 		local props = image_surface_resolve(wnd.canvas);
-		wnd.custom_cursor.active = not status.invisible;
 
 		if image_hit(wnd.canvas, x, y) then
 			wnd:mouseactivate();
@@ -748,17 +747,20 @@ defhtbl["bchunkstate"] =
 function(wnd, source, stat)
 -- if clients are allowed to popup open/close dialogs,
 	client_log(
-		string.format("bchunk_state:input=%d:stream=%d:hint=%d:ext=%s",
-			stat.input and 1 or 0, stat.stream and 1 or 0,
-			stat.hint and 1 or 0, stat.wildcard and "*" or stat.extensions
+		string.format("bchunk_state:input=%d:dnd=%d:stream=%d:hint=%d:ext=%s",
+			stat.input and 1 or 0,
+			stat.cursor and 1 or 0,
+			stat.stream and 1 or 0,
+			stat.hint and 1 or 0,
+			stat.wildcard and "*" or stat.extensions
 		)
 	);
 
 -- this means we have a oneshot request for immediate data
 --
 -- so respond to that either immediately trigger the proper
--- target/state/open,save with the temporary set of extensions or hook an alert
--- on and set the next 'on_select'
+-- target/state/open,save with the temporary set of extensions, hook an alert
+-- and set the next 'on_select', or mark as the cursortag.
 --
 -- if wildcard is provided, we shouldn't just tag with the selected extension
 -- from the set but with the actual one of the picked source (or just wildcard
