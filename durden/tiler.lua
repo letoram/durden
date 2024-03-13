@@ -14,6 +14,9 @@ local ent_count = 1;
 
 mouse_handler_factory = system_load("tiler_mh.lua")();
 
+local function wnd_size_decor(wnd, w, h, animate)
+end
+
 local create_workspace = function() end
 local tiler_logfun, tiler_fmt = suppl_add_logfn("wm");
 
@@ -237,6 +240,8 @@ local function wnd_border_width(wnd)
 
 	if (wnd.space.mode == "float") then
 		return gconfig_get("borderw_float");
+	elseif wnd.fullscreen then
+		return 0;
 	else
 		return gconfig_get("borderw");
 	end
@@ -500,6 +505,9 @@ local function wnd_deselect(wnd, nopick)
 	if (wnd.wm.selected == wnd) then
 		wnd.wm.selected = nil;
 		wnd.wm.statusbar:set_nested();
+		if wnd.titlebar.hidden then
+			wnd.titlebar:hide();
+		end
 	end
 
 -- don't keep a lock to the window either
@@ -1518,7 +1526,6 @@ local function drop_fullscreen(space)
 -- restore 'full-screen only' properties
 	space.hook_block = "drop_fullscreen";
 	local dw = space.selected;
-	blend_image(dw.titlebar.anchor, dw.fs_copy.tbar);
 
 	for k,v in pairs(dw.fs_copy) do
 		dw[k] = v;
@@ -1821,6 +1828,8 @@ local function set_fullscreen(space)
 	dw.max_h = dw.wm.height;
 	dw.x = 0;
 	dw.y = 0;
+
+	dw.wm.statusbar:set_nested();
 
 -- and send relayout / fullscreen hints that match the size of the WM
 	dw:resize(dw.wm.width, dw.wm.height);
@@ -2604,7 +2613,7 @@ local function wnd_recalc_pad(wnd)
 	end
 end
 
-local function wnd_size_decor(wnd, w, h, animate)
+wnd_size_decor = function(wnd, w, h, animate)
 -- redraw / update the decorations
 	local bw = wnd:border_width();
 	local tbh = tbar_geth(wnd);
@@ -4059,11 +4068,11 @@ local function wnd_titlebar(wnd, visible)
 		wnd_titlebar_to_statusbar(wnd)
 	end
 
---	if (wnd.space.mode == "float") then
---		wnd.height = wnd.height + h;
---		wnd_size_decor(wnd, wnd.width, wnd.height, false);
+	if (wnd.space.mode == "float") then
+		wnd.height = wnd.height + h;
+		wnd_size_decor(wnd, wnd.width, wnd.height, false);
 --		wnd.space:resize();
---	end
+	end
 
 	wnd:resize(wnd.width, wnd.height, true, true);
 end

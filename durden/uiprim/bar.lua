@@ -840,6 +840,7 @@ local function bar_hide(bar, key)
 	bar.hidekey = key;
 	bar.hidden = true;
 	hide_image(bar.anchor);
+
 	if bar.nested then
 		bar.nested:hide(key)
 	end
@@ -880,6 +881,13 @@ local function bar_reanchor(bar, anchor, order, xpos, ypos, anchorp)
 	link_image(bar.anchor, anchor, anchorp);
 	move_image(bar.anchor, xpos, ypos);
 	order_image(bar.anchor, order);
+
+-- ensure that all buttons are actually linked to the intended anchor,
+-- this is a workaround for the many subtle issues remaining with the
+-- 'merge titlebar into statusbar' mode specifically.
+	for i in bar:all_buttons() do
+		link_image(i.bg, bar.anchor);
+	end
 end
 
 local function bar_iter(bar)
@@ -1120,6 +1128,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 	show_image(res.anchor, anchor);
 	image_inherit_order(res.anchor, true);
 	order_image(res.anchor, 1);
+	image_tracetag(res.anchor, "bar_anchor");
 
 	res:resize(width, height);
 	res:switch_state("active");
