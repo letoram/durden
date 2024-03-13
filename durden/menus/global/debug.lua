@@ -496,7 +496,13 @@ return {
 
 			print(#list, "items at: ", mx, my);
 			for i, v in ipairs(list) do
-				print(string.format("%s%s", string.rep("-", i), image_tracetag(v)))
+				local props = image_surface_resolve(v);
+				print(string.format("%s%s : x=%f, y=%f, opa=%f", string.rep("-", i), image_tracetag(v), props.x, props.y, props.opacity));
+				local parent = image_parent(v);
+				if valid_vid(parent) then
+					local props = image_surface_resolve(parent);
+					print(string.format("(parent:%d:%s): x=%f, y=%f, opa=%f", parent, image_tracetag(parent), props.x, props.y, props.opacity));
+				end
 			end
 		end
 	},
@@ -507,6 +513,26 @@ return {
 		description = "Toggle vid tracing allocation as messages on stdout",
 		handler = function(ctx)
 			toggle_alloc();
+		end
+	},
+	{
+		name = "dump_statusbar",
+		label = "Dump Statusbar",
+		kind = "action",
+		description = "Print statusbar states to stdout",
+		handler = function()
+			local sb = active_display().statusbar;
+			print("sbar-hidden", sb.hidden);
+			print("sbar-nested", sb.nested);
+			if sb.nested then
+				print("sbar-nested-hidden", sb.nested.hidden);
+			end
+			for _, v in ipairs(sb.buttons.center) do
+				print("sbar-center", v.lbl, v.last_label);
+				if (v.last_label) then
+					print("button-text", v.last_label[2]);
+				end
+			end
 		end
 	}
 };
