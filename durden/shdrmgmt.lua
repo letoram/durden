@@ -84,7 +84,6 @@ local function load_from_file(relp, lim, defs)
 	local nbio = open_nonblock(relp, false);
 	local more = true;
 
-	print("load_from_file", relp);
 	if not nbio then
 		warning(string.format("shader, load from file: %s failed, EEXIST", relp));
 		return;
