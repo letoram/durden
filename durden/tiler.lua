@@ -4946,8 +4946,40 @@ end
 -- step content relatively (this should translate into seek
 -- operations when we have contenthint set for server-side
 -- seeking).
-local function wnd_scroll(wnd, dx, dy)
-	tiler_debug(wnd.wm,	string.format("scroll:%d:%d", dx, dy));
+local function wnd_scroll(wnd, rel, dy, dx)
+	if not valid_vid(wnd.external, TYPE_FRAMESERVER) then
+		return;
+	end
+
+	if not wnd.got_scroll then
+		target_seek(wnd.external, dy, rel, SEEK_SPACE, dx);
+		tiler_debug(wnd.wm,	string.format("seek:%d:%d", dx, dy));
+	else
+		target_seek(wnd.esternal, dy, rel, SEEK_TIME, dx);
+		tiler_debug(wnd.wm,	string.format("scroll:%d:%d", dx, dy));
+	end
+end
+
+local function wnd_scroll_report(wnd, yprog, ysize, xprog, xsize)
+	if not yprog then
+		wnd.got_scroll = nil
+		run_event(wnd, "scroll_state", false);
+		return;
+	end
+
+	wnd.got_scroll = {yprog, ysize, xprog, xsize}
+	run_event(wnd, "scroll_state", true, wnd.got_scroll);
+end
+
+local function wnd_cursortag(wnd, accept, src)
+-- probe
+	if accept == nil then
+		return wnd.stateinf ~= nil and srcwnd.stateinf ~= nil
+		and wnd.stateinf.typeid == srcwnd.stateinf.typeid
+	end
+
+-- activate
+	bond_target(srcwnd.external, wnd.external);
 end
 
 local function wnd_set_vtable_vattr(wnd)
@@ -5033,6 +5065,31 @@ local function wnd_set_vtable(wnd)
 	wnd.displayhint = default_displayhint
 end
 
+function wnd_set_vitable(wnd)
+-- input
+	wnd.input_table = wnd_inputtable
+	wnd.mousebutton = wnd_mousebutton
+	wnd.mousemotion = wnd_mousemotion
+	wnd.mouseactivate = wnd_mouseactivate
+	wnd.mousepress = wnd_mousepress
+	wnd.mousedblclick = wnd_mousedblclick
+	wnd.mousehover = wnd_mousehover
+	wnd.mouseover = wnd_mouseover
+	wnd.scroll_report = wnd_scroll_report
+	wnd.scroll = wnd_scroll
+	wnd.receive_cursortag = wnd_cursortag
+-- input
+	wnd.input_table = wnd_inputtable
+	wnd.mousebutton = wnd_mousebutton
+	wnd.mousemotion = wnd_mousemotion
+	wnd.mouseactivate = wnd_mouseactivate
+	wnd.mousepress = wnd_mousepress
+	wnd.mousedblclick = wnd_mousedblclick
+	wnd.mousehover = wnd_mousehover
+	wnd.mouseover = wnd_mouseover
+	wnd.scroll = wnd_scroll
+end
+
 -- build an orphaned window that isn't connected to a real workspace yet,
 -- but with all the expected members setup-up and in place. This means that
 -- some operations will be no-ops and the window will not appear in normal
@@ -5081,14 +5138,13 @@ local wnd_setup = function(wm, source, opts)
 			register = {},
 			resize = {},
 			move = {},
-			gained_relative = {},
-			lost_relative = {},
 			select = {},
 			deselect = {},
 			mouse_motion = {},
 			mouse_button = {},
 			mouse = {},
-			frame = {}
+			frame = {},
+			scroll_state = {},
 		},
 		run_event = run_event,
 
@@ -5154,6 +5210,7 @@ local wnd_setup = function(wm, source, opts)
 -- default mouse position to center
 	res.mouse = {0.5, 0.5};
 	wnd_set_vtable(res);
+	wnd_set_vitable(res);
 
 -- this can be overridden / broken due to window restoration
 	tiler_latest_window_name(get_window_name(res));

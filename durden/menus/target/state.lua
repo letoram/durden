@@ -259,6 +259,17 @@ return {
 		end,
 	},
 	{
+		name = "seek",
+		kind = "action",
+		label = "Seek",
+		description = "Seek to a specific or relative point in time",
+		eval = function()
+			return active_display().selected.streamstatus ~= nil;
+		end,
+		submenu = true,
+		handler = seek_menu
+	},
+	{
 	name = "push_debug",
 	label = "Debug",
 	kind = "value",

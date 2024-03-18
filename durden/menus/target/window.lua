@@ -1048,6 +1048,7 @@ return {
 						accept == false or not dstwnd.receive_cursortag) then
 						return;
 					end
+
 					return dstwnd:receive_cursortag(accept == nil, srcwnd);
 				end, icon
 			)

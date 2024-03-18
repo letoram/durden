@@ -84,7 +84,7 @@ local kbd_menu = {
 			return rate;
 		end,
 		hint = "cps (0:disabled - 100)",
-		validator = gen_valid_num(0, 100);
+		validator = gen_valid_num(0, 100),
 		handler = function(ctx, num)
 			iostatem_repeat(tonumber(num));
 		end
@@ -144,6 +144,30 @@ local function mouse_lockfun(rx, ry, x, y, wnd, ind, act)
 		wnd:mousemotion(x, y, rx, ry);
 	end
 end
+
+local scroll_menu = {
+	{
+		name = "absolute",
+		label = "Absolute",
+		description = "Reposition visible content to a specific position",
+		hint = function()
+			local wnd = active_display().selected;
+			return string.format("0..1:step=%f", wnd.got_scroll[2]);
+		end,
+		initial =
+		function()
+			local wnd = active_display().selected;
+			return string.format("0..1:step=%f", wnd.got_scroll[1]);
+		end,
+		validator = gen_valid_float(0, 1),
+		handler = function(ctx, val)
+			seek_target(active_display().selected.external, tonumber(val), false, false);
+		end
+	},
+};
+
+local seek_menu = {
+};
 
 local mouse_menu = {
 	{
@@ -277,6 +301,28 @@ return {
 		description = "Local mouse settings",
 		eval = function() return not mouse_blocked(); end,
 		handler = mouse_menu
+	},
+	{
+		name = "scroll",
+		kind = "action",
+		label = "Scroll",
+		description = "Pan window contents to a specific absolute or relative position",
+		eval = function()
+			return active_display().selected.got_scroll ~= nil;
+		end,
+		submenu = true,
+		handler = scroll_menu
+	},
+	{
+		name = "seek",
+		kind = "action",
+		label = "Seek",
+		description = "Seek to a specific or relative point in time",
+		eval = function()
+			return active_display().selected.streamstatus ~= nil;
+		end,
+		submenu = true,
+		handler = seek_menu
 	},
 	{
 		name = "multicast",

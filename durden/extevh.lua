@@ -743,6 +743,17 @@ function(wnd, source, stat)
 	wnd.space:resize(true);
 end
 
+defhtbl["streamstatus"] =
+function(wnd, source, stat)
+	client_log(
+		fmt("streamstatus:ctime=%s:endtime=%s:" ..
+		"completion=%.2f:frame=%.0f:streaming=%d",
+		stat.ctime, stat.endtime, stat.completion,
+		stat.frameno, stat.streaming and 1 or 0)
+	);
+	wnd.streamstatus = stat;
+end
+
 defhtbl["bchunkstate"] =
 function(wnd, source, stat)
 -- if clients are allowed to popup open/close dialogs,
@@ -994,7 +1005,14 @@ end
 
 defhtbl["content_state"] =
 function(wnd, source, stat)
---	client_log("content_state:unhandled:name=" .. wnd.name);
+	if stat.rel_y > 0 and stat.y_size > 0 then
+		wnd:scroll_report(
+			stat.rel_y + stat.y_size, stat.ysize,
+			stat.rel_x + stat.x_size, stat.x_size
+		);
+	else
+		wnd:scroll_report();
+	end
 end
 
 defhtbl["segment_request"] =

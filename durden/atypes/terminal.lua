@@ -188,16 +188,6 @@ res.init = function(res, wnd, source)
 			gconfig_get("term_font_hint"), tbl);
 	end
 
-	wnd.receive_cursortag =
-	function(wnd, probe, srcwnd)
-		if probe then
-			return wnd.stateinf ~= nil and srcwnd.stateinf ~= nil
-			and wnd.stateinf.typeid == srcwnd.stateinf.typeid
-		end
-
-		bond_target(srcwnd.external, wnd.external);
-	end
-
 	wnd.font_block = true;
 end
 
