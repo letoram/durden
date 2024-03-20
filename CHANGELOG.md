@@ -1,5 +1,7 @@
 # 0.7.0 (ongoing):
 
+* added preview image to workspace button hover
+
 * new path: global/settings/tools/reload for hot-reloading tools and widgets
 
 * new tool: osdkbd (global/input/osd)

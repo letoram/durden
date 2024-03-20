@@ -790,6 +790,33 @@ local function build_statusbar_wsicon(wm, i)
 		local x, y = mouse_xy();
 		uimap_popup(menu, x, y, btn.bg);
 	end,
+	hover =
+	function(btn, vid, x, y, on)
+		if not on then
+			if valid_vid(btn.preview) then
+				local at = gconfig_get("popup_animation")
+				blend_image(btn.preview, 0.0, at)
+				expire_image(btn.preview, at)
+				btn.preview = nil
+			end
+			return
+		end
+
+
+		local arw = wm.width / wm.height
+		local arh = wm.height / wm.width
+		local vid = wm.spaces[i]:preview(128 * arw * wm.scalef, 128 * arh * wm.scalef, 64, -1)
+		if not valid_vid(vid) then
+			return
+		end
+
+		image_mask_set(vid, MASK_UNPICKABLE)
+		blend_image(vid, 1.0, gconfig_get("popup_animation"))
+		local ms = mouse_state()
+		btn.preview = vid
+		link_image(vid, ms.cursor, ANCHOR_LR)
+		image_inherit_order(vid, true)
+	end,
 	over =
 	function(btn)
 		btn:switch_state(wm.space_ind == i and "alert" or "active");
