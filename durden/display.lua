@@ -767,20 +767,27 @@ local function display_added(id)
 	local subpx = "RGB";
 	local refresh = 60;
 
--- map resolved display modes, assume [1] is the preferred one
+-- map resolved display modes, take the first unless one is marked as primary
 	if (modes and #modes > 0 and modes[1].width > 0) then
+		local dmode = modes[1];
+
 		for i,v in ipairs(modes) do
-			display_log(fmt(
-				"status=modedata:id=%s:mode=%d:modestr=%s", id, i, modestr(v)));
+			if v.primary then
+				display_log(fmt("status=modedata:primary=%d", i));
+				dmode = v;
+			end
 		end
 
-		dw = modes[1].width;
-		dh = modes[1].height;
-		local wmm = modes[1].phy_width_mm;
-		local hmm = modes[1].phy_height_mm;
-		refresh = modes[1].refresh;
+		display_log(fmt(
+			"status=modedata:id=%s:modestr=%s", id, modestr(dmode)));
 
-		subpx = modes[1].subpixel_layout;
+		dw = dmode.width;
+		dh = dmode.height;
+		local wmm = dmode.phy_width_mm;
+		local hmm = dmode.phy_height_mm;
+		refresh = dmode.refresh;
+
+		subpx = dmode.subpixel_layout;
 		subpx = subpx == "unknown" and "RGB" or subpx;
 
 		if (wmm > 0 and hmm > 0) then
