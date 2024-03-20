@@ -24,8 +24,7 @@ licensing file.
 The included terminal font, Hack-Bold is (c) Chris Simpkins
 and licensed under the Apache-2.0 license.
 
-The included UI font, designosaur, is provided free (cc-by 3.0 attribution)
-by Archy Studio, http://www.archystudio.com
+The included UI font, IBM/Plex, is provided free via the SIL OpenFont License 1.1.
 
 The included fallback font, Emoji-One, is provided free (cc-by 4.0 attribution)
 by http://emojione.com
