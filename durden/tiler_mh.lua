@@ -771,6 +771,8 @@ local function build_statusbar_addicon(wm)
 	};
 end
 
+local last_hover
+
 local function build_statusbar_wsicon(wm, i)
 	local table = {
 	click =
@@ -792,6 +794,13 @@ local function build_statusbar_wsicon(wm, i)
 	end,
 	hover =
 	function(btn, vid, x, y, on)
+
+-- workaround for bug in mouse.lua not always sending 'off'
+		if valid_vid(last_hover) then
+			delete_image(last_hover)
+			last_hover = nil
+		end
+
 		if not on then
 			if valid_vid(btn.preview) then
 				local at = gconfig_get("popup_animation")
@@ -802,7 +811,6 @@ local function build_statusbar_wsicon(wm, i)
 			return
 		end
 
-
 		local arw = wm.width / wm.height
 		local arh = wm.height / wm.width
 		local vid = wm.spaces[i]:preview(128 * arw * wm.scalef, 128 * arh * wm.scalef, 64, -1)
@@ -810,6 +818,7 @@ local function build_statusbar_wsicon(wm, i)
 			return
 		end
 
+		last_hover = vid
 		image_mask_set(vid, MASK_UNPICKABLE)
 		blend_image(vid, 1.0, gconfig_get("popup_animation"))
 		local ms = mouse_state()

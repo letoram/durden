@@ -205,7 +205,7 @@ local function button_constrain(btn, pad, minw, minh, maxw, maxh)
 	btn:update();
 end
 
-local evset = {"click", "rclick", "drag", "drop", "dblclick", "over", "out"};
+local evset = {"click", "rclick", "drag", "drop", "dblclick", "over", "out", "hover"};
 
 local function button_mh(ctx, mh)
 	if (not mh) then
