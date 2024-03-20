@@ -1,5 +1,9 @@
 # 0.7.0 (ongoing):
 
+* new path: global/settings/tools/reload for hot-reloading tools and widgets
+
+* new tool: osdkbd (global/input/osd)
+
 * split out target/open into target/open and target/open\_tag
 
 * new path: display/displays/current/format for controlling output

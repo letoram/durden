@@ -1,5 +1,12 @@
 -- populated on tool loading
 local tools_conf = {
+	{
+		name = "reload",
+		kind = "action",
+		label = "Reload",
+		description = "Reload tools/*.lua and widgets/*.lua",
+		handler = function() suppl_scan_tools(); suppl_scan_widgets(); end
+	}
 };
 
 local function run_group(group, ch, wnd)

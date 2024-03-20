@@ -1241,7 +1241,19 @@ function suppl_script_load(fn, logfn)
 	end
 end
 
+local tool_closures = {}
+function suppl_tools_register_closure(handler)
+	if type(handler) == "function" then
+		table.insert(tool_closures, handler)
+	end
+end
+
 function suppl_scan_tools()
+	for _,v in ipairs(tool_closures) do
+		pcall(v)
+	end
+	tool_closures = {}
+
 	local list = glob_resource("tools/*.lua", APPL_RESOURCE);
 	for k,v in ipairs(list) do
 		suppl_script_load("tools/" .. v, warning)

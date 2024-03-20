@@ -18,7 +18,9 @@ function clipboard_paste_default(wnd, msg)
 				wnd.clipboard_out = nil;
 			end
 		end);
+
 		link_image(wnd.clipboard_out, wnd.anchor);
+		target_flags(wnd.clipboard_out, TARGET_BLOCKADOPT);
 	end
 
 	msg = wnd.pastefilter ~= nil and wnd.pastefilter(msg) or msg;

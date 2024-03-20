@@ -184,7 +184,7 @@ local function build_framefun(buf)
 			return;
 		end
 
-		if not valid_vid(buf, TYPE_EXTERNAL) then
+		if not valid_vid(buf, TYPE_FRAMESERVER) then
 			wnd:drop_handler("frame", fun);
 			return;
 		end
