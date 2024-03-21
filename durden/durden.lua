@@ -283,6 +283,7 @@ load_configure_mouse = function()
 
 	local setname = gconfig_get("mouse_cursorset") or "default"
 	mouse_load_theme("cursor", setname)
+	mouse_switch_cursor("default", true)
 
 	switch_default_texfilter(FILTER_NONE);
 

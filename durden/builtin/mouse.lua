@@ -1377,8 +1377,6 @@ function mouse_custom_cursor(ct)
 		image_shader(mstate.cursor, "DEFAULT");
 	end
 
-	print("custom-cursor", ct.hotspot_x, ct.hotspot_y);
-
 	mstate.hotspot_x = ct.hotspot_x;
 	mstate.hotspot_y = ct.hotspot_y;
 	mstate.active_label = "";
@@ -1387,16 +1385,14 @@ function mouse_custom_cursor(ct)
 	mouse_cursor_draw();
 end
 
-function mouse_switch_cursor(label)
+function mouse_switch_cursor(label, force)
 	if (label == nil) then
 		label = "default";
 	end
 
-	if (label == mstate.active_label) then
+	if (label == mstate.active_label and not force) then
 		return;
 	end
-
-	mstate.active_label = label;
 
 	if (cursors[label] == nil) then
 		hide_image(mstate.cursor);
@@ -1405,6 +1401,7 @@ function mouse_switch_cursor(label)
 
 	local ct = cursors[label];
 	mouse_custom_cursor(ct);
+	mstate.active_label = label;
 end
 
 function mouse_cursors()

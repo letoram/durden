@@ -21,14 +21,14 @@ end
 
 -- map rectangle edge to mouse-cursor direction and name
 local dir_lut = {
-	ul = {"rz_diag_r", {-1, -1, 1, 1}},
-	 u = {"rz_up", {0, -1, 0, 1}},
-	ur = {"rz_diag_l", {1, -1, 0, 1}},
-	 r = {"rz_right", {1, 0, 0, 0}},
-	lr = {"rz_diag_r", {1, 1, 0, 0}},
-	 d = {"rz_down", {0, 1, 0, 0}},
-	ll = {"rz_diag_l", {-1, 1, 1, 0}},
-	 l = {"rz_left", {-1, 0, 1, 0}}
+	ul = {"north-west", {-1, -1, 1, 1}},
+	 u = {"north", {0, -1, 0, 1}},
+	ur = {"north-east", {1, -1, 0, 1}},
+	 r = {"east", {1, 0, 0, 0}},
+	lr = {"south-east", {1, 1, 0, 0}},
+	 d = {"south", {0, 1, 0, 0}},
+	ll = {"south-west", {-1, 1, 1, 0}},
+	 l = {"left", {-1, 0, 1, 0}}
 };
 
 -- display- local coordinate to window border conversion

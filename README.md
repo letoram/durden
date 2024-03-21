@@ -26,6 +26,9 @@ and licensed under the Apache-2.0 license.
 
 The included UI font, IBM/Plex, is provided free via the SIL OpenFont License 1.1.
 
+The included cursors, phinger, are provided free (cc-by-sa 4.0)
+https://github.com/phisch/phinger-cursors
+
 The included fallback font, Emoji-One, is provided free (cc-by 4.0 attribution)
 by http://emojione.com
 
