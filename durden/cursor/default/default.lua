@@ -5,7 +5,7 @@ return
 	wait = {"wait.png", 12, 12},
 	forbidden = {"forbidden.png", 12, 12},
 	grabhint = {"grabhint.png", 8, 10},
-	pointer = {"pointer.png", 14, 6},
+	hand = {"pointer.png", 14, 6},
 	sizeall = {"sizeall.png", 16, 16},
 	crosshair = {"crosshair.png", 12, 12},
 	["col-resize"] = {"rz_col.png", 16, 15},
