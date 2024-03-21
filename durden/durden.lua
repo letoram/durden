@@ -277,49 +277,12 @@ load_configure_mouse = function()
 		toggle_mouse_grab(MOUSE_GRABON);
 	end
 
--- safe-load that first uses configured set, fallback to default,
--- and fail-safe with a green box cursor
-	local load_cursor;
-	load_cursor = function(name, set)
-		local vid = load_image(string.format("cursor/%s/%s.png", set, name));
-		if (not valid_vid(vid)) then
-			if (set ~= "default") then
-				return load_cursor(name, "default", 0, 0);
-			else
-				warning("cursor set broken, couldn't load " .. name);
-				vid = fill_surface(8, 8, 0, 255, 0);
-			end
-		end
-		return vid;
-	end
+-- start with placeholder cursor
+	local vid = fill_surface(8, 8, 0, 255, 0);
+	mouse_setup(vid, {});
 
--- ideally we should switch this over to use the same icon setup and configuration
--- as the normal icon controls now that they exist, should give SDF resampling etc.
--- for a cheaper price and not use terrible scaling in mixed-DPI
-	local set = gconfig_get("mouse_cursorset");
--- 65531..5 is a hidden max_image_order range (for cursors, overlays..)
-	mouse_setup(load_cursor("default", set), 65535, 1, true, false);
-
--- preload cursor states
-	mouse_add_cursor("drag", load_cursor("drag", set), 0, 0); -- 7, 5
-	mouse_add_cursor("wait", load_cursor("wait", set), 0, 0);
-	mouse_add_cursor("forbidden", load_cursor("forbidden", set), 0, 0);
-	mouse_add_cursor("help", load_cursor("help", set), 0, 0);
-	mouse_add_cursor("hand", load_cursor("pointer", set), 0, 0);
-	mouse_add_cursor("cell", load_cursor("cell", set), 0, 0);
-	mouse_add_cursor("alias", load_cursor("alias", set), 0, 0);
-	mouse_add_cursor("col-resize", load_cursor("rz_col", set), 0, 0);
-	mouse_add_cursor("sizeall", load_cursor("rz_all", set), 0, 0);
-	mouse_add_cursor("typefield", load_cursor("typefield", set), 0, 0);
-	mouse_add_cursor("grabhint", load_cursor("grabhint", set), 0, 0);
-	mouse_add_cursor("rz_diag_l", load_cursor("rz_diag_l", set), 0, 0);
-	mouse_add_cursor("rz_diag_r", load_cursor("rz_diag_r", set), 0, 0);
-	mouse_add_cursor("rz_down", load_cursor("rz_down", set), 0, 0);
-	mouse_add_cursor("rz_left", load_cursor("rz_left", set), 0, 0);
-	mouse_add_cursor("rz_right", load_cursor("rz_right", set), 0, 0);
-	mouse_add_cursor("rz_up", load_cursor("rz_up", set), 0, 0);
-	mouse_add_cursor("zoom-in", load_cursor("zoom-in.png", set), 0, 0);
-	mouse_add_cursor("zoom-out", load_cursor("zoom-out.png", set), 0, 0);
+	local setname = gconfig_get("mouse_cursorset") or "default"
+	mouse_load_theme("cursor", setname)
 
 	switch_default_texfilter(FILTER_NONE);
 
