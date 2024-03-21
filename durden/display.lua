@@ -296,7 +296,7 @@ local function set_best_mode(disp, desw, desh)
 		desh = disp.h;
 	end
 
--- just score based on match against w/h
+-- just score based on match against w/h and refresh
 	table.sort(list, function(a, b)
 		local dx = desw - a.width;
 		local dy = desh - a.height;
@@ -305,17 +305,15 @@ local function set_best_mode(disp, desw, desh)
 		dy = desh - b.height;
 		local eb = math.sqrt((dx * dx) + (dy * dy));
 
--- same resolution? take the matching refresh, not the highest as that would
--- excluding have a device- profile override
-		if (ea == eb) then
-			return math.abs(disp.refresh - a.refresh) > math.abs(disp.refresh - b.refresh);
+		if (math.floor(ea) == math.floor(eb)) then
+			return a.refresh > b.refresh;
 		end
 
 		return ea < eb;
 	end);
 
 	display_log(
-		fmt("mode_set:display=%d:width=%d:height=%d:refresh=%d",
+		fmt("mode_set_best:display=%d:width=%d:height=%d:refresh=%d",
 		disp.id, list[1].width, list[1].height, list[1].refresh)
 	);
 
