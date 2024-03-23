@@ -1320,6 +1320,13 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 	end
 
 	local tgt = space.selected and space.selected or space.children[1];
+
+-- reanchor to make sure hidden in ws 'works'
+	if tgt then
+		local bw = tgt:border_width();
+		tgt.titlebar:reanchor(tgt.anchor, 4, bw, bw)
+		wnd_titlebar_to_statusbar(tgt)
+	end
 end
 
 local function workspace_deactivate(space, noanim, negdir, newbg)
@@ -1555,6 +1562,8 @@ local function drop_fullscreen(space)
 -- re-send the original displayhint as fullscreen has different hint
 -- behaviours than other modes when there is a relayout pending
 	dw:displayhint(dw.width, dw.height, dw.dispmask);
+	dw:deselect()
+	dw:select()
 end
 
 local function drop_tab(space)
@@ -1782,7 +1791,6 @@ local function set_fullscreen(space)
 			height = dw.height,
 			x = dw.x,
 			y = dw.y,
-			tbar = image_surface_properties(dw.titlebar.anchor).opacity
 		};
 	end
 
@@ -5621,12 +5629,15 @@ local function tiler_fallthrough_input(wm, inputh)
 end
 
 local function tiler_input_lock(wm, dst, source)
+	local ret = wm.input_lock
+
 	if (dst) then
 		tiler_logfun("input locked to " .. (source and source or "unknown"));
 		wm.input_lock = function(...)
 			timer_reset_idle();
 			dst(...);
 		end
+		return ret
 	else
 		tiler_logfun("input locked released")
 		wm.input_lock = nil;
