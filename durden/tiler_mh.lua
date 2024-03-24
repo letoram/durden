@@ -790,7 +790,7 @@ local function build_statusbar_wsicon(wm, i)
 		menu = table.copy(menu);
 		menu.preset = i;
 		local x, y = mouse_xy();
-		uimap_popup(menu, x, y, btn.bg);
+		uimap_popup(menu, x, y);
 	end,
 	hover =
 	function(btn, vid, x, y, on)

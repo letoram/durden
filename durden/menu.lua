@@ -142,6 +142,7 @@ local function flush_phs(lbar, active_phs)
 			table.insert(torem, k);
 		end
 	end
+
 	for _,v in ipairs(torem) do
 		active_phs[v]:update(nil);
 		active_phs[v] = nil;
@@ -588,6 +589,8 @@ local function normal_menu_input(ctx, instr, done, lastv, inp_st)
 			function(path, index)
 				return tgt.label;
 			end);
+
+		iostatem_reset_repeat();
 		return;
 	end
 
@@ -989,13 +992,12 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 		end
 		local phk = lbar.active_phs[key];
 
--- if there's no preview on the item and it's selected, build it
--- this could be altereted to spawn previews on everything
--- immediately
+-- if there's no preview on the item and it's selected, build it this could be
+-- altered to spawn previews on everything immediately
 		if (not phk) then
 			if ((selected or gconfig_get("browser_trigger") ==
 				"visibility") and ent.preview) then
-				phk = ent:preview(anchor, ofs, width);
+				phk = ent:preview(anchor, ofs, width, i);
 				lbar.active_phs[key] = phk;
 			end
 		end
@@ -1004,7 +1006,7 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 -- we can delete outdated items even when jumping between lbars
 		if (phk) then
 			phk.clock = lbar.ucount;
-			phk:update(selected, ofs, width);
+			phk:update(selected, ofs, width, i);
 		end
 
 		if (last) then
@@ -1012,23 +1014,85 @@ function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 		end
 	end
 
--- needed to do this due to the legacy of on_cancel and the done
--- part to input callback, rougly speaking, due to all the paths
--- and the problems of "input done" -> internal destroy -> input
--- done callback -> spawning new lbars meaning that all anchored
--- previews would be dead from internal destroy yet we'd want to
--- use them if dispatch_meta is held on an non-menu action.
-	lbar_opts.on_accept = function(lbar, accept)
-		local m1, m2 = dispatch_meta();
-		if (m1 and accept) then
-			for k,v in pairs(lbar.active_phs) do
-				if (valid_vid(v.vid)) then
-					link_image(v.vid, v.vid);
-				end
-			end
-			lbar.inp.active_phs = lbar.active_phs;
-			lbar.active_phs = {};
+local function run_context_popup(lbar, defaults, menu)
+	local set = menu and menu or {}
+	local props = image_surface_resolve(lbar.ccursor);
+
+	if defaults then
+-- inject sort options
+	end
+
+	if #set == 0 then
+		return
+	end
+
+	uimap_popup(set, 0, props.height, lbar.ccursor,
+		function(ent)
+		end, {dir = "t"}
+	);
+end
+
+lbar_opts.on_context =
+function(lbar, ctx, instr)
+	local tgt = nil;
+
+	for k,v in ipairs(ctx.list) do
+		if (v.label and string.lower(v.label) == string.lower(instr)) then
+			tgt = v;
 		end
+	end
+
+	local menu
+	if tgt and tgt.alt_handler then
+		local res = tgt:alt_handler()
+		if type(res) == "table" then
+			menu = res
+		end
+	end
+
+	run_context_popup(lbar, true, menu)
+end
+
+-- needed to do this due to the legacy of on_cancel and the done part to input
+-- callback, rougly speaking, due to all the paths and the problems of "input
+-- done" -> internal destroy -> input done callback -> spawning new lbars
+-- meaning that all anchored previews would be dead from internal destroy yet
+-- we'd want to use them if dispatch_meta is held on an non-menu action.
+--
+-- similarly we might want a context specific action selector for previews
+-- etc. that doesn't fit the other execution path (alt_handler) where we
+-- might reject the accept before it gets passed on
+lbar_opts.on_accept =
+	function(lbar, accept, ctx, instr, set, inp_st)
+		local m1, m2 = dispatch_meta();
+
+		if not m1 or not accept then
+			return
+		end
+
+-- activation, find the matching label - if there's a mismatch, cancel hard
+		local tgt = nil;
+		for k,v in ipairs(ctx.list) do
+			if (v.label and string.lower(v.label) == string.lower(instr)) then
+				tgt = v;
+			end
+		end
+
+		if tgt and tgt.alt_handler then
+			local menu = tgt:alt_handler()
+			if type(menu) == "table" then
+				run_context_popup(lbar, false, menu);
+			end
+			return true;
+		end
+
+		for k,v in pairs(lbar.active_phs) do
+			if (valid_vid(v.vid)) then
+				link_image(v.vid, v.vid);
+			end
+		end
+		lbar.inp.active_phs = lbar.active_phs;
+		lbar.active_phs = {};
 	end
 
 	lbar_opts.on_step = function(lbar, i, key, anchor, ofs, w, mh)

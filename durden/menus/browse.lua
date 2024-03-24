@@ -146,7 +146,7 @@ end
 -- preview if possible should the caller want a zoomed in version
 -- somewhere - though maybe we should have some LRU and destroy-
 -- cache state as well
-local function update_preview(state, active, xofs, width)
+local function update_preview(state, active, xofs, width, index)
 	if (active == nil) then
 		if (valid_vid(state.vid)) then
 			delete_image(state.vid);
@@ -175,9 +175,10 @@ local function update_preview(state, active, xofs, width)
 	state.selected = true;
 	state.last_w = width;
 	state.last_ofs = xofs;
+	state.last_index = index;
 end
 
-local function prepare_preview(callback, self, anchor, ofs, width)
+local function prepare_preview(callback, self, anchor, ofs, width, index)
 -- states we need to track as upvalues from the returned function
 	local state = {
 		in_asynch = true,
@@ -185,6 +186,7 @@ local function prepare_preview(callback, self, anchor, ofs, width)
 		last_w = width,
 		selected = true,
 		menu = self,
+		last_index = index,
 		vid = null_surface(1, 1)
 	};
 
@@ -194,6 +196,18 @@ local function prepare_preview(callback, self, anchor, ofs, width)
 
 	link_image(state.vid, anchor);
 	image_inherit_order(state.vid, true);
+
+-- this gives us enough to be able to seek to last_index and act as if
+-- we triggered the item itself.
+	local mh = {
+		own = function(ctx, vid)
+			return vid == state.vid;
+		end,
+		over = function(ctx, vid)
+		end
+	};
+	mouse_addlistener(mh);
+	tiler_lbar_isactive(true):append_mh(mh);
 
 -- hook it up to a timer or activate immediately?
 	local cnt = gconfig_get("browser_timer");
@@ -324,7 +338,8 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 		local simple, ext = suppl_ext_type(v);
 
 		if not ext or #ext == 0 then
-			return
+-- modify this to support a default handler for some extensions, this can
+-- be useful for 'regular' file management
 		end
 
 -- match against default set of handlers (with preview function) or temp- hook
@@ -345,6 +360,21 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			preview = exth.preview,
 			preview_path = nsfqn,
 		};
+
+		res.alt_handler = function(ctx)
+			local x, y = mouse_xy();
+			local menu = {
+				{
+					name = "window",
+					kind = "action",
+					label = "Open as Window",
+					handler = function()
+						exth.run(nsfqn, res.last_state)
+					end
+				}
+			}
+			return menu;
+		end
 		res.handler = function(ctx)
 -- currently no way of querying the preview handler for a decoded resource
 			exth.run(nsfqn, res.last_state);
@@ -388,6 +418,29 @@ gen_menu_for_path = function(path, prefix, ns)
 			glob_cache[path] = nil;
 		end
 	});
+
+	res.alt_handler =
+	function()
+		local res = {
+			{
+				name = "media",
+				label = "Media",
+				kind = "action",
+				handler = function()
+					print("set filter to media")
+				end
+			},
+			{
+				name = "all_files",
+				label = "All Files",
+				kind = "action",
+				handler = function()
+					print("set filter to all files")
+				end
+			}
+		}
+		return res;
+	end
 
 -- Note that this will update the 'last visited path' no matter what
 -- the origin. This means that IPC, timer and binding based operations

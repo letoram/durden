@@ -218,6 +218,15 @@ commands = {
 		return tbl;
 	end,
 
+	info = function(client, line, res, remainder)
+		local res = {}
+		if CRASH_SOURCE and #CRASH_SOURCE > 0 then
+			table.insert(res, CRASH_SOURCE);
+		end
+		table.insert(res, "OK");
+		return res;
+	end,
+
 -- list and read all the entries in one directory
 	readdir = function(client, line, res, remainder)
 		if (client.in_monitor) then

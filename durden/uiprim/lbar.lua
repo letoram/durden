@@ -112,11 +112,37 @@ local function destroy(wm, ictx)
 	wm:set_input_lock();
 end
 
+local function trigger_context(wm, str)
+	local ictx = wm.input_ctx;
+	local inp = ictx.inp;
+
+	if not str then
+		str = inp:view_str();
+	end
+
+	if ictx.on_context then
+		ictx:on_context(ictx.cb_ctx, str)
+	end
+end
+
 local function accept_cancel(wm, accept, nofwd, m1)
 	local ictx = wm.input_ctx;
 	local inp = ictx.inp;
+
+-- resolve forced completion item
+	local base = inp.msg;
+	if (ictx.force_completion or string.len(base) == 0) then
+		if (inp.set and inp.set[inp.csel]) then
+			base = type(inp.set[inp.csel]) == "table" and
+				inp.set[inp.csel][3] or inp.set[inp.csel];
+		end
+	end
+
+-- have on_accept hook as a way to block the accept termination
 	if (ictx.on_accept) then
-		ictx:on_accept(accept);
+		if ictx:on_accept(accept, ictx.cb_ctx, base, inp.set, inp) then
+			return
+		end
 	end
 
 	ictx.in_wheel = nil;
@@ -129,14 +155,6 @@ local function accept_cancel(wm, accept, nofwd, m1)
 			ictx:on_cancel(m1);
 		end
 		return;
-	end
-
-	local base = inp.msg;
-	if (ictx.force_completion or string.len(base) == 0) then
-		if (inp.set and inp.set[inp.csel]) then
-			base = type(inp.set[inp.csel]) == "table" and
-				inp.set[inp.csel][3] or inp.set[inp.csel];
-		end
 	end
 
 	ictx.get_cb(ictx.cb_ctx, base, true, inp.set, inp);
@@ -325,6 +343,9 @@ local function update_completion_set(wm, ctx, set)
 						mctx.mofs + mctx.mstep, mctx.mwidth, exit or i == #set);
 				end
 			end,
+			rclick = function()
+				trigger_context(wm, msgs[2])
+			end,
 			click = function()
 				if (exit) then
 					return slide_window(i);
@@ -338,7 +359,7 @@ local function update_completion_set(wm, ctx, set)
 			mwidth = w
 		};
 
-		mouse_addlistener(mh, {"motion", "click"});
+		mouse_addlistener(mh, {"motion", "click", "rclick"});
 		table.insert(pending, mh);
 		show_image({txt, ctx.ccursor, ctx.canchor});
 
@@ -491,12 +512,6 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 		end
 	end
 
--- simulate rclick on item which should trigger a popup
-	if (sym == 'TAB') then
-		print("lbar tab");
-		return;
-	end
-
 -- first allow whatever thing that is using the lbar to override the
 -- meta + accept/l/r/n/p in order to implement more advanced actions
 --
@@ -510,6 +525,10 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 --			return
 --		end
 --	end
+
+	if (sym == ictx.context) then
+		return trigger_context(wm)
+	end
 
 -- meta held means commit and relaunch at our current position,
 -- this is problematic due to a. caching and b. path mutating
@@ -560,7 +579,8 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			k_home   = SYSTEM_KEYS["home"],
 			k_end    = SYSTEM_KEYS["end"],
 			k_delete = SYSTEM_KEYS["delete"],
-			k_erase  = SYSTEM_KEYS["erase"]
+			k_erase  = SYSTEM_KEYS["erase"],
+			k_context = SYSTEM_KEYS["context"]
 		};
 
 -- forward to the read/edit-line like tool
@@ -708,6 +728,13 @@ function tiler_lbarforce(tbl, cb)
 	end
 end
 
+-- mark a mouse handler for delection together with those created for the
+-- labels, this is a hack to let other widgets etc. attach mouse handlers with
+-- a lifespan tied to the visibility of the labels.
+local function lbar_addmh(lbar, mh)
+	table.insert(pending, mh);
+end
+
 function tiler_lbar_isactive(ref)
 	if (ref) then
 		return active_lbar;
@@ -815,6 +842,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		step_p = SYSTEM_KEYS["previous"],
 		caret_left = SYSTEM_KEYS["left"],
 		caret_right = SYSTEM_KEYS["right"],
+		context = SYSTEM_KEYS["context"],
 
 		textstr = gconfig_get("lbar_textstr"),
 		set_label = lbar_label,
@@ -822,6 +850,8 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		get_cb = completion,
 		cb_ctx = comp_ctx,
 		destroy = lbar_destroy,
+		append_mh = lbar_addmh,
+
 		accept_cancel =
 		function(bar, accept, keep)
 			accept_cancel(wm, accept, false, keep)
@@ -845,6 +875,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		on_accept = opts.on_accept,
 		on_create = opts.on_create,
 		on_entry = opts.on_entry,
+		on_context = opts.on_context,
 		wm = wm,
 	};
 
@@ -881,6 +912,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 	}
 	mouse_addlistener(bg_mh, {"click", "rclick", "button"});
 	res.bg_mh = bg_mh;
+	active_lbar = res;
 
 -- arbitrary overrides hack, see menu.lua but used for previews
 	if (opts.overlay) then
@@ -929,6 +961,5 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		res:set_label(opts.label);
 	end
 
-	active_lbar = res;
 	return res;
 end

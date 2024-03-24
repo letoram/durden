@@ -1121,7 +1121,7 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		k_home = "HOME",
 		k_end = "END",
 		k_delete = "DELETE",
-		k_erase = "ERASE"
+		k_erase = "ERASE",
 	};
 
 	local flut = {

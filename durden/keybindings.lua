@@ -22,7 +22,8 @@ SYSTEM_KEYS = {
 ["left"] = "LEFT",
 ["right"] = "RIGHT",
 ["delete"] = "DELETE",
-["erase"] = "BACKSPACE"
+["erase"] = "BACKSPACE",
+["context"] = "TAB"
 };
 
 --

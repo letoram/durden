@@ -15,6 +15,11 @@ local log = suppl_add_logfn("wm");
 local function position_popup(vid, x, y, w, h, anchor_vid)
 	local wm = active_display();
 
+	if valid_vid(anchor_vid) then
+		link_image(vid, anchor_vid)
+		order_image(vid, 65530)
+	end
+
 	if (x + w > wm.width) then
 		x = x - (x + w - wm.width) - 20;
 	end
@@ -60,6 +65,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 	local shadow_h = 10;
 	local speed = gconfig_get("popup_animation");
 	local hw = suppl_display_ui_pad();
+	local ilock;
 
 	local popup, popup_closure;
 	popup, popup_closure =
@@ -69,10 +75,10 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 -- now we can position the popup based on intended spawn
 			image_inherit_order(anchor, true);
 			order_image(anchor, 65534);
-			position_popup(anchor, x, y, w, h, anchor_vid);
+			shadow_h = h + hw + hw;
+			position_popup(anchor, x + hw, y + hw, w, h, anchor_vid);
 
 -- but set our own shadow/border/cursor
-			shadow_h = h + hw + hw;
 			local ssurf = color_surface(w + hw + hw, shadow_h, 0, 0, 0);
 			move_image(ssurf, -hw, -hw);
 			tbl.shid = shader_ui_lookup(ssurf, "ui", "popup", "active");
@@ -94,7 +100,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			mouse_droplistener(ml);
 			popup_closure();
 			dispatch_symbol_unlock(true);
-			active_display():set_input_lock();
+			active_display():set_input_lock(ilock, "uimap_popup_over");
 
 -- let the activation be intercepted
 			if closure and not closure(ent) then
@@ -218,6 +224,7 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 
 -- grab the translated keysym routing and forward to popup cursor,
 -- since this also has 'dibs' on mouse input, reroute through there
+	ilock =
 	active_display():set_input_lock(
 	function(wm, sym, iotbl, lutsym, meta)
 		if iotbl.mouse then
