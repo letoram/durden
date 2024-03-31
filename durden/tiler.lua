@@ -1178,23 +1178,6 @@ local function level_resize(level, x, y, w, h, repos, fairh)
 			node.max_w = node.max_w - tpad_w;
 			node.max_w = math.floor(fairw * node.weight);
 			node.max_w = (node.max_w % 2) == 0 and node.max_w or node.max_w + 1;
-
--- align with font size, but safe-guard against bad / broken client
-			if (node.sz_delta and
-				node.sz_delta[1] < gconfig_get("term_font_sz") * 2) then
-				local hd = node.pad_left + node.pad_right + tpad_w;
-				local delta_diff = (node.max_w - hd) % node.sz_delta[1];
-
--- attempts at balancing down / up based on shortest distance didn't end well
-				if (delta_diff > 0) then
-					node.max_w = node.max_w - delta_diff;
---					if (node.max_w - hd + delta_diff <= w) then
---						node.max_w = node.max_w + delta_diff + hd;
---					elseif (node.max_w - hd + delta_diff > 0) then
---						node.max_w = node.max_w - delta_diff + hd;
---					end
-				end
-			end
 		end
 
 -- recurse downwards
@@ -1274,10 +1257,12 @@ local function workspace_activate(space, noanim, negdir, oldbg)
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0);
 			move_image(space.anchor, 0, 0, time);
 			show_image(space.anchor);
+
 		elseif (method == "move-v") then
 			move_image(space.anchor, 0, (negdir and -1 or 1) * space.wm.height);
 			move_image(space.anchor, 0, 0, time);
 			show_image(space.anchor);
+
 		elseif (method == "fade") then
 			move_image(space.anchor, 0, 0);
 			blend_image(space.anchor, 0.0);
@@ -1358,8 +1343,14 @@ local function workspace_deactivate(space, noanim, negdir, newbg)
 	if (not noanim and time > 0 and method ~= "none") then
 		if (method == "move-h") then
 			move_image(space.anchor, (negdir and -1 or 1) * space.wm.width, 0, time);
+			blend_image(space.anchor, 1.0, time);
+			blend_image(space.anchor, 0.0, 1);
+
 		elseif (method == "move-v") then
 			move_image(space.anchor, 0, (negdir and -1 or 1) * space.wm.height, time);
+			blend_image(space.anchor, 1.0, time);
+			blend_image(space.anchor, 0.0, 1);
+
 		elseif (method == "fade") then
 			blend_image(space.anchor, 0.0, 0.5 * time);
 		else
@@ -1562,8 +1553,20 @@ local function drop_fullscreen(space)
 -- re-send the original displayhint as fullscreen has different hint
 -- behaviours than other modes when there is a relayout pending
 	dw:displayhint(dw.width, dw.height, dw.dispmask);
-	dw:deselect()
-	dw:select()
+
+-- interesting: doing this makes the window not appear, a reason may
+-- be that we are formally not in the mode layout of the new mode yet,
+-- one option is to throw a mode-hook that will trigger selection and
+-- size hints
+	return function()
+		if space.selected == dw then
+			dw:select()
+			dw:resize(dw.width, dw.height, true, true)
+			wnd_titlebar_to_statusbar(dw)
+		else
+			dw:deselect()
+		end
+	end
 end
 
 local function drop_tab(space)
@@ -1978,8 +1981,9 @@ local function workspace_set(space, mode)
 	end
 
 -- cleanup to revert to the normal stable state (tiled)
+	local post_closure
 	if (space.mode_hook) then
-		space:mode_hook();
+		post_closure = space:mode_hook();
 		space.mode_hook = nil;
 	end
 
@@ -2005,6 +2009,10 @@ local function workspace_set(space, mode)
 	space:resize();
 	if (space.wm.spaces[space.wm.space_ind]) then
 		tiler_statusbar_update(space.wm);
+	end
+
+	if post_closure then
+		post_closure();
 	end
 end
 
@@ -3097,64 +3105,87 @@ local function wnd_reassign(wnd, ind, ninv)
 	end
 end
 
-local function wnd_drag_resize(wnd, mctx, enter)
-	if (enter) then
-		wnd.in_drag_rz = true;
-		wnd.drag_sz_ack = {
-			w      = wnd.effective_w,
-			h      = wnd.effective_h,
-			acc_x  = 0,
-			acc_y  = 0,
-			size_x = mctx.mask[1], -- multiply acc to get dw, dh
-			size_y = mctx.mask[2],
-			pos_x  = mctx.mask[3], -- multiply acc to get move- delta
-			pos_y  = mctx.mask[4]
-		};
-		wnd.drag_mode = wnd.scalemode;
+local function wnd_drag_resize_enter(wnd, mask)
+	tiler_debug(wnd.wm, "drag_resize_enter");
+
+	wnd.in_drag_rz = true;
+	wnd.drag_sz_ack = {
+		w      = wnd.effective_w,
+		h      = wnd.effective_h,
+		acc_x  = 0,
+		acc_y  = 0,
+		size_x = mask[1], -- multiply acc to get dw, dh
+		size_y = mask[2],
+		pos_x  = mask[3], -- multiply acc to get move- delta
+		pos_y  = mask[4]
+	};
+	wnd.drag_mode = wnd.scalemode;
 
 -- it was easier (though not as pretty) this way to get the problem
 -- with dominant axis/direction vs. drag- side when it comes to aspect-
 -- ratio preserving drag resize.
-		if (wnd.scalemode == "aspect") then
-			wnd.scalemode = "stretch";
-		end
-		return;
+	if (wnd.scalemode == "aspect") then
+		wnd.scalemode = "stretch";
+	end
+end
+
+local function wnd_drag_resize_leave(wnd)
+	tiler_debug(wnd.wm, "drag_resize_leave")
+	local dt = wnd.drag_sz_ack
+
+	if not dt then
+		return
 	end
 
-	tiler_debug(wnd.wm, "on_drop_apply");
-	wnd.scalemode = wnd.drag_mode;
-	if (not wnd.in_drag_rz) then
-		wnd:resize(wnd.width, wnd.height, true);
-		return;
+	if wnd.scalemode == "client" then
+		dt.finished = true
+		return
 	end
 
-	local ew = wnd.effective_w;
-	local eh = wnd.effective_h;
+	wnd.scalemode = wnd.drag_mode
+	wnd.in_drag_rz = false
 
--- do we align on drop?
-	if (wnd.sz_delta) then
-		local dx = wnd.effective_w % (wnd.sz_delta[1] * mctx.mask[3]);
-		local dy = wnd.effective_h % (wnd.sz_delta[2] * mctx.mask[4]);
+	local ew = dt.w + dt.acc_x
+	local eh = dt.h + dt.acc_y
+	wnd.drag_sz_ack = nil
 
--- resistance for dragging windows with an expressed stepping size
-		if (dx > wnd.sz_delta[1] * 0.5) then
-			ew = ew + wnd.sz_delta[1];
-			wnd.x = wnd.x + wnd.sz_delta[1] * mctx.mask[1];
-		end
+-- make sure any client triggers etc. trigger accordingly
+	wnd:resize_effective(ew, eh, true, false)
+end
 
-		if (dy < wnd.sz_delta[2] * 0.5) then
-			eh = eh + wnd.sz_delta[2];
-			wnd.y = wnd.y + wnd.sz_delta[2] * mctx.mask[2];
-		end
+local function wnd_drag_resize(wnd, mask, dx, dy)
+	tiler_debug(wnd.wm, "step_drag_resize")
+
+	local dt = wnd.drag_sz_ack
+	if not dt then
+		return
 	end
 
--- for client, we don't really care, it should have received/queued event
-	if (wnd.scalemode ~= "client") then
-		move_image(wnd.anchor, wnd.x, wnd.y);
-		wnd:resize_effective(ew, eh, true);
+	dt.acc_x = dt.acc_x + dx * mask[1]
+	dt.acc_y = dt.acc_y + dy * mask[2]
+
+-- for client we track how much has accumulated since the dimensions of
+-- the last known frame update as the resize handler in extev.lua tracks
+	if wnd.scalemode == "client" then
+		wnd:displayhint(
+			dt.w + dt.acc_x,
+			dt.h + dt.acc_y,
+			bit.bor(wnd.dispmask, TD_HINT_CONTINUED)
+		)
+		return
 	end
 
-	wnd.in_drag_rz = false;
+-- scale / aspect / crop we don't really care
+	wnd.x = wnd.x + dx * mask[3]
+	wnd.y = wnd.y + dy * mask[4]
+
+-- forced masked resize to avoid feedback loops from event handlers
+	wnd:resize_effective(
+		dt.w + dt.acc_x, dt.h + dt.acc_y,
+		true, true
+	)
+
+	move_image(wnd.anchor, wnd.x, wnd.y)
 end
 
 local function wnd_move(wnd, dx, dy, align, abs, now, noclamp)
@@ -3646,6 +3677,7 @@ local function wnd_toggle_maximize(wnd)
 
 		local neww = wnd.maximized.w * wnd.wm.effective_width + wnd.dh_pad_w;
 		local newh = wnd.maximized.h * wnd.wm.effective_height + wnd.dh_pad_h;
+		wnd.dispmask = bit.bor(wnd.dispmask, TD_HINT_MAXIMIZED)
 
 		if (wnd.scalemode == "client") then
 			wnd:displayhint(neww, newh, wnd.dispmask);
@@ -3662,6 +3694,7 @@ local function wnd_toggle_maximize(wnd)
 		local cur = {};
 		local props = image_surface_resolve(wnd.anchor);
 		local neww = wnd.wm.effective_width;
+		wnd.dispmask = bit.band(wnd.dispmask, bit.bnot(TD_HINT_MAXIMIZED))
 
 -- save relative so we can restore properly even if the screen changes
 		cur.x = wnd.x / wnd.wm.effective_width;
@@ -3673,8 +3706,8 @@ local function wnd_toggle_maximize(wnd)
 		wnd:move(0, 0, false, true, false, true);
 		if (wnd.scalemode == "client") then
 			wnd:displayhint(
-				wnd.wm.effective_width + wnd.dh_pad_w,
-				wnd.wm.effective_height + wnd.dh_pad_h,
+				wnd.wm.effective_width - wnd.pad_left - wnd.pad_right - wnd.dh_pad_w,
+				wnd.wm.effective_height - wnd.pad_top - wnd.pad_bottom - wnd.dh_pad_h,
 				wnd.dispmask
 			);
 		else
@@ -3715,6 +3748,7 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 	if (wnd.input_focus or
 		wnd.in_drag_move or wnd.in_drag_rz or
 		not valid_vid(wnd.external, TYPE_FRAMESERVER)) then
+		run_event(wnd, "mouse_motion", x, y, rx, ry)
 		return;
 	end
 
@@ -4981,13 +5015,22 @@ end
 
 local function wnd_cursortag(wnd, accept, src)
 -- probe
-	if accept == nil then
-		return wnd.stateinf ~= nil and srcwnd.stateinf ~= nil
-		and wnd.stateinf.typeid == srcwnd.stateinf.typeid
+	local valid_src_dst =
+		wnd.stateinf ~= nil and src.stateinf ~= nil
+		and wnd.stateinf.typeid == src.stateinf.typeid and
+		valid_vid(src.external, TYPE_FRAMESERVER) and
+		valid_vid(wnd.external, TYPE_FRAMESERVER)
+
+	if accept == nil or not valid_src_dst then
+		return valid_src_dst
+	end
+
+	if accept == false then
+		return
 	end
 
 -- activate
-	bond_target(srcwnd.external, wnd.external);
+	bond_target(src.external, wnd.external);
 end
 
 local function wnd_set_vtable_vattr(wnd)
@@ -5030,6 +5073,8 @@ local function wnd_set_vtable_hier(wnd)
 	wnd.reparent = wnd_tochild
 	wnd.suggest_size = wnd_suggest_size
 	wnd.drag_resize = wnd_drag_resize
+	wnd.drag_resize_enter = wnd_drag_resize_enter
+	wnd.drag_resize_leave = wnd_drag_resize_leave
 	wnd.drop_overlay = wnd_drop_overlay
 	wnd.add_overlay = wnd_add_overlay
 	wnd.synch_overlays = wnd_synch_overlays
@@ -5086,16 +5131,6 @@ function wnd_set_vitable(wnd)
 	wnd.scroll_report = wnd_scroll_report
 	wnd.scroll = wnd_scroll
 	wnd.receive_cursortag = wnd_cursortag
--- input
-	wnd.input_table = wnd_inputtable
-	wnd.mousebutton = wnd_mousebutton
-	wnd.mousemotion = wnd_mousemotion
-	wnd.mouseactivate = wnd_mouseactivate
-	wnd.mousepress = wnd_mousepress
-	wnd.mousedblclick = wnd_mousedblclick
-	wnd.mousehover = wnd_mousehover
-	wnd.mouseover = wnd_mouseover
-	wnd.scroll = wnd_scroll
 end
 
 -- build an orphaned window that isn't connected to a real workspace yet,

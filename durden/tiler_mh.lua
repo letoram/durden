@@ -22,13 +22,13 @@ end
 -- map rectangle edge to mouse-cursor direction and name
 local dir_lut = {
 	ul = {"north-west", {-1, -1, 1, 1}},
-	 u = {"north", {0, -1, 0, 1}},
+	 u = {"north-south", {0, -1, 0, 1}},
 	ur = {"north-east", {1, -1, 0, 1}},
-	 r = {"east", {1, 0, 0, 0}},
+	 r = {"west-east", {1, 0, 0, 0}},
 	lr = {"south-east", {1, 1, 0, 0}},
-	 d = {"south", {0, 1, 0, 0}},
+	 d = {"north-south", {0, 1, 0, 0}},
 	ll = {"south-west", {-1, 1, 1, 0}},
-	 l = {"left", {-1, 0, 1, 0}}
+	 l = {"west-east", {-1, 0, 1, 0}}
 };
 
 -- display- local coordinate to window border conversion
@@ -62,23 +62,6 @@ local function mouse_to_border(wnd)
 	local dx = dle < dre and dle or dre;
 	local dy = due < dde and due or dde;
 
--- for aspect ratio scaling, we practically only have the diagonals
-	if (wnd.scalemode == "aspect") then
-		if (dx < dy) then
-			if (dle < dre) then
-				return due < 0.5 * props.height and "ul" or "ll";
-			else
-				return due < 0.5 * props.height and "ur" or "lr";
-			end
-		else
-			if (dle < dre) then
-				return due < 0.5 * props.height and "ul" or "ll";
-			else
-				return due < 0.5 * props.height and "ur" or "lr";
-			end
-		end
-	end
-
 	if (dx < dy) then
 		return dle < dre and "l" or "r";
 	else
@@ -89,7 +72,7 @@ end
 local old_btn
 local function wnd_drag_preview_synch(wnd)
 	if wnd.in_drag_ts < wnd.space.last_action then
-		wnd.in_drag_move = wnd:linearize(wnd.space);
+		wnd.in_drag_move = wnd.space:linearize();
 	end
 
 -- more options here is with tab (swap order) and if rcpt is the titlebar
@@ -214,45 +197,10 @@ end
 -- thinks that we are on.
 local function set_borderstate(ctx)
 	local p = mouse_to_border(ctx.tag);
+
 	local ent = dir_lut[p];
 	ctx.mask = ent[2];
 	mouse_switch_cursor(ent[1]);
-end
-
-local function step_drag_resize(wnd, mctx, vid, dx, dy)
--- absurd warp->drag without over first
-	if (not mctx.mask) then
-		return;
-	end
-
-	local dt = wnd.drag_sz_ack
-
--- for client- driven resizing, we can only send our suggestion ('configure')
--- and then wait in the client event handler on a time where that makes sense
-	if (wnd.scalemode == "client" and
-		valid_vid(wnd.external, TYPE_FRAMESERVER)) then
-
--- remember the accumulated delta (as the client ack will be dragging behind)
--- then we flush in the extevh- resized handler
-		dt.acc_x = dt.acc_x + dx
-		dt.acc_y = dt.acc_y + dy
-
-		wnd:displayhint(
-			dt.w + dt.acc_x * dt.size_x,
-			dt.h + dt.acc_y * dt.size_y, wnd.dispmask
-		);
-
-	else
-		wnd.x = wnd.x + dx * mctx.mask[3];
-		wnd.y = wnd.y + dy * mctx.mask[4];
-
-		wnd:resize(
-			wnd.width + dx * mctx.mask[1],
-			wnd.height + dy * mctx.mask[2],
-			true, false
-		);
-		move_image(wnd.anchor, wnd.x, wnd.y);
-	end
 end
 
 -- special sematics for dragging a window and dropping it on top of another
@@ -384,7 +332,6 @@ local function build_border(wnd)
 	out =
 	function(ctx)
 		mouse_switch_cursor("default");
-		wnd.in_drag_rz = false;
 		wnd.in_drag_move = false;
 	end,
 
@@ -392,38 +339,22 @@ local function build_border(wnd)
 -- wayland case where clients may have border contents we don't know about
 -- and may need the client canvas to act as 'border'.
 --
--- To deal with that, part of the drag_rz behavior is split into the handler
--- here and the in_drag_rz / drag_rz_enter states of the wnd table.
 	drag =
 	function(ctx, vid, dx, dy)
 		if (not ctx.mask) then
 			set_borderstate(ctx);
 		end
 
--- protect against ugly "window destroyed just as we got drag"
-		if (not wnd.drag_resize or wnd.space.mode ~= "float") then
+-- protect against ugly "window destroyed just as we are in drag"
+		if (wnd.space.mode ~= "float") then
 			return;
 		end
 
-		if (not wnd.in_drag_rz and wnd.drag_rz_enter) then
-			wnd:drag_rz_enter(ctx.mask);
+		if (not wnd.in_drag_rz) then
+			wnd:drag_resize_enter(ctx.mask);
 		end
 
--- some (wayland) clients need entirely different behaviors here,
--- so we add an override that can be hooked and fall back to our own
--- if needed
-		if (wnd.in_drag_rz) then
-			if (type(wnd.in_drag_rz) == "function") then
-				wnd:in_drag_rz(ctx, vid, dx, dy, false);
-			else
-				step_drag_resize(wnd, ctx, vid, dx, dy);
-			end
-			return;
-		end
-
--- distinguish between on_begin_drag_resize and update_drag_resize
-		wnd:drag_resize(ctx, true);
-		step_drag_resize(wnd, ctx, vid, dx, dy);
+		wnd:drag_resize(ctx.mask, dx, dy);
 	end,
 
 	drop = function(ctx)
@@ -432,22 +363,33 @@ local function build_border(wnd)
 			return;
 		end
 
--- should have separate rules for tiling here that shows a drag 'anchor'
--- which we use to calculate splitting point
-
-		if (type(wnd.in_drag_rz) == "function") then
---			wnd:in_drag_rz(vid, 0, 0, true);
-		end
-
--- normal might also care
-		if (wnd.drag_resize) then
-			wnd:drag_resize(ctx, false);
-		end
+		wnd:drag_resize_leave(ctx.mask)
 	end
-};
+	};
 
 	mouse_addlistener(table, {"motion", "out", "over", "drag", "drop"});
 	return table;
+end
+
+local function ct_handler(wnd, accept)
+	local ct = mouse_state().cursortag;
+	if not ct then
+		return
+	end
+
+	if not ct.handler or not ct.handler(wnd, accept, ct.src, ct) then
+		mouse_cursortag_state(false);
+		mouse_switch_cursor("drag-reject");
+	else
+		mouse_switch_cursor("drag-drop");
+		mouse_cursortag_state(true);
+	end
+
+	if accept ~= nil then
+		mouse_switch_cursor("default");
+		ct.src.in_drag_tag = false;
+		wnd.wm:cancellation();
+	end
 end
 
 local function build_canvas(wnd)
@@ -460,27 +402,7 @@ local function build_canvas(wnd)
 	end,
 	motion =
 	function(ctx, vid, x, y, rx, ry)
-		local ct = mouse_state().cursortag;
-		if (ct) then
--- update accept state, for external clients we need to do a lot more
--- via the clipboard - i.e. ask if the type is currently accepted and
--- so on. the distributed mouse.lua is flawed here so temporarily set
--- overrides on vid and state here
-			if (ct.handler and ct.handler(ct.ref, nil, wnd)) then
-				mouse_cursortag_state(true);
-				if (valid_vid(ct.vid)) then
-					blend_image(ct.vid, 1.0);
-				end
-				ct.accept = true;
-			else
-				mouse_cursortag_state(false);
-				if (valid_vid(ct.vid)) then
-					blend_image(ct.vid, 0.5);
-				end
-				ct.accept = false;
-			end
-		end
-
+		ct_handler(wnd, nil);
 		wnd:run_event("mouse_motion", x, y);
 		wnd:mousemotion(x, y, rx, ry);
 	end,
@@ -493,8 +415,11 @@ local function build_canvas(wnd)
 			return;
 		end
 
-		ct.handler(ct.ref, true, wnd);
-		wnd.wm:cancellation();
+		if gconfig_get("mouse_stickydnd") then
+			return
+		end
+
+		ct_handler(wnd, true);
 	end,
 
 	drag = function(ctx, vid, dx, dy, ...)
@@ -521,16 +446,15 @@ local function build_canvas(wnd)
 			elseif m2 then
 				wnd.in_drag_tag = true;
 				dispatch_symbol_wnd(wnd, "/target/window/cursortag")
+				ct_handler(wnd);
 			end
 		end
 
--- with no decoration and a client that has requested that we are in resize
--- mode, we need to repeat the same dance we do in the border handler
 		if (wnd.in_drag_rz) then
-			if (type(wnd.in_drag_rz) == "function") then
-				wnd:in_drag_rz(ctx, vid, dx, dy);
+			if ctx.mask then
+				wnd:drag_resize(ctx.mask, dx, dy);
 			else
-				step_drag_resize(wnd, ctx, vid, dx, dy);
+				wnd:drag_resize_leave();
 			end
 
 -- move is easier, but options that are specific for mouse here:
@@ -556,6 +480,7 @@ local function build_canvas(wnd)
 
 	drop = function(ctx, vid)
 		if (wnd.in_drag_move) then
+			wnd.in_drag_move = false;
 			drop_swap(wnd, wnd.space.mode, wnd.in_drag_last, wnd.drag_move_pos);
 			wnd:move(0, 0, false, false, true);
 
@@ -566,6 +491,9 @@ local function build_canvas(wnd)
 			wnd:recovertag();
 
 		elseif wnd.in_drag_tag then
+			if gconfig_get("mouse_stickydnd") then
+				return
+			end
 			mouse_cursortag_drop();
 			wnd.in_drag_tag = false;
 		end
@@ -599,14 +527,26 @@ local function build_canvas(wnd)
 		mouse_hidemask(false);
 
 -- also reset border drag-state
-		wnd.in_drag_rz = false;
 		wnd.in_drag_move = false;
 	end,
 
 	button = function(ctx, vid, ...)
+		local ct = mouse_state().cursortag;
+		if ct then
+			return
+		end
+
 		if wnd.mousebutton then
 			wnd:mousebutton(...);
 		end
+	end,
+
+	click = function(ctx)
+		if not gconfig_get("mouse_stickydnd") then
+			return
+		end
+
+		ct_handler(wnd, true);
 	end,
 
 	dblclick = function(ctx)
@@ -616,10 +556,7 @@ local function build_canvas(wnd)
 	end
 };
 
-	mouse_addlistener(table, {
-		"motion", "out", "over", "drag", "drop",
-		"button", "dblclick", "press", "release"
-	});
+	mouse_addlistener(table);
 	return table;
 end
 
@@ -668,6 +605,9 @@ local function build_titlebar(wnd)
 		if (mode == "float" or mode == "tile") then
 			mouse_switch_cursor("grabhint");
 
+			wnd.in_drag_move = false;
+			wnd:move(0, 0, false, false, true);
+
 -- cascade to space event handler as well (window is in drop_swap)
 			for k,v in ipairs(wnd.wm.on_wnd_drag) do
 				v(wnd.wm, wnd, 0, 0, true);
@@ -687,6 +627,12 @@ local function build_titlebar(wnd)
 -- register for windows that we are passing
 			if not wnd.in_drag_move then
 				wnd:set_drag_move();
+			end
+
+			if wnd.maximized then
+				local x, y = wnd.x, wnd.y
+				wnd:toggle_maximize()
+				wnd:move(x, y, false, true, true, false)
 			end
 
 			wnd:move(dx, dy, false, false, true);
@@ -888,7 +834,7 @@ local function build_background(ws)
 		});
 	end,
 	button = function(ctx, vid, ind, pressed, x, y)
-		if (wm.selected) then
+		if (wm.selected and pressed) then
 			wm.selected:deselect();
 		end
 -- only forward if meta is not being held

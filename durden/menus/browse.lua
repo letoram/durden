@@ -307,6 +307,62 @@ function browse_override_ext(v)
 	end
 end
 
+local function cursortag(fn)
+	local ms = mouse_state()
+	local ct = ms.cursortag
+
+-- is it us or are we overriding someone?
+	if ct then
+		if ct.tag ~= "browser" then
+			active_display():cancellation()
+		end
+		ct = nil
+	end
+
+-- this doesn't really support mixing 'stack of files' from browser with
+-- content-of-window or DnD-from-window, and it's likely not work the effort.
+	local fontstr, _ = active_display():font_resfn()
+	if not ct then
+		local tag = render_text({fontstr, "Placeholder"})
+		show_image(tag)
+
+		mouse_cursortag("browser", {},
+			function(src, accept, dst)
+				if accept == nil then
+					return dst and valid_vid(dst.external, TYPE_FRAMESERVER)
+-- drop the nbio references
+				elseif accept == false then
+					for _,v in ipairs(src) do
+						v.nbio:close()
+					end
+				else
+					for _,v in ipairs(src) do
+						print("send file", v.name)
+					end
+				end
+			end,
+		tag)
+
+		ct = ms.cursortag
+	end
+
+-- could do this a bit prettier with a stacked chain of icons representations,
+-- or flair it up with the verlet rope dangling the chain ..
+	if not table.find_key_i(ct.src, "path", fn) then
+		local nbio = open_nonblock(fn, false)
+
+-- we don't have a good place to convey this error right now so just shake
+		if nbio then
+			table.insert(ct.src, {path = fn, nbio = nbio})
+			render_text(ct.vid, {fontstr, tostring(#ct.src) .. " Files"})
+		else
+			nudge_image(ms.cursor, -5, 0, 2)
+			nudge_image(ms.cursor, 10, 0, 2)
+			nudge_image(ms.cursor, -5, 0, 2)
+		end
+	end
+end
+
 -- These menus act like normal menus, but they install separate
 -- handlers that override preview behavior, add additional input/
 -- filters etc. The big headscratcher is how this is supposed to
@@ -370,6 +426,14 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 					label = "Open as Window",
 					handler = function()
 						exth.run(nsfqn, res.last_state)
+					end
+				},
+				{
+					name = "tag",
+					kind = "action",
+					label = "Add to Cursortag",
+					handler = function()
+						cursortag(nsfqn);
 					end
 				}
 			}

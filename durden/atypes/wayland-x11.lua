@@ -265,7 +265,8 @@ return {
 			local ry = y + wnd.pad_top + wnd.ofs_y + space.y;
 
 			log(fmt("kind=move-x11:source=%d:x=%d:y=%d:ofs=%d,%d:pad_lr=%d:%d:space_xy=%d,%d",
-				wnd.external, rx, ry, wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
+				wnd.external and wnd.external or -1, rx, ry,
+				wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
 
 -- need to send where the anchor is, not where the current position is
 			if not wnd.x11_move_block then

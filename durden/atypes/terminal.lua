@@ -28,7 +28,7 @@ local function segreq(wnd, source, status)
 
 	if wnd.last_font then
 		for i=1,#wnd.last_font[3] do
-			target_fonthint(vid,
+			local _, cw, ch = target_fonthint(vid,
 				wnd.last_font[3][i],
 				wnd.last_font[1] * FONT_PT_SZ,
 				wnd.last_font[2], i ~= 1
@@ -110,9 +110,7 @@ local res = {
 	default_shader = {"simple", "crop"},
 	atype = "terminal",
 	props = {
--- keep as client for now, when the server-side rendering can do cropping
--- and clipping correctly for tui surfaces we can reconsider..
-		scalemode = "client",
+		scalemode = "scale",
 		autocrop = true,
 		centered = false,
 		font_block = true,

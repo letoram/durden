@@ -991,8 +991,19 @@ function autows_rootwnd(wnd, source)
 	end
 end
 
+local function root_cursortag(wnd, accept, src)
+	if accept == nil then
+		return true
+	end
+
+-- redirect into a recordtarget
+	if valid_vid(src.external) then
+		print("recordtarget me!")
+	end
+end
+
 function metawm.preroll(wnd, source, tbl)
--- (his synchs the clipboard so that any new items are automatically 'pasted' into
+-- This synchs the clipboard so that any new items are automatically 'pasted' into
 -- the x11 window, giving the x11 clipboard access to it.
 	if gconfig_get("xarcan_clipboard_autopaste") then
 		dispatch_symbol_wnd(wnd, "/target/clipboard/autopaste_on");
@@ -1019,9 +1030,12 @@ function metawm.resized(wnd, src, tbl)
 		log("enable_composited_root");
 		autows_rootwnd(wnd, src);
 	end
+
 	if gconfig_get("xarcan_metawm") then
 		enable_xmeta(wnd);
 	end
+
+	wnd.cursortag = root_cursortag;
 
 	if wnd.xmeta then
 		wnd.xmeta.props = image_storage_properties(src);

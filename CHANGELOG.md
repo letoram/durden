@@ -1,6 +1,18 @@
 # 0.7.0 (ongoing):
 
+* crash log widget replaced with control IPC command "info /"
+
 * added preview image to workspace button hover
+
+* menu paths now have alt-clicks via m1+enter, TAB and right-click
+
+* file picker: item sensitive popup menu actions
+
+* much improved cursor handling and cursor tagging (DND)
+
+* added 'sticky' drag and drop option (input/mouse/stickydnd)
+
+* new tool: composition-window (global/tools/composition)
 
 * new path: global/settings/tools/reload for hot-reloading tools and widgets
 

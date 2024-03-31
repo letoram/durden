@@ -76,7 +76,7 @@ local function set_dragrz_state(wnd, mask, from_wl)
 	end
 
 -- this will be reset on the completion of the drag
-	wnd.in_drag_rz =
+	wnd.on_drag_rz =
 	function(wnd, ctx, vid, dx, dy, last)
 		dx = dx * mask[1];
 		dy = dy * mask[2];

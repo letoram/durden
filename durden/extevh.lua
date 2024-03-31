@@ -729,8 +729,8 @@ function(wnd, source, stat)
 	end
 
 -- need to nudge the window with the size delta based on the mask
-	if wnd.in_drag_rz then
-		local dt = wnd.drag_sz_ack;
+	local dt = wnd.drag_sz_ack
+	if dt then
 		local dw = wnd.effective_w - stat.width;
 		local dh = wnd.effective_h - stat.height;
 		local dx = dw * dt.pos_x;

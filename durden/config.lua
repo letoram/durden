@@ -177,6 +177,7 @@ return {
 	mouse_dragdelta = 4,
 	mouse_cursorset = "default",
 	mouse_m2_cursortag = true,
+	mouse_stickydnd = true,
 
 -- use in iostatem to join all mouse devices into one label
 	mouse_coalesce = true,

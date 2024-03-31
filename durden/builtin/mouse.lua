@@ -663,7 +663,7 @@ end
 -- primitive for drag and drop style behavior, tag the cursor with
 -- a container and a vid that will be destroyed when the tag have been
 -- provided as a 'drop'
-function mouse_cursortag(ref, id, handler, vid)
+function mouse_cursortag(ref, src, handler, vid)
 	if (type(handler) ~= "function") then
 		return;
 	end
@@ -681,6 +681,7 @@ function mouse_cursortag(ref, id, handler, vid)
 	local props = image_surface_properties(vid);
 
 	mstate.cursortag = {
+		src = src,
 		vid = vid,
 		ref = ref,
 		handler = handler
@@ -689,11 +690,17 @@ end
 
 -- visually update the accept or no-accept state
 function mouse_cursortag_state(accept)
-	if (mstate.cursortag and valid_vid(mstate.cursortag.vid)) then
+	if not mstate.cursortag then
+		return
+	end
+
+	if valid_vid(mstate.cursortag.vid) then
 		local lb, _, _ = reset_image_transform(mstate.cursortag.vid);
 		blend_image(mstate.cursortag.vid,
 			accept and 0.5 or 1.0, mstate.animation_speed - lb);
 	end
+
+	mstate.cursortag.accept = accept
 end
 
 local function mouse_drag(x, y)
@@ -1236,11 +1243,6 @@ function mouse_addlistener(tbl, events)
 		if (mstate.handlers[val] ~= nil and
 			linear_find(mstate.handlers[val], tbl) == nil and tbl[val] ~= nil) then
 			insert_unique(mstate.handlers[val], tbl);
-		elseif (tbl[val] ~= nil) then
-			warning("mouse_addlistener(), unknown event function: " .. val);
-			if (DEBUGLEVEL > 0) then
-				print("add_listener traceback: ", debug.traceback());
-			end
 		end
 	end
 end

@@ -18,14 +18,21 @@ return function()
 				return;
 			end
 
-			x1 = x1 - wnd.pad_left;
-			y1 = y1 - wnd.pad_top;
-
-			wnd:move(x1, y1, false, true);
 			local w = x2 - x1;
 			local h = y2 - y1;
-			wnd:resize(w, h);
+
+			if valid_vid(wnd.external) then
+				wnd:displayhint(w, h, wnd.dispmask);
+			else
+				wnd:resize_effective(w, h);
+			end
+
 			mouse_absinput_masked(x, y, true);
 		end
 	);
+
+	mouse_absinput(
+		wnd.x + wnd.pad_left + wnd.effective_w,
+		wnd.y + wnd.pad_top + wnd.effective_h
+	)
 end

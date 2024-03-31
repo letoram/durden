@@ -599,14 +599,27 @@ local mouse_menu = {
 	{
 		name = "m2_ctag",
 		kind = "value",
-		label = "M2+drag canvas tag",
+		label = "Cursortag M2",
 		description = "Set meta2 with canvas drag as window state drag and drop source",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function()
 			return gconfig_get("mouse_m2_cursortag") and LBL_YES or LBL_NO;
 		end,
 		handler = suppl_flip_handler("mouse_m2_cursortag")
-	}
+	},
+	{
+		name = "m2_ctag_stick",
+		kind = "value",
+		label = "Sticky DND",
+		description = "Only release Drag and Drop (cursortag) state on ESCAPE or click",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("mouse_stickydnd") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("mouse_stickydnd")
+	},
 };
+
 local function list_keymaps()
 	local km = SYMTABLE:list_keymaps();
 	local kmm = {};

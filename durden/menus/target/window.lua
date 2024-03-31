@@ -1042,14 +1042,14 @@ return {
 			show_image(icon);
 			shader_setup(icon, "ui", "regmark");
 
-			mouse_cursortag(wnd, "window",
-				function(srcwnd, accept, dstwnd)
-					if (not dstwnd or not srcwnd or
-						accept == false or not dstwnd.receive_cursortag) then
+			mouse_cursortag("window", wnd,
+				function(wnd, accept, src, tag)
+					if (not wnd or not src or
+						accept == false or not wnd.receive_cursortag) then
 						return;
 					end
 
-					return dstwnd:receive_cursortag(accept == nil, srcwnd);
+					return wnd:receive_cursortag(accept, src, tag);
 				end, icon
 			)
 		end,
