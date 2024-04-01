@@ -349,17 +349,9 @@ local function cursortag(fn)
 -- could do this a bit prettier with a stacked chain of icons representations,
 -- or flair it up with the verlet rope dangling the chain ..
 	if not table.find_key_i(ct.src, "path", fn) then
-		local nbio = open_nonblock(fn, false)
-
--- we don't have a good place to convey this error right now so just shake
-		if nbio then
-			table.insert(ct.src, {path = fn, nbio = nbio})
-			render_text(ct.vid, {fontstr, tostring(#ct.src) .. " Files"})
-		else
-			nudge_image(ms.cursor, -5, 0, 2)
-			nudge_image(ms.cursor, 10, 0, 2)
-			nudge_image(ms.cursor, -5, 0, 2)
-		end
+		table.insert(ct.src, {path = fn})
+		print(fontstr, #ct.src)
+		render_text(ct.vid, {fontstr, tostring(#ct.src) .. " Files"})
 	end
 end
 

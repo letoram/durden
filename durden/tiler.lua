@@ -131,15 +131,6 @@ local function tbar_geth(wnd)
 	return 0;
 end
 
-local function sbar_getpos(wm)
-	local pos = gconfig_get("sbar_position");
-	if wm.sbar_override then
-		return wm.sbar_override;
-	else
-		return pos;
-	end
-end
-
 local function sbar_geth(wm, ign)
 	if (ign) then
 		return math.clamp(
@@ -684,7 +675,7 @@ local function tiler_statusbar_update(wm)
 		"ui", "col", { r / 255, g / 255, b / 255, alpha});
 
 -- positioning etc. still needs the current size of the statusbar
-	local pos = sbar_getpos(wm);
+	local pos = gconfig_get("sbar_position");
 
 	if (pos == "top") then
 		wm.yoffset = bar_base + pad_v;

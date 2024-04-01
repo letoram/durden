@@ -757,20 +757,35 @@ local function build_statusbar_wsicon(wm, i)
 			return
 		end
 
-		local arw = wm.width / wm.height
-		local arh = wm.height / wm.width
-		local vid = wm.spaces[i]:preview(128 * arw * wm.scalef, 128 * arh * wm.scalef, 64, -1)
+		local arw = 128 * (wm.width / wm.height) * wm.scalef
+		local arh = 128 * (wm.height / wm.width) * wm.scalef
+		local vid = wm.spaces[i]:preview(arw, arh, 64, -1)
 		if not valid_vid(vid) then
 			return
 		end
 
+		local pos = gconfig_get("sbar_position");
+
 		last_hover = vid
 		image_mask_set(vid, MASK_UNPICKABLE)
 		blend_image(vid, 1.0, gconfig_get("popup_animation"))
+		image_inherit_order(vid, true)
+
+-- for bar at T/L:
 		local ms = mouse_state()
 		btn.preview = vid
-		link_image(vid, ms.cursor, ANCHOR_LR)
-		image_inherit_order(vid, true)
+		if pos == "top" then
+			link_image(vid, btn.bg, ANCHOR_LR)
+		elseif pos == "left" then
+			link_image(vid, btn.bg, ANCHOR_UR)
+		elseif pos == "right" then
+			link_image(vid, btn.bg, ANCHOR_UL)
+			nudge_image(vid, -arw, 0);
+		else
+			link_image(vid, btn.bg, ANCHOR_YL)
+			nudge_image(vid, 0, -arh);
+		end
+
 	end,
 	over =
 	function(btn)
