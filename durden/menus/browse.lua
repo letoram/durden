@@ -313,10 +313,10 @@ local function cursortag(fn)
 
 -- is it us or are we overriding someone?
 	if ct then
-		if ct.tag ~= "browser" then
+		if ct.ref ~= "browser" then
 			active_display():cancellation()
+			ct = nil
 		end
-		ct = nil
 	end
 
 -- this doesn't really support mixing 'stack of files' from browser with
@@ -327,7 +327,7 @@ local function cursortag(fn)
 		show_image(tag)
 
 		mouse_cursortag("browser", {},
-			function(src, accept, dst)
+			function(dst, accept, src)
 				if accept == nil then
 					return dst and valid_vid(dst.external, TYPE_FRAMESERVER)
 -- drop the nbio references
@@ -337,7 +337,17 @@ local function cursortag(fn)
 					end
 				else
 					for _,v in ipairs(src) do
-						print("send file", v.name)
+						local nbio = open_nonblock(v.path, false)
+-- a problem here is that the identifier is a short string and doesn't support
+-- multipart since it was designed around extension-set and not resolved identifier
+-- yet we do want to preserve name, if possible.
+						local id = string.split(v.path, "/")
+						id = string.sub(id[#id], -76)
+						if nbio then
+							open_nonblock(dst.external, true, id, nbio)
+						else
+							warning("browse: couldn't open " .. v.path)
+						end
 					end
 				end
 			end,
@@ -350,8 +360,8 @@ local function cursortag(fn)
 -- or flair it up with the verlet rope dangling the chain ..
 	if not table.find_key_i(ct.src, "path", fn) then
 		table.insert(ct.src, {path = fn})
-		print(fontstr, #ct.src)
-		render_text(ct.vid, {fontstr, tostring(#ct.src) .. " Files"})
+		local suffix = #ct.src > 1 and " Files" or " File"
+		render_text(ct.vid, {fontstr, tostring(#ct.src) .. suffix})
 	end
 end
 
