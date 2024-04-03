@@ -997,8 +997,23 @@ local function root_cursortag(wnd, accept, src)
 	end
 
 -- redirect into a recordtarget
-	if valid_vid(src.external) then
-		print("recordtarget me!")
+	if valid_vid(wnd.external) then
+		local props = image_storage_properties(src.canvas)
+		local nsrf = null_surface(props.width, props.height)
+		local buf = alloc_surface(props.width, props.height)
+		image_sharestorage(src.canvas, nsrf)
+
+		show_image(nsrf);
+		define_recordtarget(buf,
+			wnd.external, "", {nsrf}, {}, RENDERTARGET_DETACH, RENDERTARGET_NOSCALE,
+			-1,
+			function(source, status)
+				if status.kind == "terminated" then
+					delete_image(source)
+				end
+			end
+		)
+		link_image(buf, wnd.anchor)
 	end
 end
 
@@ -1035,7 +1050,7 @@ function metawm.resized(wnd, src, tbl)
 		enable_xmeta(wnd);
 	end
 
-	wnd.cursortag = root_cursortag;
+	wnd.receive_cursortag = root_cursortag;
 
 	if wnd.xmeta then
 		wnd.xmeta.props = image_storage_properties(src);
