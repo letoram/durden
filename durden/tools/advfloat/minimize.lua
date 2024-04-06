@@ -51,9 +51,14 @@ local function setup_sbar(wnd, tgt)
 				wnd:select();
 			end
 			wnd.space:resize();
+		end,
+		hover = function(btn, _, x, y, on)
+			local vid = null_surface(32, 32);
+			image_sharestorage(wnd.canvas, vid);
+			mouse_handler_factory.hover_preview(btn, vid, x, y, on)
 		end
 		}
-		);
+	);
 
 -- not enough VIDs to build the button, indicative of leak
 	if (not btn) then

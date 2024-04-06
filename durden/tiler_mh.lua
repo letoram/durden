@@ -719,6 +719,52 @@ end
 
 local last_hover
 
+local function button_hover_preview(btn, vid, x, y, on)
+	local wm = active_display()
+
+-- workaround for bug in mouse.lua not always sending 'off'
+	if valid_vid(last_hover) then
+		delete_image(last_hover)
+		last_hover = nil
+	end
+
+	if not on then
+		if valid_vid(btn.preview) then
+			local at = gconfig_get("popup_animation")
+			blend_image(btn.preview, 0.0, at)
+			expire_image(btn.preview, at)
+			btn.preview = nil
+		end
+		return
+	end
+
+	local arw = 128 * (wm.width / wm.height) * wm.scalef
+	local arh = 128 * (wm.height / wm.width) * wm.scalef
+	resize_image(vid, arw, arh)
+
+	local pos = gconfig_get("sbar_position");
+
+	last_hover = vid
+	image_mask_set(vid, MASK_UNPICKABLE)
+	blend_image(vid, 1.0, gconfig_get("popup_animation"))
+	image_inherit_order(vid, true)
+
+-- for bar at T/L:
+	local ms = mouse_state()
+	btn.preview = vid
+	if pos == "top" then
+		link_image(vid, btn.bg, ANCHOR_LR)
+	elseif pos == "left" then
+		link_image(vid, btn.bg, ANCHOR_UR)
+	elseif pos == "right" then
+		link_image(vid, btn.bg, ANCHOR_UL)
+		nudge_image(vid, -arw, 0);
+	else
+		link_image(vid, btn.bg, ANCHOR_YL)
+		nudge_image(vid, 0, -arh);
+	end
+end
+
 local function build_statusbar_wsicon(wm, i)
 	local table = {
 	click =
@@ -738,54 +784,17 @@ local function build_statusbar_wsicon(wm, i)
 		local x, y = mouse_xy();
 		uimap_popup(menu, x, y);
 	end,
-	hover =
-	function(btn, vid, x, y, on)
-
--- workaround for bug in mouse.lua not always sending 'off'
-		if valid_vid(last_hover) then
-			delete_image(last_hover)
-			last_hover = nil
-		end
-
-		if not on then
-			if valid_vid(btn.preview) then
-				local at = gconfig_get("popup_animation")
-				blend_image(btn.preview, 0.0, at)
-				expire_image(btn.preview, at)
-				btn.preview = nil
-			end
-			return
-		end
-
+	hover = function(btn, vid, x, y, on)
+		local wm = active_display()
 		local arw = 128 * (wm.width / wm.height) * wm.scalef
 		local arh = 128 * (wm.height / wm.width) * wm.scalef
+
 		local vid = wm.spaces[i]:preview(arw, arh, 64, -1)
 		if not valid_vid(vid) then
 			return
 		end
 
-		local pos = gconfig_get("sbar_position");
-
-		last_hover = vid
-		image_mask_set(vid, MASK_UNPICKABLE)
-		blend_image(vid, 1.0, gconfig_get("popup_animation"))
-		image_inherit_order(vid, true)
-
--- for bar at T/L:
-		local ms = mouse_state()
-		btn.preview = vid
-		if pos == "top" then
-			link_image(vid, btn.bg, ANCHOR_LR)
-		elseif pos == "left" then
-			link_image(vid, btn.bg, ANCHOR_UR)
-		elseif pos == "right" then
-			link_image(vid, btn.bg, ANCHOR_UL)
-			nudge_image(vid, -arw, 0);
-		else
-			link_image(vid, btn.bg, ANCHOR_YL)
-			nudge_image(vid, 0, -arh);
-		end
-
+		button_hover_preview(btn, vid, x, y, on)
 	end,
 	over =
 	function(btn)
@@ -884,5 +893,6 @@ return {
 	titlebar = build_titlebar,
 	statusbar_icon = build_statusbar_icon,
 	statusbar_wsicon = build_statusbar_wsicon,
-	statusbar_addicon = build_statusbar_addicon
+	statusbar_addicon = build_statusbar_addicon,
+	hover_preview = button_hover_preview
 };
