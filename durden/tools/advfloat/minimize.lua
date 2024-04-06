@@ -16,6 +16,7 @@ local function setup_sbar(wnd, tgt)
 	local wm = wnd.wm;
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
 	local str = string.sub(tgt, 11);
+	local btn;
 
 	local on_destroy;
 	on_destroy =
@@ -28,7 +29,6 @@ local function setup_sbar(wnd, tgt)
 
 	local cbase = wm.statusbar.base;
 	local old_show = wnd.show;
-	local btn;
 	btn = wm.statusbar:add_button(str, "sbar_item_bg",
 		"sbar_item", resolve_icon(wnd), pad,
 		wm.font_resfn, cbase, cbase,
