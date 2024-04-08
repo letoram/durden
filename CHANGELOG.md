@@ -1,5 +1,7 @@
 # 0.7.0 (ongoing):
 
+* new tool: mouse gestures (global/input/mouse/gesture)
+
 * crash log widget replaced with control IPC command "info /"
 
 * added preview image to workspace button hover
