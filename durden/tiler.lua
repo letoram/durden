@@ -3605,6 +3605,12 @@ local function tiler_convert_mousexy(wnd, x, y, rx, ry)
 	local res = {};
 	local sprop = image_storage_properties(
 		valid_vid(wnd.external) and wnd.external or wnd.canvas);
+
+	if wnd.autocrop then
+		aprop.width = sprop.width;
+		aprop.height = sprop.height;
+	end
+
 	local sfx = sprop.width / aprop.width;
 	local sfy = sprop.height / aprop.height;
 	local lx = sfx * locx;
