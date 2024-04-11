@@ -364,6 +364,7 @@ local function build_border(wnd)
 		end
 
 		wnd:drag_resize_leave(ctx.mask)
+		ctx.mask = nil
 	end
 	};
 

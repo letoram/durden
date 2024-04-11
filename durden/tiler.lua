@@ -3103,6 +3103,10 @@ local function wnd_drag_resize_enter(wnd, mask)
 	tiler_debug(wnd.wm, "drag_resize_enter");
 
 	wnd.in_drag_rz = true;
+	if wnd.maximized then
+		wnd:toggle_maximize();
+	end
+
 	wnd.drag_sz_ack = {
 		w      = wnd.effective_w,
 		h      = wnd.effective_h,
