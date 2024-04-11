@@ -415,7 +415,7 @@ local function build_canvas(wnd)
 			return;
 		end
 
-		if gconfig_get("mouse_stickydnd") then
+		if wnd.in_drag_tag and gconfig_get("mouse_stickydnd") then
 			return
 		end
 
@@ -841,7 +841,7 @@ local function build_background(ws)
 			external = wm:active_space().background_src,
 			canvas = vid
 		};
-		local mv = wm.convert_mouse_xy(fakewnd, x, y, rx, ry);
+		local mv = wm.convert_mouse_xy(fakewnd, fakewnd.vid, x, y, rx, ry);
 		wm:fallthrough_ioh({
 			kind = "analog",
 			mouse = true,
