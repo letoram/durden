@@ -100,7 +100,6 @@ MOUSE_AUXBTN  = 8; -- >= 8 really
 local mstate = {
 -- tables of event_handlers to check for match when
 	handlers = mouse_handlers,
-	eventtrace = false,
 	blocked = false,
 	btns = {},
 	btns_clock = {},
@@ -156,6 +155,8 @@ local mstate = {
 -- that the evdev platform does
 local cursors = {
 };
+
+local linear_find_vid
 
 for i=1,255 do
 	mstate.btns_remap[i] = i;
@@ -273,6 +274,15 @@ mstate.lmb_global_release = function()
 	mstate.y_ofs = 0;
 	mouse_cursorupd(0, 0);
 	mstate.lmb_pressed = false;
+
+	local pr = mstate.pending_release
+	if pr then
+		mstate.pending_release = nil
+		local res = linear_find_vid(mstate.handlers.release, pr, "release")
+		if res then
+			res:release(pr, mstate.x, mstate.y)
+		end
+	end
 end
 
 -- this can be overridden to cache previous queries
@@ -322,7 +332,7 @@ local function linear_ifind(table, val)
 	return false;
 end
 
-local function linear_find_vid(table, vid, state)
+linear_find_vid = function(table, vid, state)
 -- we filter here as some scans (over, out, ...) may query state
 -- for objects that no longer exists
 	if (not valid_vid(vid)) then
@@ -412,7 +422,6 @@ function mouse_destroy()
 	};
 
 	mstate.handlers = mouse_handlers;
-	mstate.eventtrace = false;
 	mstate.btns = {false, false, false, false, false};
 	mstate.cur_over = {};
 	mstate.hover_track = {};
@@ -704,10 +713,6 @@ function mouse_cursortag_state(accept)
 end
 
 local function mouse_drag(x, y)
-	if (mstate.eventtrace) then
-		warning(string.format("mouse_drag(%d, %d)", x, y));
-	end
-
 	local hitc = 0;
 	for key, val in pairs(mstate.drag.list) do
 		local res = linear_find_vid(mstate.handlers.drag, val, "drag");
@@ -725,10 +730,6 @@ local function rmbhandler(hists, press)
 		mstate.rpress_x = mstate.x;
 		mstate.rpress_y = mstate.y;
 	else
-		if (mstate.eventtrace) then
-			warning("right click");
-		end
-
 		for key, val in ipairs(hists) do
 			local res = linear_find_vid(mstate.handlers.rclick, val, "rclick");
 			if (res) then
@@ -751,6 +752,10 @@ local function lmbhandler(hists, press)
 		for key, val in ipairs(hists) do
 			local res = linear_find_vid(mstate.handlers.press, val, "press");
 			if (res) then
+-- we need to track this so some event handler isn't stuck waiting for a release
+-- this is flushed if we enter a drag state, but since that is thresholded it is
+-- possible to press -> move to other vid -> release -> no release sent
+				mstate.pending_release = val
 				if (res:press(val, mstate.x, mstate.y)) then
 					break;
 				end
@@ -758,8 +763,10 @@ local function lmbhandler(hists, press)
 		end
 
 	else -- release
+		if val == mstate.pending_release then
+			mstate.pending_release = nil
+		end
 		mstate.lmb_global_release();
-
 		for key, val in ipairs(hists) do
 			local res = linear_find_vid(mstate.handlers.release, val, "release");
 			if (res) then
@@ -769,15 +776,7 @@ local function lmbhandler(hists, press)
 			end
 		end
 
-		if (mstate.eventtrace) then
-			warning(string.format("left click: %s", table.concat(hists, ",")));
-		end
-
 		if (mstate.drag) then -- already dragging, check if dropped
-			if (mstate.eventtrace) then
-				warning("drag");
-			end
-
 			for key, val in pairs(mstate.drag.list) do
 				local res = linear_find_vid(mstate.handlers.drop, val, "drop");
 				if (res) then
@@ -801,10 +800,6 @@ local function lmbhandler(hists, press)
 
 -- double click is based on the number of ticks since the last click
 			if (mstate.counter > 0 and mstate.counter <= mstate.dblclickstep) then
-				if (mstate.eventtrace) then
-					warning("double click");
-				end
-
 				for key, val in ipairs(hists) do
 					local res = linear_find_vid(mstate.handlers.dblclick, val,"dblclick");
 					if (res) then
@@ -1149,6 +1144,7 @@ function mouse_input(x, y, state, noinp)
 		if (dist >= mstate.predrag.count) then
 			mstate.drag = mstate.predrag;
 			mstate.predrag = nil;
+			mstate.pending_release = nil;
 			mouse_drag(x - mstate.press_x, y - mstate.press_y);
 		end
 	end
