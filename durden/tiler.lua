@@ -2632,13 +2632,16 @@ wnd_size_decor = function(wnd, w, h, animate)
 		_, at, af = wnd_animation_time(wnd, wnd.anchor, true, false);
 	end
 
-	if (wnd.want_shadow) then
+	local want_shadow = wnd.want_shadow and not wnd.fullscreen
+	if (want_shadow) then
 		suppl_region_shadow(wnd, w, h, {time = at, interp = af, reference = wnd.canvas});
+	elseif valid_vid(wnd.shadow) then
+		hide_image(wnd.shadow)
 	end
 
 	tiler_debug(wnd.wm, string.format(
 		"size_decor:animate=%s:at=%d:border=%d:tbar=%d:shadow=%s",
-		animate and "yes" or "no", at, bw, tbh, wnd.want_shadow and "yes" or "no")
+		animate and "yes" or "no", at, bw, tbh, want_shadow and "yes" or "no")
 	);
 
 	wnd_recalc_pad(wnd);
@@ -2739,8 +2742,8 @@ local function wnd_resize(wnd, neww, newh, force, maskev)
 	newh = math.clamp(newh, wnd.wm.min_height);
 
 	if (not force) then
-		neww = math.clamp(neww, nil, wnd.max_w, wnd.dh_pad_w);
-		newh = math.clamp(newh, nil, wnd.max_h, wnd.dh_pad_h);
+		neww = math.clamp(neww, neww, wnd.max_w);
+		newh = math.clamp(newh, newh, wnd.max_h);
 	end
 
 -- take the properties of the backing store, subtract the crop area
@@ -3639,6 +3642,13 @@ local function tiler_convert_mousexy(wnd, x, y, rx, ry)
 	wnd.last_ms[2] = res[3];
 
 	return res;
+end
+
+local function wnd_mousecursor(wnd, cursor)
+	wnd.cursor = cursor
+	if wnd.space and wnd.space.selected == wnd then
+		wnd:mouseactivate();
+	end
 end
 
 local function wnd_mousebutton(wnd, ind, pressed, x, y)
@@ -5087,6 +5097,7 @@ local function wnd_set_vtable_input(wnd)
 	wnd.mousehover = wnd_mousehover
 	wnd.mouseover = wnd_mouseover
 	wnd.scroll = wnd_scroll
+	wnd.set_cursor = wnd_mousecursor
 end
 
 -- split up into multiples to avoid LuaJit bailing on too many upvalues

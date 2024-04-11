@@ -388,12 +388,8 @@ local function cursor_handler(wnd, source, status)
 -- custom cursor segment can toggle themselves on and off by setting the
 -- hint to something normal and viewport to invisible
 	elseif status.kind == "cursorhint" then
-		wnd.cursor = status.cursor;
-		client_log("cursor_segment:cursor_set=" .. wnd.cursor);
-
-		if wnd.space and wnd.space.selected == wnd then
-			wnd:mouseactivate();
-		end
+		client_log("cursor_segment:cursor_set=" .. status.cursor);
+		wnd:set_cursor(status.cursor);
 
 -- warp (x, y) if wnd is in control of that (or remember last mouse)
 -- and use anchor_x,y to change the hotspot
@@ -599,7 +595,7 @@ function(wnd, source, stat)
 	end
 
 -- tag with batch and with the incremental engine counter
-	client_log("frame");
+--	client_log("frame");
 	wnd.last_frame = stat.framenumber;
 	wnd.last_frame_clock = CLOCK;
 
@@ -639,7 +635,8 @@ end
 
 defhtbl["cursorhint"] =
 function(wnd, source, stat)
-	wnd.cursor = stat.cursor;
+	client_log("cursor:cursor_set=" .. stat.cursor);
+	wnd:set_cursor(stat.cursor);
 end
 
 defhtbl["viewport"] =
@@ -707,6 +704,8 @@ end
 defhtbl["resized"] =
 function(wnd, source, stat)
 	wnd.origo_ll = stat.origo_ll;
+	client_log(
+		fmt("resized:width=%d:height=%d", stat.width, stat.height));
 
 	if (wnd.ws_attach) then
 -- edge conditions could fail to attach depending on the window type and
