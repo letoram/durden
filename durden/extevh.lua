@@ -422,7 +422,8 @@ local function default_reqh(wnd, source, ev)
 	local normal = {
 		"lwa", "multimedia", "game", "vm",
 		"application", "remoting", "browser",
-		"handover", "tui", "terminal"
+		"handover", "tui", "terminal",
+		"icon"
 	};
 
 -- early out if the type is not permitted
@@ -482,6 +483,17 @@ local function default_reqh(wnd, source, ev)
 -- selected canvas?
 		link_image(cursor, wnd.anchor);
 		target_flags(cursor, TARGET_BLOCKADOPT);
+		target_flags(cursor, TARGET_LIMITSIZE, 256, 256);
+		return;
+
+	elseif ev.segkind == "icon" then
+		if valid_vid(wnd.icon) then
+			delete_image(wnd.icon);
+		end
+
+		wnd.icon = accept_target(64, 64);
+		target_flags(wnd.icon, TARGET_LIMITSIZE, 256, 256);
+		target_updatehandler(wnd.icon, function() end);
 		return;
 
 	else
