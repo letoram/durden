@@ -47,6 +47,15 @@ local function orientation_menu(name)
 			handler = function()
 				display_reorient(name, HINT_YFLIP);
 			end,
+		},
+		{
+		name = "stereo_sbs",
+		label = "Stereo SBS",
+		kind = "action",
+		description = "Treat as stereoscopic side-by-side display",
+		handler = function()
+			display_stereo(name);
+		end,
 		}
 	};
 end

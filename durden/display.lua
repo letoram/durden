@@ -173,6 +173,7 @@ local function autohome_windows(ndisp)
 -- attachment).
 	for wnd in all_displays_iter() do
 		if wnd.adopt_display and wnd.adopt_display.ws_home == ndisp.name then
+			display_log(fmt("adopt:wnd=%s:display=%s", wnd.name, ndisp.name))
 			wnd:migrate(ndisp.tiler, ndisp);
 			if wnd.adopt_display.index then
 				wnd:reassign(wnd.adopt_display.index);
@@ -200,7 +201,8 @@ end
 
 local function set_mouse_scalef()
 	local sf = gconfig_get("mouse_scalef");
-	mouse_cursor_sf(sf * displays[display_main].tiler.scalef,
+	mouse_cursor_sf(
+		sf * displays[display_main].tiler.scalef,
 		sf * displays[display_main].tiler.scalef);
 end
 
@@ -642,40 +644,48 @@ function display_manager_shutdown()
 	for i,v in ipairs(displays) do
 		local pref = "disp_" .. string.hexenc(v.name) .. "_";
 
-		if (v.ppcm_override) then
-			ktbl[pref .. "ppcm"] = v.ppcm;
-		end
-		if (v.maphint) then
-			ktbl[pref .. "map"] = v.maphint;
-		end
-		if (v.shader) then
-			ktbl[pref .. "shader"] = v.shader;
+		if not v.block then
+			if (v.ppcm_override) then
+				ktbl[pref .. "ppcm"] = v.ppcm;
+			end
+			if (v.maphint) then
+				ktbl[pref .. "map"] = v.maphint;
+			end
+			if (v.shader) then
+				ktbl[pref .. "shader"] = v.shader;
 -- MISSING: pack/unpack shader arguments
-		end
-		if (v.backlight) then
-			ktbl[pref .. "backlight"] = v.backlight;
-		end
-		ktbl[pref .. "bg"] = v.background and v.background or "";
+			end
+			if (v.backlight) then
+				ktbl[pref .. "backlight"] = v.backlight;
+			end
+			ktbl[pref .. "bg"] = v.background and v.background or "";
 
-		if (v.rw) then
-			ktbl[pref .. "w"] = v.rw;
+			if (v.rw) then
+				ktbl[pref .. "w"] = v.rw;
+			end
+			if (v.rh) then
+				ktbl[pref .. "h"] = v.rh;
+			end
+			if (v.refresh) then
+				ktbl[pref .. "refresh"] = v.refresh;
+			end
+			ktbl[pref .. "primary"] = v.primary and 1 or 0;
 		end
-		if (v.rh) then
-			ktbl[pref .. "h"] = v.rh;
-		end
-		if (v.refresh) then
-			ktbl[pref .. "refresh"] = v.refresh;
-		end
-		ktbl[pref .. "primary"] = v.primary and 1 or 0;
 
 		if v.tiler and v.tiler.shutdown then
 			v.tiler:shutdown();
 		end
 	end
+
 	store_key(ktbl);
 end
 
 local function reorient_ddisp(disp, hint)
+	if disp.block then
+		disp.block()
+		disp.block = nil
+	end
+
 -- is an explicit map hint set? then toggle the bits but preserve
 -- other ones like CROP or FILL or PRIMARY
 	local rotated = 0;
@@ -1297,6 +1307,80 @@ function VRES_AUTORES(w, h, vppcm, flags, source)
 			end
 		end);
 	end
+end
+
+function display_stereo(name)
+	local disp = get_disp(name);
+	if not disp then
+		display_log(fmt("stereo:missing=%s", name))
+		return
+	end
+
+-- behave like a ressw to half-mode on the display
+	display_action(disp,
+	function()
+		local hw = disp.last_m.width * 0.5
+		disp.rw = hw
+		disp.tiler:resize(hw, disp.last_m.height)
+
+		if (valid_vid(disp.rt)) then
+			image_set_txcos_default(disp.rt);
+		end
+
+-- define the clone of the display tiler and set its on-gpu ID to pick
+-- the alternate (right-half side) representation
+		local surf = alloc_surface(hw, disp.last_m.height)
+		define_linktarget(surf, disp.rt)
+		rendertarget_id(surf, 1)
+
+-- bind the two to a composition pass, ideally we should be able to omit
+-- this when there is no distortion or other per-eye post-processing
+		local comp = alloc_surface(hw + hw, disp.last_m.height)
+		define_rendertarget(comp, {disp.rt, surf})
+
+		display_log(fmt(
+			"set_stereo:name=%s:map_rt=%d:rt=%d",
+			disp.name, disp.map_rt or -1, disp.rt or -1))
+
+		disp.old_rt = disp.map_rt
+		disp.map_rt = comp
+
+		show_image({comp, surf, disp.rt})
+		move_image(surf, hw, 0)
+
+-- For regular SBS material we don't really need to do anything when
+-- fullscreen as the surface already should be correct. This roughly
+-- resolved based on aspect ratio combined with comparing similarity
+-- and distribution left / right.
+--
+-- It is also possible to test this easy enough with fullscreening
+-- arcan safespaces in the stereo profile.
+--
+-- Other VR material need head tracking to adjust projection angles,
+-- and we can do that as a 3D pass or displacement shader.
+		map_video_display(comp, disp.id, 0)
+
+		disp.block = function()
+			display_log(fmt(
+				"unset_stereo:name=%s:width=%d:current_rt=%d:rt=%d:old_rt=%d",
+				disp.name, disp.last_m.width,
+				disp.map_rt or -1,
+				disp.rt or -1,
+				disp.old_rt or -1))
+
+			disp.tiler:resize(disp.last_m.width, disp.last_m.height)
+			disp.map_rt = disp.old_rt
+			disp.old_rt = nil
+
+--remap regular WM rendertarget to current world to save it from
+--cascade deletion when the composition rendertarget is removed
+			rendertarget_attach(WORLDID, disp.rt, RENDERTARGET_DETACH)
+--			resize_image(disp.map_rt, disp.last_m.width, disp.last_m.height)
+
+--			map_video_display(disp.map_rt, disp.id, display_maphint(disp))
+			delete_image(comp)
+		end
+	end)
 end
 
 function display_ressw(name, mode)
