@@ -299,7 +299,7 @@ function(ctx, bar, source, status)
 		resolve, pad,
 -- set the scale- function resolver to nothing as we are all external
 		function()
-			return 1;
+			return 1, 1;
 		end,
 -- and the suggested icon size is on the button base
 		base_w, base_h,
