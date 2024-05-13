@@ -20,7 +20,6 @@ end
 local create_workspace = function() end
 local tiler_logfun, tiler_fmt = suppl_add_logfn("wm");
 
--- all tiler_debug / string.format calls should be re-written to fit logfun, _fmt
 local function tiler_debug(wm, msg)
 	msg = msg and msg or "bad message";
 	tiler_logfun(wm.name .. ":" .. msg);
@@ -4320,6 +4319,7 @@ local function wnd_ws_attach(res, from_hook)
 		dstindex = res.swallow_window.space_ind;
 		res.swallow_window.swallow_master = res;
 		as_child = true;
+		tiler_debug(wm, tiler_fmt("attach_swallow:x=%d:y=%d", res.defer_x, res.defer_y));
 
 -- or attach as child to a specific window?
 	elseif as_child and res.attach_parent then
@@ -4408,8 +4408,6 @@ local function wnd_ws_attach(res, from_hook)
 		if (res.defer_x) then
 			res.x = res.defer_x;
 			res.y = res.defer_y;
-			res.defer_x = nil;
-			res.defer_y = nil;
 		else
 			res.x, res.y = mouse_xy();
 			res.x = math.clamp(res.x - res.pad_left - res.pad_right, 0);
@@ -4510,6 +4508,13 @@ local function wnd_ws_attach(res, from_hook)
 -- trigger the resize cascade now that we know the layout..
 	if (res.space.mode == "float") then
 		local x, y = mouse_xy();
+		if res.defer_x then
+			x = res.defer_x
+			y = res.defer_y
+			res.defer_x = nil
+			res.defer_y = nil
+		end
+
 		local w;
 		local h;
 
@@ -4877,7 +4882,7 @@ local function wnd_add_overlay(wnd, key, vid, opts)
 		closure = opts.closure
 	};
 
-	tiler_debug(wnd.wm, string.format(
+	tiler_debug(wnd.wm, tiler_fmt(
 		"overlay_added:name=%s:key=%s:x=%.0f:y=%0.f:w=%0.f:h=%0.f",
 		wnd.name, key, overent.xofs, overent.yofs, overent.w, overent.h));
 
@@ -5006,10 +5011,10 @@ local function wnd_scroll(wnd, rel, dy, dx)
 
 	if not wnd.got_scroll then
 		target_seek(wnd.external, dy, rel, SEEK_SPACE, dx);
-		tiler_debug(wnd.wm,	string.format("seek:%d:%d", dx, dy));
+		tiler_debug(wnd.wm,	tiler_fmt("seek:%d:%d", dx, dy));
 	else
 		target_seek(wnd.esternal, dy, rel, SEEK_TIME, dx);
-		tiler_debug(wnd.wm,	string.format("scroll:%d:%d", dx, dy));
+		tiler_debug(wnd.wm,	tiler_fmt("scroll:%d:%d", dx, dy));
 	end
 end
 
@@ -5346,7 +5351,7 @@ local wnd_setup = function(wm, source, opts)
 -- load / override settings with whatever is in tag-memory
 	res:recovertag(true);
 
-	tiler_debug(wm, string.format(
+	tiler_debug(wm, tiler_fmt(
 		"create:name=%s:w=%d:h=%d:titlebar=%s:border=%s:parent=%s",
 		res.name, res.width, res.height,
 		tostring(res.show_titlebar), tostring(res.show_border),
@@ -5795,7 +5800,7 @@ local function tiler_scalef(wm, newf, disptbl)
 	wm:rebuild_border();
 	wm:rebuild_statusbar_custom(wm.sbar_custom);
 
-	tiler_debug(wm, string.format(
+	tiler_debug(wm, tiler_fmt(
 		"scale:new=%f:ppcm=%f:font_sz=%d",
 		newf, (disptbl and disptbl.ppcm and disptbl.ppcm) or VPPCM,
 		wm.font_deltav
