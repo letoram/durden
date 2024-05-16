@@ -895,6 +895,10 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	wnd.dispatch = table.copy(atbl.dispatch);
 	wnd.labels = table.copy(atbl.labels);
 
+	if (atbl.atype == "clipboard") then
+		atbl.dispatch.registered(wnd, source, stat);
+	end
+
 	wnd.source_audio = (stat and stat.source_audio) or BADID;
 	wnd.atype = atype;
 

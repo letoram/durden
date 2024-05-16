@@ -11,10 +11,10 @@ local function clipboard_event(msg, source)
 		return;
 	end
 
-	if (msg and string.len(msg) > 0 and valid_vid(cm, TYPE_FRAMESERVER)) then
+	if (msg and string.len(msg) > 0 and valid_vid(cm.external, TYPE_FRAMESERVER)) then
 		local mode = gconfig_get("clipboard_access");
 		if (mode == "passive" or mode == "full") then
-			message_target(cm.vid, msg);
+			message_target(cm.external, msg);
 		end
 	end
 end
