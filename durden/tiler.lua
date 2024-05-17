@@ -5739,7 +5739,20 @@ local function tiler_resize(wm, neww, newh, norz, rotated)
 end
 
 -- drop whatever interactive/cursor state that is currently pending
-local function tiler_cancellation(wm)
+local function tiler_cancellation(wm, accept)
+	local ct = mouse_state().cursortag
+	if not ct then
+		return
+	end
+
+	if not accept or not ct.handler or
+		not ct.handler(wm.selected, true, ct.src, ct) then
+		mouse_cursortag_state(false);
+	else
+		mouse_cursortag_state(true);
+		ct.src.in_drag_tag = false;
+	end
+
 	mouse_cursortag_drop();
 end
 
