@@ -682,8 +682,8 @@ end
 
 local function reorient_ddisp(disp, hint)
 	if disp.block then
+		display_log("reorient:run_unblock")
 		disp.block()
-		disp.block = nil
 	end
 
 -- is an explicit map hint set? then toggle the bits but preserve
@@ -1316,6 +1316,12 @@ function display_stereo(name)
 		return
 	end
 
+-- toggle on/off
+	if disp.block then
+		disp.block()
+		return
+	end
+
 -- behave like a ressw to half-mode on the display
 	display_action(disp,
 	function()
@@ -1329,24 +1335,28 @@ function display_stereo(name)
 
 -- define the clone of the display tiler and set its on-gpu ID to pick
 -- the alternate (right-half side) representation
-		local surf = alloc_surface(hw, disp.last_m.height)
-		define_linktarget(surf, disp.rt)
-		rendertarget_id(surf, 1)
+		local right = alloc_surface(hw, disp.last_m.height)
+		define_linktarget(right, disp.rt)
+		rendertarget_id(right, 1)
 
 -- bind the two to a composition pass, ideally we should be able to omit
 -- this when there is no distortion or other per-eye post-processing
-		local comp = alloc_surface(hw + hw, disp.last_m.height)
-		define_rendertarget(comp, {disp.rt, surf})
+		local composition = alloc_surface(hw + hw, disp.last_m.height)
+		local left = null_surface(hw, disp.last_m.height)
+		image_sharestorage(disp.rt, left)
+
+		image_tracetag(composition, "display_stereo_composition")
+		define_rendertarget(composition, {left, right})
 
 		display_log(fmt(
 			"set_stereo:name=%s:map_rt=%d:rt=%d",
 			disp.name, disp.map_rt or -1, disp.rt or -1))
 
 		disp.old_rt = disp.map_rt
-		disp.map_rt = comp
+		disp.map_rt = composition
 
-		show_image({comp, surf, disp.rt})
-		move_image(surf, hw, 0)
+		show_image({left, right})
+		move_image(right, hw, 0)
 
 -- For regular SBS material we don't really need to do anything when
 -- fullscreen as the surface already should be correct. This roughly
@@ -1358,9 +1368,11 @@ function display_stereo(name)
 --
 -- Other VR material need head tracking to adjust projection angles,
 -- and we can do that as a 3D pass or displacement shader.
-		map_video_display(comp, disp.id, 0)
+		map_video_display(composition, disp.id)
+		disp.stereo_mode = disp.last_m
 
 		disp.block = function()
+			disp.block = nil
 			display_log(fmt(
 				"unset_stereo:name=%s:width=%d:current_rt=%d:rt=%d:old_rt=%d",
 				disp.name, disp.last_m.width,
@@ -1368,17 +1380,12 @@ function display_stereo(name)
 				disp.rt or -1,
 				disp.old_rt or -1))
 
-			disp.tiler:resize(disp.last_m.width, disp.last_m.height)
+-- switch back to the old stored mode, this will resize the wm on the display
+-- just as the backing store and remap the rendertarget unto the display
 			disp.map_rt = disp.old_rt
-			disp.old_rt = nil
-
---remap regular WM rendertarget to current world to save it from
---cascade deletion when the composition rendertarget is removed
-			rendertarget_attach(WORLDID, disp.rt, RENDERTARGET_DETACH)
---			resize_image(disp.map_rt, disp.last_m.width, disp.last_m.height)
-
---			map_video_display(disp.map_rt, disp.id, display_maphint(disp))
-			delete_image(comp)
+			display_ressw(disp.name, disp.stereo_mode)
+			disp.stereo_mode = nil
+			delete_image(composition)
 		end
 	end)
 end
@@ -1399,6 +1406,11 @@ function display_ressw(name, mode)
 			0.1 * mode.phy_height_mm, mode.width, mode.height);
 	end
 
+	display_log(fmt(
+		"display=%s:id=%d:set_mode:width=%d:height=%d:hint=%d:rt=%d:valid_rt=%s",
+		name, disp.id, disp.w, disp.h, display_maphint(disp),
+		disp.rt and disp.rt or -1, valid_vid(disp.rt) and "yes" or "no"))
+
 	display_action(disp, function()
 		disp.w = mode.width;
 		disp.h = mode.height;
@@ -1407,7 +1419,7 @@ function display_ressw(name, mode)
 		display_modeopt(disp.id, mode.modeid, disp.modeopt);
 		if (valid_vid(disp.rt)) then
 			image_set_txcos_default(disp.rt);
-			map_video_display(disp.map_rt, disp.id, display_maphint(disp));
+		map_video_display(disp.map_rt, disp.id, display_maphint(disp));
 		end
 		disp.tiler:resize(mode.width, mode.height) --, true);
 		disp.tiler:update_scalef(disp.ppcm / SIZE_UNIT, {ppcm = disp.ppcm});
