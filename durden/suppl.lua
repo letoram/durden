@@ -31,16 +31,6 @@ strict_fname_valid = function(val)
 	return true;
 end
 
-function table.intersect(tbl, tbl2)
-	local res = {}
-	for _, v in ipairs(tbl) do
-		if table.find_i(tbl2) then
-			table.insert(res, v)
-		end
-	end
-	return res
-end
-
 function table.remove_vmatch(tbl, match)
 	if (tbl == nil) then
 		return;
@@ -1540,6 +1530,37 @@ local function fuzzy_dist(instr, val)
 	end
 	return dist;
 end;
+
+-- like a normal sort, but the case of
+-- a1.jpg a11.jpg a2.jpg becomes
+-- a1.jpg a2.jpg a11.jpg
+function suppl_sort_az_nat(a, b)
+-- extract the strings
+	a = type(a) == "table" and a[3] or a;
+	b = type(b) == "table" and b[3] or b;
+
+-- find first digit point
+	local s_a, e_a = string.find(a, "%d+");
+	local s_b, e_b = string.find(b, "%d+");
+
+-- if they exist and are at the same position
+	if (s_a ~= nil and s_b ~= nil and s_a == s_b) then
+
+-- extract and compare the prefixes
+		local p_a = string.sub(a, 1, s_a-1);
+		local p_b = string.sub(b, 1, s_b-1);
+
+-- and if those match, compare the values
+		if (p_a == p_b) then
+			return
+				tonumber(string.sub(a, s_a, e_a)) <
+				tonumber(string.sub(b, s_b, e_b));
+		end
+	end
+
+-- otherwise normal a-Z
+	return string.lower(a) < string.lower(b);
+end
 
 function suppl_sort_fuzzy(instr)
 	return

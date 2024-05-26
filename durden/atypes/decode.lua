@@ -30,6 +30,18 @@ local rtbl = {
 	},
 };
 
+rtbl.bindings["F1"] = function(wnd)
+	dispatch_symbol_wnd(wnd, "/target/playlist/step/previous")
+end
+
+rtbl.bindings["F2"] = function(wnd)
+	dispatch_symbol_wnd(wnd, "/target/playlist/step/next")
+end
+
+rtbl.bindings["F3"] = function(wnd)
+	dispatch_symbol_wnd(wnd, "/target/playlist/step/random")
+end
+
 rtbl.bindings["LEFT"] = function(wnd)
 	if (valid_vid(wnd.external, TYPE_FRAMESERVER)) then
 		target_seek(wnd.external, -10);

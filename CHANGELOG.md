@@ -120,6 +120,9 @@ minor:
 
 * reset or crash recovery should now restore active workspace index
 
+* resource browser spawned windows now track a playlist of similar items
+  from the folder, adds /target/playlist and bindings to step with F1, F2, F3
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints

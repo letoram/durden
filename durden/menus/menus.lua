@@ -64,7 +64,7 @@ menu_list[1] = {
 rescan_menu();
 
 -- add m2 to m1, overwrite on collision
-local function merge_menu(m1, m2)
+function merge_menu(m1, m2)
 	local kt = {};
 	local res = {};
 	if (m2 == nil) then

@@ -202,8 +202,10 @@ local function launch(str, cfg, tag)
 -- if this is external, we should also have an 'on return' hook
 -- though this might come indirectly as a display-reset event might
 -- arrive to reset input state tracking etc.
+	local client_log, fmt = suppl_add_logfn("client");
 
 	if (valid_vid(vid)) then
+		client_log(fmt("launch:status=ok:vid=%d:name=%s:config=%s", vid, str, cfg))
 		if (gconfig_get("gamma_access") ~= "none") then
 			target_flags(vid, TARGET_ALLOWCM, true);
 		end
@@ -214,6 +216,8 @@ local function launch(str, cfg, tag)
 		if (type(tag) == "string") then
 			wnd.group_tag = tag;
 		end
+	else
+		client_log(fmt("launch:status=fail:name=%s:config=%s:mode=%d", str, cfg, mode))
 	end
 end
 

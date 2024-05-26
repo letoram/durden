@@ -18,37 +18,6 @@ local function sort_az(a, b)
 		string.lower((type(b) == "table" and b[3] or b));
 end
 
--- like a normal sort, but the case of
--- a1.jpg a11.jpg a2.jpg becomes
--- a1.jpg a2.jpg a11.jpg
-local function sort_az_nat(a, b)
--- extract the strings
-	a = type(a) == "table" and a[3] or a;
-	b = type(b) == "table" and b[3] or b;
-
--- find first digit point
-	local s_a, e_a = string.find(a, "%d+");
-	local s_b, e_b = string.find(b, "%d+");
-
--- if they exist and are at the same position
-	if (s_a ~= nil and s_b ~= nil and s_a == s_b) then
-
--- extract and compare the prefixes
-		local p_a = string.sub(a, 1, s_a-1);
-		local p_b = string.sub(b, 1, s_b-1);
-
--- and if those match, compare the values
-		if (p_a == p_b) then
-			return
-				tonumber(string.sub(a, s_a, e_a)) <
-				tonumber(string.sub(b, s_b, e_b));
-		end
-	end
-
--- otherwise normal a-Z
-	return string.lower(a) < string.lower(b);
-end
-
 local function sort_za(a, b)
 	return
 		string.lower((type(a) == "table" and a[3] or a)) >
@@ -75,7 +44,7 @@ end,
 	sort_mode[n] = sort_az;
 end,
 ["natural(a->Z)"] = function(n)
-	sort_mode[n] = sort_az_nat;
+	sort_mode[n] = suppl_sort_az_nat;
 end,
 ["reverse(Z->a)"] = function(n)
 	sort_mode[n] = sort_za;

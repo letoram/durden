@@ -428,7 +428,6 @@ function dispatch_symbol(sym, menu_opts)
 
 -- shortpath the common case
 	if (menu.handler and not menu.submenu) then
-		dispatch_debug("status=trigger");
 		menu:handler(val);
 		return true;
 	end
@@ -440,6 +439,7 @@ function dispatch_symbol(sym, menu_opts)
 			{list = menu}, menu_opts, sym, menu_default_lookup(enttbl));
 	else
 -- actually broken result
+		dispatch_debug("status=fail");
 		return false;
 	end
 

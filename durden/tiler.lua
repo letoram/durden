@@ -5133,6 +5133,7 @@ local function wnd_set_vtable(wnd)
 
 -- function hooks
 	wnd.displayhint = default_displayhint
+	wnd.displaytable = get_disptbl
 end
 
 function wnd_set_vitable(wnd)
@@ -5716,6 +5717,8 @@ local function tiler_resize(wm, neww, newh, norz, rotated)
 	resize_image(wm.anchor, neww, newh);
 
 	if (valid_vid(wm.rtgt_id)) then
+		tiler_debug(wm,
+			tiler_fmt("resize_backing:width=%d:height=%d", neww, newh))
 		image_resize_storage(wm.rtgt_id, neww, newh);
 	end
 

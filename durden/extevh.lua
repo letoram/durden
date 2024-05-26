@@ -882,7 +882,7 @@ function extevh_apply_atype(wnd, atype, source, stat)
 	end
 
 -- project / overlay archetype specific toggles and settings
-	wnd.actions = atbl.actions;
+	merge_menu(wnd.actions, atbl.actions);
 
 	if (atbl.props) then
 		for k,v in pairs(atbl.props) do

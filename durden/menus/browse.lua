@@ -16,11 +16,214 @@ function browse_get_last()
 	return last_path;
 end
 
-local function imgwnd(fn, pctx)
+local function open_image(wnd, name, fn)
+	if wnd.load_pending then
+		delete_image(wnd.load_pending)
+	end
+
+	load_image_asynch(fn,
+		function(src, stat)
+			if stat.kind == "loaded" then
+				wnd:set_title(name)
+				image_sharestorage(src, wnd.canvas)
+				delete_image(src)
+				wnd:resize_effective(stat.width, stat.height)
+			end
+		end
+	)
+end
+
+local function load_decode(arg)
+	return function(wnd, name, fn)
+		local aid
+		wnd.pending_vid, aid =
+		launch_decode(fn, arg,
+			function(source, status)
+				if status.kind == "terminated" then
+					delete_image(source)
+					if wnd.pending_vid == source then
+						wnd.pending_vid = nil
+					end
+
+-- need to propagate current window density, colour space, ...
+				elseif status.kind == "preroll" then
+					target_displayhint(source,
+						wnd.width, wnd.height, wnd.dispmask, wnd:displaytable(wnd, wnd.wm.disptbl))
+
+				elseif status.kind == "resized" then
+					delete_image(wnd.external)
+					wnd.external = source
+					image_sharestorage(source, wnd.canvas)
+					audio_gain(aid, gconfig_get("global_gain") * wnd.gain)
+					target_updatehandler(source, extevh_default)
+				end
+			end
+		)
+	end
+end
+
+-- generate controls for stepping to related media
+local function get_related_menu(wnd, set, loader)
+	local res = {}
+
+-- deleted while in menu
+	if not wnd.destroy then
+		return res
+	end
+
+	-- add step function, since we don't have access to the presented
+	-- order as the menu might be sorted after, run through the az_nat
+	-- one in order to get something that fits with the playlist nature
+	local function get_name(v)
+		v = string.split(v, "/")
+		return v[#v]
+	end
+
+	local step_menu = {
+		{
+			name = "first",
+			label = "First",
+			description = "Switch to the first item in the list",
+			kind = "action",
+			handler = function()
+				loader(wnd, get_name(set[1].file), set[1].file)
+			end
+		},
+		{
+			name = "last",
+			label = "Last",
+			description = "Switch to the last item in the list",
+			kind = "action",
+			handler = function()
+				loader(wnd, get_name(set[#set].file), set[#set].file)
+			end
+		},
+		{
+			name = "next",
+			label = "Next",
+			description = "Switch to the next item in the list",
+			kind = "action",
+			handler = function()
+				wnd.list_index = wnd.list_index + 1
+				if wnd.list_index > #wnd.file_set then
+					wnd.list_index = 1
+				end
+				loader(wnd, get_name(set[wnd.list_index].file), set[wnd.list_index].file)
+			end
+		},
+		{
+			name = "previous",
+			label = "Previous",
+			description = "Switch to the previous item in the list",
+			kind = "action",
+			handler = function()
+				wnd.list_index = wnd.list_index - 1
+				if wnd.list_index <= 0 then
+					wnd.list_index = #wnd.file_set
+				end
+
+				loader(wnd, get_name(set[wnd.list_index].file), set[wnd.list_index].file)
+			end
+		},
+		{
+			name = "random",
+			label = "Random",
+			description = "Switch to a random item in the list",
+			kind = "action",
+			handler = function()
+-- start at random position and then sweep until we find an entry not visited
+				local start = math.random(1, #set)
+				local current = start
+
+				repeat
+					if not set[current].visited then
+						break
+					end
+					current = current + 1
+
+-- wrap around
+					if current > #set then
+						current = 1
+					end
+				until current == start
+
+-- reset visited, we've covered all, reset tracking
+				if current == start then
+					for i=1,#set do
+						set[i].visited = nil
+					end
+				end
+
+				set[current].visited = true
+				wnd.list_index = current
+				loader(wnd, get_name(set[wnd.list_index].file), set[wnd.list_index].file)
+			end
+		}
+	}
+	table.insert(res,
+		{
+			name = "step",
+			kind = "action",
+			label = "Step",
+			description = "Controls for stepping the playlist",
+			submenu = true,
+			handler = step_menu
+		}
+	)
+
+	for i, v in ipairs(set) do
+		local name = get_name(v.name)
+
+		table.insert(res,
+		{
+			name = tostring(i),
+			label = name,
+			kind = "action",
+			handler = function()
+				loader(wnd, name, v)
+			end
+		})
+	end
+
+	return res
+end
+
+local function make_playlist(wnd, fn, tracker, loader)
+	local name = string.split(fn, "/")
+	name = name[#name]
+
+-- remember for checking when stepping back / forth
+	wnd.full_path = fn
+	wnd.file_set = tracker
+
+	table.sort(tracker, function(a, b)
+		return suppl_sort_az_nat(a.file, b.file)
+	end)
+	wnd.list_index = table.find_i(tracker, fn)
+
+	wnd.actions = { {
+		name = "playlist",
+		kind = "action",
+		description = "Select or step related media",
+		submenu = true,
+		label = "Playlist",
+		eval = function()
+			return #tracker > 1
+		end,
+		handler = function()
+			return get_related_menu(wnd, tracker, loader)
+		end
+	} }
+end
+
+local function imgwnd(fn, pctx, tracker)
 	load_image_asynch(fn, function(src, stat)
 		if (stat.kind == "loaded") then
 			wnd = active_display():add_window(src, {scalemode = "aspect"});
+			extevh_apply_atype(wnd, "multimedia", src, {})
+			make_playlist(wnd, fn, tracker, open_image)
 			wnd:set_title("image:" .. fn);
+
 		elseif (valid_vid(src)) then
 			delete_image(src);
 			active_display():message("couldn't load " .. fn);
@@ -28,24 +231,26 @@ local function imgwnd(fn, pctx)
 	end);
 end
 
-local function pdfwnd(fn, path)
+local function pdfwnd(fn, path, tracker)
 	lastpath = path;
 	local vid = launch_decode(fn, "protocol=pdf", function(s, st) end);
 
 	if (valid_vid(vid)) then
-		durden_launch(vid, "", fn);
+		local wnd = durden_launch(vid, "", fn);
+		make_playlist(wnd, fn, tracker, load_decode("protocol=pdf"));
 		durden_devicehint(vid);
 	else
 		active_display():message("decode- frameserver broken or out-of-resources");
 	end
 end
 
-local function decwnd(fn, path)
+local function decwnd(fn, path, tracker)
 	lastpath = path;
 	local vid = launch_decode(fn, function(s, st) end);
 
 	if (valid_vid(vid)) then
-		durden_launch(vid, "", fn);
+		local wnd = durden_launch(vid, "", fn);
+		make_playlist(wnd, fn, tracker, load_decode(""))
 		durden_devicehint(vid);
 	else
 		active_display():message("decode- frameserver broken or out-of-resources");
@@ -128,7 +333,7 @@ local function asynch_pdf(state, self)
 	return asynch_decode(state, self, "proto=pdf")
 end
 
-local function asynch_image(state, self)
+local function open_image(state, self)
 	load_image_asynch(self.preview_path,
 		function(source, status)
 			if (status.kind == "loaded") then
@@ -236,7 +441,7 @@ local handlers = {
 		if gconfig_get("browser_preview") == "none" then
 			return
 		end
-		return prepare_preview(asynch_image, ...);
+		return prepare_preview(open_image, ...);
 	end
 },
 ["audio"] = {
@@ -370,7 +575,7 @@ end
 -- filters etc. The big headscratcher is how this is supposed to
 -- work when there is asynchronous globbing going on.
 local gen_menu_for_path;
-local function gen_menu_for_resource(path, v, descr, prefix, ns)
+local function gen_menu_for_resource(path, v, descr, prefix, ns, tracker)
 	local fqn = path .. (path == "/" and "" or "/") .. v;
 	local nsfqn = fqn;
 
@@ -386,7 +591,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			description = v,
 			submenu = true,
 			handler = function()
-				return gen_menu_for_path(fqn, prefix, ns);
+				return gen_menu_for_path(fqn, prefix, ns, tracker);
 			end
 		};
 
@@ -408,6 +613,13 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 			return
 		end
 
+-- remember all discovered resources in order for imgwnd/mediawnd to be able to
+-- step or playlist all within the same folder
+		if not tracker[simple] then
+			tracker[simple] = {}
+		end
+		table.insert(tracker[simple], {file = nsfqn})
+
 		local res = {
 			label = v,
 			name = v,
@@ -427,7 +639,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 					kind = "action",
 					label = "Open as Window",
 					handler = function()
-						exth.run(nsfqn, res.last_state)
+						exth.run(nsfqn, res.last_state, tracker[simple])
 					end
 				},
 				{
@@ -443,7 +655,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns)
 		end
 		res.handler = function(ctx)
 -- currently no way of querying the preview handler for a decoded resource
-			exth.run(nsfqn, res.last_state);
+			exth.run(nsfqn, res.last_state, tracker[simple]);
 		end
 		return res;
 	else
@@ -453,6 +665,7 @@ end
 gen_menu_for_path = function(path, prefix, ns)
 	local gpath = path == "/" and "/*" or path .. "/*";
 	local files = glob_resource(gpath, ns);
+	local tracker = {};
 
 	local res = {
 	};
@@ -466,7 +679,7 @@ gen_menu_for_path = function(path, prefix, ns)
 				_, descr = resource(path .. "/" .. v, ns);
 			end
 			if (descr) then
-				local menu = gen_menu_for_resource(path, v, descr, prefix, ns);
+				local menu = gen_menu_for_resource(path, v, descr, prefix, ns, tracker);
 				if (menu) then
 					table.insert(res, menu);
 				end
