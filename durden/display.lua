@@ -88,8 +88,8 @@ local function tryload(v)
 		return;
 	end
 
-	if (type(map.name) ~= "string" or
-		type(map.ident) ~= "string") then
+	if type(map.name) ~= "string" or
+		(type(map.ident) ~= "string" and type(map.ident) ~= "function") then
 		warning("bad obligatory fields in map: " .. v);
 		return;
 	end
@@ -97,7 +97,9 @@ local function tryload(v)
 	local rv = {
 		name = map.name,
 		ident = map.ident,
-		tag = map.tag
+		tag = map.tag,
+		backlight_ignore = map.backlight_ignore,
+		on_create = map.on_create
 	};
 
 -- copy and sanity check optional fields
@@ -136,7 +138,8 @@ function display_scanprofiles()
 	table.sort(lst);
 	for _,v in ipairs(lst) do
 		local res = tryload("devmaps/display/" .. v);
-		if (res) then
+		if (res and type(res) == "table") then
+			res.file = v;
 			table.insert(profiles, res);
 		end
 	end
@@ -437,7 +440,11 @@ end
 
 local function find_profile(name)
 	for k,v in ipairs(profiles) do
-		if (string.match(name, v.ident)) then
+		if type(v.ident) == "function" then
+			if v.ident(name) then
+				return v
+			end
+		elseif (string.match(name, v.ident)) then
 			return v;
 		end
 	end
@@ -597,7 +604,7 @@ local function display_byname(name, id, w, h, ppcm)
 	local prof = find_profile(name);
 
 	if (prof) then
-		display_log(fmt("profile=found:display=%s", name));
+		display_log(fmt("profile=found:display=%s:file=%s", name, prof.file));
 		if (prof.width) then
 			res.w = prof.width;
 		end
@@ -614,6 +621,8 @@ local function display_byname(name, id, w, h, ppcm)
 		if (prof.backlight) then
 			res.backlight = math.clamp(prof.backlight, 0.1, 1.0);
 		end
+		res.backlight_ignore = prof.backlight_ignore;
+		res.on_create = prof.on_create;
 		res.tag = prof.tag;
 		res.wm = prof.wm;
 	else
@@ -743,7 +752,7 @@ end
 
 function display_set_backlight(name, ctrl, ind)
 	local disp = get_disp(name);
-	if (not disp) then
+	if (not disp or disp.backlight_ignore) then
 		return;
 	end
 
@@ -753,6 +762,10 @@ function display_set_backlight(name, ctrl, ind)
 		return;
 	end
 
+	display_log(
+		fmt("backlight:id=%d:ind=%d:control=%d:index=%d:level=%.2f",
+		disp.id, disp.ind, ctrl, ind, disp.backlight)
+	)
 	disp.ledctrl = ctrl;
 	disp.ledid = ind;
 	led_intensity(ctrl, ind, 255.0 * disp.backlight);
@@ -774,10 +787,11 @@ local function display_added(id)
 	local ppcm = VPPCM;
 	local subpx = "RGB";
 	local refresh = 60;
+	local dmode;
 
 -- map resolved display modes, take the first unless one is marked as primary
 	if (modes and #modes > 0 and modes[1].width > 0) then
-		local dmode = modes[1];
+		dmode = modes[1];
 
 		for i,v in ipairs(modes) do
 			if v.primary then
@@ -838,7 +852,7 @@ local function display_added(id)
 		display_log(fmt("status=error:id=%d:message=display_add failed", id));
 		return;
 	end
-
+	ddisp.last_m = dmode;
 	ddisp.id = id;
 	active_display_count = active_display_count + 1;
 
@@ -1130,6 +1144,11 @@ function display_add(name, width, height, ppcm, id)
 	if (found.last_m) then
 		display_ressw(name, found.last_m);
 	end
+
+	if found.on_create then
+		found.on_create(found, new);
+	end
+
 	return found, new;
 end
 
@@ -1327,6 +1346,7 @@ function display_stereo(name)
 	function()
 		local hw = disp.last_m.width * 0.5
 		disp.rw = hw
+		disp.ppcm = disp.ppcm * 0.5
 		disp.tiler:resize(hw, disp.last_m.height)
 
 		if (valid_vid(disp.rt)) then
@@ -1338,12 +1358,14 @@ function display_stereo(name)
 		local right = alloc_surface(hw, disp.last_m.height)
 		define_linktarget(right, disp.rt)
 		rendertarget_id(right, 1)
+		image_color(right, unpack(gconfig_get("display_color")))
 
 -- bind the two to a composition pass, ideally we should be able to omit
 -- this when there is no distortion or other per-eye post-processing
 		local composition = alloc_surface(hw + hw, disp.last_m.height)
 		local left = null_surface(hw, disp.last_m.height)
 		image_sharestorage(disp.rt, left)
+		rendertarget_noclear(composition, true)
 
 		image_tracetag(composition, "display_stereo_composition")
 		define_rendertarget(composition, {left, right})
