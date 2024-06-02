@@ -762,13 +762,13 @@ local function tiler_statusbar_update(wm)
 -- is there a custom workspace tag to use?
 			if (label and #label > 0) then
 				if use_prefix then
-					table.insert(lbltbl, fontstr);
+					table.insert(lbltbl, "");
 					table.insert(lbltbl, ":");
 				end
 
 -- differentiate the coloring between user and generated content
-				local prefix = fontstr .. gconfig_get("sbar_lblcolor");
-				table.insert(lbltbl, prefix == "dynamic" and hccolor or prefix);
+				local prefix = gconfig_get("sbar_lblcolor");
+				table.insert(lbltbl, (prefix == "dynamic" and hccolor or prefix));
 				table.insert(lbltbl, label);
 			end
 
