@@ -1,18 +1,26 @@
 local tbl =
 {
     model = "English (Great Britain)",
+		dictionary = "en",
     gain = 1.0, -- audo gain on source
     gap = 10,   -- ms between words
-    pitch = 50, -- 0  .. 100: 0 = low
-		rate = 80,  -- 10 .. 450: wpm
-		range = 50, -- 0  .. 100: 0 = monotome
+    pitch = 60, -- 0  .. 100: 0 = low
+		rate = 180,  -- 10 .. 450: wpm
+		range = 60, -- 0  .. 100: 0 = monotome
     channel = "l", -- l, r or lr,
-		name = "basic_eng",
+		name = "basic_english",
+		punct = 1,
+		cappitch = 5000,
 
-    autos = { -- these resolve to a prefix spoken on a global event trigger, then the event data itself
-    	on_select = {"title", "wnd.title_text"},
-			on_menu = "menu",
-			on_dispatch = "run",
+    actions = {
+-- these resolve to a prefix spoken, then target members for the data
+    	select = {"title", "title_text"},
+ -- these resolve to a prefix spoken on a global event trigger, then the event data itself
+			menu = "menu",
+			dispatch = "run",
+			clipboard = "clip",
+			clipboard_paste = "clip",
+			notification = "notify",
     },
 
     bindings =

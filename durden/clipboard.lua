@@ -12,6 +12,53 @@ if suppl_add_logfn then
 	log, fmt = suppl_add_logfn("clipboard");
 end
 
+-- also used for wnd:paste overrides to still send notifications
+function clipboard_paste_default(wnd, msg, nosend)
+	local dst = wnd.clipboard_out;
+
+	if nosend then
+		for _,v in ipairs(CLIPBOARD.paste_monitors) do
+			v(msg)
+		end
+		return
+	end
+
+	if not dst or not valid_vid(dst) then
+		if not valid_vid(wnd.external) then
+			for k,v in ipairs(CLIPBOARD.paste_monitors) do
+				v("unsupported", true)
+			end
+			return;
+		end
+
+-- this approach triggers an interesting bug that may be worthwhile to explore
+--		wnd.clipboard_out = define_recordtarget(alloc_surface(1, 1),
+--			wnd.external, "", {null_surface(1,1)}, {},
+--			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0, function()
+--		end);
+		wnd.clipboard_out = define_nulltarget(wnd.external, "clipboard",
+		function(source, status)
+			if (status.kind == "terminated") then
+				delete_image(source);
+				wnd.clipboard_out = nil;
+			end
+		end);
+
+		link_image(wnd.clipboard_out, wnd.anchor);
+		target_flags(wnd.clipboard_out, TARGET_BLOCKADOPT);
+	end
+
+	msg = wnd.pastefilter ~= nil and wnd.pastefilter(msg) or msg;
+
+	if (msg and string.len(msg) > 0) then
+		for k,v in ipairs(CLIPBOARD.paste_monitors) do
+			v(msg)
+		end
+
+		target_input(wnd.clipboard_out, msg);
+	end
+end
+
 local function clipboard_add(ctx, source, msg, multipart)
 	log(fmt(
 		"add:multipart=%d:message=%s", multipart and 1 or 0, msg));
@@ -124,12 +171,17 @@ end
 
 local function clipboard_del_monitor(ctx, fctx)
 	table.remove_match(ctx.monitors, fctx);
+	table.remove_match(ctx.paste_monitors, fctx);
 end
 
-local function clipboard_add_monitor(ctx, fctx)
+local function clipboard_add_monitor(ctx, fctx, paste)
 	if type(fctx) == "function" then
 		table.remove_match(ctx.monitors, fctx);
-		table.insert(ctx.monitors, fctx);
+		if (paste) then
+			table.insert(ctx.paste_monitors, fctx);
+		else
+			table.insert(ctx.monitors, fctx);
+		end
 	else
 		log(fmt("add:kind=error:source=add_monitor:message=bad argument"));
 	end
@@ -274,6 +326,7 @@ return {
 	urls = {},
 	providers = {},
 	monitors = {},
+	paste_monitors = {},
 	modes = pastemodes,
 	history_size = 10,
 	mpt_cutoff = 100,

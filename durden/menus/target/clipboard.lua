@@ -1,35 +1,3 @@
-function clipboard_paste_default(wnd, msg)
-	local dst = wnd.clipboard_out;
-
-	if not dst or not valid_vid(dst) then
-		if not valid_vid(wnd.external) then
-			return;
-		end
-
--- this approach triggers an interesting bug that may be worthwhile to explore
---		wnd.clipboard_out = define_recordtarget(alloc_surface(1, 1),
---			wnd.external, "", {null_surface(1,1)}, {},
---			RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0, function()
---		end);
-		wnd.clipboard_out = define_nulltarget(wnd.external, "clipboard",
-		function(source, status)
-			if (status.kind == "terminated") then
-				delete_image(source);
-				wnd.clipboard_out = nil;
-			end
-		end);
-
-		link_image(wnd.clipboard_out, wnd.anchor);
-		target_flags(wnd.clipboard_out, TARGET_BLOCKADOPT);
-	end
-
-	msg = wnd.pastefilter ~= nil and wnd.pastefilter(msg) or msg;
-
-	if (msg and string.len(msg) > 0) then
-		target_input(wnd.clipboard_out, msg);
-	end
-end
-
 local function clipboard_paste()
 	local wnd = active_display().selected;
 	if wnd.paste then
@@ -42,7 +10,7 @@ end
 local function clipboard_paste_local()
 	local wnd = active_display().selected;
 	if wnd.paste then
-		wnd:paste(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
+		wnd:paste(CLIPBOARD:list_local(wnd.clipboard)[1]);
 	else
 		clipboard_paste_default(wnd, CLIPBOARD:list_local(wnd.clipboard)[1]);
 	end

@@ -912,8 +912,8 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- on the other end, not actually paste anything. This does not indicate the
 -- intended target, e.g. primary or selection so Xarcan will just do both.
 	new.paste =
-		function(wnd, ...)
-			clipboard_paste_default(parent, ...);
+		function(wnd, msg)
+			clipboard_paste_default(parent, msg);
 		end
 
 	if new.ws_attach then
