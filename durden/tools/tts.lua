@@ -133,6 +133,18 @@ local function load_voice(name)
 	timer_add_periodic("tts_timer_" .. tostring(CLOCK), 25, false, voice.timer, true)
 	table.insert(voice.cleanup, function() timer_delete_trigger(voice.timer) end)
 
+	if map.actions.select then
+		local wm = active_display()
+		voice.wnd_select = function(wm, wnd)
+			local msg = string.format(
+				"wnd %s %s", map.actions.select[1], wnd[map.actions.select[2]])
+			target_input(voice.vid, msg)
+		end
+		table.insert(wm.on_wnd_select, voice.wnd_select)
+		table.insert(voice.cleanup,
+			function() table.remove_match(wm.on_wnd_select, voice.wnd_select) end)
+	end
+
 	if map.actions.clipboard then
 		voice.clipboard = function(msg, src)
 			if msg == voice.last_msg then

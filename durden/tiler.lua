@@ -3591,9 +3591,11 @@ local function wnd_title(wnd, title)
 	end
 
 -- based on new title/ font, apply pattern and set to fill region
-	local dsttbl = {gconfig_get("tbar_textstr")};
+	local dsttbl = {};
 	local ptn = wnd.titlebar_ptn and wnd.titlebar_ptn or gconfig_get("titlebar_ptn");
-	wnd.title_text = suppl_ptn_expand(dsttbl, ptn, wnd);
+	suppl_ptn_expand(dsttbl, ptn, wnd);
+	wnd.title_text = table.concat(dsttbl, " ");
+	table.insert(dsttbl, 1, gconfig_get("tbar_textstr"));
 	wnd.titlebar:update("center", 1, dsttbl);
 end
 
@@ -5276,6 +5278,7 @@ local wnd_setup = function(wm, source, opts)
 -- this can be overridden / broken due to window restoration
 	tiler_latest_window_name(get_window_name(res));
 
+	res.title_text = "(no title)"
 	res.width = opts.width and opts.width or wm.min_width;
 	res.height = opts.height and opts.height or wm.min_height;
 	res.want_shadow =
