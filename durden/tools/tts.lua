@@ -113,8 +113,36 @@ local function load_voice(name)
 		argstr = argstr .. ":capmode=" .. map.capmode
 	end
 
+-- some actions need a timer for polling and for speech queue management
+	voice.timer = function()
+		if voice.deferred then
+			if mouse_state().btns[1] then
+				return
+			end
+			voice.last_msg = nil
+			voice.clipboard(voice.deferred, "")
+			voice.deferred = nil
+		end
+	end
+	timer_add_periodic("tts_timer_" .. tostring(CLOCK), 25, false, voice.timer, true)
+	table.insert(voice.cleanup, function() timer_delete_trigger(voice.timer) end)
+
 	if map.actions.clipboard then
 		voice.clipboard = function(msg, src)
+			if msg == voice.last_msg then
+				return
+			end
+			voice.last_msg = msg
+
+-- avoid bad x11 clients setting selection on every _motion event
+-- (chrome) and wait until it is released, since we don't have a
+-- global listener for this, use a timer
+			if mouse_state().btns[1] then
+				voice.deferred = msg
+				print("set deferred", msg)
+				return
+			end
+
 			target_input(voice.vid,
 				string.format("%s set %s", map.actions.clipboard, msg))
 		end
@@ -212,8 +240,7 @@ local function get_voice_opts(v)
 		kind = "action",
 		description = "Destroy the voice and cancel all pending text",
 		handler = function()
-			delete_image(v.vid);
-			table.remove_match(voices, v);
+			drop_voice(v.name)
 		end,
 	});
 	table.insert(ent,

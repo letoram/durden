@@ -108,6 +108,15 @@ local function clipboard_add(ctx, source, msg, multipart)
 		end
 	end
 
+-- overwrite if the previous top item is a substring of the new
+	local src = ctx.locals[source]
+	if src[1] then
+		local cap = #msg > #src[1] and #msg or #src[1]
+		if (string.sub(msg, 1, cap) == string.sub(src[1], 1, cap)) then
+			table.remove(src, 1)
+		end
+	end
+
 	table.insert_unique_i(ctx.locals[source], 1, msg);
 	if (#ctx.locals[source] > ctx.history_size) then
 		table.remove(ctx.locals[source], #ctx.locals[source]);

@@ -157,6 +157,22 @@ local function find(name, drop)
 	end
 end
 
+function timer_delete_trigger(trigger)
+	for k,v in ipairs(idle_timers) do
+		if v.trigger == trigger or v.wakeup == trigger then
+			table.remove(idle_timers, k)
+			break
+		end
+	end
+
+	for k,v in ipairs(timers) do
+		if v.trigger == trigger or v.wakeup == trigger then
+			table.remove(timers, k)
+			break
+		end
+	end
+end
+
 function timer_delete(name)
 	find(name, true);
 end
