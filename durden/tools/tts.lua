@@ -90,6 +90,7 @@ local function load_voice(name)
 	local voice = {
 		profile = map,
 		name = name,
+		labels = {},
 		cleanup = {}
 	}
 
@@ -106,6 +107,11 @@ local function load_voice(name)
 		map.gap,
 		map.punct
 	)
+	table.insert(voice.cleanup, function()
+		if voice.key_echo then
+			dispatch_symhook(voice.key_echo)
+		end
+	end)
 
 	if map.cappitch then
 		argstr = argstr .. ":cappitch=" .. tostring(map.cappitch)
@@ -139,7 +145,6 @@ local function load_voice(name)
 -- global listener for this, use a timer
 			if mouse_state().btns[1] then
 				voice.deferred = msg
-				print("set deferred", msg)
 				return
 			end
 
@@ -189,7 +194,8 @@ local function load_voice(name)
 						target_input(source, "the voice" .. name .. " activated")
 					end
 				end)
-			elseif status.kind == "labelhint" then
+
+			elseif status.kind == "input_label" then
 				table.insert(voice.labels, status.labelhint)
 			end
 		end
@@ -254,6 +260,42 @@ local function get_voice_opts(v)
 			audio_gain(v.aid, tonumber(val));
 		end,
 	});
+
+	table.insert(ent,
+	{
+		name = "toggle_key_echo",
+		label = "Toggle Echo",
+		kind = "action",
+		handler = function()
+			if v.key_echo then
+				dispatch_symhook(v.key_echo, true)
+				v.key_echo = nil
+				target_input(v.vid, "key echo off")
+			else
+				v.key_echo = function(io)
+					target_input(v.vid, io)
+				end
+				dispatch_symhook(v.key_echo)
+				target_input(v.vid, "key echo on")
+			end
+		end
+	})
+
+-- any dynamic input labels from the speech service
+	for _, lbl in ipairs(v.labels) do
+		table.insert(ent,
+			{
+				name = "input_" .. string.lower(lbl),
+				kind = "action",
+				description = "forward input to speech service",
+				label = lbl,
+				handler = function()
+					target_input(v.vid,
+						{kind = "digital", label = lbl, active = true, devid = 0, subid = 0})
+				end
+			}
+		)
+	end
 
 	return ent;
 end

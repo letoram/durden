@@ -450,6 +450,16 @@ function dispatch_last_symbol()
 	return last_symbol;
 end
 
+-- accessibility tools might need this
+local symhook
+function dispatch_symhook(hook, off)
+	if off and symhook == hook then
+		symhook = nil
+	elseif not symhook then
+		symhook = hook
+	end
+end
+
 function dispatch_translate(iotbl, nodispatch)
 	local ok, sym, outsym, lutsym;
 	local sel = active_display().selected;
@@ -467,6 +477,9 @@ function dispatch_translate(iotbl, nodispatch)
 		end
 -- generate durden specific meta- tracking or apply binding hooks
 		ok, lutsym = track_label(iotbl, sym, active_display().input_lock);
+		if symhook then
+			symhook(iotbl);
+		end
 	end
 
 -- system keybindings are temporarily blocked and forwarded to a hook
