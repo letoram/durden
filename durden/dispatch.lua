@@ -2,6 +2,7 @@
 -- Keyboard dispatch
 --
 local tbl = {};
+local tbl_overlay = {};
 
 -- state tracking table for locking/unlocking, double-tap tracking, and sticky
 local mtrack = {
@@ -16,6 +17,12 @@ local mtrack = {
 };
 
 local dispatch_debug = suppl_add_logfn("dispatch");
+
+function dispatch_bindings_overlay(tbl, add)
+	for k,v in pairs(tbl) do
+		tbl_overlay[k] = add and v or nil
+	end
+end
 
 local function update_meta(m1, m2)
 	mtrack.m1 = m1;
@@ -503,8 +510,15 @@ function dispatch_translate(iotbl, nodispatch)
 		active_display():cancellation(sym == SYSTEM_KEYS["accept"]);
 	end
 
+-- any custom overlay? takes priorty
+	if tbl_overlay[lutsym] and iotbl.active then
+		dispatch_symbol(tbl_overlay[lutsym]);
+		iostatem_reset_repeat();
+		return true, lutsym, iotbl;
+	end
+
 -- we can have special bindings on a per window basis
-	if (sel and sel.bindings and sel.bindings[lutsym]) then
+	if (sel and sel.bindings and sel.bindings[lutsym]) and not tbl_overlay[lutsym] then
 		if (iotbl.active) then
 			if (type(sel.bindings[lutsym]) == "function") then
 				sel.bindings[lutsym](sel);

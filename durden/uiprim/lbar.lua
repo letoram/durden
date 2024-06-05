@@ -503,6 +503,13 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 	if iotbl.modifiers and iotbl.modifiers > 0 then
 		local ms = decode_modifiers(iotbl.modifiers, "_")
 
+-- hooks for own modifier + key
+		local key = ms .. "_" .. sym
+		if ictx.custom_bindings[key] then
+			ictx.custom_bindings[key](ictx)
+			return
+		end
+
 		if ms == "lctrl" or ms == "rctrl" then
 			local cont
 			cont, sym, m1 = lbar_readline_input(wm, ictx, sym, m1)
@@ -518,13 +525,13 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 -- this was dropped from not being used and making certain operations even more
 -- complicated, primary one being page left/right
 --
---if (m1 and (sym == ictx.cancel or sym == ictx.accept or
+-- if (m1 and (sym == ictx.cancel or sym == ictx.accept or
 --		sym == ictx.caret_left or sym == ictx.caret_right or
 --		sym == ictx.step_n or sym == ictx.step_p)) then
 --		if (ictx.meta_handler and ictx:meta_handler(sym, iotbl, lutsym, meta)) then
 --			return
 --		end
---	end
+-- end
 
 	if (sym == ictx.context) then
 		return trigger_context(wm)
@@ -541,6 +548,7 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			ictx.inp.csel = (sym == ictx.step_n) and
 				(ictx.inp.csel+1) or (ictx.inp.csel-1);
 		end
+
 		update_completion_set(wm, ictx, ictx.inp.set);
 		return;
 	end
@@ -752,6 +760,7 @@ function tiler_lbar_setactive(slot)
 end
 
 local function lbar_destroy(lbar, nofwd)
+	lbar.dead = true
 	accept_cancel(lbar.wm, false, nofwd);
 end
 
@@ -864,6 +873,9 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		textofs = 0,
 		caret = car,
 		caret_y = carety,
+
+-- override readline / like input controls, useful for tools like 'tts'
+		custom_bindings = {},
 
 -- hooks for implementing separate behavior, biggest use is file- browser like
 -- behavior where previews need to be loaded, cached and aligne based on actual

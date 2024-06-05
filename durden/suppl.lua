@@ -720,39 +720,21 @@ local function get_ptn_str(cb, wnd)
 end
 
 function suppl_ptn_expand(tbl, ptn, wnd)
-	local i = 1;
-	local cb = "";
-	local inch = false;
+	local set = string.split(ptn, " ")
+	local prefix = ""
 
-	local flush_cb = function()
-		local msg = cb;
-
-		if (inch) then
-			msg = get_ptn_str(cb, wnd);
-			msg = msg and msg or "";
-			msg = string.trim(msg);
-		end
-		if (string.len(msg) > 0) then
-			table.insert(tbl, msg);
-			table.insert(tbl, ""); -- need to maintain %2
-		end
-		cb = "";
-	end
-
-	while (i <= string.len(ptn)) do
-		local ch = string.sub(ptn, i, i);
-		if (ch == " " and inch) then
-			flush_cb();
-			inch = false;
-		elseif (ch == "%") then
-			flush_cb();
-			inch = true;
+	for _,v in ipairs(set) do
+		if string.sub(v, 1, 1) == "%" then
+			local msg = get_ptn_str(string.sub(v, 2, 2), wnd)
+			if msg then
+				table.insert(tbl, prefix .. msg)
+				table.insert(tbl, "")
+			end
+			prefix = ""
 		else
-			cb = cb .. ch;
+			prefix = prefix .. v
 		end
-		i = i + 1;
 	end
-	flush_cb();
 end
 
 function suppl_setup_rec(wnd, val, noaudio)

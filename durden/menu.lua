@@ -460,6 +460,10 @@ local function lbar_create(lbar, old_state)
 	end
 end
 
+function menu_get_current_path()
+	return cpath:get_path()
+end
+
 --
 -- This is the main input handler for the 'launch bar' used for mixing
 -- CLI style input with menu selection.
@@ -908,7 +912,7 @@ end
 -- [wm] should result to a valid tiler, like active_display() for the UI
 -- [ctx] is the menu- specific UI behavior
 -- [lbar_opts] is a table of other UI behavior controls that will be passed
---        to the corresponding lbar stage from uiprim.
+--             to the corresponding lbar stage from uiprim.
 -- [path] tells the current path to forward to cpath
 function menu_launch(wm, ctx, lbar_opts, path, path_lookup)
 	if (ctx == nil or ctx.list == nil or
@@ -1064,7 +1068,8 @@ lbar_opts.on_accept =
 		lbar.active_phs = {};
 	end
 
-	lbar_opts.on_step = function(lbar, i, key, anchor, ofs, w, mh)
+	lbar_opts.on_step =
+	function(lbar, i, key, anchor, ofs, w, mh)
 		if (i == -1 or not i or not lbar.inp.lastm) then
 			return;
 		end
@@ -1087,6 +1092,10 @@ lbar_opts.on_accept =
 
 	ctx.wm = wm;
 
+	if path then
+		cpath:set_path(path, path_lookup);
+	end
+
 -- lbar/menu/tiler etc. was all written to be 'independent' and turned out
 -- tightly coupled and just awfully messy. Refactor in baby steps.
 	local bar = wm:lbar(normal_menu_input, ctx, lbar_opts);
@@ -1098,7 +1107,6 @@ lbar_opts.on_accept =
 -- as a critical section as they can be prone to stalling causing compound
 -- actions (keyrepeat, ...)
 	if (path) then
-		cpath:set_path(path, path_lookup);
 		durden_clock_block(function()
 			suppl_widget_path(bar, bar.text_anchor, path)
 		end);

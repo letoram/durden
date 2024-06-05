@@ -46,6 +46,16 @@ end
 rescan();
 list_devmaps(true);
 
+local function send_label(vid, lbl)
+	target_input(vid,
+		{kind = "digital", label = lbl, active = true, devid = 0, subid = 0})
+end
+
+local function speak_message(voice, msg)
+	voice.last_message = msg
+	target_input(voice.vid, msg)
+end
+
 local function drop_voice(name)
 	if not voices[name] then
 		return
@@ -63,6 +73,178 @@ local function drop_voice(name)
 	log(fmt("tts:kind=dead:name=%s", name))
 	n_voices = n_voices - 1
 end
+
+local function voice_select(voice, action)
+	local wm = active_display()
+	local map = voice.map
+
+-- can get multiple repeats of the same select on some transitions so only send if
+-- something has actually changed
+	voice.wnd_select = function(wm, wnd)
+		local value = string.trim(wnd[action[2]])
+		if #value == 0 then
+			return
+		end
+		local msg = string.format("wnd %s %s", action[1], value)
+		if voice.last_select ~= msg then
+			voice.last_select = msg
+			voice:message(msg)
+		end
+	end
+
+	table.insert(wm.on_wnd_select, voice.wnd_select)
+	table.insert(voice.cleanup,
+	function() table.remove_match(wm.on_wnd_select, voice.wnd_select) end)
+end
+
+local function voice_clipboard(voice, action)
+	local map = voice.map
+
+	voice.clipboard =
+	function(msg, src)
+		if msg == voice.last_msg then
+			return
+		end
+		voice.last_msg = msg
+
+-- avoid bad x11 clients setting selection on every _motion event
+-- (chrome) and wait until it is released, since we don't have a
+-- global listener for this, use a timer
+		if mouse_state().btns[1] then
+			voice.deferred = msg
+			return
+		end
+
+		voice:message(string.format("%s set %s", action, msg))
+	end
+
+	table.insert(voice.cleanup,
+	function()
+		CLIPBOARD:del_monitor(voice.clipboard)
+	end)
+	CLIPBOARD:add_monitor(voice.clipboard)
+end
+
+local function voice_clipboard_paste(voice, action)
+	local map = voice.map
+
+	voice.clipboard_paste =
+	function(msg, fail)
+		if fail then
+			voice:message(string.format("%s couldn't paste", action))
+		else
+			voice:message(string.format("%s paste %s", action, msg))
+		end
+	end
+	table.insert(voice.cleanup, function()
+		CLIPBOARD:del_monitor(voice.clipboard_paste)
+	end)
+	CLIPBOARD:add_monitor(voice.clipboard_paste, true)
+end
+
+local tiler_lbar_hook
+local tiler_lbar_orig
+local function voice_menu(voice, action)
+	if tiler_lbar_orig then
+		log(fmt("tts:kind=warning:name=%s:reason=only one voice for menu", voice.name))
+		return
+	end
+
+-- Several complexities here, we need to hook the input context and
+-- provide additional controls for repeating the current input, for
+-- hooking the cursor state, for speaking the full path and so on.
+--
+-- Each display assigns tiler_lbar to the lbar member of wm
+	local hook =
+	function(...)
+		local bar = tiler_lbar(...)
+			local cp = menu_get_current_path()
+			local set = string.split(cp, "/")
+			voice:message(set[#set])
+
+-- get input string and input prefix
+		bar.custom_bindings["lctrl_t"] =
+			function(ictx)
+				local str = ictx.inp:view_str()
+				if #str == 0 then
+					voice:message("empty prompt")
+				else
+					voice:message("prompt " .. str)
+					local caret = ictx.inp:caret_str()
+					if caret ~= str then
+						voice:message("before " .. caret)
+					end
+				end
+			end
+
+		bar.custom_bindings["rctrl_t"] = bar.custom_bindings["lctrl_t"]
+		bar.custom_bindings["lctrl_h"] =
+		function(ictx)
+			if ictx.last_helper then
+				voice:message(ictx.last_helper)
+			else
+				voice:message("no description")
+			end
+		end
+		bar.custom_bindings["rctrl_h"] = bar.custom_bindings["lctrl_h"]
+
+-- get current full path
+		bar.custom_bindings["lctrl_p"] =
+			function(ictx)
+				voice:message(action .. menu_get_current_path())
+			end
+
+-- hook stepping the currently selected items
+		local old_step = bar.on_step
+		local lastmsg = ""
+		bar.on_step =
+			function(lbar, i, key, anchor, ofs, w, mh)
+				old_step(lbar, i, key, anchor, ofs, w, mh)
+				if key and key ~= lastmsg and key ~= ".." then
+					reset_target(voice.vid)
+					voice:message(key)
+					lastmsg = key
+				end
+		end
+
+		return bar
+	end
+
+	for d in all_tilers_iter() do
+		d.lbar = hook
+	end
+
+	table.insert(voice.cleanup,
+	function()
+		for d in all_tilers_iter() do
+			d.lbar = tiler_lbar
+		end
+	end)
+end
+
+local function voice_notification(voice, arg)
+-- the only special things here is possibly to remember window sources for
+-- notifications and providing a binding to jump to the last source window
+end
+
+local function voice_accessibility(voice, arg)
+-- this is for windows that can handle / provide an accessibility
+-- segment and we can access / step its contexts through tui functions,
+-- since the vstore type in arcan for that is incomplete this is just
+-- notes and a placeholder.
+end
+
+-- actual implementations of all possible actions in the voice map
+-- extend here with features that requires deeper hooks into durden.
+--
+-- the other place for extension is the voice menu further below for
+-- things that resolve to simpler menu path actions
+local actions = {
+["select"] = voice_select,
+["clipboard"] = voice_clipboard,
+["clipboard_paste"] = voice_clipboard_paste,
+["menu"] = voice_menu
+}
 
 local function load_voice(name)
 	if voices[name] then
@@ -84,17 +266,17 @@ local function load_voice(name)
 		return
 	end
 
--- ensure that the loaded profile has the expected values or fill out defaults
--- and convert into t2s protocol arguments
-
+-- ensure that the loaded profile has the expected values or fill out
+-- defaults and convert into t2s protocol arguments
 	local voice = {
 		profile = map,
 		name = name,
+		message = speak_message,
 		labels = {},
-		cleanup = {}
+		cleanup = {},
+		tick = {}
 	}
 
--- punct = 0,1,2
 	local argstr =
 	string.format(
 		"protocol=t2s:channel=%s:voice=%s:" ..
@@ -107,7 +289,9 @@ local function load_voice(name)
 		map.gap,
 		map.punct
 	)
-	table.insert(voice.cleanup, function()
+
+	table.insert(voice.cleanup,
+	function()
 		if voice.key_echo then
 			dispatch_symhook(voice.key_echo)
 		end
@@ -120,7 +304,8 @@ local function load_voice(name)
 	end
 
 -- some actions need a timer for polling and for speech queue management
-	voice.timer = function()
+	voice.timer =
+	function()
 		if voice.deferred then
 			if mouse_state().btns[1] then
 				return
@@ -129,68 +314,31 @@ local function load_voice(name)
 			voice.clipboard(voice.deferred, "")
 			voice.deferred = nil
 		end
+
+		for i=#voice.tick,1,-1 do
+			voice.tick[i](voice)
+		end
 	end
+
 	timer_add_periodic("tts_timer_" .. tostring(CLOCK), 25, false, voice.timer, true)
 	table.insert(voice.cleanup, function() timer_delete_trigger(voice.timer) end)
 
-	if map.actions.select then
-		local wm = active_display()
-		voice.wnd_select = function(wm, wnd)
-			local msg = string.format(
-				"wnd %s %s", map.actions.select[1], wnd[map.actions.select[2]])
-			target_input(voice.vid, msg)
+	dispatch_bindings_overlay(map.bindings, true)
+	table.insert(voice.cleanup,
+		function() dispatch_bindings_overlay(map.bindings, false) end)
+
+-- now apply the actual action table
+	for k, v in pairs(map.actions) do
+		if actions[k] then
+			actions[k](voice, v)
+		else
+			log(fmt("tts:kind=warning:voice=%s:missing_action=%s", voice.name, k))
 		end
-		table.insert(wm.on_wnd_select, voice.wnd_select)
-		table.insert(voice.cleanup,
-			function() table.remove_match(wm.on_wnd_select, voice.wnd_select) end)
-	end
-
-	if map.actions.clipboard then
-		voice.clipboard = function(msg, src)
-			if msg == voice.last_msg then
-				return
-			end
-			voice.last_msg = msg
-
--- avoid bad x11 clients setting selection on every _motion event
--- (chrome) and wait until it is released, since we don't have a
--- global listener for this, use a timer
-			if mouse_state().btns[1] then
-				voice.deferred = msg
-				return
-			end
-
-			target_input(voice.vid,
-				string.format("%s set %s", map.actions.clipboard, msg))
-		end
-
-		table.insert(voice.cleanup, function()
-			CLIPBOARD:del_monitor(voice.clipboard)
-		end)
-
-		CLIPBOARD:add_monitor(voice.clipboard)
-	end
-
-	if map.actions.clipboard_paste then
-		voice.clipboard_paste =
-		function(msg, fail)
-			if fail then
-				target_input(voice.vid,
-					string.format("%s couldn't paste", map.actions.clipboard_paste))
-			else
-				target_input(voice.vid,
-					string.format("%s paste %s", map.actions.clipboard_paste, msg))
-			end
-		end
-		table.insert(voice.cleanup, function()
-			CLIPBOARD:del_monitor(voice.clipboard_paste)
-		end)
-		CLIPBOARD:add_monitor(voice.clipboard_paste, true)
 	end
 
 	log(fmt("tts:kind=status:activate=%s:%s", name, argstr))
 
--- should convert profile into voice
+-- actually setup the profile itself
 	voice.vid, voice.aid =
 	launch_avfeed(argstr, "decode",
 		function(source, status)
@@ -213,13 +361,17 @@ local function load_voice(name)
 		end
 	)
 
+	voices[name] = voice
+	n_voices = n_voices + 1
+
+-- if that couldn't be spawned for any reason, re-use the regular close handler
+-- so all the cleanup handlers are invoked correctly with the right data
 	if not valid_vid(voice.vid) then
 		log(fmt("tts:kind=error:process_failed"))
+		drop_voice(voice)
 		return
 	end
 
-	voices[name] = voice
-	n_voices = n_voices + 1
 	target_flags(voice.vid, TARGET_BLOCKADOPT)
 	audio_gain(voice.aid, map.gain)
 end
@@ -232,12 +384,13 @@ local function get_voice_opts(v)
 	{
 		name = "flush",
 		kind = "action",
-		label = "Reset",
+		label = "Flush",
 		description = "Cancel / flush current queue",
 		handler = function()
 			reset_target(v.vid);
 		end,
 	});
+
 	table.insert(ent,
 	{
 		name = "speak",
@@ -248,9 +401,10 @@ local function get_voice_opts(v)
 			if not val or #val == 0 then
 				return
 			end
-			target_input(v.vid, val);
+			v:message(val)
 		end
 	});
+
 	table.insert(ent,
 	{
 		name = "destroy",
@@ -261,6 +415,7 @@ local function get_voice_opts(v)
 			drop_voice(v.name)
 		end,
 	});
+
 	table.insert(ent,
 	{
 		name = "gain",
@@ -271,6 +426,21 @@ local function get_voice_opts(v)
 		handler = function(ctx, val)
 			audio_gain(v.aid, tonumber(val));
 		end,
+	});
+
+	table.insert(ent,
+	{
+		name = "slow_replay",
+		label = "Slow Replay",
+		kind = "action",
+		description = "Set synthesis speed to slow, replay last message then revert speed",
+		handler = function()
+			if v.last_message then
+				send_label(v.vid, "SLOW");
+				target_input(v.vid, v.last_message);
+				target_input(v.vid, "SETRATE");
+			end
+		end
 	});
 
 	table.insert(ent,
@@ -302,54 +472,11 @@ local function get_voice_opts(v)
 				description = "forward input to speech service",
 				label = lbl,
 				handler = function()
-					target_input(v.vid,
-						{kind = "digital", label = lbl, active = true, devid = 0, subid = 0})
+					send_label(v.vid, lbl)
 				end
 			}
 		)
 	end
-
-	return ent;
-end
-
-local function get_cfg_opts(v)
-	local ent = {};
-
--- some of these could be dynamically configurated with the
--- coreopt arguments, and we should have a generalized coreopt
--- to menu anyhow so we can just bind that as the event handler
--- and attach...
---
--- channel l,r
--- rate (wpm)
--- pitch (50)
--- range (100)
--- gap (10)
-
-	table.insert(ent,
-		{
-			name = "model",
-			kind = "value",
-			set = scan_voices,
-			label = "Model",
-			description = "Pick language/sound model for the voice",
-			handler = function(ctx, val)
-				v.voice = val;
-			end,
-		}
-	);
-	table.insert(ent,
-		{
-			name = "activate",
-			kind = "action",
-			label = "Activate",
-			description = "Bind the current configuration to a voice synthesizer",
-			handler =
-			function()
-				activate_voice(v);
-			end,
-		}
-	);
 
 	return ent;
 end
@@ -366,7 +493,7 @@ local function gen_voice_menu()
 	for i, v in ipairs(names) do
 		local voice = voices[v];
 		table.insert(res, {
-			name = "voice_" .. v,
+			name = v,
 			kind = "action",
 			description = "Control or modify the voice",
 			label = v,
