@@ -23,6 +23,16 @@ local tbl =
 			menu = "menu"
     },
 
+-- special options and bindings for menu navigation which different input system
+		menu =
+		{
+			key_echo = true,
+			speak_prompt = "lctrl_t",
+			speak_description = "lctrl_h",
+			speak_path = "lctrl_p",
+			speak_set = "lctrl_s"
+		},
+
 -- keybindings that will take over the defaults while voice is activated
     bindings =
     {

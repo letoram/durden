@@ -4,6 +4,7 @@ local n_voices = 0;
 local map_cache = {};
 local scan_voices = {}; -- set of known voice styles
 local log, fmt = suppl_add_logfn("tools");
+local tts_in_echo;
 
 local function rescan()
 	scan_voices = {};
@@ -150,6 +151,11 @@ local function voice_menu(voice, action)
 		return
 	end
 
+	if not voice.profile.menu then
+		log(fmt("tts:kind=warning:name=%s:missing_menu_configuration", voice.name))
+		return
+	end
+
 -- Several complexities here, we need to hook the input context and
 -- provide additional controls for repeating the current input, for
 -- hooking the cursor state, for speaking the full path and so on.
@@ -158,12 +164,15 @@ local function voice_menu(voice, action)
 	local hook =
 	function(...)
 		local bar = tiler_lbar(...)
-			local cp = menu_get_current_path()
-			local set = string.split(cp, "/")
-			voice:message(set[#set])
+		local cp = menu_get_current_path()
+		local set = string.split(cp, "/")
+		voice:message(set[#set] .. (bar.inp.lastm and
+			bar.inp.lastm[1] and bar.inp.lastm[1].label or ""))
 
 -- get input string and input prefix
-		bar.custom_bindings["lctrl_t"] =
+		local prompt_bind = voice.profile.menu.speak_prompt
+		if prompt_bind then
+		bar.custom_bindings[prompt_bind] =
 			function(ictx)
 				local str = ictx.inp:view_str()
 				if #str == 0 then
@@ -176,30 +185,65 @@ local function voice_menu(voice, action)
 					end
 				end
 			end
+		end
 
-		bar.custom_bindings["rctrl_t"] = bar.custom_bindings["lctrl_t"]
-		bar.custom_bindings["lctrl_h"] =
-		function(ictx)
-			if ictx.last_helper then
-				voice:message(ictx.last_helper)
-			else
-				voice:message("no description")
+		local help_bind = voice.profile.menu.speak_description
+		if help_bind then
+			bar.custom_bindings[help_bind] =
+			function(ictx)
+				if ictx.last_helper then
+					voice:message(ictx.last_helper)
+				else
+					voice:message("no description")
+				end
 			end
 		end
-		bar.custom_bindings["rctrl_h"] = bar.custom_bindings["lctrl_h"]
 
 -- get current full path
-		bar.custom_bindings["lctrl_p"] =
-			function(ictx)
-				voice:message(action .. menu_get_current_path())
+		local path_bind = voice.profile.menu.speak_path
+		if path_bind then
+			bar.custom_bindings[path_bind] =
+				function(ictx)
+					voice:message(action .. menu_get_current_path())
+				end
+		end
+
+-- message the active completion set
+		local set_bind = voice.profile.menu.speak_set
+		if set_bind then
+			bar.custom_bindings[set_bind] =
+				function(ictx)
+					if not ictx.inp.lastm then
+						return
+					end
+
+					voice:message("set:")
+					for k,v in ipairs(ictx.inp.lastm) do
+						voice:message((v.submenu and "sub" or v.kind) .. " " .. v.label)
+					end
+				end
+		end
+
+-- only enable echo if it isn't already
+		if not tts_in_echo then
+			local oldi = bar.inp.input
+			bar.inp.input =
+			function(ctx, io, sym)
+				if #io.utf8 > 0 then
+					target_input(voice.vid, io)
+				end
+				return oldi(ctx, io, sym)
 			end
+		end
 
 -- hook stepping the currently selected items
 		local old_step = bar.on_step
 		local lastmsg = ""
 		bar.on_step =
 			function(lbar, i, key, anchor, ofs, w, mh)
-				old_step(lbar, i, key, anchor, ofs, w, mh)
+				if old_step then
+					old_step(lbar, i, key, anchor, ofs, w, mh)
+				end
 				if key and key ~= lastmsg and key ~= ".." then
 					reset_target(voice.vid)
 					voice:message(key)
@@ -449,6 +493,11 @@ local function get_voice_opts(v)
 		label = "Toggle Echo",
 		kind = "action",
 		handler = function()
+			if tts_in_echo and tts_in_echo ~= v then
+				v:message("key echo held by other active voice")
+				return
+			end
+
 			if v.key_echo then
 				dispatch_symhook(v.key_echo, true)
 				v.key_echo = nil
