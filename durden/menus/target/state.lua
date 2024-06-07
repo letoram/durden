@@ -270,6 +270,25 @@ return {
 		handler = seek_menu
 	},
 	{
+	name = "push_accessibility",
+	label = "Accessibility",
+	kind = "action",
+	handler = function()
+		local wnd = active_display().selected;
+		local vid = target_alloc(wnd.external, function() end, "accessibility")
+		if not valid_vid(vid) then
+			return;
+		end
+		local newwnd =
+			durden_launch(vid, "accessibility", "", nil, {attach_parent = wnd});
+		if not newwnd then
+			return
+		end
+		extevh_apply_atype(newwnd, "tui", vid, {});
+		newwnd.allowed_segments = {};
+	end
+	},
+	{
 	name = "push_debug",
 	label = "Debug",
 	kind = "value",

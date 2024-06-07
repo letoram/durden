@@ -3586,6 +3586,8 @@ local function wnd_grow(wnd, w, h)
 end
 
 local function wnd_title(wnd, title)
+	local old_text = wnd.title_text
+
 	if (title) then
 		wnd.title = title;
 	end
@@ -3597,6 +3599,15 @@ local function wnd_title(wnd, title)
 	wnd.title_text = table.concat(dsttbl, " ");
 	table.insert(dsttbl, 1, gconfig_get("tbar_textstr"));
 	wnd.titlebar:update("center", 1, dsttbl);
+
+	local wm = wnd.wm
+
+-- notify if the title changed
+	if old_text ~= wnd.title_text then
+		for i,v in ipairs(wm.on_wnd_title) do
+			v(wm, wnd, wnd.space, wnd.space == wm:active_space());
+		end
+	end
 end
 
 local function tiler_convert_mousexy(wnd, x, y, rx, ry)
@@ -5984,6 +5995,7 @@ function tiler_create(width, height, opts)
 		on_wnd_drag = {},
 		on_wnd_hide = {},
 		on_wnd_select = {},
+		on_wnd_title = {},
 		on_tiler_resize = {},
 
 -- unique event handlers

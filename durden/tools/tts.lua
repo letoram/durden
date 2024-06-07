@@ -82,10 +82,16 @@ local function voice_select(voice, action)
 -- can get multiple repeats of the same select on some transitions so only send if
 -- something has actually changed
 	voice.wnd_select = function(wm, wnd)
-		local value = string.trim(wnd[action[2]])
-		if #value == 0 then
+		if wnd ~= wm.selected then
 			return
 		end
+
+		local value = string.trim(wnd[action[2]])
+		if #value == 0 then
+			voice:message(string.format("wnd %s", action[1], wnd.atype or ""))
+			return
+		end
+
 		local msg = string.format("wnd %s %s", action[1], value)
 		if voice.last_select ~= msg then
 			voice.last_select = msg
@@ -94,8 +100,13 @@ local function voice_select(voice, action)
 	end
 
 	table.insert(wm.on_wnd_select, voice.wnd_select)
+	table.insert(wm.on_wnd_title, voice.wnd_select)
+
 	table.insert(voice.cleanup,
-	function() table.remove_match(wm.on_wnd_select, voice.wnd_select) end)
+	function()
+		table.remove_match(wm.on_wnd_select, voice.wnd_select)
+		table.remove_match(wm.on_wnd_title, voice.wnd_select)
+	end)
 end
 
 local function voice_clipboard(voice, action)
