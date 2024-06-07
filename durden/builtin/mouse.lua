@@ -502,7 +502,7 @@ function mouse_setup(cvid, ...)
 		hidden = false
 	}
 
-	if type(a[1] == "table") then
+	if type(a[1]) == "table" then
 		for k,v in pairs(a[1]) do
 			if type(opts[k]) == type(v) then
 				opts[k] = v
