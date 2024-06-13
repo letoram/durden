@@ -22,7 +22,7 @@ local oracle =
 
 gconfig_register("typer_model", "instant")
 gconfig_register("typer_oracle", "spell")
-gconfig_register("typer_language", "en")
+gconfig_register("typer_language", "en_GB")
 
 local config =
 {
@@ -48,6 +48,10 @@ local function launch_oracle()
 		elseif status.kind == "frame" then
 			oracle.current_set = oracle.pending_set
 			oracle.pending_set = {}
+			local ictx = active_display().input_ctx
+			if ictx then
+				ictx.inp:input({active = true, utf8 = ''}, "NONE", true, {})
+			end
 		end
 	end
 	)
@@ -62,6 +66,9 @@ local function launch_oracle()
 end
 
 local function synch_oracle(val)
+	local set = string.split(val, " ")
+	val = set[#set]
+
 	if config.oracle == "spell" and not oracle.broken then
 		if not valid_vid(oracle.vid) then
 			launch_oracle()
@@ -69,16 +76,16 @@ local function synch_oracle(val)
 
 -- single character suggestions aren't exactly useful
 		if #val <= 1 then
-			oracle.current_set = {}
 			return {}
 		elseif valid_vid(oracle.vid) then
 			if oracle.last_word ~= val then
+				oracle.current_set = {}
 				oracle.last_word = val
 				target_input(oracle.vid, val)
 			end
 		end
 
-		return oracle.current_set
+		return oracle.current_set, oracle.last_word
 	end
 	return {}
 end
@@ -177,7 +184,7 @@ local input_menu =
 		eval = function()
 			return valid_vid(active_display().selected.external)
 		end,
-		set = synch_oracle,
+		helpsel = synch_oracle,
 		validator = function(src)
 			return #src > 0
 		end,

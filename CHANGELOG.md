@@ -1,5 +1,7 @@
 # 0.7.0 (ongoing):
 
+* new tool: typer (global/input/text)
+
 * new tool: mouse gestures (global/input/mouse/gesture)
 
 * crash log widget replaced with control IPC command "info /"
@@ -122,6 +124,9 @@ minor:
 
 * resource browser spawned windows now track a playlist of similar items
   from the folder, adds /target/playlist and bindings to step with F1, F2, F3
+
+* paths for controlling window stacking in float mode, /target/window/select/to_front,
+  /target/window/select/to_back
 
 # 0.6.0 - 0.6.1
 * universal open/save:

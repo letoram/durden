@@ -162,13 +162,12 @@ local function set_input(ctx, instr, done, lastv)
 
 	if (not done) then
 		local dset = {"error_broken"}
-
 		local setkey = "set"
 
 -- there might be multiple set types in an entry, so let a key decide.
 -- similarly, there might be a static or dynamic set to consider.
 		if type(ctx[setkey]) == "function" then
-			local res = ctx[setkey]()
+			local res = ctx[setkey](instr)
 			if res then
 				dset = res
 			end
@@ -177,10 +176,6 @@ local function set_input(ctx, instr, done, lastv)
 		end
 
 		local flt_fun = flt_lut[gconfig_get("lbar_fltfun")];
-		if (type(ctx.set) == "function") then
-			dset = ctx.set();
-		end
-
 		return {set = table.filter(dset, flt_fun, instr)};
 	end
 
@@ -207,15 +202,20 @@ local function value_entry_input(ctx, instr, done, lastv)
 
 -- validators that reject empty strings should still use a possible helpset
 			if #instr == 0 and ctx.helpsel then
-				return {set = ctx.helpsel()};
+				return {set = ctx.helpsel(instr)};
 			end
 			return false;
 		end
 
 		if (ctx.helpsel) then
+			local set, prefix = ctx.helpsel(instr)
+
 -- instead of globally configured filter, use prefix filter here
 -- to prevent accidental auto-completion on custom text input
-			return {set = table.filter(ctx:helpsel(), flt_prefix, instr)};
+			local res = {
+				set = table.filter(ctx.helpsel(instr), flt_prefix, prefix or instr)
+			};
+			return res
 		end
 
 		return true;
@@ -247,6 +247,30 @@ local function value_entry_input(ctx, instr, done, lastv)
 
 	menu_cancel(active_display(), false, ctx.dangerous);
 	ctx:handler(instr);
+end
+
+local function value_context(lbar, ctx, instr)
+	local inp = lbar.inp
+	if inp.set and inp.csel and inp.set[inp.csel] then
+		local insert = inp.set[inp.csel]
+		if #instr == 0 then
+			inp:set_str(insert)
+		else
+			local start = #instr
+			while start > 0 do
+				if string.sub(instr, start, start) == " " then
+					break;
+				end
+				start = start - 1;
+			end
+			if start == 0 then
+				inp:set_str(insert)
+			else
+				inp:set_str(string.sub(instr, 1, start) .. insert)
+			end
+		end
+-- delete word and inject item
+	end
 end
 
 -- set a temporary hook that will override menu navigation
@@ -288,7 +312,14 @@ function menu_query_value(ctx, mask, block_back)
 	else
 -- or a "normal" run with custom input and validator feedback
 		res = active_display():lbar(
-			value_entry_input, ctx, {set = {"fnurg", "burg"}, password_mask = mask, label = hintstr});
+			value_entry_input, ctx,
+				{
+					set = {"fnurg", "burg"},
+					password_mask = mask,
+					label = hintstr,
+					on_context = value_context
+				}
+			);
 	end
 	if (res) then
 		if (not res.on_cancel) then
@@ -1009,9 +1040,13 @@ lbar_opts.on_context =
 function(lbar, ctx, instr)
 	local tgt = nil;
 
-	for k,v in ipairs(ctx.list) do
-		if (v.label and string.lower(v.label) == string.lower(instr)) then
-			tgt = v;
+	if #instr == 0 then
+		tgt = ctx.list[1]
+	else
+		for k,v in ipairs(ctx.list) do
+			if (v.label and string.lower(v.label) == string.lower(instr)) then
+				tgt = v;
+			end
 		end
 	end
 

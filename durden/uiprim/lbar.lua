@@ -178,6 +178,7 @@ local function update_completion_set(wm, ctx, set)
 	if (not set) then
 		return;
 	end
+
 	ctx.ucount = ctx.ucount + 1;
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
@@ -432,6 +433,7 @@ local function lbar_ih(wm, ictx, inp, sym, caret)
 		update_caret(ictx, ictx.mask_text);
 		return;
 	end
+
 	inp.csel = inp.csel and inp.csel or 1;
 	local res = ictx.get_cb(ictx.cb_ctx, ictx.inp.msg, false, ictx.inp.set, ictx.inp);
 
@@ -588,7 +590,7 @@ function lbar_input(wm, sym, iotbl, lutsym, meta)
 			k_end    = SYSTEM_KEYS["end"],
 			k_delete = SYSTEM_KEYS["delete"],
 			k_erase  = SYSTEM_KEYS["erase"],
-			k_context = SYSTEM_KEYS["context"]
+			k_expand = SYSTEM_KEYS["expand"]
 		};
 
 -- forward to the read/edit-line like tool

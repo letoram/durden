@@ -916,10 +916,6 @@ function suppl_binding_queue(arg)
 	end
 end
 
-local function text_input_sym(ctx, sym)
-
-end
-
 local function text_input_table(ctx, io, sym)
 -- first check if modifier is held, and apply normal 'readline' translation
 	if not io.active then
@@ -934,7 +930,7 @@ local function text_input_table(ctx, io, sym)
 
 -- last normal text input
 	local keych = io.utf8;
-	if (keych == nil or keych == '') then
+	if (keych == nil) then
 		return ctx;
 	end
 
@@ -1094,6 +1090,7 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		k_end = "END",
 		k_delete = "DELETE",
 		k_erase = "ERASE",
+		k_context = "TAB"
 	};
 
 	local flut = {
@@ -1102,7 +1099,8 @@ function suppl_text_input(ctx, iotbl, sym, redraw, opts)
 		k_home = text_input_chome,
 		k_end = text_input_cend,
 		k_delete = text_input_cdel,
-		k_erase = text_input_cerase
+		k_erase = text_input_cerase,
+		k_context = function() end
 	};
 
 -- overlay any provided keybindings

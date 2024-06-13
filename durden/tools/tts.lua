@@ -224,13 +224,25 @@ local function voice_menu(voice, action)
 		if set_bind then
 			bar.custom_bindings[set_bind] =
 				function(ictx)
-					if not ictx.inp.lastm then
-						return
+					local tgt = ictx.inp.lastm
+					if not tgt or #tgt == 0 then
+						if ictx.inp.set and #ictx.inp.set > 0 then
+							tgt = ictx.inp.set
+						else
+							return
+						end
 					end
 
 					voice:message("set:")
-					for k,v in ipairs(ictx.inp.lastm) do
-						voice:message((v.submenu and "sub" or v.kind) .. " " .. v.label)
+					for k,v in ipairs(tgt) do
+						local prefix = ""
+						local value = v
+						if type(v) == "table" then
+							prefix = (v.submenu and "sub" or v.kind) .. " "
+							value = v.label
+						end
+
+						voice:message(prefix .. value)
 					end
 				end
 		end
