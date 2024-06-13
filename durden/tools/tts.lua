@@ -53,8 +53,8 @@ local function send_label(vid, lbl)
 end
 
 local function speak_message(voice, msg)
-	voice.last_message = msg
-	target_input(voice.vid, msg)
+	voice.last_message = tostring(msg)
+	target_input(voice.vid, tostring(msg))
 end
 
 local function drop_voice(name)
