@@ -199,7 +199,7 @@ local function make_playlist(wnd, fn, tracker, loader)
 	table.sort(tracker, function(a, b)
 		return suppl_sort_az_nat(a.file, b.file)
 	end)
-	wnd.list_index = table.find_i(tracker, fn)
+	wnd.list_index = table.find_i(tracker, fn) or 1
 
 	wnd.actions = { {
 		name = "playlist",
