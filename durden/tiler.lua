@@ -4085,23 +4085,59 @@ local function wnd_setsuspend(wnd, susp)
 	end
 end
 
-local function wnd_tofront(wnd)
-	if (not wnd.space) then
+local function wnd_toback(wnd, step)
+	if not wnd.space or #wnd.wm.windows == 1 then
 		return;
 	end
 
 	local wm = wnd.wm;
 	local wnd_i = table.find_i(wm.windows, wnd);
-	if (wnd_i) then
+	if wnd_i then
 		table.remove(wm.windows, wnd_i);
 	end
 
-	table.insert(wm.windows, wnd);
-	for i=1,#wm.windows do
-		order_image(wm.windows[i].anchor, i * WND_RESERVED);
+-- step back logically within the same workspace to find insertion spot
+	wnd_i = wnd_i > #wm.windows and #wm.windows or wnd_i
+	local new_i = 1
+	while wnd_i >= 1 and step and step > 0 do
+		if wm.windows[wnd_i].space == wnd.space then
+			step = step - 1
+			new_i = wnd_i
+		end
+		wnd_i = wnd_i - 1
 	end
 
-	order_image(wm.order_anchor, #wm.windows * 2 * WND_RESERVED);
+-- activate the changes
+	table.insert(wm.windows, new_i, wnd);
+	wm:rebuild_order();
+
+	if not wnd.selected then
+		return
+	end
+
+-- change selection if needed
+	for i=#wm.windows,1,-1 do
+		if wm.windows[i].space == wnd.space then
+			wm.windows[i]:select()
+			break
+		end
+	end
+end
+
+local function wnd_tofront(wnd)
+	if not wnd.space then
+		return;
+	end
+
+	local wm = wnd.wm;
+	local wnd_i = table.find_i(wm.windows, wnd);
+
+	if (wnd_i) then
+		table.remove(wm.windows, wnd_i);
+	end
+	table.insert(wm.windows, wnd);
+
+	wm:rebuild_order();
 end
 
 local function wnd_titlebar(wnd, visible)
@@ -5077,6 +5113,7 @@ local function wnd_set_vtable_vattr(wnd)
 	wnd.set_dispmask = wnd_dispmask
 	wnd.toggle_maximize = wnd_toggle_maximize
 	wnd.to_front = wnd_tofront
+	wnd.to_back = wnd_toback
 	wnd.update_font = wnd_font
 	wnd.resize = wnd_resize
 	wnd.display_table = get_disptbl
@@ -5923,6 +5960,14 @@ local function tiler_shutdown(tiler)
 	store_key(keys);
 end
 
+local function tiler_reorder(wm)
+	for i=1,#wm.windows do
+		order_image(wm.windows[i].anchor, i * WND_RESERVED);
+	end
+
+	order_image(wm.order_anchor, #wm.windows * 2 * WND_RESERVED);
+end
+
 function tiler_create(width, height, opts)
 	opts = opts == nil and {} or opts;
 	counter = counter + 1;
@@ -5982,6 +6027,7 @@ function tiler_create(width, height, opts)
 		cancellation = tiler_cancellation,
 		convert_mouse_xy = tiler_convert_mousexy,
 		shutdown = tiler_shutdown,
+		rebuild_order = tiler_reorder,
 
 -- indirection to allow dynamic buttons to move to a separate tray
 		get_dock =

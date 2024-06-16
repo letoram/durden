@@ -137,6 +137,78 @@ local function voice_clipboard(voice, action)
 	CLIPBOARD:add_monitor(voice.clipboard)
 end
 
+local function build_a11y_handler(voice)
+	return
+	{
+		request = function(wm, wnd, source, ev)
+			log("tts:a11ywnd:request")
+
+			if wnd.a11y and valid_vid(wnd.a11y.vid, TYPE_FRAMESERVER) then
+				delete_image(wnd.a11y.vid)
+			end
+
+			wnd.a11y = {
+				vid =
+				accept_target(32, 32,
+					function(source, status)
+						if status.kind == "resized" then
+							show_image(source)
+							resize_image(source, status.width, status.height)
+
+						elseif status.kind == "content_state" then
+							target_displayhint(source, status.max_w, status.max_h)
+-- acknowledge desired dimensions
+
+						elseif status.kind == "message" then
+-- out-of-band speak
+							voice:message("message: " .. status.message)
+
+						elseif status.kind == "alert" then
+-- notification that something happened that is kept outside the normal
+							voice:message("alert:" .. status.message)
+
+						elseif status.kind == "frame" then
+-- now we can sweep and speak the part of the window that has changed
+-- through access_image_storage as the backing is tui
+
+						elseif status.kind == "terminated" then
+							delete_image(source)
+							wnd.a11y = nil
+						end
+					end
+				)
+		}
+
+		image_inherit_order(wnd.a11y.vid, true)
+		suppl_tgt_color(wnd.a11y.vid, gconfig_get("tui_colorscheme"))
+		link_image(wnd.a11y.vid, wnd.canvas, ANCHOR_LL)
+		target_flags(wnd.a11y.vid, TARGET_BLOCKADOPT)
+		return a11y_handler
+	end,
+	destroy = function()
+		wm.a11y_handler = nil
+	end
+	}
+end
+
+local function voice_a11y(voice, action)
+	for d in all_tilers_iter() do
+		if d.a11y_handler then
+			d.a11y_handler:destroy()
+		end
+		d.a11y_handler = build_a11y_handler(voice)
+	end
+
+	table.insert(voice.cleanup, function()
+		for d in all_tilers_iter() do
+			if d.a11y_handler then
+				d.a11y_handler.destroy()
+			end
+		end
+	end
+	)
+end
+
 local function voice_clipboard_paste(voice, action)
 	local map = voice.map
 
@@ -310,7 +382,8 @@ local actions = {
 ["select"] = voice_select,
 ["clipboard"] = voice_clipboard,
 ["clipboard_paste"] = voice_clipboard_paste,
-["menu"] = voice_menu
+["menu"] = voice_menu,
+["a11ywnd"] = voice_a11y
 }
 
 local function load_voice(name)

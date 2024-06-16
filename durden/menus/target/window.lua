@@ -154,6 +154,35 @@ local select_menu = {
 		handler = function()
 			active_display().selected:next();
 		end
+	},
+	{
+		name = "step_back",
+		label = "Step Back",
+		description = "Push the window back in the stacking order",
+		kind = "action",
+		handler = function()
+			active_display().selected:to_back(1);
+		end
+	},
+	{
+		name = "to_back",
+		label = "To Back",
+		description = "Move the window to the bottom of the stacking order",
+		kind = "action",
+		handler =
+		function()
+			active_display().selected:to_back();
+		end
+	},
+	{
+		name = "to_front",
+		label = "To Front",
+		description = "Move the window to the top of the stacking order",
+		kind = "action",
+		handler =
+		function()
+			active_display().selected:to_front();
+		end
 	}
 };
 

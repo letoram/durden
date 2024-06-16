@@ -20,8 +20,16 @@ local tbl =
 			clipboard = "clip",
 			clipboard_paste = "clip",
 			notification = "notify",
-			menu = "menu"
+			menu = "menu",
+			a11ywnd = "wnd",
     },
+
+		cursor =
+		{
+			xy_beep = 11000,
+			xy_beep_timer = 5,
+			name = "",
+		},
 
 -- special options and bindings for menu navigation which different input system
 		menu =
@@ -37,9 +45,9 @@ local tbl =
     bindings =
     {
 			m1_r = "/global/tools/tts/voices/basic_eng/flush",
-			m1_F1 = "/global/tools/tts/voices/basic_eng/input_incrate",
-			m1_F2 = "/global/tools/tts/voices/basic_eng/input_decrate",
-			m1_t = "/global/tools/tts/voices/basic_eng/slow_replay"
+			m1_F1 = "/global/tools/tts/voices/basic_eng/input/incrate",
+			m1_F2 = "/global/tools/tts/voices/basic_eng/input/decrate",
+			m1_t = "/global/tools/tts/voices/basic_eng/slow_replay",
     }
 }
 

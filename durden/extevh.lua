@@ -426,6 +426,15 @@ local function default_reqh(wnd, source, ev)
 		"icon"
 	};
 
+-- special case accessibility, one per window if enabled and treated as an overlay
+	if ev.segkind == "accessibility" then
+		print("req-ack:", wnd.wm.a11y_handler)
+		if wnd.wm.a11y_handler then
+			wnd.wm.a11y_handler.request(wnd.wm, wnd, source, ev)
+		end
+		return
+	end
+
 -- early out if the type is not permitted
 	if (wnd.allowed_segments and
 		not table.find_i(wnd.allowed_segments, ev.segkind)) then
