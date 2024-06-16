@@ -184,7 +184,7 @@ local function get_remstr(val)
 end
 
 local function launch(str, cfg, tag)
-	local tags = list_target_tags(str)
+	local configs, tgttag = target_configurations(str)
 	local mode = LAUNCH_INTERNAL;
 
 -- use a tag to indicate that the target should be launched in
@@ -192,10 +192,8 @@ local function launch(str, cfg, tag)
 -- quite preliminary and we should allow other hooks for the case
 -- so that a binding like "all windows migrate" could be possible
 -- on enter external.
-	for i,v in ipairs(tags) do
-		if v == "external" then
-			mode = LAUNCH_EXTERNAL;
-		end
+	if tgttag == "external" then
+		mode = LAUNCH_EXTERNAL;
 	end
 
 	local vid = launch_target(str, cfg, mode, def_handler);
