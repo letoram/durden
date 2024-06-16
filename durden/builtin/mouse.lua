@@ -177,11 +177,11 @@ function mouse_inertia(x, y)
 	mstate.inertia_acc_y = 0;
 end
 
-local function mouse_cursor_draw()
+local function mouse_cursor_draw(nofwd)
 	local x, y = mouse_hotxy();
 	move_image(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs);
 
-	if mstate.cursor_hook then
+	if not nofwd and mstate.cursor_hook then
 		for k,v in ipairs(mstate.cursor_hook) do
 			v(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs, mstate.active_label);
 		end
@@ -600,12 +600,12 @@ function mouse_absinput_masked(x, y, nofwd)
 	mouse_hidemask(false);
 end
 
-function mouse_warp(x, y)
+function mouse_warp(x, y, nofwd)
 	mstate.x = x;
 	mstate.y = y;
 	mstate.press_x = x;
 	mstate.press_y = y;
-	mouse_cursor_draw();
+	mouse_cursor_draw(nofwd);
 end
 
 --
@@ -625,7 +625,7 @@ function mouse_absinput(x, y, nofwd)
 	mstate.y = y + (ary - ry);
 -- also need to constrain the relative coordinates when we clamp
 	lock_constrain();
-	mouse_cursor_draw();
+	mouse_cursor_draw(nofwd);
 
 	if (not nofwd) then
 		mouse_input(mstate.x, mstate.y, nil, true);

@@ -161,14 +161,35 @@ end
 
 local function resolve_xy(disp)
 	if (disp.zoom.origo == "mouse") then
+		local fact = 1.0 / disp.zoom.level
 		local mx, my = mouse_xy();
 		local ad = active_display();
-		local lx = math.clamp(mx, 0.001, ad.width) / ad.width;
-		local ly = math.clamp(my, 0.001, ad.height) / ad.height;
-		return lx, ly;
+
+		local ew = 0.5 * ad.width * fact;
+		local eh = 0.5 * ad.height * fact;
+
+		mx = (mx - ew) / ad.width;
+		my = (my - eh) / ad.height;
+
+		return math.clamp(mx, 0.0, 1.0), math.clamp(my, 0.0, 1.0)
 	else
 		return disp.zoom.x, disp.zoom.y;
 	end
+end
+
+local function autopan_mouse(cursor, x, y, label)
+	local disp = active_display(false, true)
+	local fact = gconfig_get("mouse_factor")
+	if disp.zoom.level <= 1.0 then
+		mouse_acceleration(fact, fact)
+		return
+	end
+
+-- center so offset by half effective
+	local x, y = resolve_xy(disp)
+	fact = fact * 1.0 / disp.zoom.level
+	mouse_acceleration(fact, fact)
+	disp:view_range(x, y, disp.zoom.level)
 end
 
 local function get_rt_set()
@@ -189,31 +210,24 @@ end
 local function gen_zoom_menu(disp)
 	return {
 		{
-			name = "cursor",
-			kind = "action",
-			label = "Cursor",
-			description = "Use the last known cursor position as origo",
+			name = "origin",
+			kind = "value",
+			label = "Origin",
+			description = "Control zoom stepping origin",
+			set = {"mouse", "upper-left"},
 			handler = function(ctx, val)
-				disp.zoom.origo = "mouse";
+				disp.zoom.origo = val
 				local x, y = resolve_xy(disp);
 				disp:view_range(x, y, disp.zoom.level);
-			end,
+			end
 		},
 		{
 			name = "autopan",
 			kind = "action",
 			label = "Autopan",
-			description = "Have the zoom region follow the mouse cursor",
-	-- this came with a late change to mouse.lua in upstream arcan, so not
-	-- always applicable, keep it here for the time being
-			experimental = true,
-			eval = function()
---				return mouse_cursorhook ~= nil;
-			end,
+			description = "Toggle zoom region tracking cursor movement",
 			handler = function(ctx, val)
-				mouse_cursorhook(function()
-					autopan(disp)
-				end)
+				mouse_cursorhook(autopan_mouse)
 			end
 		},
 		{
@@ -228,7 +242,6 @@ local function gen_zoom_menu(disp)
 				disp:view_range(x, y, tonumber(val));
 			end
 		},
--- the cursor needs to be accounted for
 		{
 			name = "step",
 			kind = "value",
@@ -238,7 +251,7 @@ local function gen_zoom_menu(disp)
 			initial = disp.zoom.level,
 			handler = function(ctx, val)
 				local x, y = resolve_xy(disp);
-					disp:view_range(x, y, tonumber(val) + disp.zoom.level);
+				disp:view_range(x, y, tonumber(val) + disp.zoom.level);
 			end
 		}
 	};
@@ -281,7 +294,7 @@ local function gen_disp_menu(disp)
 		label = "Zoom",
 		name = "zoom",
 		kind = "action",
-		description = "Large portions of the screen",
+		description = "Scale a part of the screen",
 		submenu = true,
 		handler =
 		function()

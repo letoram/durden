@@ -966,10 +966,13 @@ function(disp, x, y, factor)
 	disp.zoom.x = math.clamp(x, 0.0, 1.0);
 	disp.zoom.y = math.clamp(y, 0.0, 1.0);
 
+	local mx, my = mouse_xy()
+	print(mx, my, s1, t1, s2, t2)
+
 -- just uniform
 	local base = 1.0 / factor;
-	local s1 = disp.zoom.x * base;
-	local t1 = disp.zoom.y * base;
+	local s1 = disp.zoom.x;
+	local t1 = disp.zoom.y;
 	local s2 = s1 + base;
 	local t2 = t1 + base;
 
