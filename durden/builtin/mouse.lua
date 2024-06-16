@@ -182,14 +182,25 @@ local function mouse_cursor_draw()
 	move_image(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs);
 
 	if mstate.cursor_hook then
-		mstate.cursor_hook(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs);
+		for k,v in ipairs(mstate.cursor_hook) do
+			v(mstate.cursor, x + mstate.x_ofs, y + mstate.y_ofs, mstate.active_label);
+		end
 	end
 end
 
-local function mouse_cursorhook(newhook)
-	local oldhook = mstate.cursor_hook;
-	mstate.cursor_hook = newhook;
-	return oldhook;
+function mouse_cursorhook(newhook)
+	if not mstate.cursor_hook then
+		mstate.cursor_hook = {}
+	end
+
+	if table.remove_match(mstate.cursor_hook, newhook) then
+		if #mstate.cursor_hook == 0 then
+			mstate.cursor_hook = nil
+		end
+		return
+	end
+
+	table.insert(mstate.cursor_hook, newhook)
 end
 
 local function lock_constrain()

@@ -14,21 +14,29 @@ local tbl =
 
 -- set of events that this voice will cover
     actions = {
-    	select = {"title", "title_text"},
+    	select = {"wind", "tit", "title_text"},
 			menu = "menu",
 			dispatch = "run",
-			clipboard = "clip",
-			clipboard_paste = "clip",
+			clipboard = "clip set",
+			clipboard_paste = "clip paste",
 			notification = "notify",
 			menu = "menu",
-			a11ywnd = "wnd",
+			a11ywnd = "wind",
+			cursor = "curs"
     },
+
+-- pattern- matches and replacements
+		replace =
+		{
+			{"^[-]", ""},
+			{"^terminal[-]", "term "},
+			{"$ [-] Chromium", ""},
+		},
 
 		cursor =
 		{
-			xy_beep = 11000,
+			xy_beep = "C2",
 			xy_beep_timer = 5,
-			name = "",
 		},
 
 -- special options and bindings for menu navigation which different input system
@@ -45,9 +53,11 @@ local tbl =
     bindings =
     {
 			m1_r = "/global/tools/tts/voices/basic_eng/flush",
-			m1_F1 = "/global/tools/tts/voices/basic_eng/input/incrate",
-			m1_F2 = "/global/tools/tts/voices/basic_eng/input/decrate",
+			m1_F2 = "/global/tools/tts/voices/basic_eng/input/incrate",
+			m1_F3 = "/global/tools/tts/voices/basic_eng/input/decrate",
+			m1_F1 = "/global/tools/tts/voices/basic_eng/read_bindings",
 			m1_t = "/global/tools/tts/voices/basic_eng/slow_replay",
+--    m1_o = "/global/tools/tts/voices/basic_eng/ocr=200,100",
     }
 }
 

@@ -21,6 +21,25 @@ local function rescan()
 	end)
 end
 
+local notes = {}
+local function build_note_lut()
+	local a4 = 440
+	local names = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
+	for i=12,131 do
+		local vreq = a4 * 2^((i-69)-12)
+		local oct = math.floor(i/12)-1
+		local ind = i%12+1
+		local name = names[ind] .. tostring(oct)
+		notes[name] = freq
+	end
+end
+build_note_lut()
+
+local function play_tone(note, offset, length, waveform)
+-- generate the sample buffer
+-- create an aid, hook the end of playback to destroy
+end
+
 local function verify_add(res)
 -- make sure the required fields are there, warn on missing ones,
 -- find suitable decode voice
@@ -52,9 +71,35 @@ local function send_label(vid, lbl)
 		{kind = "digital", label = lbl, active = true, devid = 0, subid = 0})
 end
 
-local function speak_message(voice, msg)
+local function speak_message(voice, prefix, msg, reset)
+	msg = string.trim(tostring(msg))
+
+-- apply substitution patterns
+	if voice.profile.replace then
+		for k,v in ipairs(voice.profile.replace) do
+			msg = string.gsub(msg, v[1], v[2])
+		end
+	end
+
+-- ignore empty string
+	if #msg == 0 then
+		return
+	end
+
+-- don't repeat ourselves
+	if voice.last_message == msg then
+		return
+	end
+
 	voice.last_message = tostring(msg)
-	target_input(voice.vid, tostring(msg))
+
+-- speak if the voice isn't dead, flush before if desired
+	if valid_vid(voice.vid) then
+		if reset then
+			reset_target(voice.vid)
+		end
+		target_input(voice.vid, prefix .. msg)
+	end
 end
 
 local function drop_voice(name)
@@ -86,16 +131,18 @@ local function voice_select(voice, action)
 			return
 		end
 
-		local value = string.trim(wnd[action[2]])
+		local value = string.trim(wnd[action[3]])
 		if #value == 0 then
-			voice:message(string.format("wnd %s", action[1], wnd.atype or ""))
+-- don't speak empty title
+			voice:message(action[1], "empty", true)
+--voice:message(string.format("wnd %s", action[2], wnd.atype or ""))
 			return
 		end
 
-		local msg = string.format("wnd %s %s", action[1], value)
+		local msg = value
 		if voice.last_select ~= msg then
 			voice.last_select = msg
-			voice:message(msg)
+			voice:message(string.format("%s %s", action[1], action[2]), msg, true)
 		end
 	end
 
@@ -127,7 +174,7 @@ local function voice_clipboard(voice, action)
 			return
 		end
 
-		voice:message(string.format("%s set %s", action, msg))
+		voice:message(action, msg)
 	end
 
 	table.insert(voice.cleanup,
@@ -137,12 +184,10 @@ local function voice_clipboard(voice, action)
 	CLIPBOARD:add_monitor(voice.clipboard)
 end
 
-local function build_a11y_handler(voice)
+local function build_a11y_handler(voice, wm)
 	return
 	{
 		request = function(wm, wnd, source, ev)
-			log("tts:a11ywnd:request")
-
 			if wnd.a11y and valid_vid(wnd.a11y.vid, TYPE_FRAMESERVER) then
 				delete_image(wnd.a11y.vid)
 			end
@@ -161,11 +206,11 @@ local function build_a11y_handler(voice)
 
 						elseif status.kind == "message" then
 -- out-of-band speak
-							voice:message("message: " .. status.message)
+							voice:message("message ", status.message)
 
 						elseif status.kind == "alert" then
 -- notification that something happened that is kept outside the normal
-							voice:message("alert:" .. status.message)
+							voice:message("alert ", status.message)
 
 						elseif status.kind == "frame" then
 -- now we can sweep and speak the part of the window that has changed
@@ -191,12 +236,34 @@ local function build_a11y_handler(voice)
 	}
 end
 
+local function voice_cursor(voice, action)
+	voice.cursor_hook =
+	function(vid, x, y, label)
+		if voice.last_cursor == label or #label == 0 then
+			return
+		end
+		voice.last_cursor = label
+		voice:message(action, label, true)
+	end
+
+	if voice.cursor then
+-- hook timer for generating beep, calcregion for edge detection
+	end
+
+	mouse_cursorhook(voice.cursor_hook)
+
+	table.insert(voice.cleanup,
+	function()
+		mouse_cursorhook(voice.cursor_hook)
+	end)
+end
+
 local function voice_a11y(voice, action)
 	for d in all_tilers_iter() do
 		if d.a11y_handler then
 			d.a11y_handler:destroy()
 		end
-		d.a11y_handler = build_a11y_handler(voice)
+		d.a11y_handler = build_a11y_handler(voice, d)
 	end
 
 	table.insert(voice.cleanup, function()
@@ -215,9 +282,9 @@ local function voice_clipboard_paste(voice, action)
 	voice.clipboard_paste =
 	function(msg, fail)
 		if fail then
-			voice:message(string.format("%s couldn't paste", action))
+			voice:message(action, " fail")
 		else
-			voice:message(string.format("%s paste %s", action, msg))
+			voice:message(action, msg)
 		end
 	end
 	table.insert(voice.cleanup, function()
@@ -249,7 +316,7 @@ local function voice_menu(voice, action)
 		local bar = tiler_lbar(...)
 		local cp = menu_get_current_path()
 		local set = string.split(cp, "/")
-		voice:message(set[#set] .. (bar.inp.lastm and
+		voice:message("", set[#set] .. (bar.inp.lastm and
 			bar.inp.lastm[1] and bar.inp.lastm[1].label or ""))
 
 -- get input string and input prefix
@@ -259,12 +326,12 @@ local function voice_menu(voice, action)
 			function(ictx)
 				local str = ictx.inp:view_str()
 				if #str == 0 then
-					voice:message("empty prompt")
+					voice:message("", "empty prompt")
 				else
-					voice:message("prompt " .. str)
+					voice:message("prompt", str)
 					local caret = ictx.inp:caret_str()
 					if caret ~= str then
-						voice:message("before " .. caret)
+						voice:message("before", caret)
 					end
 				end
 			end
@@ -275,9 +342,9 @@ local function voice_menu(voice, action)
 			bar.custom_bindings[help_bind] =
 			function(ictx)
 				if ictx.last_helper then
-					voice:message(ictx.last_helper)
+					voice:message("help", ictx.last_helper)
 				else
-					voice:message("no description")
+					voice:message("help", "no description")
 				end
 			end
 		end
@@ -287,7 +354,7 @@ local function voice_menu(voice, action)
 		if path_bind then
 			bar.custom_bindings[path_bind] =
 				function(ictx)
-					voice:message(action .. menu_get_current_path())
+					voice:message(action, menu_get_current_path())
 				end
 		end
 
@@ -305,7 +372,7 @@ local function voice_menu(voice, action)
 						end
 					end
 
-					voice:message("set:")
+					voice:message(action, "set")
 					for k,v in ipairs(tgt) do
 						local prefix = ""
 						local value = v
@@ -314,7 +381,7 @@ local function voice_menu(voice, action)
 							value = v.label
 						end
 
-						voice:message(prefix .. value)
+						voice:message("", prefix .. value)
 					end
 				end
 		end
@@ -341,7 +408,7 @@ local function voice_menu(voice, action)
 				end
 				if key and key ~= lastmsg and key ~= ".." then
 					reset_target(voice.vid)
-					voice:message(key)
+					voice:message("", key, true)
 					lastmsg = key
 				end
 		end
@@ -379,11 +446,12 @@ end
 -- the other place for extension is the voice menu further below for
 -- things that resolve to simpler menu path actions
 local actions = {
-["select"] = voice_select,
-["clipboard"] = voice_clipboard,
+["select"]          = voice_select,
+["clipboard"]       = voice_clipboard,
 ["clipboard_paste"] = voice_clipboard_paste,
-["menu"] = voice_menu,
-["a11ywnd"] = voice_a11y
+["menu"]            = voice_menu,
+["a11ywnd"]         = voice_a11y,
+["cursor"]          = voice_cursor
 }
 
 local function load_voice(name)
@@ -541,7 +609,7 @@ local function get_voice_opts(v)
 			if not val or #val == 0 then
 				return
 			end
-			v:message(val)
+			v:message("speak", val)
 		end
 	});
 
@@ -578,7 +646,7 @@ local function get_voice_opts(v)
 			if v.last_message then
 				send_label(v.vid, "SLOW");
 				target_input(v.vid, v.last_message);
-				target_input(v.vid, "SETRATE");
+				send_label(v.vid, "SETRATE");
 			end
 		end
 	});
@@ -590,7 +658,7 @@ local function get_voice_opts(v)
 		kind = "action",
 		handler = function()
 			if tts_in_echo and tts_in_echo ~= v then
-				v:message("key echo held by other active voice")
+				v:message("echo fail", "key echo held by other active voice")
 				return
 			end
 
@@ -608,11 +676,13 @@ local function get_voice_opts(v)
 		end
 	})
 
--- any dynamic input labels from the speech service
+	local isub = {
+	}
+
 	for _, lbl in ipairs(v.labels) do
-		table.insert(ent,
+		table.insert(isub,
 			{
-				name = "input_" .. string.lower(lbl),
+				name = string.lower(lbl),
 				kind = "action",
 				description = "forward input to speech service",
 				label = lbl,
@@ -622,6 +692,17 @@ local function get_voice_opts(v)
 			}
 		)
 	end
+
+	table.insert(ent,
+		{
+			name = "input",
+			label = "Input",
+			kind = "action",
+			submenu = true,
+			description = "TTS Service provided input triggers",
+			handler = isub
+		}
+	)
 
 	return ent;
 end
