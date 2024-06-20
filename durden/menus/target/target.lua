@@ -55,7 +55,7 @@ local shared_actions = {
 		kind = "action",
 		description = "Audio controls",
 		eval = function(ctx)
-			return active_display().selected.source_audio;
+			return active_display().selected.source_audio ~= nil;
 		end,
 		handler = system_load("menus/target/audio.lua")()
 	},
