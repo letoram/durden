@@ -35,6 +35,21 @@ local function build_note_lut()
 end
 build_note_lut()
 
+local function build_sine(freq, length)
+	local step = 2 * math.pi * freq / 48000.0
+	local samples = length * 48000.0
+	local res = {}
+	local val = 0
+
+	for i=1,samples,2 do
+		res[i] = math.sin(val)
+		res[i+1] = res[i]
+		val = val + step
+	end
+
+	return res
+end
+
 local function play_tone(note, offset, length, waveform)
 -- generate the sample buffer
 -- create an aid, hook the end of playback to destroy
@@ -560,6 +575,15 @@ local function load_voice(name)
 				timer_add_periodic("t2s_start", 1, true, function()
 					if valid_vid(source) then
 						target_input(source, "the voice" .. name .. " activated")
+
+-- activate spatial if requested
+						if map.position then
+							voice.positioner = null_surface(1, 1)
+							link_image(voice.positioner, source)
+							image_mask_clear(voice.positioner, MASK_POSITION)
+							move3d_model(voice.positioner, unpack(map.position))
+							audio_position(status.source_audio, voice.positioner)
+						end
 					end
 				end)
 

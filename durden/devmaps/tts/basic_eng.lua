@@ -11,7 +11,6 @@ local tbl =
 		name = "basic_eng",
 		punct = 1,
 		cappitch = 5000,
-
 -- set of events that this voice will cover
     actions = {
     	select = {"wind", "tit", "title_text"},
@@ -24,6 +23,9 @@ local tbl =
 			a11ywnd = "wind",
 			cursor = "curs"
     },
+
+-- this would position the voice back and to left
+--		position = {-5, 0, -5},
 
 -- pattern- matches and replacements
 		replace =
