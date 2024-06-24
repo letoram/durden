@@ -9,6 +9,70 @@ local function allgain(val)
 	end
 end
 
+local defcfg =
+{
+	hrtf = false
+}
+
+local function gen_device_menu(devid)
+	local res =
+	{
+	{
+		name = "hrtf",
+		label = "HRTF",
+		kind = "value",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		description = "Toggle head-related transfer functions",
+		initial = defcfg.hrtf and LBL_YES or LBL_NO,
+		handler = function(ctx, val)
+			if val == LBL_FLIP then
+				defcfg.hrtf = not defcfg.hrtf
+			else
+				defcfg.hrtf = val == LBL_YES
+			end
+			audio_reconfigure(defcfg)
+		end
+	},
+	}
+
+	return res
+end
+
+local function gen_devices_menu()
+	local res =
+	{
+	{
+		name = "default",
+		label = "Default",
+		kind = "action",
+		description = "Change settings for the current default output sink",
+		submenu = true,
+		handler = function()
+			return gen_device_menu("default")
+		end
+	}
+	}
+
+	local out = audio_outputs and audio_outputs() or {}
+	if #out > 0 then
+		table.insert(res,
+		{
+			name = "reroute",
+			label = "Reroute",
+			kind = "value",
+			set = out,
+			description = "Set output as new default and reconfigure audio to it",
+			handler = function(ctx, val)
+				defcfg.output = val
+				audio_reconfigure(defcfg)
+			end
+		}
+	)
+	end
+
+	return res
+end
+
 return {
 	{
 		name = "enabled",
@@ -26,6 +90,15 @@ return {
 			allgain(val and 0.0 or gconfig_get("global_gain"));
 			gconfig_set("global_mute", val);
 		end
+	},
+	{
+		name = "devices",
+		label = "Devices",
+		kind = "action",
+		submenu = true,
+		eval = function() return audio_reconfigure ~= nil; end,
+		handler = gen_devices_menu,
+		description = "Control device buffering, spatialization and other settings",
 	},
 	{
 		name = "volume",
