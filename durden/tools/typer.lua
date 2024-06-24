@@ -207,6 +207,7 @@ local input_menu =
 		label = "Oracle",
 		kind = "value",
 		description = "Set the oracle used for generating suggestions",
+		initial = function() return config.oracle; end,
 		set = {"none", "spell"},
 		handler = function(ctx, val)
 			config.oracle = val
