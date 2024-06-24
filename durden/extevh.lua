@@ -428,7 +428,6 @@ local function default_reqh(wnd, source, ev)
 
 -- special case accessibility, one per window if enabled and treated as an overlay
 	if ev.segkind == "accessibility" then
-		print("req-ack:", wnd.wm.a11y_handler)
 		if wnd.wm.a11y_handler then
 			wnd.wm.a11y_handler.request(wnd.wm, wnd, source, ev)
 		end
