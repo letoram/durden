@@ -1,5 +1,7 @@
 # 0.7.0 (ongoing):
 
+* global/audio extended with toggles for spatial audio and device reassignment
+
 * new tool: typer (global/input/text)
 
 * new tool: mouse gestures (global/input/mouse/gesture)

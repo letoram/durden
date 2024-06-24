@@ -578,6 +578,7 @@ local gen_menu_for_path;
 local function gen_menu_for_resource(path, v, descr, prefix, ns, tracker)
 	local fqn = path .. (path == "/" and "" or "/") .. v;
 	local nsfqn = fqn;
+	print("gen", fqn, nsfqn, descr)
 
 	if type(ns) == "string" then
 		nsfqn = ns .. ":/" .. fqn;
@@ -663,8 +664,7 @@ local function gen_menu_for_resource(path, v, descr, prefix, ns, tracker)
 end
 
 gen_menu_for_path = function(path, prefix, ns)
-	local gpath = path == "/" and "/*" or path .. "/*";
-	local files = glob_resource(gpath, ns);
+	local files = glob_resource(path, ns);
 	local tracker = {};
 
 	local res = {
