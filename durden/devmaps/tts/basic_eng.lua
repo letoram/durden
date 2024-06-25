@@ -21,7 +21,6 @@ local tbl =
 			notification = "notify",
 			menu = "menu",
 			a11ywnd = "wind",
-			cursor = "curs"
     },
 
 -- this would position the voice back and to left
@@ -33,12 +32,6 @@ local tbl =
 			{"^[-]", ""},
 			{"^terminal[-]", "term "},
 			{"$ [-] Chromium", ""},
-		},
-
-		cursor =
-		{
-			xy_beep = "C2",
-			xy_beep_timer = 5,
 		},
 
 -- special options and bindings for menu navigation which different input system

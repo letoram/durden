@@ -6,6 +6,23 @@ local scan_voices = {}; -- set of known voice styles
 local log, fmt = suppl_add_logfn("tools");
 local tts_in_echo;
 
+local labels =
+{
+	no_wnd = "no window selected",
+	no_tui = "window is pixel based",
+	empty_prompt = "empty prompt",
+	prompt = "prompt",
+	help = "help",
+	no_description = "no description",
+	speak = "speak",
+	echo_fail = "echo fail",
+	echo_fail_long = "key echo held by other active voice",
+	no_changes = "nothing changed",
+	at_top = "current row at top",
+	at_bottom = "current row at bottom",
+	current_row = "row %d "
+}
+
 local function rescan()
 	scan_voices = {};
 	launch_avfeed("protocol=t2s:list", "decode",
@@ -55,27 +72,50 @@ local function play_tone(note, offset, length, waveform)
 -- create an aid, hook the end of playback to destroy
 end
 
-local function verify_add(res)
+local function verify_add(res, fn)
+-- missing:
 -- make sure the required fields are there, warn on missing ones,
 -- find suitable decode voice
+	for i,e in ipairs(map_cache) do
+		if e.file == fn then
+			map_cache[i] = res
+			return
+		end
+	end
+
 	table.insert(map_cache, res)
 end
 
 local function list_devmaps(rescan)
-	if rescan then
-		map_cache = glob_resource("devmaps/tts/*.lua", APPL_RESOURCE);
-		for i=#map_cache, 1 do
-			if string.sub(map_cache[i], -4) ~= ".lua" or #map_cache[i] == 4 then
-				table.remove(map_cache, 1)
+	if not rescan then
+		return map_cache
+	end
+
+	local files = glob_resource("devmaps/tts/*.lua", APPL_RESOURCE);
+	for i,v in ipairs(map_cache) do
+		v.mark = true
+	end
+
+	for _,v in ipairs(files) do
+		if string.sub(v, -4) == ".lua" and #v > 4 then
+			local found
+
+			local res = suppl_script_load("devmaps/tts/" .. v, log)
+			if res then
+				res.file = v
+				log("tts:new_profile=" .. v)
+				verify_add(res, v)
 			else
-				local res = suppl_script_load("devmaps/tts/" .. map_cache[i], log)
-				if res then
-					verify_add(res)
-				end
+				log("tts:load_error=" .. v)
 			end
 		end
 	end
-	return map_cache;
+
+	for i=#map_cache, 1 do
+		if v.mark then
+			table.remove(map_cache, i)
+		end
+	end
 end
 
 rescan();
@@ -341,12 +381,12 @@ local function voice_menu(voice, action)
 			function(ictx)
 				local str = ictx.inp:view_str()
 				if #str == 0 then
-					voice:message("", "empty prompt")
+					voice:message("", labels.empty_prompt)
 				else
-					voice:message("prompt", str)
+					voice:message(labels.prompt, str)
 					local caret = ictx.inp:caret_str()
 					if caret ~= str then
-						voice:message("before", caret)
+						voice:message(labels.prompt, caret)
 					end
 				end
 			end
@@ -357,9 +397,9 @@ local function voice_menu(voice, action)
 			bar.custom_bindings[help_bind] =
 			function(ictx)
 				if ictx.last_helper then
-					voice:message("help", ictx.last_helper)
+					voice:message(labels.prompt, ictx.last_helper)
 				else
-					voice:message("help", "no description")
+					voice:message(labels.help, labels.no_description)
 				end
 			end
 		end
@@ -455,6 +495,134 @@ local function voice_accessibility(voice, arg)
 -- notes and a placeholder.
 end
 
+local function tuiwnd_check(v)
+	local wnd = active_display().selected
+	if not wnd then
+		v:message("", labels.no_wnd)
+		return
+	elseif not wnd.tui_track then
+		v:message("", labels.no_tui)
+		return
+	end
+	return wnd
+end
+
+local function reset_track(wnd)
+	wnd.tui_track.x1 = 6666
+	wnd.tui_track.y1 = 6666
+	wnd.tui_track.x2 = -1
+	wnd.tui_track.y2 = -1
+end
+
+local function process_str_fmt(str, fmt)
+-- use [fmt] to format >bold< >italic<
+	return str
+end
+
+local function read_tui_row(wnd, v, x, y)
+	local tt = wnd.tui_track
+	image_access_storage(wnd.external,
+		function(data, w, h, cols, rows)
+			local str, fmt = data:read(x, tt.crow)
+			v:message("", process_str_fmt(str, fmt))
+		end
+	)
+end
+
+local function voice_tuiwnd_menu(v)
+	local res =
+	{
+		{
+			name = "changes",
+			label = "Changes",
+			description = "Read accumulated changes to the text window since last invocation",
+			kind = "action",
+			handler = function()
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+				if wnd.tui_track.x1 > wnd.tui_track.x2 or
+					wnd.tui_track.y1 > wnd.tui_track.y2 then
+					v:message("", labels.no_changes)
+					return
+				end
+				image_access_storage(
+					wnd.external,
+					function(data, w, h, cols, rows)
+						for y=wnd.tui_track.y1,wnd.tui_track.y2 do
+						end
+					end
+				)
+				reset_track(wnd)
+			end,
+		},
+		{
+			name = "row_up",
+			label = "Row up",
+			kind = "action",
+			description = "Move and read the selected row up one",
+			handler = function(ctx)
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+				wnd.tui_track.crow = math.clamp(wnd.tui_track.crow, 0, 6666)
+				if wnd.tui_track.crow > 0 then
+					wnd.tui_track.crow = wnd.tui_track.crow - 1
+					read_current_row(wnd, v)
+				else
+					v:message("", labels.at_top)
+				end
+			end
+		},
+		{
+			name = "row_down",
+			label = "Row Down",
+			description = "Move and read the selected row up one",
+			kind = "action",
+			handler = function(ctx)
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+				wnd.tui_track.crow = math.clamp(wnd.tui_track.crow, 0, 6666)
+				if not wnd.tui_track.rows or wnd.tui_track.crow < wnd.tui_track.rows then
+					wnd.tui_track.crow = wnd.tui_track.crow + 1
+					read_current_row(wnd, v)
+				else
+					v:message("", labels.at_bottom)
+				end
+			end
+		},
+		{
+			name = "cursor_before",
+			label = "Start to cursor",
+			description = "Read content from start of row up to and including the cursor",
+			kind = "action",
+			handler = function(ctx)
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+			end,
+		},
+		{
+			name = "cursor_after",
+			label = "Cursor to end",
+			description = "Read contents from cursor row and position until end of line",
+			kind = "action",
+			handler = function(ctx)
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+
+			end
+		}
+	}
+end
+
 -- actual implementations of all possible actions in the voice map
 -- extend here with features that requires deeper hooks into durden.
 --
@@ -468,6 +636,78 @@ local actions = {
 ["a11ywnd"]         = voice_a11y,
 ["cursor"]          = voice_cursor
 }
+
+local wndhooks = 0
+local function wnd_frame_hook(wnd, stat)
+	if not stat.cols then
+		return
+	end
+	local tt = wnd.tui_track
+
+-- just go full bounded rectangle
+	if stat.x < tt.x1 then
+		tt.x1 = stat.x
+	end
+
+	if stat.x + stat.cols > tt.x2 then
+		tt.x2 = stat.x + stat.cols
+	end
+
+	if stat.y < tt.y1 then
+		tt.y1 = stat.y
+	end
+
+	if stat.y + stat.rows > tt.y2 then
+		tt.y2 = stat.y + stat.rows
+	end
+end
+
+-- this is activated on first use then not dropped until back to zero
+local function ensure_wnd_hook()
+	if wndhooks > 0 then
+		return
+	end
+
+	wndhooks = wndhooks + 1
+	local types = {"tui", "accessibility", "terminal"}
+
+-- enable on existing windows of supported types
+	for _, type in ipairs(types) do
+		for wnd in all_windows(type) do
+			table.insert(wnd.handlers["frame"], wnd_frame_hook)
+			wnd.tui_track =
+			{
+				x1 = 6666, y1 = 6666,
+				x2 = -1, y2 = -1,
+				cx = 0, cy = 0,
+				crow = 0
+			}
+			if valid_vid(wnd.external) then
+				target_flags(wnd.external, TARGET_VERBOSE, true)
+			end
+		end
+	end
+
+-- and hook window creation and inject the event handler there
+	for d in all_tilers_iter() do
+		table.insert(d.on_wnd_create,
+			function(wm, wnd, space, active)
+				if table.find_i(types, wnd.atype) then
+					target_flags(wnd.external, TARGET_VERBOSE, true)
+				end
+				wnd.tui_track =
+				{
+					x1 = 6666, y1 = 6666,
+					x2 = -1, y2 = -1,
+					cx = 0, cy = 0,
+					crow = 0
+				}
+				table.insert(wnd.handlers["frame"], wnd_frame_hook)
+			end
+		)
+
+	end
+end
 
 local function load_voice(name)
 	if voices[name] then
@@ -572,7 +812,7 @@ local function load_voice(name)
 -- need to latch the voice message to after the preroll is over
 			elseif status.kind == "preroll" then
 				voice.active = true
-				timer_add_periodic("t2s_start", 1, true, function()
+				timer_add_periodic("tts_start", 1, true, function()
 					if valid_vid(source) then
 						target_input(source, "the voice" .. name .. " activated")
 
@@ -606,6 +846,7 @@ local function load_voice(name)
 
 	target_flags(voice.vid, TARGET_BLOCKADOPT)
 	audio_gain(voice.aid, map.gain)
+	ensure_wnd_hook();
 end
 
 local function get_voice_opts(v)
@@ -633,7 +874,7 @@ local function get_voice_opts(v)
 			if not val or #val == 0 then
 				return
 			end
-			v:message("speak", val)
+			v:message(labels.speak, val)
 		end
 	});
 
@@ -662,6 +903,18 @@ local function get_voice_opts(v)
 
 	table.insert(ent,
 	{
+		name = "text_window",
+		label = "Text Windows",
+		kind = "action",
+		submenu = true,
+		description = "Controls for speaking out the contents of text-only windows",
+		handler = function()
+			return voice_tuiwnd_menu(v)
+		end
+	})
+
+	table.insert(ent,
+	{
 		name = "slow_replay",
 		label = "Slow Replay",
 		kind = "action",
@@ -682,7 +935,7 @@ local function get_voice_opts(v)
 		kind = "action",
 		handler = function()
 			if tts_in_echo and tts_in_echo ~= v then
-				v:message("echo fail", "key echo held by other active voice")
+				v:message(labels.echo_fail, labels.echo_fail_long)
 				return
 			end
 
