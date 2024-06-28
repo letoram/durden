@@ -240,6 +240,7 @@ return {
 	meta_stick_time = 0,
 	meta_dbltime = 10,
 	meta_guard = false,
+	meta_hold_suggest = 120, -- set to 0 to disable
 
 -- minimum amount of ticks from epoch (-1 disables entirely)
 -- before device- event notifications appears

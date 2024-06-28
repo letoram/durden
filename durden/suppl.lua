@@ -53,8 +53,43 @@ function suppl_delete_image_if(vid)
 end
 
 function suppl_strcol_fmt(str, sel)
-	local hv = util.hash(str);
-	return HC_PALETTE[(hv % #HC_PALETTE) + 1];
+	local sum = 0
+	for i=1,#str do
+		local ch = string.byte(string.sub(str, i, i))
+		sum = sum + ch
+	end
+	return HC_PALETTE[(sum % #HC_PALETTE) + 1];
+end
+
+function suppl_hc_popup(set)
+	local fn = active_display():font_resfn()
+	local str = {fn}
+	local hw = suppl_display_ui_pad()
+
+	for i,v in ipairs(set) do
+		table.insert(str, v)
+		table.insert(str, "\\n\\r" .. suppl_strcol_fmt(v))
+	end
+	local text = render_text(str)
+	local props = image_surface_properties(text)
+
+	local sw = props.width + hw + hw
+	local sh = props.height + hw + hw
+
+	local ssurf = color_surface(sw, sh, 32, 32, 32)
+	local shid = shader_setup(ssurf, "ui", "rounded", "active")
+
+	link_image(ssurf, active_display().order_anchor)
+	image_inherit_order(ssurf, true)
+	order_image(ssurf, 10)
+
+	link_image(text, ssurf)
+	move_image(text, hw, hw)
+	image_inherit_order(text, true)
+	show_image(text)
+	order_image(text, 2)
+
+	return ssurf, sw, sh
 end
 
 function suppl_region_stop(trig)

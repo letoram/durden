@@ -967,7 +967,6 @@ function(disp, x, y, factor)
 	disp.zoom.y = math.clamp(y, 0.0, 1.0);
 
 	local mx, my = mouse_xy()
-	print(mx, my, s1, t1, s2, t2)
 
 -- just uniform
 	local base = 1.0 / factor;

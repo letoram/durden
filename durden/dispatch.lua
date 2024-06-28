@@ -13,10 +13,33 @@ local mtrack = {
 	unstick_ctr = 0,
 	dblrate = 10,
 	mstick = 0,
+	mholdctr = 0,
 	mlock = "none"
 };
 
 local dispatch_debug = suppl_add_logfn("dispatch");
+
+local last_helper
+local function popup_helper(set)
+	if not set then
+		suppl_delete_image_if(last_helper)
+		return
+	end
+
+	if valid_vid(last_helper) then
+		return
+	end
+
+	local vid, w, h = suppl_hc_popup(set)
+	local wm = active_display()
+
+	move_image(vid, 10, 10)
+	blend_image(vid, 1.0, gconfig_get("popup_animation"))
+
+	last_helper = vid
+end
+
+mtrack.mhold_helper = popup_helper
 
 function dispatch_bindings_overlay(tbl, add)
 	for k,v in pairs(tbl) do
@@ -24,9 +47,18 @@ function dispatch_bindings_overlay(tbl, add)
 	end
 end
 
+function dispatch_bindings_mhold_helper(override)
+	mtrack.mhold_helper =
+		type(override) == "function" and override or popup_helper
+end
+
 local function update_meta(m1, m2)
 	mtrack.m1 = m1;
 	mtrack.m2 = m2;
+
+	if not m1 and not m2 then
+		mtrack.mhold_helper()
+	end
 
 -- forward the state change to the led manager
 	m1, m2 = dispatch_meta();
@@ -68,7 +100,52 @@ function dispatch_system(key, val)
 	end
 end
 
+local function build_set()
+	local m1, m2 = dispatch_meta()
+	local prefix = (m1 and "m1_" or "") .. (m2 and "m2_" or "")
+	local ret = {}
+
+	local function check(k)
+		return
+			string.sub(k, 1, #prefix) == prefix and
+			string.sub(k, #prefix+1, #prefix+2) ~= "m2"
+	end
+
+-- grab the sets to show
+	local used = {}
+	local sets = {tbl_overlay}
+	if active_display().selected then
+		sets[#sets + 1] = active_display().selected.bindings
+	end
+	sets[#sets] = tbl
+
+-- repack and apply override order
+	for _, set in ipairs(sets) do
+		local sset = {}
+		for k,v in pairs(set) do
+			table.insert(sset, k)
+		end
+		table.sort(sset)
+
+		for _,k in ipairs(sset) do
+			if check(k) and not used[k] then
+				table.insert(ret, string.sub(k, #prefix+1) .. " - " .. set[k])
+				used[k] = true
+			end
+		end
+	end
+
+	return ret
+end
+
 function dispatch_tick()
+	if mtrack.mholdctr > 0 then
+		mtrack.mholdctr = mtrack.mholdctr - 1;
+		if mtrack.mholdctr == 0 then
+			mtrack.mhold_helper(build_set())
+		end
+	end
+
 	if (mtrack.unstick_ctr > 0) then
 		mtrack.unstick_ctr = mtrack.unstick_ctr - 1;
 		if (mtrack.unstick_ctr == 0) then
@@ -201,12 +278,17 @@ local function track_label(iotbl, keysym, hook_handler)
 -- figure out 'gesture' (double-press)
 	local function metatrack(s1)
 		local rv1, rv2;
+
 		if (iotbl.active) then
+			mtrack.mholdctr = gconfig_get("meta_hold_suggest")
+
 			if (mtrack.mstick > 0) then
 				mtrack.unstick_ctr = mtrack.mstick;
 			end
 			rv1 = CLOCK;
 		else
+
+			mtrack.mholdctr = 0
 			if (mtrack.mstick > 0) then
 				rv1 = s1;
 			else
