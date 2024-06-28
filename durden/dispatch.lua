@@ -111,6 +111,17 @@ local function build_set()
 			string.sub(k, #prefix+1, #prefix+2) ~= "m2"
 	end
 
+	if tiler_lbar_isactive() then
+		local set = {
+			"LCTRL+P - Back one Level",
+			"LCTRL+A - Cursor to Beginning",
+			"LCTRL+E - Cursor to End",
+			"LCTRL+L - Clear text input",
+			"LCTRL+K - Step next item page"
+		}
+		return set
+	end
+
 -- grab the sets to show
 	local used = {}
 	local sets = {tbl_overlay}

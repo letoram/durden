@@ -72,6 +72,45 @@ local function play_tone(note, offset, length, waveform)
 -- create an aid, hook the end of playback to destroy
 end
 
+local speak_voice
+local function read_binding_helper(set)
+	if not set then
+		if speak_voice then
+			reset_target(speak_voice.vid)
+		end
+		speak_voice = nil
+		return
+	end
+
+	if tiler_lbar_isactive() then
+		for k,v in pairs(voices) do
+			local vm = v.profile.menu
+			if vm then
+				if vm.speak_prompt then
+					table.insert(set, string.upper(vm.speak_prompt) .. " - " .. "Speak full prompt")
+				end
+				if vm.speak_description then
+					table.insert(set,
+						string.upper(vm.speak_description) .. " - " .. "Speak selected item description")
+				end
+				if vm.speak_path then
+					table.insert(set, string.upper(vm.speak_path) .. " - " .. "Speak current menu path")
+				end
+				if vm.speak_set then
+					table.insert(set, string.upper(vm.speak_set) .. " - " .. "Speak entire set of options")
+				end
+			end
+		end
+	end
+
+	for k,v in pairs(voices) do
+		speak_voice = v
+		break
+	end
+
+	speak_voice:message("keybindings", table.concat(set, "\n"))
+end
+
 local function verify_add(res, fn)
 -- missing:
 -- make sure the required fields are there, warn on missing ones,
@@ -173,6 +212,10 @@ local function drop_voice(name)
 	voices[name] = nil
 	log(fmt("tts:kind=dead:name=%s", name))
 	n_voices = n_voices - 1
+
+	if n_voices == 0 then
+		dispatch_bindings_mhold_helper()
+	end
 end
 
 local function voice_select(voice, action)
@@ -787,6 +830,7 @@ local function load_voice(name)
 	table.insert(voice.cleanup, function() timer_delete_trigger(voice.timer) end)
 
 	dispatch_bindings_overlay(map.bindings, true)
+
 	table.insert(voice.cleanup,
 		function() dispatch_bindings_overlay(map.bindings, false) end)
 
@@ -835,6 +879,12 @@ local function load_voice(name)
 
 	voices[name] = voice
 	n_voices = n_voices + 1
+
+-- first voice takes binding helper
+	if n_voices == 1 then
+		dispatch_bindings_mhold_helper(read_binding_helper)
+
+	end
 
 -- if that couldn't be spawned for any reason, re-use the regular close handler
 -- so all the cleanup handlers are invoked correctly with the right data
