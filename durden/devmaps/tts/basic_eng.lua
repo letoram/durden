@@ -23,6 +23,9 @@ local tbl =
 			a11ywnd = "wind",
     },
 
+-- called whenever voice flush is requested, disable by settil to false or nil
+		reset_beep = {440, 0.1},
+
 -- this would position the voice back and to left
 --		position = {-5, 0, -5},
 
@@ -41,7 +44,8 @@ local tbl =
 			speak_prompt = "lctrl_t",
 			speak_description = "lctrl_h",
 			speak_path = "lctrl_p",
-			speak_set = "lctrl_s"
+			speak_set = "lctrl_s",
+			speak_reset = "lctrl_r"
 		},
 
 -- keybindings that will take over the defaults while voice is activated
@@ -52,7 +56,11 @@ local tbl =
 			m1_F3 = "/global/tools/tts/voices/basic_eng/input/decrate",
 			m1_F1 = "/global/tools/tts/voices/basic_eng/read_bindings",
 			m1_t = "/global/tools/tts/voices/basic_eng/slow_replay",
---    m1_o = "/global/tools/tts/voices/basic_eng/ocr=200,100",
+			m1_u = "/global/tools/tts/voices/basic_eng/text_window/row_down",
+			m1_i = "/global/tools/tts/voices/basic_eng/text_window/row_up",
+			m1_y = "/global/tools/tts/voices/basic_eng/text_window/cursor_before",
+			m1_o = "/global/tools/tts/voices/basic_eng/text_window/cursor_after",
+			m1_p = "/global/tools/tts/voices/basic_eng/text_window/changes"
     }
 }
 

@@ -38,38 +38,18 @@ local function rescan()
 	end)
 end
 
-local notes = {}
-local function build_note_lut()
-	local a4 = 440
-	local names = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
-	for i=12,131 do
-		local vreq = a4 * 2^((i-69)-12)
-		local oct = math.floor(i/12)-1
-		local ind = i%12+1
-		local name = names[ind] .. tostring(oct)
-		notes[name] = freq
-	end
-end
-build_note_lut()
-
 local function build_sine(freq, length)
 	local step = 2 * math.pi * freq / 48000.0
 	local samples = length * 48000.0
 	local res = {}
 	local val = 0
 
-	for i=1,samples,2 do
+	for i=1,samples,1 do
 		res[i] = math.sin(val)
-		res[i+1] = res[i]
 		val = val + step
 	end
 
 	return res
-end
-
-local function play_tone(note, offset, length, waveform)
--- generate the sample buffer
--- create an aid, hook the end of playback to destroy
 end
 
 local speak_voice
@@ -456,6 +436,15 @@ local function voice_menu(voice, action)
 				end
 		end
 
+		local reset_bind = voice.profile.menu.speak_reset
+		if reset_bind then
+			bar.custom_bindings[reset_bind] =
+				function(ictx)
+					voice:beep()
+					reset_target(voice.vid)
+				end
+		end
+
 -- message the active completion set
 		local set_bind = voice.profile.menu.speak_set
 		if set_bind then
@@ -489,6 +478,10 @@ local function voice_menu(voice, action)
 			local oldi = bar.inp.input
 			bar.inp.input =
 			function(ctx, io, sym)
+				if not io.translated or not io.utf8 then
+					return
+				end
+
 				if #io.utf8 > 0 then
 					target_input(voice.vid, io)
 				end
@@ -557,19 +550,39 @@ local function reset_track(wnd)
 	wnd.tui_track.y2 = -1
 end
 
-local function process_str_fmt(str, fmt)
--- use [fmt] to format >bold< >italic<
-	return str
+local function process_str_fmt(str, fmt, lastfmt)
+-- use [fmt] to format >bold< >italic< when those change as well as border
+-- areas and shape reset.
+	return string.trim(str)
 end
 
 local function read_tui_row(wnd, v, x, y)
 	local tt = wnd.tui_track
+	local empty = true
+
 	image_access_storage(wnd.external,
 		function(data, w, h, cols, rows)
-			local str, fmt = data:read(x, tt.crow)
-			v:message("", process_str_fmt(str, fmt))
+			local row = {}
+			local lastfmt
+
+			for col=x,cols do
+				local str, fmt = data:read(col, y)
+				if #str > 0 then
+					empty = false
+					table.insert(row, process_str_fmt(str, fmt, lastfmt))
+				end
+				lastfmt = fmt
+			end
+
+			v:message("row:" .. tostring(y), table.concat(row, ""))
 		end
 	)
+	return empty
+end
+
+local function read_current_row(wnd, v)
+	local tt = wnd.tui_track.crow
+	read_tui_row(wnd, v, 0, tt)
 end
 
 local function voice_tuiwnd_menu(v)
@@ -660,10 +673,10 @@ local function voice_tuiwnd_menu(v)
 				if not wnd then
 					return
 				end
-
 			end
 		}
 	}
+	return res
 end
 
 -- actual implementations of all possible actions in the voice map
@@ -752,6 +765,18 @@ local function ensure_wnd_hook()
 	end
 end
 
+local function voice_beep(v)
+	if type(v.beep_aid) ~= "number" or v.beep == BADID then
+		return
+	end
+
+	if v.positioner then
+		audio_position(v.beep_aid, v.positioner)
+	end
+
+	play_audio(v.beep_aid)
+end
+
 local function load_voice(name)
 	if voices[name] then
 		log(fmt("tts:kind=status:error=exists:name=%s", name))
@@ -780,8 +805,18 @@ local function load_voice(name)
 		message = speak_message,
 		labels = {},
 		cleanup = {},
-		tick = {}
+		tick = {},
+		beep = voice_beep
 	}
+
+	if map.reset_beep then
+		voice.beep_aid = load_asample(1, 48000,
+			build_sine(map.reset_beep[1], map.reset_beep[2]))
+	end
+
+	if voice.positioner then
+		audio_position(test, voice.positioner)
+	end
 
 	local argstr =
 	string.format(
@@ -883,7 +918,6 @@ local function load_voice(name)
 -- first voice takes binding helper
 	if n_voices == 1 then
 		dispatch_bindings_mhold_helper(read_binding_helper)
-
 	end
 
 -- if that couldn't be spawned for any reason, re-use the regular close handler
@@ -910,8 +944,9 @@ local function get_voice_opts(v)
 		label = "Flush",
 		description = "Cancel / flush current queue",
 		handler = function()
-			reset_target(v.vid);
-		end,
+			v:beep()
+			reset_target(v.vid)
+		end
 	});
 
 	table.insert(ent,
@@ -954,7 +989,7 @@ local function get_voice_opts(v)
 	table.insert(ent,
 	{
 		name = "text_window",
-		label = "Text Windows",
+		label = "Text Window",
 		kind = "action",
 		submenu = true,
 		description = "Controls for speaking out the contents of text-only windows",

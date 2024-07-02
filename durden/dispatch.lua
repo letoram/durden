@@ -386,18 +386,6 @@ function dispatch_repeatblock(iotbl)
 	return false;
 end
 
--- sym contains multiple symbols embedded, with linefeed as a separator
-local function dispatch_multi(sym, arg, ext)
-	local last_i = 2;
-	local len = string.len(sym, arg, ext);
-	for i=2,len do
-		if ((string.sub(sym, i, i) == '\n' or i == len) and i ~= last_i) then
-			dispatch_symbol(string.sub(sym, last_i, i), arg, ext);
-			last_i = i;
-		end
-	end
-end
-
 local dispatch_locked = nil;
 local dispatch_queue = {};
 local last_unlock = "";
@@ -505,6 +493,14 @@ end
 
 local last_symbol = "/";
 function dispatch_symbol(sym, menu_opts)
+	if type(sym) == "table" then
+		for i,v in ipairs(sym) do
+			if not dispatch_symbol(v) then
+				return
+			end
+		end
+	end
+
 -- note, it's up to us to forward the argument for validator before exec
 	local menu, msg, val, enttbl = menu_resolve(sym);
 	last_symbol = sym;
