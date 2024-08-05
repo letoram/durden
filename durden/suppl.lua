@@ -106,6 +106,96 @@ function suppl_region_stop(trig)
 	mouse_select_end(trig);
 end
 
+-- function is actually used both for record, stream and vnc, just different args.
+local function share_input(wnd, allow_input, source, status, iotbl)
+	if status.kind == "terminated" then
+		if #status.last_words > 0 then
+			notification_add(wnd.title, wnd.icon, "Sharing Died", status.last_words, 2);
+		end
+
+		delete_image(source);
+		wnd.share_sessions[source] = nil;
+
+	elseif status.kind == "input" and allow_input then
+		wnd:input_table(iotbl);
+	end
+end
+
+function suppl_build_recargs(streaming, argstr)
+-- grab the defaults
+	local vcodec = gconfig_get("enc_vcodec");
+	local fps = gconfig_get("enc_fps");
+	local vbr = gconfig_get("enc_vbr");
+	local vqual = gconfig_get("enc_vqual");
+	local container = streaming and "stream" or gconfig_get("enc_container");
+	local srate = gconfig_get("enc_srate");
+
+-- extract 'overrides' from argstr
+
+-- compose into argument string
+	argstr = string.format(
+		"vcodec=%s:fps=%.3f:container=%s%s",
+		vcodec, fps, container,
+		vqual > 0 and (":vpreset=" .. tostring(vqual)) or (":vbitrate=" .. tostring(vbr))
+	);
+
+	return argstr, srate;
+end
+
+function suppl_setup_sharing(wnd, argstr, srate, nosound, destination, allow_input, name)
+	local props = image_storage_properties(wnd.canvas);
+
+	if not wnd.ignore_crop and wnd.crop_values then
+		props.width = (wnd.crop_values[4] - wnd.crop_values[2]);
+		props.height = (wnd.crop_values[3] - wnd.crop_values[1]);
+	end
+
+-- notice: some cases we would want to align to divisible/2,/16 something.
+	local storew = props.width % 2 ~= 0 and props.width + 1 or props.width;
+	local storeh = props.height % 2 ~= 0 and props.height + 1 or props.height;
+
+-- grab intermediate buffer (direct sharing rather than blt- would open priority inversion)
+	local surf = alloc_surface(storew, storeh);
+	if not valid_vid(surf) then
+		return;
+	end
+
+-- and 'container' for the canvas
+	local nsrf = null_surface(props.width, props.height);
+	if not valid_vid(nsrf) then
+		delete_image(surf);
+		return;
+	end
+	image_sharestorage(wnd.canvas, nsrf);
+	show_image(nsrf);
+	link_image(surf, wnd.anchor);
+
+-- later we'd want a bigger set with windows that have multiple sources
+	local sset = {};
+	if nosound or not wnd.source_audio then
+		argstr = argstr .. ":nosound";
+	else
+		sset[1] = wnd.source_audio;
+	end
+
+	define_recordtarget(surf, destination, argstr, {nsrf}, sset,
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
+		function(...)
+			share_input(wnd, allow_input, ...);
+		end
+	);
+
+-- don't let this one survive script error recovery
+	target_flags(surf, TARGET_BLOCKADOPT);
+
+-- want to keep track of all window sharing (can be many) for manual removal
+	if not wnd.share_sessions then
+		wnd.share_sessions = {};
+	end
+	wnd.share_sessions[surf] = name;
+	return wnd, surf;
+end
+
 -- Attach a shadow to ctx.
 --
 -- This is a simple/naive version that repeats the fragment shader for every
@@ -770,68 +860,6 @@ function suppl_ptn_expand(tbl, ptn, wnd)
 			prefix = prefix .. v
 		end
 	end
-end
-
-function suppl_setup_rec(wnd, val, noaudio)
-	local svid = wnd;
-	local aarr = {};
-
-	if (type(wnd) == "table") then
-		svid = wnd.external;
-		if (not noaudio and wnd.source_audio) then
-			table.insert(aarr, wnd.source_audio);
-		end
-	end
-
-	if (not valid_vid(svid)) then
-		return;
-	end
-
--- work around link_image constraint
-	local props = image_storage_properties(svid);
-	local pw = props.width + props.width % 2;
-	local ph = props.height + props.height % 2;
-
-	local nsurf = null_surface(pw, ph);
-	image_sharestorage(svid, nsurf);
-	show_image(nsurf);
-	local varr = {nsurf};
-
-	local db = alloc_surface(pw, ph);
-	if (not valid_vid(db)) then
-		delete_image(nsurf);
-		warning("setup_rec, couldn't allocate output buffer");
-		return;
-	end
-
-	local argstr, srate, fn = suppl_build_recargs(varr, aarr, false, val);
-	define_recordtarget(db, fn, argstr, varr, aarr,
-		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
-		function(source, stat)
-			if (stat.kind == "terminated") then
-				delete_image(source);
-			end
-		end
-	);
-
-	if (not valid_vid(db)) then
-		delete_image(db);
-		delete_image(nsurf);
-		warning("setup_rec, failed to spawn recordtarget");
-		return;
-	end
-
--- useful for debugging, spawn a new window that shares
--- the contents of the allocated surface
---	local ns = null_surface(pw, ph);
---	image_sharestorage(db, ns);
---	show_image(ms);
---  local wnd =	active_display():add_window(ns);
---  wnd:set_tile("record-test");
---
--- link the recordtarget with the source for automatic deletion
-	link_image(db, svid);
-	return db;
 end
 
 function drop_keys(matchstr)

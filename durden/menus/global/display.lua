@@ -123,7 +123,7 @@ local function backlight_menu(disp)
 		kind = "value",
 		hint = "(0..1)",
 		initial = disp.backlight,
-		definition = "Control display backlight strength",
+		description = "Control display backlight strength",
 		eval = function() return disp.ledctrl ~= nil; end,
 		validator = function(val)
 			local num = tonumber(val);
@@ -139,7 +139,6 @@ local function backlight_menu(disp)
 		label = "+10%",
 		description = "Increment backlight intensity by approximately 10%",
 		kind = "action",
-		definition = "Control display backlight strength",
 		handler = function(ctx)
 			disp.backlight = math.clamp(disp.backlight + 0.1, 0.0, 1.0);
 			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
@@ -150,7 +149,6 @@ local function backlight_menu(disp)
 		label = "-10%",
 		description = "Decrement backlight intensity by approximately 10%",
 		kind = "action",
-		definition = "Control display backlight strength",
 		handler = function(ctx)
 			disp.backlight = math.clamp(disp.backlight - 0.1, 0.0, 1.0);
 			led_intensity(disp.ledctrl, disp.ledid, 255 * disp.backlight);
@@ -257,6 +255,48 @@ local function gen_zoom_menu(disp)
 	};
 end
 
+local function gen_share_menu(disp)
+	if disp.fakewnd then
+		return {
+			{
+		name = "close",
+		label = "Close",
+		description = "Stop active sharing / recording",
+		kind = "action",
+		handler = function()
+			delete_image(disp.fakewnd.nsrf)
+			disp.fakewnd = nil
+		end
+		}
+	}
+	end
+
+	local fakewnd =
+	{
+		canvas = disp.rt,
+		anchor = disp.rt
+	}
+
+	return {
+	{
+	name = "file",
+	kind = "value",
+	label = "File",
+	hint = "(output/*.mkv)",
+	description = "Record to a file",
+	validator = suppl_valid_name,
+	handler =
+	function(ctx, val)
+		local recstr, srate = suppl_build_recargs(false);
+		local wnd, nsrf = suppl_setup_sharing(fakewnd, recstr, srate, nosound,
+			"output/" .. val .. ".mkv", false, "rec_" .. disp.name)
+		wnd.nsrf = nsrf
+		disp.fakewnd = wnd
+	end
+	},
+	}
+end
+
 local function gen_disp_menu(disp)
 	return {
 		{
@@ -347,10 +387,20 @@ local function gen_disp_menu(disp)
 		end
 		},
 		{
+		name = "share",
+		label = "Share",
+		submenu = true,
+		kind = "action",
+		description = "Share the entire contents of the display",
+		handler = function()
+			return gen_share_menu(disp)
+		end
+		},
+		{
 		name = "resolution",
 		label = "Resolution",
 		kind = "action",
-		definition = "Try to reconfigure the display output mode",
+		description = "Try to reconfigure the display output mode",
 		submenu = true,
 		eval = function()
 	--
@@ -720,7 +770,6 @@ local region_menu = {
 				end
 				last_dvid = dvid;
 				hide_image(dvid);
-				print("setup recordtarget")
 
 				define_recordtarget(dvid, "", "protocol=ocr", grp, {},
 					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,

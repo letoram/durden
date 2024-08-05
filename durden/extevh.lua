@@ -349,6 +349,8 @@ local function apply_split_position(wnd, vid, cookie, split, position)
 
 		elseif position == "swallow" then
 			res.swallow_window = wnd
+			res.width = wnd.width
+			res.height = wnd.height
 
 -- This is currently resolved at request time, and might not be synchronised to
 -- resizes or changes to the parent, similarly overflow / size hint aren't yet
@@ -625,9 +627,9 @@ end
 defhtbl["alert"] =
 function(wnd, source, stat)
 	local msg;
-
 -- do we need to concatenate a longer message?
 	if (wnd.alert_multipart) then
+		client_log("alert:multipart=true:message=", stat.message);
 		wnd.alert_multipart.message = wnd.alert_multipart.message .. stat.message;
 		wnd.alert_multipart.count = wnd.alert_multipart.count + 1;
 		if (wnd.alert_multipart.count > 3 or not stat.multipart) then
@@ -636,12 +638,14 @@ function(wnd, source, stat)
 		end
 -- first of a multipart text message?
 	elseif (stat.multipart) then
-		wnd.alert_multipart = {
+		client_log("alert:multipart=true:message=", stat.message);
+			wnd.alert_multipart = {
 			message = stat.message,
 			count = 1
 		};
 		return;
 	else
+		client_log("alert:multipart=false:message=", stat.message);
 		msg = stat.message;
 	end
 

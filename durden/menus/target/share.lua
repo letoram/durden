@@ -1,94 +1,5 @@
-local function build_recargs(streaming, argstr)
--- grab the defaults
-	local vcodec = gconfig_get("enc_vcodec");
-	local fps = gconfig_get("enc_fps");
-	local vbr = gconfig_get("enc_vbr");
-	local vqual = gconfig_get("enc_vqual");
-	local container = streaming and "stream" or gconfig_get("enc_container");
-	local srate = gconfig_get("enc_srate");
-
--- extract 'overrides' from argstr
-
--- compose into argument string
-	argstr = string.format(
-		"vcodec=%s:fps=%.3f:container=%s%s",
-		vcodec, fps, container,
-		vqual > 0 and (":vpreset=" .. tostring(vqual)) or (":vbitrate=" .. tostring(vbr))
-	);
-
-	return argstr, srate;
-end
-
-suppl_recarg_hint = "(stored in output/name.mkv)";
-
--- function is actually used both for record, stream and vnc, just different args.
-local function share_input(wnd, allow_input, source, status, iotbl)
-	if status.kind == "terminated" then
-		if #status.last_words > 0 then
-			notification_add(wnd.title, wnd.icon, "Sharing Died", status.last_words, 2);
-		end
-
-		delete_image(source);
-		wnd.share_sessions[source] = nil;
-
-	elseif status.kind == "input" and allow_input then
-		wnd:input_table(iotbl);
-	end
-end
-
-local function setup_sharing(argstr, srate, nosound, destination, allow_input, name)
-	local wnd = active_display().selected;
-	local props = image_storage_properties(wnd.canvas);
-
-	if not wnd.ignore_crop and wnd.crop_values then
-		props.width = (wnd.crop_values[4] - wnd.crop_values[2]);
-		props.height = (wnd.crop_values[3] - wnd.crop_values[1]);
-	end
-
--- notice: some cases we would want to align to divisible/2,/16 something.
-	local storew = props.width % 2 ~= 0 and props.width + 1 or props.width;
-	local storeh = props.height % 2 ~= 0 and props.height + 1 or props.height;
-
--- grab intermediate buffer (direct sharing rather than blt- would open priority inversion)
-	local surf = alloc_surface(storew, storeh);
-	if not valid_vid(surf) then
-		return;
-	end
-
--- and 'container' for the canvas
-	local nsrf = null_surface(props.width, props.height);
-	if not valid_vid(nsrf) then
-		delete_image(surf);
-		return;
-	end
-	image_sharestorage(wnd.canvas, nsrf);
-	show_image(nsrf);
-	link_image(surf, wnd.anchor);
-
--- later we'd want a bigger set with windows that have multiple sources
-	local sset = {};
-	if nosound or not wnd.source_audio then
-		argstr = argstr .. ":nosound";
-	else
-		sset[1] = wnd.source_audio;
-	end
-
-	define_recordtarget(surf, destination, argstr, {nsrf}, sset,
-		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, srate,
-		function(...)
-			share_input(wnd, allow_input, ...);
-		end
-	);
-
--- don't let this one survive script error recovery
-	target_flags(surf, TARGET_BLOCKADOPT);
-
--- want to keep track of all window sharing (can be many) for manual removal
-	if not wnd.share_sessions then
-		wnd.share_sessions = {};
-	end
-	wnd.share_sessions[surf] = name;
-	return wnd, surf;
+local function setup_sharing(...)
+	suppl_setup_sharing(active_display().selected, ...)
 end
 
 local function gen_recdst_wnd(nosound)
@@ -327,7 +238,7 @@ return {
 	description = "Stream to an external source",
 	handler =
 	function(ctx, val)
-		local recstr, srate = build_recargs(true)
+		local recstr, srate = suppl_build_recargs(true)
 		setup_sharing(recstr, srate, nosound, val,
 			true, "stream_" .. active_display().selected.name);
 	end
@@ -352,7 +263,7 @@ return {
 	validator = suppl_valid_name,
 	handler =
 	function(ctx, val)
-		local recstr, srate = build_recargs(false);
+		local recstr, srate = suppl_build_recargs(false);
 		setup_sharing(recstr, srate, nosound,
 			"output/" .. val .. ".mkv", false, "rec_" .. active_display().selected.name);
 	end
