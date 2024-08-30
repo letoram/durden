@@ -872,8 +872,10 @@ function(parent, vid, aid, cookie, xid, viewport)
 -- Feature relies on arcan >= 6.3 Lua API, this will notify the source about
 -- the current resolved anchor position so that other clients and tools know where
 -- it is at.
-		if target_anchorhint and valid_vid(vid) then
+		if target_anchorhint and valid_vid(vid, TYPE_FRAMESERVER) then
 			target_anchorhint(vid, ANCHORHINT_SEGMENT, WORLDID, rx, ry);
+		else
+			wnd:destroy()
 		end
 	end
 
