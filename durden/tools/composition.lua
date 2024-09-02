@@ -12,16 +12,54 @@ selectors.list =
 function(wnd, v, set)
 	log(fmt("name=composition:kind=selector_build:items=%d", #v))
 
+	local set_selected =
+	function(selector, ind)
+		local props = image_surface_properties(selector.vids[selector.index])
+		move_image(selector.vids[selector.index], 20, props.y)
+
+		if ind + selector.offset > #selector.set then
+			ind = #selector.set - selector.offset
+		end
+
+		local vid = selector.vids[ind]
+		local props = image_surface_properties(vid)
+
+		local animation = v.selector_config.animation
+		if animation then
+			move_image(vid, 20, props.y)
+			move_image(vid, 0, props.y, animation)
+		else
+			move_image(vid, 0, props.y)
+		end
+
+		selector.index = ind
+	end
+
 -- (returning to a cached set as 'step back' should go the other direction)
 	local apply_set =
-	function(selector, set)
+	function(selector, set, nostack)
 		local animation = v.selector_config.animation
-		for i,v in ipairs(selector.vids) do
-			nudge_image(v, -(v.x2 - v.x), 0, v.selector_config.animation or 0)
-			blend_image(v, 0, animation or 0)
-			expire_image(v, animation or 0)
+		local got_set = #selector.vids > 0
+
+		if got_set and not nostack then
+			table.insert(selector.stack, selector.set)
 		end
-		v.set = set
+
+		for i,vid in ipairs(selector.vids) do
+			if i == 1 then -- don't animate as first index will be set immediately
+				delete_image(vid)
+			else
+				nudge_image(vid,
+					(nostack and 1 or -1) * (v.x2 - v.x), 0,
+					v.selector_config.animation or 0
+				)
+				blend_image(vid, 0, animation or 0)
+				expire_image(vid, animation or 0)
+			end
+		end
+
+		selector.set = set
+		selector.vids = {}
 
 		if v.selector_config.background then
 			local bgc = v.selector_config.background
@@ -57,17 +95,16 @@ function(wnd, v, set)
 
 			rendertarget_attach(selector.wnd.canvas, vid, RENDERTARGET_DETACH)
 			link_image(vid, v.vid)
+			image_clip_on(vid, CLIP_SHALLOW)
 			image_inherit_order(vid, true)
 			if si then
 				show_image(vid)
 			end
 
 -- animate the current item
-			if ind == 1 and animation then
-				move_image(vid, 20, vadv)
-				move_image(vid, 0, vadv, animation)
+			if got_set and animation then
+				move_image(vid, nostack and (-(v.x2 - v.x)) or v.x2, vadv)
 				move_image(vid, 20, vadv, animation)
-				image_transform_cycle(vid, true)
 			else
 				move_image(vid, 20, vadv)
 			end
@@ -77,44 +114,191 @@ function(wnd, v, set)
 			table.insert(selector.vids, vid)
 
 			if v.y + vadv + h > v.y2 then
-				v.end_index = i
 				break
 			end
+
 			ind = ind + 1
 		end
 
-		v.index = 1
+		selector.index = 1
+		selector.offset = 0
+		set_selected(selector, 1)
 	end
 
-	local function step_set(sel, step)
+	local function step_set(sel, dx, dy)
+		local oldi = sel.index
+
+		if dy ~= 0 then
+			for _,v in ipairs(sel.vids) do
+				instant_image_transform(v)
+			end
+
+			for k,v in pairs(sel.pending) do
+				delete_image(v)
+			end
+
+			sel.pending = {}
+
+			if dy > 0 then
+-- scroll down (if possible)
+				if sel.index >= #sel.vids - 1 then
+					print("scroll")
+				else
+					set_selected(sel, sel.index + 1)
+				end
+-- scroll up
+			elseif sel.index > 1 then
+				set_selected(sel, sel.index - 1)
+			end
+
+-- step in if > 0 and subdir, back if depth > 0
+		elseif dx ~= 0 then
+		end
+	end
+
+	local function step_trigger(sel)
+		local item = sel.set[sel.index + sel.offset]
+
+		if item.path then
+			dispatch_symbol(item.path)
+		end
+	end
+
+	local function step_cancel(sel)
+		if #sel.stack > 0 then
+			sel:update_set(table.remove(sel.stack, #sel.stack), true)
+		end
 	end
 
 	local selector = {
-		set = apply_set,
+		update_set = apply_set,
 		step = step_set,
+		trigger = step_trigger,
+		cancel = step_cancel,
 		wnd = wnd,
-		vids = {}
+		vids = {},
+		stack = {},
+		pending = {}
 	}
 
-	selector:set(set)
-	selector:step(0)
+	selector:update_set(set)
 
 	return selector
 end
 
+local function wnd_left(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:step(-1, 0)
+	end
+end
+
+local function wnd_right(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:step(1, 0)
+	end
+end
+
+local function wnd_up(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:step(0, -1)
+	end
+end
+
+local function wnd_down(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:step(0, 1)
+	end
+end
+
+local function wnd_back(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:cancel()
+	end
+end
+
+local function wnd_enter(wnd)
+	if wnd.active_selector then
+		wnd.active_selector:trigger()
+	end
+end
+
+local function load_parse_albuminfo(nbio)
+	nbio:lf_strip(true)
+	local line, alive = nbio:read()
+	local in_meta = true
+	local md = {}
+	local res = {}
+
+-- this becomes implicitly blocking, the proper way would be a set that
+-- indicates that we are loading, and then automatically re-set itself.
+	while alive or line do
+
+		if line then
+			local ch = string.sub(line, 1, 1)
+
+			if ch == "[" then
+				local _, _, key, val = string.find(line, "%[(.+)%]%s+(.+)")
+
+				if in_meta then
+					if key and val then
+						md[key] = val
+					end
+				else
+					key = tonumber(key)
+					if key then
+						md[key] = val
+					end
+				end
+-- find \=+(%s+)\=+ and mark as separator
+			elseif ch == "=" then
+				in_meta = false
+			else
+			end
+		end
+
+		line, alive = nbio:read()
+	end
+
+	nbio:close()
+	return md
+end
+
 local function handler_for_file(path, file, set)
 	if file == "AlbumInfo.txt" then
+		nbio = open_nonblock(path .. "/" .. file, "r")
+		if not nbio then
+			return
+		end
+
 -- all .flac files go into unique items
--- LRC ( [mm:ss:fract] (Text) )
--- preview = cover
--- [ID]      ...
--- [Title]   ...
--- [Artists] ...
--- [ReleaseDate] ...
--- [SongNum] ...
--- [Duration] ...
--- with filename matching something like num - group - title
-		return true
+		local md = load_parse_albuminfo(nbio)
+		table.sort(set)
+
+-- we can have audio / video / image (ignore, always use cover)
+		local res = {}
+
+		for _, v in ipairs(set) do
+			local simple, ext = suppl_ext_type(v)
+
+			if simple == "audio" then
+-- metadata: ID, Title, Artists, ReleaseDate, SongNum, Duration
+				local _, _, num = string.find(v, "(%d+)%s")
+				num = tonumber(num)
+
+				if num then
+					table.insert(res, {
+						slots = {
+							preview = path .. "/" .. "cover.jpg"
+						},
+						text = md[num] and string.format("[%.2d] - %s", num, md[num]) or v,
+						media = path .. "/" .. v
+					})
+-- lyrics = lrc
+				end
+			end
+		end
+
+		return res
 	end
 end
 
@@ -156,7 +340,8 @@ local function gen_set_from_path(wnd, item, path)
 				table.insert(res,
 					{
 						slots = {},
-						text = v,
+						text = v .. "/",
+						subdir = true,
 						path = string.format(
 							"/target/composition/selectors/%s/generate=%s",
 							item.selector, path .. "/" .. v
@@ -167,11 +352,24 @@ local function gen_set_from_path(wnd, item, path)
 		end
 	end
 
+	if #res == 0 then
+		table.insert(res,
+			{
+				slots = {},
+				text = ">Empty<"
+			}
+		)
+	end
+
 -- instantiate selector with list, or if we have one, switch set
 	if wnd.selectors[item.selector] then
-		wnd.selectors[item.selector]:set(res)
+		wnd.selectors[item.selector]:update_set(res)
 	else
 		wnd.selectors[item.selector] = selectors[item.selector](wnd, item, res)
+	end
+
+	if not wnd.active_selector then
+		wnd.active_selector = wnd.selectors[item.selector]
 	end
 end
 
@@ -358,7 +556,7 @@ local function load_item(wnd, v)
 					log(fmt("tool=composition:kind=loaded:media=%s", fn))
 					image_sharestorage(source, nsrf)
 					apply_image(wnd, v, nsrf)
-				else
+				elseif status.kind == "load_failed" then
 					log(
 						fmt(
 							"tool=composition:kind=error:message=couldn't load media: %s",
@@ -421,6 +619,16 @@ local function spawn(layout)
 	wnd.list = {}  -- track current list
 	wnd.slots = {} -- track map between logical names / roles and content provided
 	wnd.selectors = {} -- instantiated selectors (typically 1 but no firm restriction)
+
+	wnd.bindings[SYSTEM_KEYS["left"]] = wnd_left
+	wnd.bindings[SYSTEM_KEYS["right"]] = wnd_right
+	wnd.bindings[SYSTEM_KEYS["next"]] = wnd_up
+	wnd.bindings[SYSTEM_KEYS["previous"]] = wnd_down
+	wnd.bindings[SYSTEM_KEYS["cancel"]] = wnd_back
+	wnd.bindings[SYSTEM_KEYS["accept"]] = wnd_enter
+
+-- TAB should cycle selectors (if any)
+-- input_table should route to selector or active_target
 
 	wnd.mousemotion = motion
 	wnd.mousebutton = button

@@ -52,8 +52,8 @@ return {
 				font = "default.ttf",
 				font_sz = 24,
 				text_color = "ffffff",
-				background = {28, 28, 28, 255},
-				animation = 20
+				background = {28, 28, 28, 127},
+				animation = 10
 			}
 		}
 	},

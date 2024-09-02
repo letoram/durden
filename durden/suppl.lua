@@ -314,6 +314,22 @@ local function match_ext(v, tbl)
 	end
 end
 
+function suppl_track_table(v)
+	local proxy = {}
+
+	setmetatable(proxy, {
+		__index = function(t, k)
+			return v[k]
+		end,
+		__newindex = function(t, k, val)
+			print("table:set", t, k, val)
+			v[k] = val
+		end
+	})
+
+	return proxy
+end
+
 -- filename to classifier [media, image, audio]
 function suppl_ext_type(fn)
 	local tbl, ext = match_ext(fn, ffmts);
