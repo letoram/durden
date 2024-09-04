@@ -2,6 +2,7 @@ local log, fmt = suppl_add_logfn("tools")
 
 local layouts = {}
 local selectors = {}
+local populate_slot
 
 -- selector gets four buttons: next, previous, activate, cancel
 selectors.coverflow =
@@ -11,6 +12,14 @@ end
 selectors.list =
 function(wnd, v, set)
 	log(fmt("name=composition:kind=selector_build:items=%d", #v))
+	local fmtstr =
+		string.format(
+			"\\ffonts/%s,%d\\#%s",
+			v.selector_config.font or gconfig_get("font_def"),
+			active_display().font_deltav +
+			(v.selector_config.font_sz or gconfig_get("font_sz")),
+			v.selector_config.text_color or gconfig_get("text_color")
+		)
 
 	local set_selected =
 	function(selector, ind)
@@ -23,6 +32,13 @@ function(wnd, v, set)
 
 		local vid = selector.vids[ind]
 		local props = image_surface_properties(vid)
+		local item = selector.set[selector.index + selector.offset]
+
+		for k,v in pairs(item.slots) do
+			if selector.wnd.list[k] then
+				populate_slot(selector.wnd.list[k], selector, k, v)
+			end
+		end
 
 		local animation = v.selector_config.animation
 		if animation then
@@ -33,6 +49,19 @@ function(wnd, v, set)
 		end
 
 		selector.index = ind
+	end
+
+	local synch_set =
+	function(selector)
+		for i=1,#selector.vids do
+			local si = selector.set[selector.offset + i]
+			if si then
+				render_text(selector.vids[i], {fmtstr, si.text or tostring(i)})
+				show_image(selector.vids[i])
+			else
+				hide_image(selector.vids[i])
+			end
+		end
 	end
 
 -- (returning to a cached set as 'step back' should go the other direction)
@@ -68,15 +97,6 @@ function(wnd, v, set)
 			image_sharestorage(csrf, v.vid)
 			delete_image(csrf)
 		end
-
-		local fmtstr =
-			string.format(
-				"\\ffonts/%s,%d\\#%s",
-				v.selector_config.font or gconfig_get("font_def"),
-				active_display().font_deltav +
-				(v.selector_config.font_sz or gconfig_get("font_sz")),
-				v.selector_config.text_color or gconfig_get("text_color")
-			)
 
 -- set the initial view and fill the allocated space with vids
 -- as updates will render into the existing store rather than rebuild
@@ -125,6 +145,43 @@ function(wnd, v, set)
 		set_selected(selector, 1)
 	end
 
+populate_slot =
+function(slot, sel, name, value)
+		if slot.last == value then
+			return
+		end
+
+		local simple, ext = suppl_ext_type(value)
+		local ctbl = {
+			image = "proto=image",
+			video = "proto=media",
+			pdf = "proto=pdf",
+			audio = "proto=media"
+		}
+
+-- we have media, 3d, text, image, pdf
+		local vid =
+			launch_decode(value, ctbl[simple],
+				function(source, status)
+				if status.kind == "terminated" then
+					delete_image(source)
+
+-- crossfade should go here, set a blend and tag the transform then
+-- on tag set_image_as_frame to populate both slots
+				elseif status.kind == "resized" then
+					table.remove_match(sel.pending, value)
+					slot.current = source
+					image_sharestorage(source, slot.vid)
+				end
+			end
+		)
+		if valid_vid(vid) then
+			table.insert(sel.pending, vid)
+		end
+
+		slot.last = name
+	end
+
 	local function step_set(sel, dx, dy)
 		local oldi = sel.index
 
@@ -140,15 +197,34 @@ function(wnd, v, set)
 			sel.pending = {}
 
 			if dy > 0 then
+				local si = sel.index
+
 -- scroll down (if possible)
-				if sel.index >= #sel.vids - 1 then
-					print("scroll")
+				if si == #sel.vids then
+					if sel.offset + si + 1 < #sel.set then
+						sel.offset = sel.offset + #sel.vids
+						si = #sel.vids
+						synch_set(sel)
+					end
+					si = 1
 				else
-					set_selected(sel, sel.index + 1)
+					si = si + 1
 				end
+
 -- scroll up
-			elseif sel.index > 1 then
-				set_selected(sel, sel.index - 1)
+				set_selected(sel, si)
+
+			elseif dy < 0 then
+				if sel.index == 1 then
+					if sel.offset > 0 then
+						sel.offset = math.clamp(sel.offset - #sel.vids, 0)
+						synch_set(sel)
+						sel.index = #sel.vids
+					end
+					set_selected(sel, sel.index)
+				else
+					set_selected(sel, math.clamp(sel.index - 1, 1))
+				end
 			end
 
 -- step in if > 0 and subdir, back if depth > 0
@@ -291,7 +367,8 @@ local function handler_for_file(path, file, set)
 							preview = path .. "/" .. "cover.jpg"
 						},
 						text = md[num] and string.format("[%.2d] - %s", num, md[num]) or v,
-						media = path .. "/" .. v
+						media = path .. "/" .. v,
+						type = simple
 					})
 -- lyrics = lrc
 				end
@@ -334,6 +411,14 @@ local function gen_set_from_path(wnd, item, path)
 -- default handlers for certain items
 			if rt ~= "directory" then
 				local simple, ext = suppl_ext_type(v)
+				if ext  ~= "*" then
+					table.insert(res,
+						{
+							slots = {},
+							text = v
+						}
+					)
+				end
 
 -- allow navigation into subdirs
 			else
@@ -587,14 +672,16 @@ local function load_item(wnd, v)
 
 	if v.slot then
 		wnd.slots[v.slot] = nsrf
+		wnd.list[v.slot] = v -- make sure we can index by name
 	end
 
 	v.vid = nsrf
 end
 
 local function handle_input(wnd, iotbl)
--- consume a few basic bindings, these need to be rebindable
--- if something interactive is marked and alive, forward there
+	if iotbl.translated and #iotbl.utf8 > 0 and wnd.active_selector then
+
+	end
 end
 
 local function spawn(layout)
@@ -614,7 +701,6 @@ local function spawn(layout)
 		}
 	}
 
-	wnd.input_table = handle_input
 
 	wnd.list = {}  -- track current list
 	wnd.slots = {} -- track map between logical names / roles and content provided
@@ -630,10 +716,10 @@ local function spawn(layout)
 -- TAB should cycle selectors (if any)
 -- input_table should route to selector or active_target
 
-	wnd.mousemotion = motion
-	wnd.mousebutton = button
-	wnd.mousedblclick = dblclick
-	wnd.input_table = inputtable
+	wnd.input_table = handle_input
+--	wnd.mousemotion = mouse_motion
+--	wnd.mousebutton = mouse_button
+--	wnd.mousedblclick = dblclick
 
 	show_image(canvas)
 
@@ -652,10 +738,10 @@ local function spawn(layout)
 	wnd:add_handler("mouse_button", button)
 
 	if layout.items then
+		wnd.list = layout.items
 		for i=1,#layout.items do
 			load_item(wnd, ensure_fields(layout.items[i]))
 		end
-		wnd.list = layout.items
 	end
 
 	if layout.on_load then

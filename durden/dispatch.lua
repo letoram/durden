@@ -648,16 +648,9 @@ function dispatch_translate(iotbl, nodispatch)
 		return false, lutsym, iotbl;
 	end
 
--- or an input handler unique for the window
-	if (not iotbl.analog and sel.key_input) then
-		sel:key_input(outsym, iotbl);
-		ok = true;
-	else
-
 -- for label bindings, we go with the prefixed view of modifiers
-		if (sel.labels and sel.labels[outsym]) then
-			iotbl.label = sel.labels[outsym];
-		end
+	if (sel.labels and sel.labels[outsym]) then
+		iotbl.label = sel.labels[outsym];
 	end
 
 	return ok, outsym, iotbl;
