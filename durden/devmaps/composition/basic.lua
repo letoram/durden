@@ -15,7 +15,7 @@ return {
 			shader = "vignette",
 			static_media = "$random:wallpapers/*.jpg",
 			reload_timer = 100,
-			reload_effect = "fade"
+			reload_fade = 10
 		},
 		{
 			order = 1,

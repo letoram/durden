@@ -22,7 +22,7 @@ function(wnd, v, set)
 		)
 
 	local set_selected =
-	function(selector, ind)
+	function(selector, ind, instant)
 		local props = image_surface_properties(selector.vids[selector.index])
 		move_image(selector.vids[selector.index], 20, props.y)
 
@@ -33,6 +33,7 @@ function(wnd, v, set)
 		local vid = selector.vids[ind]
 		local props = image_surface_properties(vid)
 		local item = selector.set[selector.index + selector.offset]
+		item.props = props
 
 		for k,v in pairs(item.slots) do
 			if selector.wnd.list[k] then
@@ -41,14 +42,26 @@ function(wnd, v, set)
 		end
 
 		local animation = v.selector_config.animation
-		if animation then
+		if animation and not instant then
 			move_image(vid, 20, props.y)
 			move_image(vid, 0, props.y, animation)
 		else
 			move_image(vid, 0, props.y)
 		end
 
+		selector.cooldown = 20
 		selector.index = ind
+	end
+
+	local tick =
+	function(selector)
+		if selector.cooldown == 0 then
+			return
+		end
+		selector.cooldown = selector.cooldown - 1
+		if selector.cooldown == 0 then
+			local item = seelctor.set[selector.index + selector.offset]
+		end
 	end
 
 	local synch_set =
@@ -57,7 +70,9 @@ function(wnd, v, set)
 			local si = selector.set[selector.offset + i]
 			if si then
 				render_text(selector.vids[i], {fmtstr, si.text or tostring(i)})
+				local cy = image_surface_properties(selector.vids[i]).y
 				show_image(selector.vids[i])
+				move_image(selector.vids[i], 20, cy)
 			else
 				hide_image(selector.vids[i])
 			end
@@ -90,6 +105,7 @@ function(wnd, v, set)
 		selector.set = set
 		selector.vids = {}
 
+-- might want some tiling background for this
 		if v.selector_config.background then
 			local bgc = v.selector_config.background
 			local csrf = fill_surface(1, 1, bgc[1], bgc[2], bgc[3])
@@ -182,7 +198,41 @@ function(slot, sel, name, value)
 		slot.last = name
 	end
 
-	local function step_set(sel, dx, dy)
+	local function step_seek(sel, ch, norecurse)
+		local si = sel.index
+		local count = 0
+-- search from next position
+		for i=sel.index + sel.offset + 1, #sel.set do
+			count = count + 1
+			if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
+				for j=1,count do
+					sel:step(0, 1, j ~= count)
+				end
+				return
+			end
+		end
+
+-- wrap
+		count = 0
+		sel.offset = 0
+		sel.index = 1
+		synch_set(sel)
+		set_selected(sel, 1, false)
+
+		for i=1, #sel.set do
+			count = count + 1
+			if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
+				if i ~= 1 then
+					for j=1,count do
+						sel:step(0, 1, j ~= count)
+					end
+				end
+				return
+			end
+		end
+	end
+
+	local function step_set(sel, dx, dy, instant)
 		local oldi = sel.index
 
 		if dy ~= 0 then
@@ -202,17 +252,19 @@ function(slot, sel, name, value)
 -- scroll down (if possible)
 				if si == #sel.vids then
 					if sel.offset + si + 1 < #sel.set then
-						sel.offset = sel.offset + #sel.vids
+						sel.offset = sel.offset + 1
 						si = #sel.vids
 						synch_set(sel)
+					else
+						sel.offset = 0
+						si = 1
 					end
-					si = 1
 				else
 					si = si + 1
 				end
 
 -- scroll up
-				set_selected(sel, si)
+				set_selected(sel, si, instant)
 
 			elseif dy < 0 then
 				if sel.index == 1 then
@@ -249,6 +301,7 @@ function(slot, sel, name, value)
 	local selector = {
 		update_set = apply_set,
 		step = step_set,
+		seek = step_seek,
 		trigger = step_trigger,
 		cancel = step_cancel,
 		wnd = wnd,
@@ -631,16 +684,17 @@ local function load_item(wnd, v)
 
 	if tostring(v.static_media) then
 		local fn = media_to_fname(v.static_media)
-		if not fn then
-			log(fmt(
-				"tool=composition:kind=error:message=%s matched nothing", v.static_media))
-		else
-			load_image_asynch(fn,
+		local in_reload = false
+
+		local load_fn =
 			function(source, status)
+				in_reload = false
 				if status.kind == "loaded" then
 					log(fmt("tool=composition:kind=loaded:media=%s", fn))
 					image_sharestorage(source, nsrf)
-					apply_image(wnd, v, nsrf)
+					if v.reload_fade and v.reload_fade > 0 then
+						blend_image(nsrf, v.opacity or 1.0, v.reload_fade)
+					end
 				elseif status.kind == "load_failed" then
 					log(
 						fmt(
@@ -651,7 +705,36 @@ local function load_item(wnd, v)
 				end
 				delete_image(source)
 			end
-			)
+
+		if not fn then
+			log(fmt(
+				"tool=composition:kind=error:message=%s matched nothing", v.static_media))
+		else
+			if v.reload_timer then
+				fn = media_to_fname(v.static_media)
+				timer_add_periodic(fn, v.reload_timer, false,
+					function()
+						if in_reload then
+							return
+						end
+
+						local fn = media_to_fname(v.static_media)
+						if v.reload_fade and v.reload_fade > 0 then
+							blend_image(nsrf, 0.0, v.reload_fade)
+							tag_image_transform(nsrf, MASK_OPACITY,
+								function()
+									in_reload = true
+									load_image_asynch(fn, load_fn)
+								end
+							)
+						else
+							load_image_asynch(fn, load_fn)
+						end
+					end
+				)
+			end
+
+			load_image_asynch(fn, load_fn)
 		end
 
 	elseif tostring(v.media) then
@@ -680,7 +763,7 @@ end
 
 local function handle_input(wnd, iotbl)
 	if iotbl.translated and #iotbl.utf8 > 0 and wnd.active_selector then
-
+		wnd.active_selector:seek(iotbl.utf8)
 	end
 end
 
@@ -705,6 +788,13 @@ local function spawn(layout)
 	wnd.list = {}  -- track current list
 	wnd.slots = {} -- track map between logical names / roles and content provided
 	wnd.selectors = {} -- instantiated selectors (typically 1 but no firm restriction)
+	wnd.tick = function()
+		for i,v in ipairs(wnd.selectors) do
+			if v.tick then
+				v:tick()
+			end
+		end
+	end
 
 	wnd.bindings[SYSTEM_KEYS["left"]] = wnd_left
 	wnd.bindings[SYSTEM_KEYS["right"]] = wnd_right
