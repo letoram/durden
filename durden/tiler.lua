@@ -5069,12 +5069,17 @@ end
 
 local function wnd_scroll_report(wnd, yprog, ysize, xprog, xsize)
 	if not yprog then
+		tiler_debug(wnd.wm, "scroll_state:disabled")
 		wnd.got_scroll = nil
 		run_event(wnd, "scroll_state", false);
 		return;
 	end
 
 	wnd.got_scroll = {yprog, ysize, xprog, xsize}
+	tiler_debug(wnd.wm,
+		tiler_fmt("scroll:yprog=%f:ysize=%f:xprog=%f:xsize=%f",
+		yprog or 0, ysize or 0, xprog or 0, xsize or 0)
+	)
 	run_event(wnd, "scroll_state", true, wnd.got_scroll);
 end
 
