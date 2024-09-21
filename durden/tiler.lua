@@ -4412,6 +4412,35 @@ local function wnd_ws_attach(res, from_hook)
 				end
 			end
 		end
+
+-- if we are tiled and the intended space is full based on cap,
+-- find a new empty one and switch to it.
+	elseif gconfig_get("tile_breadth_cap") > 0 then
+		local dspace = res.wm.spaces[dstindex]
+
+		if dspace and dspace.mode == "tile" and
+			#dspace.children >= gconfig_get("tile_breadth_cap") then
+			local ci = dstindex + 1
+			if ci > 10 then
+				ci = 1
+			end
+
+-- sweep until all 10 have been checked, and if we couldn't find one, stick
+-- with the current
+			while ci ~= dstindex do
+				if not res.wm.spaces[ci] or res.wm.spaces[ci].mode == "tile" and
+					#res.wm.spaces[ci].children < gconfig_get("tile_breadth_cap") then
+					res.wm:switch_ws(ci)
+					dstindex = ci
+					break
+				end
+
+				ci = ci + 1
+				if ci > 10 then
+					ci = 1
+				end
+			end
+		end
 	end
 
 -- Can be intercepted by a hook handler that regulates placement but we avoid

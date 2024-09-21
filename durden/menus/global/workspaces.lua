@@ -72,6 +72,19 @@ local tile_menu = {
 		end
 	},
 	{
+		label = "Breadth Cap",
+		name = "breadth_cap",
+		description = "Set a cap for number of first-level windows before assigning / switching to new space",
+		kind = "value",
+		initial = function()
+			return gconfig_get("tile_breadth_cap");
+		end,
+		validator = gen_valid_num(0, 10),
+		handler = function(ctx, val)
+			gconfig_set("tile_breadth_cap", tonumber(val));
+		end
+	},
+	{
 		label = "Subwindow Spawn",
 		name = "subwindow",
 		kind = "value",

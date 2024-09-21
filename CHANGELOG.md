@@ -130,6 +130,9 @@ minor:
 * paths for controlling window stacking in float mode, /target/window/select/to_front,
   /target/window/select/to_back
 
+* added breadth cap option for tiled modes (global/config/workspaces/tile/breadth_cap)
+  when exceeded will try and find new fitting workspace for attaching window
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints

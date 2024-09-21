@@ -213,6 +213,11 @@ return {
 -- window. 'child' also forces ws_child_default = parent.
 	tile_insert_child = "child",
 
+-- used for BSP mode, setting a cap for both depth and breadth will
+-- start adding new primary (insert_child ignored) windows on new
+-- workspaces until full.
+	tile_breadth_cap = 0,
+
 -- used as a workaround for mouse-control issues when we cannot get
 -- relative samples etc. due to being in a windows mode with different
 -- scaling parameters, SDL on OSX for instance.
@@ -236,6 +241,7 @@ return {
 	kbd_delay = 600,
 
 -- accepted values: m1, m2, none
+	meta_latch = "LCTRL_m", -- set to enable alternate modifier toggle approach
 	meta_lock = "m2",
 	meta_stick_time = 0,
 	meta_dbltime = 10,
