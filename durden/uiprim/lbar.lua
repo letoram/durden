@@ -140,7 +140,7 @@ local function accept_cancel(wm, accept, nofwd, m1)
 
 -- have on_accept hook as a way to block the accept termination
 	if (ictx.on_accept) then
-		if ictx:on_accept(accept, ictx.cb_ctx, base, inp.set, inp) then
+		if ictx:on_accept(ictx.cb_ctx, base, accept, inp.set, inp) then
 			return
 		end
 	end

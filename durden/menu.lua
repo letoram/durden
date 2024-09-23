@@ -227,7 +227,7 @@ local function value_entry_input(ctx, instr, done, lastv)
 		return;
 	end
 
--- validate if necessary
+-- validate if necessary and block entry if ee are not valid
 	if (ctx.validator ~= nil and not ctx.validator(instr)) then
 		menu_hook = nil;
 		cpath:reset();
@@ -279,7 +279,8 @@ function menu_hook_launch(fun)
 	menu_hook = fun;
 end
 
-function menu_query_value(ctx, mask, block_back)
+function menu_query_value(ctx, mask, block_back, lbar_opts)
+	lbar_opts = lbar_opts or {}
 	local helper = {
 		active_display().font_delta .. gconfig_get("lbar_helperstr"),
 		(ctx.description and ctx.description .. " ") or ""
@@ -306,21 +307,29 @@ function menu_query_value(ctx, mask, block_back)
 
 -- explicit set to chose from?
 	local res;
+
 	if (ctx.set) then
-		res = active_display():lbar(
-			set_input, ctx, {label = hintstr, force_completion = true});
+		lbar_opts.force_completion = true
+		lbar_opts.label = hintstr
+		res = active_display():lbar(set_input, ctx, lbar_opts)
 	else
 -- or a "normal" run with custom input and validator feedback
-		res = active_display():lbar(
-			value_entry_input, ctx,
-				{
-					set = {"fnurg", "burg"},
-					password_mask = mask,
-					label = hintstr,
-					on_context = value_context
-				}
-			);
+		lbar_opts.password_mask = mask
+		lbar_opts.label = hintstr
+		lbar_opts.on_context = value_context
+		lbar_opts.set = {}
+
+-- block accept on invalid entry
+		lbar_opts.on_accept =
+		function(lbar, ctx, instr, accept, set, inp_st)
+			if accept and ctx.validator and not ctx.validator(instr) then
+				return true
+			end
+		end
+
+		res = active_display():lbar(value_entry_input, ctx, lbar_opts)
 	end
+
 	if (res) then
 		if (not res.on_cancel) then
 			res.on_cancel = menu_cancel;
@@ -338,14 +347,14 @@ function menu_query_value(ctx, mask, block_back)
 	end
 
 -- add Commit/Commit-Back
-	cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
-	function()
-		res:accept_cancel(true, false)
-	end);
-	cpath.helper[#cpath.helper-0].btn:switch_state("inactive");
-	cpath:set_popcount(2);
-
 	if not block_back then
+		cpath:push("commit", "Accept:Close", cpath.meta[#cpath.meta],
+		function()
+			res:accept_cancel(true, false)
+		end);
+		cpath.helper[#cpath.helper-0].btn:switch_state("inactive");
+		cpath:set_popcount(2);
+
 		cpath:push("commit_return", "Accept:Back", cpath.meta[#cpath.meta],
 		function()
 			force_m1 = true;
@@ -1071,7 +1080,7 @@ end
 -- etc. that doesn't fit the other execution path (alt_handler) where we
 -- might reject the accept before it gets passed on
 lbar_opts.on_accept =
-	function(lbar, accept, ctx, instr, set, inp_st)
+	function(lbar, ctx, instr, accept, set, inp_st)
 		local m1, m2 = dispatch_meta();
 
 		if not m1 or not accept then
@@ -1084,6 +1093,11 @@ lbar_opts.on_accept =
 			if (v.label and string.lower(v.label) == string.lower(instr)) then
 				tgt = v;
 			end
+		end
+
+-- block invalid entirely instead of just nop:ing
+		if ctx.validator and not ctx.validator(instr) then
+			return true;
 		end
 
 		if tgt and tgt.alt_handler then
