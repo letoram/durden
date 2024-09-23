@@ -967,10 +967,13 @@ local function get_voice_opts(v)
 	{
 		name = "destroy",
 		label = "Destroy",
-		kind = "action",
+		kind = "value",
+		set = {LBL_YES, LBL_NO},
 		description = "Destroy the voice and cancel all pending text",
-		handler = function()
-			drop_voice(v.name)
+		handler = function(ctx, val)
+			if val == LBL_YES then
+				drop_voice(v.name)
+			end
 		end,
 	});
 
