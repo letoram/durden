@@ -578,7 +578,6 @@ local gen_menu_for_path;
 local function gen_menu_for_resource(path, v, descr, prefix, ns, tracker)
 	local fqn = path .. (path == "/" and "" or "/") .. v;
 	local nsfqn = fqn;
-	print("gen", fqn, nsfqn, descr)
 
 	if type(ns) == "string" then
 		nsfqn = ns .. ":/" .. fqn;

@@ -100,7 +100,7 @@ local function gen_palette_menu()
 		{
 			name = "schemes",
 			kind = "value",
-			label = "Presets",
+			label = "Schemes",
 			description = "Pick a preset high-contrast scheme",
 			set = pc,
 			handler = function(ctx, val)

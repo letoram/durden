@@ -145,6 +145,11 @@ local function accept_cancel(wm, accept, nofwd, m1)
 		end
 	end
 
+-- have a way to modal-force input
+	if not accept and ictx.block_cancel then
+		return
+	end
+
 	ictx.in_wheel = nil;
 	destroy(wm, ictx);
 
@@ -890,6 +895,7 @@ function tiler_lbar(wm, completion, comp_ctx, opts)
 		on_create = opts.on_create,
 		on_entry = opts.on_entry,
 		on_context = opts.on_context,
+		block_cancel = opts.block_cancel,
 		wm = wm,
 	};
 
