@@ -118,6 +118,9 @@ local function gen_palette_menu()
 				for i,v in ipairs(keys) do
 					gconfig_set(v, HC_PALETTE[i] .. " ")
 				end
+				local r, g, b = suppl_hexstr_to_rgb(HC_PALETTE[8])
+
+				gconfig_set("lbar_caret_col", {r, g, b})
 			end,
 		}
 	};
