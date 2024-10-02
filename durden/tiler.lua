@@ -461,7 +461,7 @@ local function wnd_message(wnd, message, timeout)
 		storage = null_surface(32, 32);
 		if (valid_vid(storage)) then
 			image_sharestorage(wnd.icon, storage);
-			image_tracetag(storage, "notification_icon");
+			image_tracetag(storage, "notification_icon", "notification");
 		end
 	end
 
@@ -622,7 +622,7 @@ local function resolve_vsymbol(wm, label, base)
 		if type(outlbl) == "function" then
 			return function(w)
 				local surf = outlbl((w and w > 0) and w or base);
-				image_tracetag(surf, "bar_vsym_" .. label);
+				image_tracetag(surf, "bar_vsym_" .. label, "titlebar " .. label);
 				return surf;
 			end
 		else
@@ -855,6 +855,7 @@ local function tiler_statusbar_update(wm)
 			pad, wm.font_resfn, sbsz, nil,
 			mouse_handler_factory.statusbar_icon(wm, "", "")
 		)
+		lockbtn:set_alt("input lock")
 		lockbtn.lockstate = true;
 	end
 
@@ -894,6 +895,7 @@ local function tiler_statusbar_build(wm)
 				"sbar_item", outlbl, pad, wm.font_resfn, sbsz, nil,
 				mouse_handler_factory.statusbar_icon(wm, v.command, v.alt_command)
 			);
+			btn:set_alt(v.label)
 			btn:switch_state("inactive");
 			btn.drag_command = v.drag_command;
 
@@ -911,6 +913,7 @@ local function tiler_statusbar_build(wm)
 			"sbar_item", tostring(i), pad, wm.font_resfn, sbsz, nil,
 				mouse_handler_factory.statusbar_wsicon(wm, i)
 		);
+		wm.sbar_ws[i]:set_alt("workspace " .. tostring(i))
 		wm.sbar_ws[i].drag_command =
 			"/target/window/reassign/reassign_" .. tostring(i);
 		wm.sbar_ws[i]:hide();
@@ -2093,7 +2096,7 @@ local function workspace_background(ws, bgsrc, generalize, bgsrc_input)
 		if (not valid_vid(ws.background)) then
 			ws.background = null_surface(wm.width, wm.height);
 			image_mask_set(ws.background, MASK_UNPICKABLE);
-			image_tracetag(ws.background, "workspace_bg");
+			image_tracetag(ws.background, "workspace_bg", "workspace background");
 			shader_setup(ws.background, "simple", "noalpha");
 		end
 		if (not valid_vid(ws.anchor)) then
@@ -2180,7 +2183,7 @@ local function workspace_preview(space, width, height, n_contrib, rate)
 		if valid_vid(nsrf) then
 			show_image(nsrf);
 			image_sharestorage(space.background, nsrf);
-			image_tracetag(nsrf, "workspace_preview_bg");
+			image_tracetag(nsrf, "workspace_preview_bg", "workspace preview");
 			table.insert(set, nsrf);
 		end
 	end
@@ -5075,7 +5078,7 @@ local function wnd_tbar_btn(wnd, dir, vsym, action, altaction, dst_group)
 		gconfig_get("sbar_tpad") * wnd.wm.scalef,
 		wnd.wm.font_resfn, nil, nil,
 		suppl_button_default_mh(wnd, action, altaction),
-		{group = dst_group}
+		{group = dst_group, alt = vsym}
 	);
 end
 

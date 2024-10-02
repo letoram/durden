@@ -150,14 +150,18 @@ local function queue_input(wnd)
 		function()
 			if not valid_vid(wnd.external, TYPE_FRAMESERVER) then
 				timer_delete(tname)
+				wnd.type_input_queue = nil
 			end
 
 			if config.type_model == "instant" then
 				while run_key() do
 				end
 				timer_delete(tname)
+				wnd.type_input_queue = nil
+
 			elseif not run_key() then
 				timer_delete(tname)
+				wnd.type_input_queue = nil
 			end
 		end,
 		true
@@ -168,7 +172,7 @@ local function type_input(ctx, val)
 	local wnd = active_display().selected
 	if not wnd.type_input_queue then
 		wnd.type_input_queue = {string_to_keyboard(val, SYMTABLE)}
-		queue_input(wnd, val)
+		queue_input(wnd)
 	else
 		table.insert(wnd.type_input_queue, string_to_keyboard(val, SYMTABLE))
 	end

@@ -8,18 +8,18 @@ local tts_in_echo;
 
 local labels =
 {
-	no_wnd = "no window selected",
-	no_tui = "window is pixel based",
-	empty_prompt = "empty prompt",
-	prompt = "prompt",
-	help = "help",
-	no_description = "no description",
-	speak = "speak",
-	echo_fail = "echo fail",
-	echo_fail_long = "key echo held by other active voice",
-	no_changes = "nothing changed",
-	at_top = "current row at top",
-	at_bottom = "current row at bottom",
+	no_wnd = "no window selected ",
+	no_tui = "window is pixel based ",
+	empty_prompt = "empty prompt ",
+	prompt = "prompt ",
+	help = "help ",
+	no_description = "no description ",
+	speak = "speak ",
+	echo_fail = "echo fail ",
+	echo_fail_long = "key echo held by other active voice ",
+	no_changes = "nothing changed ",
+	at_top = "current row at top ",
+	at_bottom = "current row at bottom ",
 	current_row = "row %d "
 }
 
@@ -147,6 +147,9 @@ end
 
 local function speak_message(voice, prefix, msg, reset)
 	msg = string.trim(tostring(msg))
+	if voice.blocked then
+		return
+	end
 
 -- apply substitution patterns
 	if voice.profile.replace then
@@ -162,9 +165,11 @@ local function speak_message(voice, prefix, msg, reset)
 
 -- don't repeat ourselves
 	if voice.last_message == msg then
+		log(fmt("tts:message_ignore", msg))
 		return
 	end
 
+	log(fmt("tts:message=%s", msg))
 	voice.last_message = tostring(msg)
 
 -- speak if the voice isn't dead, flush before if desired
@@ -317,15 +322,65 @@ end
 local function voice_cursor(voice, action)
 	voice.cursor_hook =
 	function(vid, x, y, label)
-		if voice.last_cursor == label or #label == 0 then
+		if voice.last_cursor == label or #label == 0 or tiler_lbar_isactive() then
 			return
 		end
 		voice.last_cursor = label
 		voice:message(action, label, true)
 	end
 
-	if voice.cursor then
--- hook timer for generating beep, calcregion for edge detection
+	voice.mx, voice.my = mouse_xy()
+	local cp = voice.profile.cursor
+	if cp then
+		local ofs = cp.xy_beep[1] or 0
+		local range = (cp.xy_beep[2] or 0) - ofs
+		voice.last_sample = BADID
+
+		timer_add_periodic(
+			"tts_cursor_timer", cp.xy_beep_timer or 10, false,
+			function()
+				local mx, my = mouse_xy()
+				if mx == voice.mx and my == voice.my then
+					return
+				end
+
+-- check tracetag for vid pick, if alt is set, remember and check if it has
+-- changed, if so, play back it as message. if it is on a TUI window, route
+-- mouse cursor to read word at or line at.
+				if cp.alt_text then
+					local items = pick_items(mx, my, 1, 1, active_display().rtgt_id)
+
+					if items and items[1] then
+						local base, tt = image_tracetag(items[1])
+
+						if tt and #tt > 0 then
+							voice:message(cp.alt_text, tt, true)
+						end
+					end
+				end
+
+				if not cp.xy_beep then
+					return
+				end
+
+-- having pitch shifting as a possible transform would be much cheaper, but
+-- engine only exposes gain. use lower-left origo.
+				voice.mx = mx
+				voice.my = my
+				local pcg = mx / active_display().width
+				local pcf = 1.0 - (my / active_display().height)
+				if voice.last_sample ~= BADID then
+					delete_audio(voice.last_sample)
+				end
+
+				voice.last_sample =
+					load_asample(1, 48000, build_sine(pcf * range + ofs, 0.1))
+
+				audio_gain(voice.last_sample, (pcg * 1.0 / 2) + 0.5)
+				play_audio(voice.last_sample, cp.gain)
+			end, true)
+
+-- binding / action for speaking at cursor position and based on window type
 	end
 
 	mouse_cursorhook(voice.cursor_hook)
@@ -333,6 +388,7 @@ local function voice_cursor(voice, action)
 	table.insert(voice.cleanup,
 	function()
 		mouse_cursorhook(voice.cursor_hook)
+		timer_delete("tts_cursor_timer")
 	end)
 end
 
@@ -404,14 +460,15 @@ local function voice_menu(voice, action)
 			function(ictx)
 				local str = ictx.inp:view_str()
 				if #str == 0 then
-					voice:message("", labels.empty_prompt)
+					voice:message("", labels.empty_prompt, true)
 				else
 					voice:message(labels.prompt, str)
 					local caret = ictx.inp:caret_str()
 					if caret ~= str then
-						voice:message(labels.prompt, caret)
+						voice:message(labels.prompt, caret, true)
 					end
 				end
+				voice.last_message = "" -- always allow prompt to be repeated
 			end
 		end
 
@@ -420,9 +477,9 @@ local function voice_menu(voice, action)
 			bar.custom_bindings[help_bind] =
 			function(ictx)
 				if ictx.last_helper then
-					voice:message(labels.prompt, ictx.last_helper)
+					voice:message(labels.prompt, ictx.last_helper, true)
 				else
-					voice:message(labels.help, labels.no_description)
+					voice:message(labels.help, labels.no_description, true)
 				end
 			end
 		end
@@ -432,7 +489,7 @@ local function voice_menu(voice, action)
 		if path_bind then
 			bar.custom_bindings[path_bind] =
 				function(ictx)
-					voice:message(action, menu_get_current_path())
+					voice:message(action, menu_get_current_path(), true)
 				end
 		end
 
@@ -511,6 +568,39 @@ local function voice_menu(voice, action)
 		d.lbar = hook
 	end
 
+-- interpose the value query menu as well
+	local menu = menu_query_value
+	menu_query_value =
+	function(ctx, mask, block_back, lbar_opts)
+		local iv = ""
+		if ctx.initial then
+			if type(ctx.initial) == "function" then
+				iv = tostring(ctx.initial())
+			end
+		end
+
+-- option to idle-repeat?
+		voice:message(
+			voice.profile.menu.val_prefix or "",
+			string.format(
+			"%s %s %s",
+			ctx.description or (ctx.label or ctx.name),
+			voice.profile.menu.val_suffix or "",
+			iv
+		))
+
+-- block the regular lbar hijack as it won't say anything important
+		voice.blocked = true
+		local rv = menu(ctx, mask, block_back, lbar_opts)
+		voice.blocked = false
+		return rv
+	end
+
+	table.insert(voice.cleanup,
+	function()
+		menu_query_value = menu
+	end)
+
 	table.insert(voice.cleanup,
 	function()
 		for d in all_tilers_iter() do
@@ -519,20 +609,12 @@ local function voice_menu(voice, action)
 	end)
 end
 
-local function voice_notification(voice, arg)
--- the only special things here is possibly to remember window sources for
--- notifications and providing a binding to jump to the last source window
-end
-
-local function voice_accessibility(voice, arg)
--- this is for windows that can handle / provide an accessibility
--- segment and we can access / step its contexts through tui functions,
--- since the vstore type in arcan for that is incomplete this is just
--- notes and a placeholder.
-end
-
-local function tuiwnd_check(v)
+local function tuiwnd_check(v, x, y)
 	local wnd = active_display().selected
+	if x and y then
+
+	end
+
 	if not wnd then
 		v:message("", labels.no_wnd)
 		return
@@ -553,7 +635,7 @@ end
 local function process_str_fmt(str, fmt, lastfmt)
 -- use [fmt] to format >bold< >italic< when those change as well as border
 -- areas and shape reset.
-	return string.trim(str)
+	return str
 end
 
 local function read_tui_row(wnd, v, x, y)
@@ -574,7 +656,8 @@ local function read_tui_row(wnd, v, x, y)
 				lastfmt = fmt
 			end
 
-			v:message("row:" .. tostring(y), table.concat(row, ""))
+			local line = table.concat(row, "")
+			v:message("row:" .. tostring(y), line)
 		end
 	)
 	return empty
@@ -583,6 +666,56 @@ end
 local function read_current_row(wnd, v)
 	local tt = wnd.tui_track.crow
 	read_tui_row(wnd, v, 0, tt)
+end
+
+local function val_to_curstarget(v, filter)
+	local tbl = suppl_unpack_typestr("ff", 8, 128)
+	local x, y = mouse_xy()
+	local x2 = x + tbl[1]
+	local y2 = y + tbl[2]
+end
+
+local function voice_cursreg_menu(v)
+	local res =
+	{
+		{
+			name = "intensity",
+			kind = "value",
+			description = "Convert region intensity into a tone",
+			label = "Intensity",
+			validator = suppl_valid_typestr("ff", 8, 128),
+			hint = "(w,h)",
+			handler = function(ctx, val)
+				val_to_curstarget(val, "gray")
+			end,
+		},
+		{
+			name = "edge_intensity",
+			kind = "value",
+			description = "Convert edges in a region into a tone",
+			label = "Edge Intensity",
+			hint = "(w,h)",
+			validator = suppl_valid_typestr("ff", 8, 128),
+			handler = function(ctx, val)
+				val_to_curstarget(val, "edge_luma")
+			end
+		},
+		{
+			name = "ocr",
+			kind = "value",
+			description = "OCR cursor to window edge with a height cap",
+			label = "OCR",
+			hint = "(h)",
+			validator = gen_valid_num(8, 128),
+			handler = function(ctx, val)
+-- first pick window under cursor, check if it is tui-tracked, if so,
+-- just read_row based on custom x,y offset, otherwise forward to display
+-- region after capping from window properties
+			end
+		}
+	}
+
+	return res
 end
 
 local function voice_tuiwnd_menu(v)
@@ -774,7 +907,7 @@ local function voice_beep(v)
 		audio_position(v.beep_aid, v.positioner)
 	end
 
-	play_audio(v.beep_aid)
+	play_audio(v.beep_aid, v.profile.gain)
 end
 
 local function load_voice(name)
@@ -812,6 +945,7 @@ local function load_voice(name)
 	if map.reset_beep then
 		voice.beep_aid = load_asample(1, 48000,
 			build_sine(map.reset_beep[1], map.reset_beep[2]))
+		audio_gain(voice.beep_aid, map.gain)
 	end
 
 	if voice.positioner then
@@ -861,8 +995,12 @@ local function load_voice(name)
 		end
 	end
 
-	timer_add_periodic("tts_timer_" .. tostring(CLOCK), 25, false, voice.timer, true)
-	table.insert(voice.cleanup, function() timer_delete_trigger(voice.timer) end)
+	local timer_name = "tts_timer_" .. tostring(CLOCK)
+	timer_add_periodic(timer_name, 25, false, voice.timer, true)
+
+	table.insert(voice.cleanup, function()
+		timer_delete(timer_name)
+	end)
 
 	dispatch_bindings_overlay(map.bindings, true)
 
@@ -945,6 +1083,7 @@ local function get_voice_opts(v)
 		description = "Cancel / flush current queue",
 		handler = function()
 			v:beep()
+			log(fmt("tts:kind=reset"))
 			reset_target(v.vid)
 		end
 	});
@@ -1003,12 +1142,25 @@ local function get_voice_opts(v)
 
 	table.insert(ent,
 	{
+		name = "cursor_region",
+		label = "Cursor Region",
+		kind = "action",
+		submenu = true,
+		description = "Controls for playing the area around the mouse cursor to sound",
+		handler = function()
+			return voice_cursreg_menu(v)
+		end
+	})
+
+	table.insert(ent,
+	{
 		name = "slow_replay",
 		label = "Slow Replay",
 		kind = "action",
 		description = "Set synthesis speed to slow, replay last message then revert speed",
 		handler = function()
 			if v.last_message then
+				log(fmt("tts:kind=repeat:message=%s", v.last_message))
 				send_label(v.vid, "SLOW");
 				target_input(v.vid, v.last_message);
 				send_label(v.vid, "SETRATE");
@@ -1028,10 +1180,12 @@ local function get_voice_opts(v)
 			end
 
 			if v.key_echo then
+				log(fmt("tts:kind=echo:on=true"))
 				dispatch_symhook(v.key_echo, true)
 				v.key_echo = nil
 				target_input(v.vid, "key echo off")
 			else
+				log(fmt("tts:kind=echo:on=false"))
 				v.key_echo = function(io)
 					target_input(v.vid, io)
 				end
@@ -1077,12 +1231,28 @@ local function gen_voice_menu()
 	local names = {};
 
 	for i, v in pairs(voices) do
-		table.insert(names, v.name);
+		table.insert(names, v.name)
 	end
 
-	table.sort(names);
+	table.sort(names)
+	local got_def
+
 	for i, v in ipairs(names) do
 		local voice = voices[v];
+		if voice.profile.default and not got_def then
+			got_def = true
+			table.insert(res, {
+				name = "default",
+				kind = "action",
+				description = "Control or modify the voice",
+				label = "Default",
+				submenu = true,
+				handler = function()
+					return get_voice_opts(voice)
+				end
+			})
+		end
+
 		table.insert(res, {
 			name = v,
 			kind = "action",
@@ -1090,9 +1260,9 @@ local function gen_voice_menu()
 			label = v,
 			submenu = true,
 			handler = function()
-				return get_voice_opts(voice);
+				return get_voice_opts(voice)
 			end
-		});
+		})
 	end
 
 	return res;

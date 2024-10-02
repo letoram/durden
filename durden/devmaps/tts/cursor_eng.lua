@@ -13,19 +13,23 @@ local tbl =
 		cappitch = 5000,
 -- set of events that this voice will cover
     actions = {
- 			cursor = "",
-			key_echo = "",
+ 			cursor = "curs "
     },
 
 		cursor =
 		{
-			xy_beep = "C2",
-			xy_beep_timer = 5,
+			alt_text = "over ",
+			xy_beep = {65.41, 523.25},
+			xy_beep_timer = 15,
+			gain = 0.2,
 		},
 
 -- keybindings that will take over the defaults while voice is activated
     bindings =
     {
+			m2_c = "/global/tools/tts/voices/cursor_eng/cursor_region/intensity=32,32",
+			m2_o = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr=64",
+			m2_s = "/global/tools/tts/voices/cursor_eng/cursor_region/edge_intensity=32,32",
     }
 }
 

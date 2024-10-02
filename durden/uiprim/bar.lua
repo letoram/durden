@@ -110,6 +110,8 @@ local function button_labelupd(btn, lbl, timeout, timeoutstr)
 
 -- finally make the visual changes
 	image_tracetag(btn.lbl, btn.lbl_tag);
+	image_tracetag(btn.bg, btn.lbl_tag .. "_bg", btn.alt)
+
 	reset_image_transform(btn.bg);
 	resize_image(btn.bg, btn.w, btn.h, btn.anim_time, btn.anim_func);
 	link_image(btn.lbl, btn.bg);
@@ -249,6 +251,11 @@ local function button_tick(btn)
 	end
 end
 
+local function button_alttext(btn, alt)
+	btn.alt = alt
+	image_tracetag(btn.bg, btn.lbl_tag .. "_bg", btn.alt)
+end
+
 local function button_description(btn, descr)
 -- "on hover"
 	btn.description = descr;
@@ -278,9 +285,11 @@ function uiprim_button(anchor, bgshname,
 		minh = 0,
 		pad = pad,
 		padw = padw,
+		alt = "",
 		name = "uiprim_btn_" .. tostring(ind),
 -- exposed methods
 		update = button_labelupd,
+		set_alt = button_alttext,
 		destroy = button_destroy,
 		switch_state = button_state,
 		dimensions = button_size,
@@ -312,7 +321,7 @@ function uiprim_button(anchor, bgshname,
 	end
 
 	link_image(res.bg, anchor);
-	image_tracetag(res.bg, res.name .. "_bg");
+	image_tracetag(res.bg, res.name .. "_bg", res.alt);
 	image_inherit_order(res.bg, true);
 	order_image(res.bg, 2);
 	show_image(res.bg);
@@ -782,7 +791,7 @@ local function bar_button(bar, align,
 
 	local btn = btn_insert(bar, align,
 		bgshname, lblshname, lbl, pad, fontfn, minw, minh, mouseh, opts);
-
+	btn:set_alt(opts.alt)
 	bar:relayout();
 	return btn;
 end

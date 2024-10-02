@@ -73,7 +73,8 @@ idle_wakeup = function(key, failed)
 			end
 			iostatem_restore();
 		end,
-		{}, {label = string.format(
+		{}, {
+			label = string.format(
 			failed > 0 and
 				"Enter Unlock Key (%d Failed Attempts):" or
 				"Enter Unlock Key:", failed),

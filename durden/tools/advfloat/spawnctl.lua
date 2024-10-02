@@ -17,7 +17,7 @@ local function setup_cursor_pick(wm, wnd)
 	nudge_image(pending_vid,
 	mouse_state().size[1] * 0.75, mouse_state().size[2] * 0.75);
 	local ctx = {anchor = pending_vid};
-	suppl_region_shadow(ctx, w+20, h+20, {shader = "rounded_border"});
+	suppl_region_shadow(ctx, w+20, h+20, {shader = "regsel"});
 	if valid_vid(ctx.shadow) then
 		nudge_image(ctx.shadow, -10, -10);
 	end

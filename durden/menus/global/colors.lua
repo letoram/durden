@@ -37,6 +37,7 @@ local preset_set =
 		"\\#f58b4c",
 		"\\#ed6785",
 		"\\#d0d0d0",
+		"\\#ffc6ff",
 	},
 	pastel = {
 		"\\#ffadad",

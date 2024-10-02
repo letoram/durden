@@ -331,6 +331,7 @@ local function track_label(iotbl, keysym, hook_handler)
 			end
 			mtrack.last_m2 = m2d;
 		end
+	elseif (keysym == SYSTEM_KEYS["a11y"]) then
 	end
 
 	local lutsym = "" ..

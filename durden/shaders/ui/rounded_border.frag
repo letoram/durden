@@ -15,6 +15,7 @@
 	uniform vec3 shadow_color;
 	uniform vec3 border_color;
 	varying vec2 texco;
+	uniform sampler2D map_tu0;
 
 vec2 error_function(vec2 x)
 {
@@ -78,7 +79,7 @@ void main()
 		}
 	}
 	else {
-		col = obj_col;
+		col = texture2D(map_tu0, texco).rgb;
 	}
 
 	gl_FragColor = vec4(col, max(obj_opacity * a, 0.0));

@@ -11,16 +11,18 @@ local tbl =
 		name = "basic_eng",
 		punct = 1,
 		cappitch = 5000,
+		default = true,
+
 -- set of events that this voice will cover
     actions = {
-    	select = {"wind", "tit", "title_text"},
-			menu = "menu",
-			dispatch = "run",
-			clipboard = "clip set",
-			clipboard_paste = "clip paste",
-			notification = "notify",
-			menu = "menu",
-			a11ywnd = "wind",
+    	select = {"wind ", "tit ", "title_text", " "},
+			menu = "menu ",
+			dispatch = "run ",
+			clipboard = "clip set ",
+			clipboard_paste = "clip paste ",
+			notification = "notify ",
+			menu = "menu ",
+			a11ywnd = "wind ",
     },
 
 -- called whenever voice flush is requested, disable by settil to false or nil
@@ -45,7 +47,9 @@ local tbl =
 			speak_description = "lctrl_h",
 			speak_path = "lctrl_p",
 			speak_set = "lctrl_s",
-			speak_reset = "lctrl_r"
+			speak_reset = "lctrl_r",
+			val_prefix = "val req",
+			val_suffix = "cur"
 		},
 
 -- keybindings that will take over the defaults while voice is activated

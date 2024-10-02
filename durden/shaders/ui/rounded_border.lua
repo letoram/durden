@@ -7,7 +7,7 @@ return {
 		radius = {
 			label = 'Radius',
 			utype = 'f',
-			default = 5,
+			default = 20,
 			description = 'Corner Radius Circle',
 			low = 1,
 			high = 20,

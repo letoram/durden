@@ -166,6 +166,7 @@ local function wnd_drag_preview_synch(wnd)
 		move_image(dmp, w * dw, h * dh, at);
 		blend_image(dmp, 0.5, at);
 		image_mask_set(dmp, MASK_UNPICKABLE);
+
 		wnd.drag_move_pos = tag;
 	end
 
@@ -749,6 +750,7 @@ local function button_hover_preview(btn, vid, x, y, on)
 	image_mask_set(vid, MASK_UNPICKABLE)
 	blend_image(vid, 1.0, gconfig_get("popup_animation"))
 	image_inherit_order(vid, true)
+	shader_setup(vid, "ui", "rounded_border", "active")
 
 -- for bar at T/L:
 	local ms = mouse_state()
