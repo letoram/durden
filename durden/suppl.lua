@@ -436,7 +436,7 @@ function suppl_wnd_slice(wnd, closure)
 	);
 end
 
-local function build_rt_reg(drt, x1, y1, w, h, srate)
+function suppl_build_rt_reg(drt, x1, y1, w, h, srate, shid)
 	if (w <= 0 or h <= 0) then
 		return;
 	end
@@ -469,10 +469,14 @@ local function build_rt_reg(drt, x1, y1, w, h, srate)
 	image_set_txcos(cont, txcos);
 	show_image({cont, dst});
 
-	local shid = image_shader(drt);
-	if (shid) then
+	if not shid then
+		shid = image_shader(drt)
+	end
+
+	if shid then
 		image_shader(cont, shid);
 	end
+
 	return dst, {cont};
 end
 
@@ -814,7 +818,7 @@ function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 		img = i1[1];
 	end
 
-	local dvid, grp = build_rt_reg(img, x1, y1, w, h);
+	local dvid, grp = suppl_build_rt_reg(img, x1, y1, w, h);
 	if (not valid_vid(dvid)) then
 		return;
 	end

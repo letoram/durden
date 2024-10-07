@@ -764,7 +764,6 @@ local region_menu = {
 				end
 
 				local dvid, grp = suppl_region_setup(x1, y1, x2, y2, true, false);
-				print("region", dvid, grp)
 				if (not valid_vid(dvid)) then
 					return;
 				end
@@ -775,7 +774,6 @@ local region_menu = {
 					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
 				function(source, stat)
 					if (stat.kind == "message") then
-						print("ocr message")
 						last_msg = last_msg and (last_msg .. stat.message) or stat.message;
 						if (not stat.multipart) then
 							CLIPBOARD:add("OCR", last_msg, false);
@@ -784,7 +782,6 @@ local region_menu = {
 							delete_image(source);
 						end
 					elseif (stat.kind == "terminated") then
-						print("ocr dead")
 						delete_image(source);
 					end
 				end);

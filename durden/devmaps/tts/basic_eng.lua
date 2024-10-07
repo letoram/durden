@@ -48,8 +48,9 @@ local tbl =
 			speak_path = "lctrl_p",
 			speak_set = "lctrl_s",
 			speak_reset = "lctrl_r",
-			val_prefix = "val req",
-			val_suffix = "cur"
+			val_prefix = "val req ",
+			val_suffix = "cur ",
+			popup_prefix = "pop ",
 		},
 
 -- keybindings that will take over the defaults while voice is activated

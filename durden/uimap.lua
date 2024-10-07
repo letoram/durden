@@ -87,12 +87,15 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			blend_image(ssurf, 1.0);
 			order_image(ssurf, -1);
 		end,
-		cursor_at = function(ctx, vid, xofs, yofs, max_w, h)
+		cursor_at = function(ctx, vid, xofs, yofs, max_w, h, i)
 			if (not ctx.shid) then
 				return;
 			end
 			shader_uniform(ctx.shid,
 				"range", "ff", (yofs + hw) / shadow_h, (yofs + hw + h) / shadow_h);
+			if opts.a11y_hook then
+				opts.a11y_hook(menu[i].label)
+			end
 		end,
 -- all paths return true == we take control over invocation
 		on_finish =
@@ -101,6 +104,10 @@ function uimap_popup(menu, x, y, anchor_vid, closure, opts)
 			popup_closure();
 			dispatch_symbol_unlock(true);
 			active_display():set_input_lock(ilock, "uimap_popup_over");
+
+			if opts.a11y_hook then
+				opts.a11y_hook(ent and ent.label, ent ~= nil)
+			end
 
 -- let the activation be intercepted
 			if closure and not closure(ent) then

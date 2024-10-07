@@ -218,7 +218,7 @@ local function set_index(ctx, i)
 		end
 
 		if ctx.options.cursor_at then
-			ctx.options.cursor_at(ctx, ctx.cursor, 0, ctx.line_pos[i], ctx.max_w, h);
+			ctx.options.cursor_at(ctx, ctx.cursor, 0, ctx.line_pos[i], ctx.max_w, h, i);
 		end
 
 	elseif valid_vid(ctx.cursor) then

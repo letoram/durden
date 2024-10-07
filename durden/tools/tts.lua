@@ -20,7 +20,8 @@ local labels =
 	no_changes = "nothing changed ",
 	at_top = "current row at top ",
 	at_bottom = "current row at bottom ",
-	current_row = "row %d "
+	current_row = "row %d ",
+	ocr_failed = "ocr failed"
 }
 
 local function rescan()
@@ -427,14 +428,7 @@ local function voice_clipboard_paste(voice, action)
 	CLIPBOARD:add_monitor(voice.clipboard_paste, true)
 end
 
-local tiler_lbar_hook
-local tiler_lbar_orig
 local function voice_menu(voice, action)
-	if tiler_lbar_orig then
-		log(fmt("tts:kind=warning:name=%s:reason=only one voice for menu", voice.name))
-		return
-	end
-
 	if not voice.profile.menu then
 		log(fmt("tts:kind=warning:name=%s:missing_menu_configuration", voice.name))
 		return
@@ -596,16 +590,31 @@ local function voice_menu(voice, action)
 		return rv
 	end
 
-	table.insert(voice.cleanup,
-	function()
-		menu_query_value = menu
-	end)
+	local orig_popup = uimap_popup
+	local pref = voice.profile.menu.popup_prefix or ""
+	uimap_popup =
+	function(menu, x, y, anchor_vid, closure, opts)
+		opts = opts or {}
+		opts.a11y_hook =
+		function(text, accept)
+			if accept == nil then
+				voice:message(pref, text)
+			elseif accept == false then
+				voice:message(pref, "cancel")
+			elseif accept then
+				voice:message(pref, "ok")
+			end
+		end
+		return orig_popup(menu, x, y, anchor_vid, closure, opts)
+	end
 
 	table.insert(voice.cleanup,
 	function()
 		for d in all_tilers_iter() do
 			d.lbar = tiler_lbar
 		end
+		menu_query_value = menu
+		uimap_popup = orig_popup
 	end)
 end
 
@@ -708,9 +717,55 @@ local function voice_cursreg_menu(v)
 			hint = "(h)",
 			validator = gen_valid_num(8, 128),
 			handler = function(ctx, val)
--- first pick window under cursor, check if it is tui-tracked, if so,
--- just read_row based on custom x,y offset, otherwise forward to display
--- region after capping from window properties
+-- first pick window under cursor
+				local mx, my = mouse_xy()
+				local items = pick_items(mx, my, 1, 1, active_display().rtgt_id)
+
+				if not items[1] then
+					v:message("", labels.no_wnd)
+					return
+				end
+
+				local wnd = active_display():find_window(items[1])
+				if not wnd then
+					v:message("", labels.no_wnd)
+					return
+				end
+
+-- is it a tui one? then translate mx / my to tui coordinates and speak-row
+				if wnd.tui_track then
+-- speak tui row
+				end
+
+-- just read_row based on custom x,y offset
+				local dv, grp =
+					suppl_build_rt_reg(active_display().rt,
+						mx, my,
+						mx + wnd.effective_w - (wnd.x - mx),
+						my + tonumber(val)
+					)
+
+				if not dv then
+					return
+				end
+
+				local last_msg
+				define_recordtarget(dvid, "", "protocol=ocr", grp, {},
+					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
+						function(source, stats)
+							if stat.kind == "message" then
+								last_msg = last_msg and (last_msg .. stat.message) or stat.message;
+								if (not stat.multipart) then
+									v:message("curs ", last_msg)
+									last_msg = nil
+									delete_image(source)
+								elseif stat.kind == "terminated" then
+									v:message("curs ", labels.ocr_failed)
+									delete_image(source)
+								end
+							end
+						end
+				)
 			end
 		}
 	}
