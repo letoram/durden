@@ -629,6 +629,12 @@ local function lbar_helper(lbar, lbl)
 
 	local barh = math.ceil(gconfig_get("lbar_sz") * wm.scalef);
 
+-- don't repeat ourselves
+	if (lbl == lbar.last_helper) then
+		return;
+	end
+	lbar.last_helper = lbl;
+
 	local dst;
 	if (type(lbl) == "table") then
 		dst = lbl;
@@ -641,12 +647,6 @@ local function lbar_helper(lbar, lbl)
 		end
 		dst = {wm.font_delta .. gconfig_get("lbar_helperstr"), lbl};
 	end
-
--- don't repeat ourselves
-	if (lbl == lbar.last_helper) then
-		return;
-	end
-	lbar.last_helper = lbl;
 
 -- build text and bar, pad with 1 pt on each side
 	local pad = gconfig_get("lbar_tpad") * wm.scalef;
