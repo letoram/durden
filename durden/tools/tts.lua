@@ -147,7 +147,8 @@ local function send_label(vid, lbl)
 end
 
 local function speak_message(voice, prefix, msg, reset)
-	msg = string.trim(tostring(msg))
+	msg = string.trim(string.gsub(tostring(msg), "%s+", " "))
+
 	if voice.blocked then
 		return
 	end
@@ -377,8 +378,7 @@ local function voice_cursor(voice, action)
 				voice.last_sample =
 					load_asample(1, 48000, build_sine(pcf * range + ofs, 0.1))
 
-				audio_gain(voice.last_sample, (pcg * 1.0 / 2) + 0.5)
-				play_audio(voice.last_sample, cp.gain)
+				play_audio(voice.last_sample, ((pcg + 0.2) * cp.gain))
 			end, true)
 
 -- binding / action for speaking at cursor position and based on window type
@@ -598,11 +598,11 @@ local function voice_menu(voice, action)
 		opts.a11y_hook =
 		function(text, accept)
 			if accept == nil then
-				voice:message(pref, text)
+				voice:message(pref, text, true)
 			elseif accept == false then
-				voice:message(pref, "cancel")
+				voice:message(pref, "cancel", true)
 			elseif accept then
-				voice:message(pref, "ok")
+				voice:message(pref, "ok", true)
 			end
 		end
 		return orig_popup(menu, x, y, anchor_vid, closure, opts)
@@ -647,7 +647,7 @@ local function process_str_fmt(str, fmt, lastfmt)
 	return str
 end
 
-local function read_tui_row(wnd, v, x, y)
+local function read_tui_row(wnd, v, x, y, mouse)
 	local tt = wnd.tui_track
 	local empty = true
 
@@ -655,6 +655,9 @@ local function read_tui_row(wnd, v, x, y)
 		function(data, w, h, cols, rows)
 			local row = {}
 			local lastfmt
+			if mouse and data.translate then
+				x, y = data:translate(x, y)
+			end
 
 			for col=x,cols do
 				local str, fmt = data:read(col, y)
@@ -666,7 +669,7 @@ local function read_tui_row(wnd, v, x, y)
 			end
 
 			local line = table.concat(row, "")
-			v:message("row:" .. tostring(y), line)
+			v:message("", line)
 		end
 	)
 	return empty
@@ -719,14 +722,15 @@ local function voice_cursreg_menu(v)
 			handler = function(ctx, val)
 -- first pick window under cursor
 				local mx, my = mouse_xy()
-				local items = pick_items(mx, my, 1, 1, active_display().rtgt_id)
+				local wm = active_display()
+				local items = pick_items(mx, my, 1, 1, wm.rtgt_id)
 
 				if not items[1] then
 					v:message("", labels.no_wnd)
 					return
 				end
 
-				local wnd = active_display():find_window(items[1])
+				local wnd = wm:find_window(items[1])
 				if not wnd then
 					v:message("", labels.no_wnd)
 					return
@@ -734,12 +738,16 @@ local function voice_cursreg_menu(v)
 
 -- is it a tui one? then translate mx / my to tui coordinates and speak-row
 				if wnd.tui_track then
--- speak tui row
+					local mx, my = mouse_xy()
+					mx = mx - (wnd.x + wnd.pad_left + wm.xoffset)
+					my = my - (wnd.y + wnd.pad_top + wm.yoffset)
+					read_tui_row(wnd, v, mx, my, true)
+					return
 				end
 
 -- just read_row based on custom x,y offset
 				local dv, grp =
-					suppl_build_rt_reg(active_display().rt,
+					suppl_build_rt_reg(wm.rt,
 						mx, my,
 						mx + wnd.effective_w - (wnd.x - mx),
 						my + tonumber(val)
@@ -749,6 +757,8 @@ local function voice_cursreg_menu(v)
 					return
 				end
 
+-- this should really be a cached instance for dvid / language and support
+-- pushing a single frame through image_screenshot that translate into a bchunkstate
 				local last_msg
 				define_recordtarget(dvid, "", "protocol=ocr", grp, {},
 					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,

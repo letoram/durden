@@ -21,7 +21,7 @@ local tbl =
 			alt_text = "over ",
 			xy_beep = {65.41, 523.25},
 			xy_beep_timer = 15,
-			gain = 0.2,
+			gain = 0.7,
 		},
 
 -- keybindings that will take over the defaults while voice is activated
