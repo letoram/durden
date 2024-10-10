@@ -9,7 +9,7 @@ local tbl =
 		range = 60, -- 0  .. 100: 0 = monotome
     channel = "l", -- l, r or lr,
 		name = "basic_eng",
-		punct = 1,
+		punct = 1, -- 0: none, 1: all, 2: some
 		cappitch = 5000,
 		default = true,
 

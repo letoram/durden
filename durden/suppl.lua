@@ -436,7 +436,10 @@ function suppl_wnd_slice(wnd, closure)
 	);
 end
 
-function suppl_build_rt_reg(drt, x1, y1, w, h, srate, shid)
+function suppl_build_rt_reg(drt, x1, y1, x2, y2, srate, shid)
+	local w = x2 - x1;
+	local h = y2 - y1;
+
 	if (w <= 0 or h <= 0) then
 		return;
 	end
@@ -818,7 +821,7 @@ function suppl_region_setup(x1, y1, x2, y2, nodef, static, title)
 		img = i1[1];
 	end
 
-	local dvid, grp = suppl_build_rt_reg(img, x1, y1, w, h);
+	local dvid, grp = suppl_build_rt_reg(img, x1, y1, x2, y2);
 	if (not valid_vid(dvid)) then
 		return;
 	end

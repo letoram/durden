@@ -39,18 +39,42 @@ local function rescan()
 	end)
 end
 
-local function build_sine(freq, length)
-	local step = 2 * math.pi * freq / 48000.0
-	local samples = length * 48000.0
+local function fade(len, samples, i, rate)
+	local lim = len * rate
+	local cap = math.floor(len * rate)
+
+	if i > samples - cap then
+		return (samples - i) / (cap)
+	end
+	return 1
+end
+
+local tones =
+{
+	sine = function(v, len) return math.sin(2 * math.pi * v / len) end,
+	square = function(v, len) return v % len < len / 2 and 1 or -1 end,
+	triangle = function(v, len) return (2 * math.abs(2 * (v / len - math.floor(v / len + 0.5))) - 1) end,
+	sawtooth = function(v, len) return 2 * (v / len - math.floor(v / len + 0.5)) end
+}
+
+local function build_tone(kind, freq, length)
+	local rate = 48000.0
+	local samples = math.floor(length * rate)
+	local period = math.floor(rate / freq)
 	local res = {}
-	local val = 0
+	local fun = tones[kind]
 
 	for i=1,samples,1 do
-		res[i] = math.sin(val)
-		val = val + step
+		res[i] = fade(0.08, samples, i, rate) * fun(i, period)
 	end
 
 	return res
+end
+
+local function translate_xy_wnd(wnd, x, y)
+	return
+		math.floor(x - (wnd.x + wnd.pad_left + wnd.wm.xoffset)),
+		math.floor(y - (wnd.y + wnd.pad_top + wnd.wm.yoffset))
 end
 
 local speak_voice
@@ -321,6 +345,67 @@ local function build_a11y_handler(voice, wm)
 	}
 end
 
+local function get_cursor_length(cp)
+	local mx, my = mouse_xy()
+	local items = pick_items(mx, my, 1, 1, active_display().rtgt_id)
+	if not items[1] then
+		return "sine", 0.01
+	end
+
+	local wnd = active_display():find_window(items[1])
+	if not wnd then
+		return "sine", 0.01
+	end
+
+	mx, my = translate_xy_wnd(wnd, mx, my)
+	local rv = 0.1
+	local rw = "square"
+
+	if wnd.atype == "terminal" then
+		image_access_storage(
+			wnd.canvas,
+			function(data, w, h, cols, rows)
+				mx, my = data:translate(mx, my)
+
+-- only beep if the cursor is on a new cell
+				if wnd.tui_last_mxy and
+					mx == wnd.tui_last_mxy[1] and my == wnd.tui_last_mxy[2] then
+					rw = nil
+					return
+				end
+
+-- change waveform and duration based on content type
+				wnd.tui_last_mxy = {mx, my}
+				local str, fmt = data:read(mx, my)
+				if #str > 0 and not string.match(str, "%s+") then
+					rw = "triangle"
+					rv = 0.2
+				end
+			end
+		)
+
+		return rw, rv
+	end
+
+	image_access_storage(
+		wnd.canvas,
+		function(data, w, h)
+			local sum = 0
+			for dy=-1,1 do
+				for dx=-1,1 do
+					local r, g, b =
+						data:get(math.clamp(x + dx, 0, w), math.clamp(y + dy, 0, h), 3)
+					sum = sum + (r + g + b + 0.0001) / 3
+				end
+			end
+			sum = sum / 9
+			print(sum)
+		end
+	)
+
+	return "sine", rv
+end
+
 local function voice_cursor(voice, action)
 	voice.cursor_hook =
 	function(vid, x, y, label)
@@ -375,10 +460,21 @@ local function voice_cursor(voice, action)
 					delete_audio(voice.last_sample)
 				end
 
-				voice.last_sample =
-					load_asample(1, 48000, build_sine(pcf * range + ofs, 0.1))
+-- also check contents of cursor position, generate tone length based on the
+-- intensity of the surrounding x*y area
+				local wave, length = get_cursor_length(cp)
+				if wave then
+					voice.last_sample =
+						load_asample(1, 48000,
+							build_tone(
+								wave,
+								pcf * range + ofs,
+								length
+							)
+						)
 
-				play_audio(voice.last_sample, ((pcg + 0.2) * cp.gain))
+					play_audio(voice.last_sample, ((pcg + 0.2) * cp.gain))
+				end
 			end, true)
 
 -- binding / action for speaking at cursor position and based on window type
@@ -618,16 +714,13 @@ local function voice_menu(voice, action)
 	end)
 end
 
-local function tuiwnd_check(v, x, y)
+local function tuiwnd_check()
 	local wnd = active_display().selected
-	if x and y then
-
-	end
 
 	if not wnd then
 		v:message("", labels.no_wnd)
 		return
-	elseif not wnd.tui_track then
+	elseif not wnd.tui_track or not wnd.atype == "terminal" then
 		v:message("", labels.no_tui)
 		return
 	end
@@ -639,11 +732,23 @@ local function reset_track(wnd)
 	wnd.tui_track.y1 = 6666
 	wnd.tui_track.x2 = -1
 	wnd.tui_track.y2 = -1
+	wnd.tui_track.last_mxy = {0, 0}
 end
 
 local function process_str_fmt(str, fmt, lastfmt)
--- use [fmt] to format >bold< >italic< when those change as well as border
--- areas and shape reset.
+-- should also use [fmt] to format >bold< >italic< when those change
+-- as well as border areas and shape reset.
+	local subst =
+	{
+		{":", " colon "},
+		{";", " semicolon "},
+		{"%.", " dot "}
+	}
+
+	for i,v in ipairs(subst) do
+		str = str:gsub(v[1], v[2])
+	end
+
 	return str
 end
 
@@ -651,7 +756,7 @@ local function read_tui_row(wnd, v, x, y, mouse)
 	local tt = wnd.tui_track
 	local empty = true
 
-	image_access_storage(wnd.external,
+	image_access_storage(wnd.canvas,
 		function(data, w, h, cols, rows)
 			local row = {}
 			local lastfmt
@@ -685,6 +790,92 @@ local function val_to_curstarget(v, filter)
 	local x, y = mouse_xy()
 	local x2 = x + tbl[1]
 	local y2 = y + tbl[2]
+	print("cursor with filter", x, y, x2, y2, filter)
+end
+
+local function ocr_window(v, h)
+-- first pick window under cursor
+	local mx, my = mouse_xy()
+	local wm = active_display()
+	local items = pick_items(mx, my, 1, 1, wm.rtgt_id)
+
+	if not items[1] then
+		v:message("", labels.no_wnd)
+		return
+	end
+
+	local wnd = wm:find_window(items[1])
+	if not wnd then
+		v:message("", labels.no_wnd)
+		return
+	end
+
+-- is it a tui one? then translate mx / my to tui coordinates and speak-row
+	if wnd.atype == "terminal" then
+		local mx, my = translate_xy_wnd(wnd, mouse_xy())
+		read_tui_row(wnd, v, mx, my, true)
+		return
+	end
+
+	local x2
+-- just full-window it
+	if not h then
+		local props = image_surface_resolve(wnd.canvas)
+		mx = props.x
+		my = props.y
+		x2 = mx + props.width
+		h = props.height
+	else
+-- just read_row based on custom x,y offset
+		mx = math.floor(mx)
+		my = math.floor(my)
+		x2 = math.floor(
+			mx + wnd.effective_w - (mx - (wnd.x + wnd.pad_left + wm.xoffset))
+		)
+	end
+
+	local dv, grp =
+		suppl_build_rt_reg(wm.rtgt_id,
+			mx, my,
+			x2,
+			my + tonumber(h)
+		)
+
+	if not dv then
+		return
+	end
+
+-- apply shader to grp if desired
+-- for image to sound, just swap record for calctarget with our transfer function
+
+-- this should really be a cached instance for dvid / language and support
+-- pushing a single frame through image_screenshot that translate into a bchunkstate
+	local last_msg
+	define_recordtarget(dv,
+		"", "protocol=ocr", grp, {},
+		RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
+		function(source, stat)
+			if stat.kind == "message" then
+				last_msg = last_msg and (last_msg .. stat.message) or stat.message;
+				if (not stat.multipart) then
+					v:message("curs ", last_msg)
+					last_msg = nil
+					delete_image(source)
+				end
+			elseif stat.kind == "terminated" then
+				v:message("curs ", labels.ocr_failed)
+				delete_image(source)
+			end
+		end
+	)
+
+-- hide the mouse cursor while doing this
+	mouse_hide()
+		target_flags(dv, TARGET_BLOCKADOPT)
+		rendertarget_forceupdate(dv)
+		stepframe_target(dv)
+		hide_image(dv)
+	mouse_show()
 end
 
 local function voice_cursreg_menu(v)
@@ -713,69 +904,25 @@ local function voice_cursreg_menu(v)
 			end
 		},
 		{
+			name = "ocr_window",
+			kind = "action",
+			description = "OCR the contents of the window beneath the cursor",
+			label = "OCR Window",
+			handler =
+			function(ctx)
+				print("ocr full window")
+				ocr_window(v)
+			end
+		},
+		{
 			name = "ocr",
 			kind = "value",
 			description = "OCR cursor to window edge with a height cap",
-			label = "OCR",
+			label = "OCR Region",
 			hint = "(h)",
 			validator = gen_valid_num(8, 128),
 			handler = function(ctx, val)
--- first pick window under cursor
-				local mx, my = mouse_xy()
-				local wm = active_display()
-				local items = pick_items(mx, my, 1, 1, wm.rtgt_id)
-
-				if not items[1] then
-					v:message("", labels.no_wnd)
-					return
-				end
-
-				local wnd = wm:find_window(items[1])
-				if not wnd then
-					v:message("", labels.no_wnd)
-					return
-				end
-
--- is it a tui one? then translate mx / my to tui coordinates and speak-row
-				if wnd.tui_track then
-					local mx, my = mouse_xy()
-					mx = mx - (wnd.x + wnd.pad_left + wm.xoffset)
-					my = my - (wnd.y + wnd.pad_top + wm.yoffset)
-					read_tui_row(wnd, v, mx, my, true)
-					return
-				end
-
--- just read_row based on custom x,y offset
-				local dv, grp =
-					suppl_build_rt_reg(wm.rt,
-						mx, my,
-						mx + wnd.effective_w - (wnd.x - mx),
-						my + tonumber(val)
-					)
-
-				if not dv then
-					return
-				end
-
--- this should really be a cached instance for dvid / language and support
--- pushing a single frame through image_screenshot that translate into a bchunkstate
-				local last_msg
-				define_recordtarget(dvid, "", "protocol=ocr", grp, {},
-					RENDERTARGET_DETACH, RENDERTARGET_NOSCALE, 0,
-						function(source, stats)
-							if stat.kind == "message" then
-								last_msg = last_msg and (last_msg .. stat.message) or stat.message;
-								if (not stat.multipart) then
-									v:message("curs ", last_msg)
-									last_msg = nil
-									delete_image(source)
-								elseif stat.kind == "terminated" then
-									v:message("curs ", labels.ocr_failed)
-									delete_image(source)
-								end
-							end
-						end
-				)
+				ocr_window(v, val)
 			end
 		}
 	}
@@ -802,7 +949,7 @@ local function voice_tuiwnd_menu(v)
 					return
 				end
 				image_access_storage(
-					wnd.external,
+					wnd.canvas,
 					function(data, w, h, cols, rows)
 						for y=wnd.tui_track.y1,wnd.tui_track.y2 do
 						end
@@ -1009,7 +1156,7 @@ local function load_voice(name)
 
 	if map.reset_beep then
 		voice.beep_aid = load_asample(1, 48000,
-			build_sine(map.reset_beep[1], map.reset_beep[2]))
+			build_tone("sine", map.reset_beep[1], map.reset_beep[2]))
 		audio_gain(voice.beep_aid, map.gain)
 	end
 
@@ -1096,7 +1243,7 @@ local function load_voice(name)
 				voice.active = true
 				timer_add_periodic("tts_start", 1, true, function()
 					if valid_vid(source) then
-						target_input(source, "the voice" .. name .. " activated")
+						target_input(source, "voice " .. name)
 
 -- activate spatial if requested
 						if map.position then

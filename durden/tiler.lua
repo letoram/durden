@@ -923,6 +923,8 @@ local function tiler_statusbar_build(wm)
 		"sbar_item", "+", pad, wm.font_resfn, sbsz, nil,
 		mouse_handler_factory.statusbar_addicon(wm)
 	);
+	wm.sbar_ws[11]:set_alt("new workspace")
+
 	wm.sbar_ws[11].drag_command = "/target/window/reassign/reassign_new";
 	wm.sbar_ws[11]:switch_state("inactive");
 
