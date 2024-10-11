@@ -249,6 +249,9 @@ return {
 	label = "Client",
 	submenu = true,
 	description = "Stream to a connected client",
+	eval = function()
+		return #gen_recdst_wnd(nosound) > 0
+	end,
 	handler =
 	function()
 		return gen_recdst_wnd(nosound);
