@@ -746,6 +746,11 @@ function build_override_redirect_surface(parent, vid, aid, cookie, xid, viewport
 			ctx.lx = x;
 			ctx.ly = y;
 		end,
+		drag =
+		function(ctx, vid, dx, dy, ...)
+			local x, y = mouse_xy();
+			ctx:motion(vid, x, y);
+		end,
 		button =
 		function(ctx, vid, ind, pressed, x, y)
 			target_input(parent.external, {
