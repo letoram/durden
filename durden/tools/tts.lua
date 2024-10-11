@@ -5,6 +5,7 @@ local map_cache = {};
 local scan_voices = {}; -- set of known voice styles
 local log, fmt = suppl_add_logfn("tools");
 local tts_in_echo;
+local read_tui_row;
 
 local labels =
 {
@@ -325,6 +326,7 @@ local function build_a11y_handler(voice, wm)
 						elseif status.kind == "frame" then
 -- now we can sweep and speak the part of the window that has changed
 -- through access_image_storage as the backing is tui
+							read_tui_row(source, voice, 0, 0, false)
 
 						elseif status.kind == "terminated" then
 							delete_image(source)
@@ -339,6 +341,7 @@ local function build_a11y_handler(voice, wm)
 		target_flags(wnd.a11y.vid, TARGET_BLOCKADOPT)
 		order_image(wnd.a11y.vid, 1)
 		image_mask_set(wnd.a11y.vid, MASK_UNPICKABLE)
+		target_flags(wnd.a11y.vid, TARGET_VERBOSE, true)
 
 	-- preroll doesn't exist for secondaries
 		suppl_tgt_color(wnd.a11y.vid, gconfig_get("tui_colorscheme"))
@@ -763,11 +766,11 @@ local function process_str_fmt(str, fmt, lastfmt)
 	return str
 end
 
-local function read_tui_row(wnd, v, x, y, mouse)
-	local tt = wnd.tui_track
+read_tui_row =
+function(vid, v, x, y, mouse)
 	local empty = true
 
-	image_access_storage(wnd.canvas,
+	image_access_storage(vid,
 		function(data, w, h, cols, rows)
 			local row = {}
 			local lastfmt
@@ -826,7 +829,7 @@ local function ocr_window(v, h)
 -- is it a tui one? then translate mx / my to tui coordinates and speak-row
 	if wnd.atype == "terminal" then
 		local mx, my = translate_xy_wnd(wnd, mouse_xy())
-		read_tui_row(wnd, v, mx, my, true)
+		read_tui_row(wnd.canvas, v, mx, my, true)
 		return
 	end
 
