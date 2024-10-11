@@ -73,8 +73,8 @@ end
 
 local function translate_xy_wnd(wnd, x, y)
 	return
-		math.floor(x - (wnd.x + wnd.pad_left + wnd.wm.xoffset)),
-		math.floor(y - (wnd.y + wnd.pad_top + wnd.wm.yoffset))
+		math.floor(x - (wnd.x + wnd.ofs_x + wnd.pad_left + wnd.wm.xoffset)),
+		math.floor(y - (wnd.y + wnd.ofs_y + wnd.pad_top + wnd.wm.yoffset))
 end
 
 local speak_voice
@@ -243,7 +243,7 @@ local function voice_select(voice, action)
 		local value = string.trim(wnd[action[3]])
 		if #value == 0 then
 -- don't speak empty title
-			voice:message(action[1], "empty", true)
+			voice:message(action[1], wnd.atype, true)
 --voice:message(string.format("wnd %s", action[2], wnd.atype or ""))
 			return
 		end
@@ -308,6 +308,7 @@ local function build_a11y_handler(voice, wm)
 						if status.kind == "resized" then
 							show_image(source)
 							resize_image(source, status.width, status.height)
+							move_image(source, 0, -status.height)
 
 						elseif status.kind == "content_state" then
 							target_displayhint(source, status.max_w, status.max_h)
@@ -334,9 +335,18 @@ local function build_a11y_handler(voice, wm)
 		}
 
 		image_inherit_order(wnd.a11y.vid, true)
-		suppl_tgt_color(wnd.a11y.vid, gconfig_get("tui_colorscheme"))
 		link_image(wnd.a11y.vid, wnd.canvas, ANCHOR_LL)
 		target_flags(wnd.a11y.vid, TARGET_BLOCKADOPT)
+		order_image(wnd.a11y.vid, 1)
+		image_mask_set(wnd.a11y.vid, MASK_UNPICKABLE)
+
+	-- preroll doesn't exist for secondaries
+		suppl_tgt_color(wnd.a11y.vid, gconfig_get("tui_colorscheme"))
+		target_fonthint(wnd.a11y.vid,
+			voice.profile.a11y_font or gconfig_get("term_font"),
+			voice.profile.a11y_font_sz or gconfig_get("term_font_sz"), 1
+		)
+
 		return a11y_handler
 	end,
 	destroy = function()
@@ -354,12 +364,13 @@ local function get_cursor_length(cp)
 
 	local wnd = active_display():find_window(items[1])
 	if not wnd then
-		return "sine", 0.01
+		return "sine", 0.1
 	end
 
 	mx, my = translate_xy_wnd(wnd, mx, my)
+
 	local rv = 0.1
-	local rw = "square"
+	local rw = cp.xy_tuitone or "square"
 
 	if wnd.atype == "terminal" then
 		image_access_storage(
@@ -378,7 +389,7 @@ local function get_cursor_length(cp)
 				wnd.tui_last_mxy = {mx, my}
 				local str, fmt = data:read(mx, my)
 				if #str > 0 and not string.match(str, "%s+") then
-					rw = "triangle"
+					rw = cp.xy_tuitone or "triangle"
 					rv = 0.2
 				end
 			end
@@ -387,6 +398,7 @@ local function get_cursor_length(cp)
 		return rw, rv
 	end
 
+	target_flags(wnd.external, TARGET_VSTORE_SYNCH)
 	image_access_storage(
 		wnd.canvas,
 		function(data, w, h)
@@ -394,12 +406,11 @@ local function get_cursor_length(cp)
 			for dy=-1,1 do
 				for dx=-1,1 do
 					local r, g, b =
-						data:get(math.clamp(x + dx, 0, w), math.clamp(y + dy, 0, h), 3)
+						data:get(math.clamp(mx + dx, 0, w-1), math.clamp(my + dy, 0, h-1), 3)
 					sum = sum + (r + g + b + 0.0001) / 3
 				end
 			end
 			sum = sum / 9
-			print(sum)
 		end
 	)
 
@@ -774,7 +785,9 @@ local function read_tui_row(wnd, v, x, y, mouse)
 			end
 
 			local line = table.concat(row, "")
-			v:message("", line)
+			if #line > 0 then
+				v:message("", line)
+			end
 		end
 	)
 	return empty

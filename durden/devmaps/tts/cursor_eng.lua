@@ -22,11 +22,14 @@ local tbl =
 			alt_text = "over ",
 			xy_beep = {65.41, 523.25},
 			xy_beep_tone = "sine",
-			xy_tuitone = "square",
-			xy_tuitone_length = 0.1,
-			xy_tuitone_empty_length = 5,
-			xy_beep_timer = 15,
-			gain = 0.7,
+			xy_tuitone = "square", -- tone to play for cells with content
+			xy_tuitone_length = 0.15,
+			xy_tuitone_empty = "triangle", -- tone to play for empty cells
+			xy_tuitone_empty_length = 0.1, -- shorter beep
+			xy_tone_max = 0.15, -- at full brightness
+			xy_tone_min = 0.05, -- at zero brightness
+			xy_beep_timer = 15, -- how often the cursor will be sampled (1s = 25)
+			gain = 0.7, -- max gain for the cursor tones
 		},
 
 -- keybindings that will take over the defaults while voice is activated
