@@ -14,7 +14,7 @@ return {
 			rotation = 0,
 			shader = "vignette",
 			static_media = "$random:wallpapers/*.jpg",
-			reload_timer = 100,
+			reload_timer = 1000,
 			reload_fade = 10
 		},
 		{
@@ -48,7 +48,7 @@ return {
 			x2 = 1180,
 			y2 = 660,
 			selector = "list",
-			selector_config = {
+			config = {
 				font = "default.ttf",
 				font_sz = 24,
 				text_color = "ffffff",

@@ -3,22 +3,19 @@ local log, fmt = suppl_add_logfn("tools")
 local layouts = {}
 local selectors = {}
 local populate_slot
+local release_slot
 
 -- selector gets four buttons: next, previous, activate, cancel
-selectors.coverflow =
-function(wnd, v)
-end
-
 selectors.list =
 function(wnd, v, set)
 	log(fmt("name=composition:kind=selector_build:items=%d", #v))
 	local fmtstr =
 		string.format(
 			"\\ffonts/%s,%d\\#%s",
-			v.selector_config.font or gconfig_get("font_def"),
+			v.config.font or gconfig_get("font_def"),
 			active_display().font_deltav +
-			(v.selector_config.font_sz or gconfig_get("font_sz")),
-			v.selector_config.text_color or gconfig_get("text_color")
+			(v.config.font_sz or gconfig_get("font_sz")),
+			v.config.text_color or gconfig_get("text_color")
 		)
 
 	local set_selected =
@@ -32,16 +29,22 @@ function(wnd, v, set)
 
 		local vid = selector.vids[ind]
 		local props = image_surface_properties(vid)
-		local item = selector.set[selector.index + selector.offset]
+		local olditem = selector.set[selector.offset + selector.index]
+		local item = selector.set[ind + selector.offset]
 		item.props = props
 
-		for k,v in pairs(item.slots) do
-			if selector.wnd.list[k] then
-				populate_slot(selector.wnd.list[k], selector, k, v)
+-- release the items populated by the previous ones that don't have a
+-- corresponding replacement in the new item
+		for k, slot in pairs(wnd.list) do
+			if item.slots[k] then
+				populate_slot(slot, selector, v, k, item.slots[k])
+
+			elseif olditem.slots[k] then
+				release_slot(slot)
 			end
 		end
 
-		local animation = v.selector_config.animation
+		local animation = v.config.animation
 		if animation and not instant then
 			move_image(vid, 20, props.y)
 			move_image(vid, 0, props.y, animation)
@@ -49,7 +52,7 @@ function(wnd, v, set)
 			move_image(vid, 0, props.y)
 		end
 
-		selector.cooldown = 20
+		selector.cooldown = 100
 		selector.index = ind
 	end
 
@@ -60,7 +63,7 @@ function(wnd, v, set)
 		end
 		selector.cooldown = selector.cooldown - 1
 		if selector.cooldown == 0 then
-			local item = seelctor.set[selector.index + selector.offset]
+			local item = selector.set[selector.index + selector.offset]
 		end
 	end
 
@@ -82,8 +85,18 @@ function(wnd, v, set)
 -- (returning to a cached set as 'step back' should go the other direction)
 	local apply_set =
 	function(selector, set, nostack)
-		local animation = v.selector_config.animation
+		local animation = v.config.animation
 		local got_set = #selector.vids > 0
+
+-- hide the previously populated slots as we won't have a 'last' index
+		local olditem = selector.set[selector.offset + selector.index]
+		if olditem then
+			for k,v in pairs(olditem.slots) do
+				if wnd.list[k] then
+					release_slot(wnd.list[k])
+				end
+			end
+		end
 
 		if got_set and not nostack then
 			table.insert(selector.stack, selector.set)
@@ -95,7 +108,7 @@ function(wnd, v, set)
 			else
 				nudge_image(vid,
 					(nostack and 1 or -1) * (v.x2 - v.x), 0,
-					v.selector_config.animation or 0
+					v.config.animation or 0
 				)
 				blend_image(vid, 0, animation or 0)
 				expire_image(vid, animation or 0)
@@ -106,8 +119,8 @@ function(wnd, v, set)
 		selector.vids = {}
 
 -- might want some tiling background for this
-		if v.selector_config.background then
-			local bgc = v.selector_config.background
+		if v.config.background then
+			local bgc = v.config.background
 			local csrf = fill_surface(1, 1, bgc[1], bgc[2], bgc[3])
 			blend_image(v.vid, bgc[4])
 			image_sharestorage(csrf, v.vid)
@@ -161,123 +174,147 @@ function(wnd, v, set)
 		set_selected(selector, 1)
 	end
 
-populate_slot =
-function(slot, sel, name, value)
-		if slot.last == value then
-			return
-		end
+release_slot =
+function(slot)
+	if valid_vid(slot.current) then
+		delete_image(slot.current)
+	end
+	if valid_vid(slot.vid) then
+		hide_image(slot.vid)
+	end
+end
 
-		local simple, ext = suppl_ext_type(value)
-		local ctbl = {
-			image = "proto=image",
-			video = "proto=media",
-			pdf = "proto=pdf",
-			audio = "proto=media"
-		}
+populate_slot =
+function(slot, selector, item, name, value)
+
+-- protect against being run twice
+	if slot.last == value then
+		return
+	end
+
+	local simple, ext = suppl_ext_type(value)
+	local ctbl = {
+		image = "proto=image",
+		video = "proto=media",
+		pdf = "proto=pdf",
+		audio = "proto=media"
+	}
 
 -- we have media, 3d, text, image, pdf
-		local vid =
-			launch_decode(value, ctbl[simple],
-				function(source, status)
-				if status.kind == "terminated" then
-					delete_image(source)
+	local vid =
+		launch_decode(value, ctbl[simple],
+			function(source, status)
+			if status.kind == "terminated" then
+				delete_image(source)
+				table.remove_match(selector.pending, source)
 
 -- crossfade should go here, set a blend and tag the transform then
 -- on tag set_image_as_frame to populate both slots
-				elseif status.kind == "resized" then
-					table.remove_match(sel.pending, value)
-					slot.current = source
-					image_sharestorage(source, slot.vid)
+			elseif status.kind == "resized" then
+				table.remove_match(selector.pending, source)
+				if valid_vid(slot.current) then
+					delete_image(slot.current)
 				end
-			end
-		)
-		if valid_vid(vid) then
-			table.insert(sel.pending, vid)
-		end
 
-		slot.last = name
+				slot.current = source
+				image_sharestorage(source, slot.vid)
+				blend_image(slot.vid, slot.opacity or 1.0,
+					item.config.animation or 0)
+			end
+		end
+	)
+	if valid_vid(vid) then
+		target_flags(vid, TARGET_BLOCKADOPT)
+		table.insert(selector.pending, vid)
 	end
 
-	local function step_seek(sel, ch, norecurse)
-		local si = sel.index
-		local count = 0
+	blend_image(slot.vid,
+		slot.opacity or 1.0,
+		item.config.animation or 0)
+
+	slot.last = value
+end
+
+local function step_seek(sel, ch, norecurse)
+	local si = sel.index
+	local count = 0
 -- search from next position
-		for i=sel.index + sel.offset + 1, #sel.set do
-			count = count + 1
-			if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
+	for i=sel.index + sel.offset + 1, #sel.set do
+		count = count + 1
+		if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
+			for j=1,count do
+				sel:step(0, 1, j ~= count)
+			end
+			return
+		end
+	end
+
+-- wrap
+	count = 0
+	sel.offset = 0
+	sel.index = 1
+	synch_set(sel)
+	set_selected(sel, 1, false)
+
+	for i=1, #sel.set do
+		count = count + 1
+		if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
+			if i ~= 1 then
 				for j=1,count do
 					sel:step(0, 1, j ~= count)
 				end
-				return
 			end
-		end
-
--- wrap
-		count = 0
-		sel.offset = 0
-		sel.index = 1
-		synch_set(sel)
-		set_selected(sel, 1, false)
-
-		for i=1, #sel.set do
-			count = count + 1
-			if sel.set[i].text and string.sub(string.lower(sel.set[i].text), 1, #ch) == ch then
-				if i ~= 1 then
-					for j=1,count do
-						sel:step(0, 1, j ~= count)
-					end
-				end
-				return
-			end
+			return
 		end
 	end
+end
 
-	local function step_set(sel, dx, dy, instant)
-		local oldi = sel.index
+local function step_set(sel, dx, dy, instant)
+	local oldi = sel.index
 
-		if dy ~= 0 then
-			for _,v in ipairs(sel.vids) do
-				instant_image_transform(v)
-			end
+	if dy ~= 0 then
+		for _,v in ipairs(sel.vids) do
+			instant_image_transform(v)
+		end
 
-			for k,v in pairs(sel.pending) do
-				delete_image(v)
-			end
+		for k,v in pairs(sel.pending) do
+			delete_image(v)
+		end
 
-			sel.pending = {}
+		sel.pending = {}
 
-			if dy > 0 then
-				local si = sel.index
+		if dy > 0 then
+			local si = sel.index
 
 -- scroll down (if possible)
-				if si == #sel.vids then
-					if sel.offset + si + 1 < #sel.set then
-						sel.offset = sel.offset + 1
-						si = #sel.vids
-						synch_set(sel)
-					else
-						sel.offset = 0
-						si = 1
-					end
+			if si == #sel.vids then
+				if sel.offset + si + 1 < #sel.set then
+					sel.offset = sel.offset + 1
+					si = #sel.vids
+					synch_set(sel)
 				else
-					si = si + 1
+					sel.offset = 0
+					si = 1
 				end
+			else
+				si = si + 1
+			end
 
 -- scroll up
-				set_selected(sel, si, instant)
+			set_selected(sel, si, instant)
 
-			elseif dy < 0 then
-				if sel.index == 1 then
-					if sel.offset > 0 then
-						sel.offset = math.clamp(sel.offset - #sel.vids, 0)
-						synch_set(sel)
-						sel.index = #sel.vids
-					end
-					set_selected(sel, sel.index)
-				else
-					set_selected(sel, math.clamp(sel.index - 1, 1))
+		elseif dy < 0 then
+			if sel.index == 1 then
+				if sel.offset > 0 then
+					sel.offset = math.clamp(sel.offset - #sel.vids, 0)
+					synch_set(sel)
+					sel.index = #sel.vids
 				end
+				set_selected(sel, sel.index)
+			else
+				set_selected(sel, math.clamp(sel.index - 1, 1))
 			end
+		end
 
 -- step in if > 0 and subdir, back if depth > 0
 		elseif dx ~= 0 then
@@ -307,7 +344,10 @@ function(slot, sel, name, value)
 		wnd = wnd,
 		vids = {},
 		stack = {},
-		pending = {}
+		pending = {},
+		offset = 0,
+		set = {},
+		index = 1
 	}
 
 	selector:update_set(set)
@@ -464,10 +504,12 @@ local function gen_set_from_path(wnd, item, path)
 -- default handlers for certain items
 			if rt ~= "directory" then
 				local simple, ext = suppl_ext_type(v)
-				if ext  ~= "*" then
+				if ext ~= "*" then
 					table.insert(res,
 						{
-							slots = {},
+							slots = {
+								preview = path .. "/" .. v
+							},
 							text = v
 						}
 					)
