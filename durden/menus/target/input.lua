@@ -150,6 +150,7 @@ local scroll_menu = {
 		name = "absolute",
 		label = "Absolute",
 		description = "Reposition visible content to a specific position",
+		kind = "value",
 		hint = function()
 			local wnd = active_display().selected;
 			return string.format("0..1:step=%f", wnd.got_scroll[2]);
