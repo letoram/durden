@@ -948,7 +948,7 @@ local keyb_menu = {
 		label = "Repeat Period",
 		kind = "value",
 		initial = function() return tostring(gconfig_get("kbd_period")); end,
-		hint = "ticks/cycle (0:disabled - 50)",
+		hint = "ticks/cycle (0:disabled - 100:slow)",
 		description = "Change how quickly a keypress is repeated (for new windows)",
 		validator = gen_valid_num(0, 100),
 		handler = function(ctx, val)
@@ -966,6 +966,7 @@ local keyb_menu = {
 		end,
 		hint = "ms (0:disable - 1000)",
 		description = "Change how long time need to elapse before repeating starts (for new windows)",
+		validator = gen_valid_num(0, 1000),
 		handler = function(ctx, val)
 			val = tonumber(val);
 			gconfig_set("kbd_delay", val);
