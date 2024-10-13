@@ -83,6 +83,7 @@ local function bbar_input_key(wm, sym, iotbl, lutsym, mwm, lutsym2)
 				drop_bbar(wm, true);
 				ctx.cb(ctx.psym, true, lutsym2, iotbl);
 			else
+				ctx.cb(ctx.psym, false, lutsym2, iotbl);
 				ctx:set_progress((ctx.rpress - ctx.rpress_c) / ctx.rpress);
 			end
 		else
@@ -131,7 +132,8 @@ local function set_label(ctx, msg)
 		delete_image(ctx.lid);
 	end
 
-	ctx.lid = render_text(gconfig_get("lbar_labelstr") .. msg);
+	local fd = active_display().font_delta
+	ctx.lid = render_text({fd .. gconfig_get("lbar_labelstr"), msg});
 	show_image(ctx.lid);
 	link_image(ctx.lid, ctx.bar);
 	image_inherit_order(ctx.lid, true);
@@ -145,7 +147,8 @@ local function set_data(ctx, data)
 		delete_image(ctx.did);
 	end
 
-	ctx.did = render_text({gconfig_get("lbar_textstr"), data});
+	local fd = active_display().font_delta
+	ctx.did = render_text({fd .. gconfig_get("lbar_textstr"), data});
 	show_image(ctx.did);
 	link_image(ctx.did, ctx.bar);
 	image_inherit_order(ctx.did, true);
