@@ -15,7 +15,7 @@ local labels =
 	prompt = "prompt ",
 	help = "help ",
 	no_description = "no description ",
-	speak = "speak ",
+	speak = "", -- "speak ",
 	echo_fail = "echo fail ",
 	echo_fail_long = "key echo held by other active voice ",
 	no_changes = "nothing changed ",
@@ -190,6 +190,11 @@ local function speak_message(voice, prefix, msg, reset)
 		return
 	end
 
+	if voice.queue then
+		table.insert(voice.queue, msg)
+		return
+	end
+
 -- don't repeat ourselves
 	if voice.last_message == msg then
 		log(fmt("tts:message_ignore", msg))
@@ -322,6 +327,9 @@ local function build_a11y_handler(voice, wm)
 						elseif status.kind == "alert" then
 -- notification that something happened that is kept outside the normal
 							voice:message("alert ", status.message)
+
+						elseif status.kind == "failure" then
+							voice:message("failure ", status.message)
 
 						elseif status.kind == "frame" then
 -- now we can sweep and speak the part of the window that has changed
@@ -677,7 +685,11 @@ local function voice_menu(voice, action)
 	menu_query_value =
 	function(ctx, mask, block_back, lbar_opts)
 		local iv = ""
-		if ctx.initial then
+
+		if ctx.set then
+			local set = type(ctx.set) == "function" and ctx.set() or ctx.set
+			iv = set[1]
+		elseif ctx.initial then
 			if type(ctx.initial) == "function" then
 				iv = tostring(ctx.initial())
 			end
@@ -806,7 +818,6 @@ local function val_to_curstarget(v, filter)
 	local x, y = mouse_xy()
 	local x2 = x + tbl[1]
 	local y2 = y + tbl[2]
-	print("cursor with filter", x, y, x2, y2, filter)
 end
 
 local function ocr_window(v, h)
@@ -926,7 +937,6 @@ local function voice_cursreg_menu(v)
 			label = "OCR Window",
 			handler =
 			function(ctx)
-				print("ocr full window")
 				ocr_window(v)
 			end
 		},
@@ -1167,6 +1177,7 @@ local function load_voice(name)
 		labels = {},
 		cleanup = {},
 		tick = {},
+		queue = {},
 		beep = voice_beep
 	}
 
@@ -1223,14 +1234,14 @@ local function load_voice(name)
 		end
 	end
 
-	local timer_name = "tts_timer_" .. tostring(CLOCK)
+	local timer_name = "tts_timer_" .. voice.name
 	timer_add_periodic(timer_name, 25, false, voice.timer, true)
 
 	table.insert(voice.cleanup, function()
 		timer_delete(timer_name)
 	end)
 
-	dispatch_bindings_overlay(map.bindings, true)
+	dispatch_bindings_overlay(map.bindings, true, "a11y_")
 
 	table.insert(voice.cleanup,
 		function() dispatch_bindings_overlay(map.bindings, false) end)
@@ -1257,7 +1268,7 @@ local function load_voice(name)
 -- need to latch the voice message to after the preroll is over
 			elseif status.kind == "preroll" then
 				voice.active = true
-				timer_add_periodic("tts_start", 1, true, function()
+				timer_add_periodic("tts_start_" .. name, 1, true, function()
 					if valid_vid(source) then
 						target_input(source, "voice " .. name)
 
@@ -1268,6 +1279,13 @@ local function load_voice(name)
 							image_mask_clear(voice.positioner, MASK_POSITION)
 							move3d_model(voice.positioner, unpack(map.position))
 							audio_position(status.source_audio, voice.positioner)
+						end
+
+-- flush pending message queue
+						local queue = voice.queue
+						voice.queue = nil
+						for _,v in ipairs(queue) do
+							voice:message("", v)
 						end
 					end
 				end)
@@ -1313,6 +1331,16 @@ local function get_voice_opts(v)
 			v:beep()
 			log(fmt("tts:kind=reset"))
 			reset_target(v.vid)
+		end
+	});
+	table.insert(ent,
+	{
+		name = "beep",
+		label = "Beep",
+		description = "Play an audible beep sound",
+		kind = "action",
+		handler = function()
+			v:beep()
 		end
 	});
 
