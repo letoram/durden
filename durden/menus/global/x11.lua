@@ -49,6 +49,17 @@ return {
 	end,
 },
 {
+	name = "clipboard_synch",
+	kind = "value",
+	label = "Match Clipboards",
+	description = "Provide X11 Clients with clipboard contents",
+	set = {LBL_YES, LBL_NO, LBL_FLIP},
+	handler =
+	function(ctx, val)
+		suppl_flip_handler("xarcan_clipboard_autopaste")(ctx, val);
+	end
+},
+{
 	name = "autows_tagname",
 	kind = "value",
 	label = "Autotag",
