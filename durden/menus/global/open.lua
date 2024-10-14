@@ -225,6 +225,7 @@ local function target_cfgmenu(str, cfgs, noquery)
 		table.insert(res,{
 			name = "launch_" .. string.hexenc(util.hash(str))
 				.. "_" .. string.hexenc(util.hash(v)),
+			alt_name = "launch_" .. str,
 			kind = noquery and "action" or "value",
 			validator = function(val)
 				return not val or #val == 0 or suppl_valid_name(val);

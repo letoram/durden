@@ -39,6 +39,9 @@ local tbl =
 			{"^[-]", ""},
 			{"^terminal[-]", "term "},
 			{"$ [-] Chromium", ""},
+			{":", " colon "},
+			{";", " semicolon "},
+			{"%.", " dot "}
 		},
 
 -- special options and bindings for menu navigation which different input system
@@ -55,19 +58,17 @@ local tbl =
 			popup_prefix = "pop ",
 		},
 
--- keybindings that will take over the defaults while voice is activated
     bindings =
     {
-			m1_r = "/global/tools/tts/voices/basic_eng/flush",
-			m1_F2 = "/global/tools/tts/voices/basic_eng/input/incrate",
-			m1_F3 = "/global/tools/tts/voices/basic_eng/input/decrate",
-			m1_F1 = "/global/tools/tts/voices/basic_eng/read_bindings",
-			m1_t = "/global/tools/tts/voices/basic_eng/slow_replay",
-			m1_u = "/global/tools/tts/voices/basic_eng/text_window/row_down",
-			m1_i = "/global/tools/tts/voices/basic_eng/text_window/row_up",
-			m1_y = "/global/tools/tts/voices/basic_eng/text_window/cursor_before",
-			m1_o = "/global/tools/tts/voices/basic_eng/text_window/cursor_after",
-			m1_p = "/global/tools/tts/voices/basic_eng/text_window/changes"
+			r = "/global/tools/tts/voices/basic_eng/flush",
+			F2 = "/global/tools/tts/voices/basic_eng/input/incrate",
+			F3 = "/global/tools/tts/voices/basic_eng/input/decrate",
+			t = "/global/tools/tts/voices/basic_eng/slow_replay",
+			s = "/global/tools/tts/voices/basic_eng/text_window/row_down",
+			d = "/global/tools/tts/voices/basic_eng/text_window/row_up",
+			a = "/global/tools/tts/voices/basic_eng/text_window/cursor_before",
+			f = "/global/tools/tts/voices/basic_eng/text_window/cursor_after",
+			g = "/global/tools/tts/voices/basic_eng/text_window/synch_cursor"
     }
 }
 

@@ -3,6 +3,7 @@ local function switch_ws_menu()
 	for i=1,10 do
 		spaces[i] = {
 			name = "switch_" .. tostring(i),
+			alt_name = "switch to ws " .. tostring(i),
 			kind = "action",
 			label = tostring(i),
 			description = "Switch the active workspace to index " .. tostring(i),

@@ -29,6 +29,7 @@ end
 local swap_menu = {
 	{
 		name = "up",
+		alt_name = "swap wnd up",
 		label = "Up",
 		kind = "action",
 		description = "Swap position with window parent",
@@ -38,6 +39,7 @@ local swap_menu = {
 	},
 	{
 		name = "down",
+		alt_name = "swap wnd down",
 		label = "Down",
 		description = "Swap position with first window child",
 		kind = "action",
@@ -47,6 +49,7 @@ local swap_menu = {
 	},
 	{
 		name = "left",
+		alt_name = "swap wnd left",
 		label = "Left",
 		description = "Swap position with parent sibling (to the left)",
 		kind = "action",
@@ -56,6 +59,7 @@ local swap_menu = {
 	},
 	{
 		name = "right",
+		alt_name = "swap wnd right",
 		label = "Right",
 		kind = "action",
 		description = "Swap position with parent sibling (to the right)",

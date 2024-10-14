@@ -8,8 +8,10 @@ local tbl_overlay = {};
 local mtrack = {
 	m1 = nil,
 	m2 = nil,
+	a11y = nil,
 	last_m1 = 0,
 	last_m2 = 0,
+	last_a11y = 0,
 	unstick_ctr = 0,
 	dblrate = 10,
 	mstick = 0,
@@ -41,9 +43,10 @@ end
 
 mtrack.mhold_helper = popup_helper
 
-function dispatch_bindings_overlay(tbl, add)
+function dispatch_bindings_overlay(tbl, add, prefix)
+	prefix = prefix or ""
 	for k,v in pairs(tbl) do
-		tbl_overlay[k] = add and v or nil
+		tbl_overlay[prefix .. k] = add and v or nil
 	end
 end
 
@@ -52,11 +55,12 @@ function dispatch_bindings_mhold_helper(override)
 		type(override) == "function" and override or popup_helper
 end
 
-local function update_meta(m1, m2)
+local function update_meta(m1, m2, a11y)
 	mtrack.m1 = m1;
 	mtrack.m2 = m2;
+	mtrack.a11y = a11y;
 
-	if not m1 and not m2 then
+	if not m1 and not m2 and not mtrack.a11y then
 		mtrack.mhold_helper()
 	end
 
@@ -92,17 +96,16 @@ end
 system_load("meta_guard.lua")();
 
 function dispatch_system(key, val)
-	if (SYSTEM_KEYS[key] ~= nil) then
-		SYSTEM_KEYS[key] = val;
-		store_key("sysk_" .. key, val);
-	else
-		warning("tried to assign " .. key .. " / " .. val .. " as system key");
-	end
+	SYSTEM_KEYS[key] = val;
+	store_key("sysk_" .. key, val);
 end
 
 local function build_set()
-	local m1, m2 = dispatch_meta()
-	local prefix = (m1 and "m1_" or "") .. (m2 and "m2_" or "")
+	local m1, m2, a11y = dispatch_meta()
+	local prefix =
+		(a11y and "a11y_" or
+			(m1 and "m1_" or "") .. (m2 and "m2_" or ""))
+
 	local ret = {}
 
 	local function check(k)
@@ -125,6 +128,7 @@ local function build_set()
 -- grab the sets to show
 	local used = {}
 	local sets = {tbl_overlay}
+
 	if active_display().selected then
 		sets[#sets + 1] = active_display().selected.bindings
 	end
@@ -138,9 +142,29 @@ local function build_set()
 		end
 		table.sort(sset)
 
+-- problem with resolving path is that it might not always be available,
+-- otherwise we'd like to provide the description of the item rather than
+-- the full path.
 		for _,k in ipairs(sset) do
 			if check(k) and not used[k] then
-				table.insert(ret, string.sub(k, #prefix+1) .. " - " .. set[k])
+				local ent = set[k]
+				local menu = menu_resolve(ent)
+
+				if menu then
+					if menu.alt_name then
+						ent = menu.alt_name
+					elseif menu.name then
+						ent = menu.name
+					elseif menu[1] then
+						if menu[1].alt_name then
+							ent = menu[1].alt_name
+						else
+							ent = menu[1].name
+						end
+					end
+				end
+
+				table.insert(ret, string.sub(k, #prefix+1) .. " - " .. ent)
 				used[k] = true
 			end
 		end
@@ -153,14 +177,15 @@ function dispatch_tick()
 	if mtrack.mholdctr > 0 then
 		mtrack.mholdctr = mtrack.mholdctr - 1;
 		if mtrack.mholdctr == 0 then
-			mtrack.mhold_helper(build_set())
+			local set = build_set()
+			mtrack.mhold_helper(#set > 0 and set or {"No bindings for key"})
 		end
 	end
 
 	if (mtrack.unstick_ctr > 0) then
 		mtrack.unstick_ctr = mtrack.unstick_ctr - 1;
 		if (mtrack.unstick_ctr == 0) then
-			update_meta(nil, nil);
+			update_meta();
 		end
 	end
 end
@@ -170,10 +195,14 @@ function dispatch_locked()
 end
 
 local function load_keys()
-	for k,v in pairs(SYSTEM_KEYS) do
-		local km = get_key("sysk_" .. k);
-		if (km ~= nil) then
-			SYSTEM_KEYS[k] = tostring(km);
+	for _,v in ipairs(match_keys("sysk_%")) do
+		local pos, stop = string.find(v, "=", 1);
+		if pos and stop then
+			local key = string.sub(v, 6, pos - 1);
+			local val = string.sub(v, stop + 1);
+			if (val and string.len(val) > 0) then
+				SYSTEM_KEYS[key] = val;
+			end
 		end
 	end
 
@@ -241,7 +270,7 @@ function dispatch_list()
 end
 
 function dispatch_meta()
-	return mtrack.m1 ~= nil, mtrack.m2 ~= nil;
+	return mtrack.m1 ~= nil, mtrack.m2 ~= nil, mtrack.a11y ~= nil
 end
 
 function dispatch_set(key, path)
@@ -313,7 +342,11 @@ local function track_label(iotbl, keysym, hook_handler)
 
 -- cover meta gesture transitions, stick meta, double-tap to trigger
 -- lock to window, ...
-	if (keysym == SYSTEM_KEYS["meta_1"]) then
+	if SYSTEM_KEYS["a11y"] and keysym == SYSTEM_KEYS["a11y"] then
+		local a1, a1d = metatrack(mtrack.a11y, mtrack.last_a11y);
+		update_meta(nil, nil, a1);
+
+	elseif (keysym == SYSTEM_KEYS["meta_1"]) then
 		local m1, m1d = metatrack(mtrack.m1, mtrack.last_m1);
 		update_meta(m1, mtrack.m2);
 		if (m1d and mtrack.mlock == "m1") then
@@ -322,6 +355,7 @@ local function track_label(iotbl, keysym, hook_handler)
 			end
 			mtrack.last_m1 = m1d;
 		end
+
 	elseif (keysym == SYSTEM_KEYS["meta_2"]) then
 		local m2, m2d = metatrack(mtrack.m2, mtrack.last_m2);
 		update_meta(mtrack.m1, m2);
@@ -331,12 +365,12 @@ local function track_label(iotbl, keysym, hook_handler)
 			end
 			mtrack.last_m2 = m2d;
 		end
-	elseif (keysym == SYSTEM_KEYS["a11y"]) then
 	end
 
 	local lutsym = "" ..
 		(mtrack.m1 and "m1_" or "") ..
-		(mtrack.m2 and "m2_" or "") .. keysym;
+		(mtrack.m2 and "m2_" or "") ..
+		(mtrack.a11y and "a11y_" or "") .. keysym;
 
 	if (hook_handler) then
 		hook_handler(active_display(), keysym, iotbl, lutsym, metam, tbl[lutsym]);
@@ -382,7 +416,10 @@ local deferred_id = 0;
 function dispatch_repeatblock(iotbl)
 	if (iotbl.translated) then
 		sym, outsym = SYMTABLE:patch(iotbl);
-		return (sym == SYSTEM_KEYS["meta_1"] or sym == SYSTEM_KEYS["meta_2"]);
+		return
+			sym == SYSTEM_KEYS["meta_1"] or
+			sym == SYSTEM_KEYS["meta_2"] or
+			(SYSTEM_KEYS["a11y"] and sym == SYSTEM_KEYS["a11y"]);
 	end
 	return false;
 end

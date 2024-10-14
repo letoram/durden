@@ -78,6 +78,18 @@ local function translate_xy_wnd(wnd, x, y)
 		math.floor(y - (wnd.y + wnd.ofs_y + wnd.pad_top + wnd.wm.yoffset))
 end
 
+local function synch_cursor(v, wnd)
+	image_access_storage(
+		wnd.canvas,
+		function(data)
+			local cx, cy = data:cursor()
+			wnd.tui_track.cy = cy
+			wnd.tui_track.cx = cx
+			v:message("curs ", "at row " .. tostring(cy) .. " col " .. tostring(cx))
+		end
+	)
+end
+
 local speak_voice
 local function read_binding_helper(set)
 	if not set then
@@ -157,7 +169,7 @@ local function list_devmaps(rescan)
 	end
 
 	for i=#map_cache, 1 do
-		if v.mark then
+		if map_cache[i].mark then
 			table.remove(map_cache, i)
 		end
 	end
@@ -759,27 +771,18 @@ local function reset_track(wnd)
 	wnd.tui_track.x2 = -1
 	wnd.tui_track.y2 = -1
 	wnd.tui_track.last_mxy = {0, 0}
+	wnd.tui_track.cx = 0
+	wnd.tui_track.cy = 0
 end
 
 local function process_str_fmt(str, fmt, lastfmt)
--- should also use [fmt] to format >bold< >italic< when those change
+-- should use [fmt] to format >bold< >italic< when those change
 -- as well as border areas and shape reset.
-	local subst =
-	{
-		{":", " colon "},
-		{";", " semicolon "},
-		{"%.", " dot "}
-	}
-
-	for i,v in ipairs(subst) do
-		str = str:gsub(v[1], v[2])
-	end
-
 	return str
 end
 
 read_tui_row =
-function(vid, v, x, y, mouse)
+function(vid, v, x, y, mouse, x2)
 	local empty = true
 
 	image_access_storage(vid,
@@ -790,7 +793,9 @@ function(vid, v, x, y, mouse)
 				x, y = data:translate(x, y)
 			end
 
-			for col=x,cols do
+			x2 = x2 or cols
+
+			for col=x,x2 do
 				local str, fmt = data:read(col, y)
 				if #str > 0 then
 					empty = false
@@ -809,8 +814,8 @@ function(vid, v, x, y, mouse)
 end
 
 local function read_current_row(wnd, v)
-	local tt = wnd.tui_track.crow
-	read_tui_row(wnd, v, 0, tt)
+	local tt = wnd.tui_track.cy
+	read_tui_row(wnd.canvas, v, wnd.tui_track.cx, wnd.tui_track.cy)
 end
 
 local function val_to_curstarget(v, filter)
@@ -964,6 +969,7 @@ local function voice_tuiwnd_menu(v)
 			label = "Changes",
 			description = "Read accumulated changes to the text window since last invocation",
 			kind = "action",
+			eval = function() return false; end,
 			handler = function()
 				local wnd = tuiwnd_check(v)
 				if not wnd then
@@ -994,13 +1000,27 @@ local function voice_tuiwnd_menu(v)
 				if not wnd then
 					return
 				end
-				wnd.tui_track.crow = math.clamp(wnd.tui_track.crow, 0, 6666)
-				if wnd.tui_track.crow > 0 then
-					wnd.tui_track.crow = wnd.tui_track.crow - 1
+				wnd.tui_track.cx = 0
+				wnd.tui_track.cy = math.clamp(wnd.tui_track.cy, 0, 6666)
+				if wnd.tui_track.cy > 0 then
+					wnd.tui_track.cy = wnd.tui_track.cy - 1
 					read_current_row(wnd, v)
 				else
 					v:message("", labels.at_top)
 				end
+			end
+		},
+		{
+			name = "synch_cursor",
+			label = "Synch Cursor",
+			description = "Move readback cursor to shell cursor",
+			kind = "action",
+			handler = function()
+				local wnd = tuiwnd_check(v)
+				if not wnd then
+					return
+				end
+				synch_cursor(v, wnd)
 			end
 		},
 		{
@@ -1013,9 +1033,10 @@ local function voice_tuiwnd_menu(v)
 				if not wnd then
 					return
 				end
-				wnd.tui_track.crow = math.clamp(wnd.tui_track.crow, 0, 6666)
-				if not wnd.tui_track.rows or wnd.tui_track.crow < wnd.tui_track.rows then
-					wnd.tui_track.crow = wnd.tui_track.crow + 1
+				wnd.tui_track.cy = math.clamp(wnd.tui_track.cy, 0, 6666)
+				if not wnd.tui_track.rows or wnd.tui_track.cy < wnd.tui_track.rows then
+					wnd.tui_track.cy = wnd.tui_track.cy + 1
+					wnd.tui_track.cx = 0
 					read_current_row(wnd, v)
 				else
 					v:message("", labels.at_bottom)
@@ -1032,6 +1053,9 @@ local function voice_tuiwnd_menu(v)
 				if not wnd then
 					return
 				end
+
+				read_tui_row(
+					wnd.canvas, v, 0, wnd.tui_track.cy, false, wnd.tui_track.cx);
 			end,
 		},
 		{
@@ -1044,6 +1068,8 @@ local function voice_tuiwnd_menu(v)
 				if not wnd then
 					return
 				end
+
+				read_tui_row(wnd.canvas, v, wnd.tui_track.cx, wnd.tui_track.cy);
 			end
 		}
 	}
@@ -1087,6 +1113,14 @@ local function wnd_frame_hook(wnd, stat)
 	if stat.y + stat.rows > tt.y2 then
 		tt.y2 = stat.y + stat.rows
 	end
+
+	if stat.rows > tt.rows then
+		tt.rows = stat.rows
+	end
+
+	if stat.cols > tt.cols then
+		tt.cols = stat.cols
+	end
 end
 
 -- this is activated on first use then not dropped until back to zero
@@ -1107,7 +1141,9 @@ local function ensure_wnd_hook()
 				x1 = 6666, y1 = 6666,
 				x2 = -1, y2 = -1,
 				cx = 0, cy = 0,
-				crow = 0
+				last_mxy = {0, 0},
+				rows = 0,
+				cols = 0
 			}
 			if valid_vid(wnd.external) then
 				target_flags(wnd.external, TARGET_VERBOSE, true)
@@ -1127,7 +1163,9 @@ local function ensure_wnd_hook()
 					x1 = 6666, y1 = 6666,
 					x2 = -1, y2 = -1,
 					cx = 0, cy = 0,
-					crow = 0
+					last_mxy = {0, 0},
+					rows = 0,
+					cols = 0
 				}
 				table.insert(wnd.handlers["frame"], wnd_frame_hook)
 			end

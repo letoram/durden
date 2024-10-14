@@ -35,10 +35,10 @@ local tbl =
 -- keybindings that will take over the defaults while voice is activated
     bindings =
     {
-			m2_c = "/global/tools/tts/voices/cursor_eng/cursor_region/intensity=32,32",
-			m2_o = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr=64",
-			m2_s = "/global/tools/tts/voices/cursor_eng/cursor_region/edge_intensity=32,32",
-			m2_w = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr_window"
+			m2_q = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr=64",
+			m2_w = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr_window",
+			m2_e = "/global/tools/tts/voices/cursor_eng/cursor_region/intensity=32,32",
+			m2_r = "/global/tools/tts/voices/cursor_eng/cursor_region/edge_intensity=32,32",
     }
 }
 

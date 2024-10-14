@@ -5,6 +5,9 @@
 --
 local	log, fmt = suppl_add_logfn("tools")
 
+-- some options need to control when the next step comes
+local locked = false
+
 local function build_state_stepper(state, key, path)
 	local menu = table.copy(menu_resolve(path))
 	local oh = menu.handler
@@ -21,6 +24,7 @@ end
 local function query_a11y(state)
 	local aud_profile = "/global/tools/tts/open=basic_eng"
 	local curs_profile = "/global/tools/tts/open=cursor_eng"
+	local welcome = "Welcome to Durden Setup. Use arrow keys to step options, return/enter to confirm"
 
 	if state.a11y_menus then
 		return state.a11y_menus[state.in_a11y]
@@ -28,18 +32,20 @@ local function query_a11y(state)
 
 -- force-start tts
 	dispatch_symbol(aud_profile)
-	state.in_a11y = 1
+	dispatch_symbol("/global/tools/tts/voices/default/speak=" .. welcome)
 
+	state.in_a11y = 1
 	state.a11y_menus = {}
 	table.insert(
 		state.a11y_menus,
 		{
 			name = "a11y",
 			label = "Accessibility",
-			hint = "(Accessibility)",
+			description = "Do you need assistance with vision?",
 			kind = "value",
 			set = {LBL_YES, LBL_NO},
-			handler = function(ctx, val)
+			handler =
+			function(ctx, val)
 				state.in_a11y = state.in_a11y + 1
 				if val == LBL_NO then
 					dispatch_symbol(
@@ -50,10 +56,9 @@ local function query_a11y(state)
 					dispatch_symbol(
 						"/global/settings/tools/autostart/add")
 				end
+			end
 -- query voices for [set] and insert into set
-			end,
-		}
-	)
+	})
 
 	table.insert(
 		state.a11y_menus,
@@ -108,8 +113,6 @@ local function query_a11y(state)
 -- have another extended for notification/alerts etc. that uses a different
 -- synthesis engine
 				end
-
--- queue messages about keybindings
 			end
 		}
 	)
@@ -117,18 +120,126 @@ local function query_a11y(state)
 	return state.a11y_menus[state.in_a11y]
 end
 
-local function query_input(state)
+-- we mirror global/settings/input here in order to chain into the rest of
+-- the menu as well as query for the a11y key
+local function rebind_meta(state, stepfn)
+	local bwt = gconfig_get("bind_waittime");
+	locked = true
+	local m1 = "Press/Release key for 'Meta 1' Several Times"
+	local m2 = "Press/Release key for 'Meta 2' Several Times"
+	local a1 = "Press/Release key for 'Screen Reader Controls' Several Times"
+
+	dispatch_symbol("/global/tools/tts/voices/default/speak=" .. m1)
+
+	local bb =
+		tiler_bbar(active_display(), m1, true, 0, nil, nil,
+			function(sym, done)
+				if not done then
+					dispatch_symbol("/global/tools/tts/voices/default/beep")
+					return
+				end
+
+				dispatch_system("meta_1", sym)
+				dispatch_symbol("/global/tools/tts/voices/default/speak=" .. m2)
+
+				tiler_bbar(active_display(), m2, true, 0, nil, nil,
+					function(sym2, done)
+						if sym2 == sym then
+							dispatch_symbol("/global/tools/tts/voices/default/beep")
+							return "Already bound to 'Meta 1"
+						end
+
+						if not done then
+							dispatch_symbol("/global/tools/tts/voices/default/beep")
+							return
+						end
+
+						dispatch_system("meta_2", sym2)
+						dispatch_symbol("/global/tools/tts/voices/default/speak=" .. a1)
+						if state.no_vision or state.low_vision then
+							tiler_bbar(active_display(), a1, true, 0, nil, nil,
+								function(sym, done)
+									if not done then
+										dispatch_symbol("/global/tools/tts/voices/default/beep")
+										return
+									end
+
+									dispatch_symbol("/global/tools/tts/voices/default/flush")
+									dispatch_system("a11y", sym)
+									locked = false
+									stepfn()
+								end, 5
+							)
+						else
+							locked = false
+							stepfn()
+						end
+					end, 5
+				)
+			end, 5
+		)
+end
+
+local function query_input(state, stepfn)
+
 	if state.input_menus then
 		return state.input_menus[state.in_input]
 	end
 
-	state.input_menus = {
+	state.input_menus = {}
+
+	table.insert(state.input_menus,
+-- other schemes (meta+key gesture, defaults from other WMs)
+			{
+				name = "meta_key",
+				label = "Meta Keys (Durden)",
+				description = "Select bindings and keyboard controls for desktop",
+				kind = "value",
+				set = {"Durden (M1+M2)", "Mouse Only"},
+				handler = function(ctx, val)
+					if val == "Durden (M1+M2)" then
+						rebind_meta(state, stepfn)
+					end
+
+					state.in_input = state.in_input + 1
+-- if in a11y, add query for a11y key
+				end
+		}
+	)
+
+	local rate =
+	{
+		Normal = {4, 600},
+		Fast = {3, 400},
+		Fastest = {2, 300},
+		Slow = {6, 800}
+	}
+
+	table.insert(state.input_menus,
+		{
+			name = "repeat_rate",
+			label = "Repeat Rate",
+			description = "Choose how fast held keys should repeat",
+			kind = "value",
+			set = {"Normal", "Slow", "Fast", "Fastest"},
+			kind = "value",
+			handler = function(ctx, val)
+				state.in_input = state.in_input + 1
+				gconfig_set("kbd_period", rate[val][1])
+				gconfig_set("kbd_delay", rate[val][2])
+				iostatem_repeat(rate[val][1], rate[val][2])
+			end
+		}
+	)
+
+-- check platform and see if we can use a known set of xkb maps + variants
+
 -- meta bindings
 -- key repeat
 -- focus behavior
 -- mouse acceleration
 -- touch input
-	}
+-- keymap
 
 	state.in_input = 1
 	return state.input_menus[state.in_input]
@@ -140,6 +251,34 @@ local function query_visual(state)
 	if state.visual_menus then
 		return state.visual_menus[state.in_visual]
 	end
+
+-- balanced:
+--  moderate speed
+--  hud blur
+--  transitions
+--  small gaps
+--
+
+-- excessive:
+--  flair on startup
+--  slowish animations
+--  on-select flair shake
+--  hud blur
+--  transitions
+--  large gaps
+--  statusbar gaps
+--  terminal transparency
+--  hide scalea
+--  dissolve destroy
+--  automatic preview everything
+--
+
+-- minimal:
+--  no shadows
+--  no decorations
+--  no padding
+--  no animations
+--
 
 	state.visual_menus = {
 		{
@@ -268,15 +407,62 @@ local function query_security(state)
 		return state.security_menus[state.in_security]
 	end
 
-	state.security_menus =
-	{
--- paranoid
---  (no control socket, no external connection point, colored windows)
--- careful
---  (no control socket, rate limited external connections,
--- dontcare
--- custom (add each thing as a separate option)
+	state.security_menus = {}
+
+	local sets = {
+-- no external connections (breaks recovery)
+		Paranoid = {
+			"/global/settings/system/cpath=:disabled",
+			"/global/settings/system/control=:disabled",
+			"/global/settings/system/x11/clipboard_synch=no",
+			"/global/settings/system/bridgeclip=none",
+			"/global/settings/system/gpuauth=none",
+		},
+-- allow external connections but limit them, no clipboard bridge, no x11 bridging,
+-- popup on paste
+		Careful = {
+			"/global/settings/system/cpath=durden",
+			"/global/settings/system/control=:disabled",
+			"/global/settings/system/rate_limit/rlimit=100",
+			"/global/settings/system/rate_limit/startdelay=200",
+			"/global/settings/system/rate_limit/extwndlim=100",
+			"/global/settings/system/rate_limit/subseglimit=20",
+			"/global/settings/x11/clipboard_synch=yes",
+			"/global/settings/system/bridgeclip=none"
+		},
+		Permissive = {
+			"/global/settings/system/cpath=durden",
+			"/global/settings/system/control=control",
+			"/global/settings/system/rate_limit/rlimit=0",
+			"/global/settings/system/rate_limit/extwndlimit=0",
+			"/global/settings/system/rate_limit/subseglimit=20",
+			"/global/settings/x11/clipboard_synch=no",
+			"/global/settings/statusbar/add/right/add_external=statusbar",
+			"/global/settings/system/bridgeclip=full",
+		}
+-- allow clipboard synch, external button, external input, x11 synch
 	}
+
+	table.insert(
+		state.security_menus,
+		{
+			name = "preset",
+			kind = "value",
+			label = "Preset",
+			description = "Select a security preset",
+			set = {"Permissive", "Paranoid", "Careful"}, -- custom: add each as separate
+			handler = function(ctx, val)
+				for i,v in ipairs(sets[val]) do
+					dispatch_symbol(v)
+				end
+
+-- if careful / permissive we should also query for a lockscreen password
+-- as well as swap paste behaviour for popup
+				state.in_security = state.in_security + 1
+			end
+		}
+	)
+
 	state.in_security = 1
 
 	return state.security_menus[state.in_security]
@@ -284,15 +470,17 @@ end
 
 local function query_presets()
 	drop_keys("autostart_%");
+	gconfig_set("meta_lock", "none")
 
 	local stages =
 	{
 		query_a11y,
+-- language support would go here when we have translation oracle
 		query_wm,
-		query_input,
 		query_visual,
+		query_input,
+		query_device,
 		query_security,
---  query_device
 	}
 
 -- make a copy of the current config in order to cancel / revert,
@@ -306,13 +494,26 @@ local function query_presets()
 -- the lua-lua stack is 32k entries or so.
 	step =
 	function()
-		if #stages == 0 then
-			if state.no_vision or state.low_vision then
-			end
+		if locked then
 			return
 		end
 
-		local menu = stages[1](state)
+		if #stages == 0 then
+			if state.no_vision or state.low_vision then
+				dispatch_symbol("/global/tools/tts/voices/basic_eng/speak=Configuration Done")
+				dispatch_symbol("/global/tools/tts/voices/basic_eng/speak=Use meta-1 G for global menu")
+				dispatch_symbol("/global/tools/tts/voices/basic_eng/speak=Use meta-1 H for target-window menu")
+				dispatch_symbol("/global/tools/tts/voices/basic_eng/speak=Use meta-1 H to open a command line shell")
+
+-- MISSING: with low vision, tell about the bindings to control magnification
+--          typing assistant binding (?)
+			end
+
+			dispatch_symbol("/global/settings/commit")
+			return
+		end
+
+		local menu = stages[1](state, step)
 		if not menu then
 			table.remove(stages, 1)
 			return step()
