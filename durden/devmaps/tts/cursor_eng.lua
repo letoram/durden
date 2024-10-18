@@ -32,12 +32,15 @@ local tbl =
 			gain = 0.7, -- max gain for the cursor tones
 		},
 
+		reset_beep = {660, 0.1},
+
 -- keybindings that will take over the defaults while voice is activated
     bindings =
     {
 			q = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr=64",
 			w = "/global/tools/tts/voices/cursor_eng/cursor_region/ocr_window",
 			e = "/global/tools/tts/voices/cursor_eng/cursor_region/edge_intensity=32,32",
+			["4"] = "/global/tools/tts/voices/cuersor_eng/flush",
     }
 }
 

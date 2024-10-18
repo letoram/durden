@@ -328,6 +328,8 @@ local function build_a11y_handler(voice, wm)
 							resize_image(source, status.width, status.height)
 							move_image(source, 0, -status.height)
 
+-- this should be used to implement scrolling on the server- end so
+-- that we can dump the current approach cat9 uses
 						elseif status.kind == "content_state" then
 							target_displayhint(source, status.max_w, status.max_h)
 -- acknowledge desired dimensions
@@ -421,7 +423,10 @@ local function get_cursor_length(cp)
 		return rw, rv
 	end
 
-	target_flags(wnd.external, TARGET_VSTORE_SYNCH)
+	if valid_vid(wnd.external) then
+		target_flags(wnd.external, TARGET_VSTORE_SYNCH)
+	end
+
 	image_access_storage(
 		wnd.canvas,
 		function(data, w, h)

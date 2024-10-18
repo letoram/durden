@@ -27,7 +27,7 @@ local tbl =
 
 -- called whenever voice flush is requested, disable by settil to false or nil
 		reset_beep = {440, 0.1},
-		a11y_font_sz = 24,
+		a11y_font_sz = 18,
 		a11y_font = "hack.ttf",
 
 -- this would position the voice back and to left
