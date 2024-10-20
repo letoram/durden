@@ -402,6 +402,51 @@ local function query_wm(state)
 	return state.wm_menus[state.in_wm]
 end
 
+local function query_device(state)
+	if state.in_device then
+		return state.device_menus[state.in_device]
+	end
+
+	state.device_menus = {}
+	state.in_device = 1
+
+	table.insert(state.device_menus,
+		{
+			name = "performance",
+			label = "Performance",
+			description = "Device performance tuning",
+			kind = "value",
+			set = {"Fast", "Safe"},
+			handler = function()
+				state.in_device = state.in_device + 1
+-- enable direct composition on displays
+			end
+		}
+	)
+
+	table.insert(state.device_menus,
+		{
+			name = "blanking",
+			label = "Blanking",
+			description = "Disable screen on idle?",
+			kind = "value",
+			hint = "(seconds, 0=off)",
+			validator = gen_valid_num(0, 1000),
+			handler = function()
+				state.in_device = state.in_device + 1
+-- add startup for idle timer
+-- add entry for lock timer
+			end,
+		}
+	)
+
+-- touch screen behavior and calibration
+-- trackpad behavior and calibration
+-- performance
+
+return state.device_menus[state.in_device]
+end
+
 local function query_security(state)
 	if state.in_security then
 		return state.security_menus[state.in_security]

@@ -272,6 +272,7 @@ function display_output_table(name)
 		disp = get_disp(name);
 	end
 
+-- ppcm isn't conveyed here as it's part of DISPLAYHINT and not the OUTPUTHINT
 	if disp then
 		outtbl.width = disp.w
 		outtbl.height = disp.h
@@ -325,11 +326,21 @@ local function set_best_mode(disp, desw, desh)
 	disp.last_m = list[1];
 	disp.refresh = list[1].refresh;
 	display_modeopt(disp.id, list[1].modeid, disp.modeopt);
+
+	return list[1]
 end
 
 local function get_ppcm(pw_cm, ph_cm, dw, dh)
-	return (math.sqrt(dw * dw + dh * dh) /
-		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm));
+	local ppcm =
+		math.sqrt(dw * dw + dh * dh) /
+		math.sqrt(pw_cm * pw_cm + ph_cm * ph_cm);
+
+-- protect against bade mode values
+	if ppcm > 240 or ppcm < 30 then
+		ppcm = VPPCM
+	end
+
+	return ppcm;
 end
 
 function display_count()
@@ -465,19 +476,33 @@ local function display_data(id)
 
 -- data should typically be EDID, if it is 128 bytes long we assume it is
 	if (string.len(data) == 128 or string.len(data) == 256) then
+		display_log(fmt("edid_len=%d", string.len(data)))
+
+-- check each possible block position
 		for i,ofs in ipairs({54, 72, 90, 108}) do
 
+-- 0,1 = descriptor, 2 = reserved, 3 = type:
+--       ff = serial
+--       fe = unspecified text
+--       fc = name
 			if (string.byte(data, ofs+1) == 0x00 and
 			string.byte(data, ofs+2) == 0x00 and
 			string.byte(data, ofs+3) == 0x00) then
 				if (string.byte(data, ofs+4) == 0xff) then
 					serial = string.sub(data, ofs+5, ofs+5+12);
-				elseif (string.byte(data, ofs+4) == 0xfc) then
+					display_log(fmt("edid:serial=%s", serial))
+				elseif (string.byte(data, ofs+4) == 0xfc or
+					string.byte(data, ofs+4) == 0xfe) then
 					model = string.sub(data, ofs+5, ofs+5+12);
+					display_log(fmt("edid:model=%s", model))
 				end
 			end
-
 		end
+	end
+
+	if model == "unknown" and serial == "unknown" then
+		local b64 = util.to_base64(data)
+		display_log(fmt("edid_fail:raw=%s", b64))
 	end
 
 	local strip = function(s)
@@ -632,6 +657,7 @@ local function display_byname(name, id, w, h, ppcm)
 -- distinguish between real-width and effective-width (rotation)
 	res.rw = res.w;
 	res.rh = res.h;
+
 	return res;
 end
 
@@ -814,6 +840,10 @@ local function display_added(id)
 
 		if (wmm > 0 and hmm > 0) then
 			ppcm = get_ppcm(0.1*wmm, 0.1*hmm, dw, dh);
+			display_log(fmt(
+			"calculate_ppcm:width=%.0f:height=%.0f:mode_w=%d:mode_h=%d:ppcm=%f",
+			wmm, hmm, dw, dh, ppcm
+			))
 		end
 	else
 		display_log(fmt("status=error:id=%d:message=no modes on display", id));
@@ -1007,7 +1037,14 @@ function display_manager_init(alloc_fn)
 
 -- this might come from a preset profile, so sweep the available display maps
 -- and pick the one with the best fit
-	set_best_mode(ddisp);
+	local mode = set_best_mode(ddisp);
+	if mode then
+		ddisp.w = mode.width
+		ddisp.h = mode.height
+		ddisp.ppcm =get_ppcm(
+			0.1 * mode.phy_width_mm,
+			0.1 * mode.phy_height_mm, mode.width, mode.height);
+	end
 
 -- virtual-display to-fix: there is an issue here when the system starts
 -- without any connected display or when the first display happens to be
@@ -1428,10 +1465,14 @@ function display_ressw(name, mode)
 	if (not disp.ppcm_override) then
 		disp.ppcm = get_ppcm(0.1 * mode.phy_width_mm,
 			0.1 * mode.phy_height_mm, mode.width, mode.height);
+		display_log(fmt(
+			"calculate_ppcm:width=%.0f:height=%.0f:mode_w=%d:mode_h=%d:ppcm=%f",
+			mode.phy_width_mm, mode.phy_height_mm, mode.width, mode.height, disp.ppcm
+		))
 	end
 
 	display_log(fmt(
-		"display=%s:id=%d:set_mode:width=%d:height=%d:hint=%d:rt=%d:valid_rt=%s",
+		"display=%s:id=%d:set_mode:width=%d:height=%d:hint=%d:rt=%d:valid_rt=%s:",
 		name, disp.id, disp.w, disp.h, display_maphint(disp),
 		disp.rt and disp.rt or -1, valid_vid(disp.rt) and "yes" or "no"))
 
