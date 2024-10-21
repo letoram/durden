@@ -408,7 +408,6 @@ local function build_canvas(wnd)
 		wnd:run_event("mouse_motion", x, y);
 		wnd:mousemotion(x, y, rx, ry);
 	end,
-
 -- We support two modes of 'drag and drop' where one comes from press/
 -- release and the other, more disability friendly, is a full click.
 	release = function(ctx, vid, ...)
@@ -527,6 +526,12 @@ local function build_canvas(wnd)
 		mouse_show();
 		mouse_switch_cursor();
 		mouse_hidemask(false);
+
+-- forward the leave event
+		if valid_vid(wnd.external, TYPE_FRAMESERVER) and wnd.last_mouse_motion then
+			wnd.last_mouse_motion.leave = true;
+			target_input(wnd.external, wnd.last_mouse_motion);
+		end
 
 -- also reset border drag-state
 		wnd.in_drag_move = false;

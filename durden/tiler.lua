@@ -3802,6 +3802,7 @@ local function wnd_mousemotion(wnd, x, y, rx, ry)
 		subid = 2,
 		samples = wnd.wm.convert_mouse_xy(wnd, x, y, rx, ry)
 	};
+	wnd.last_mouse_motion = iotbl;
 
 -- with rate limited mouse events (those 2khz gaming mice that likes to saturate
 -- things even when not needed), we accumulate relative samples and flush on timer
