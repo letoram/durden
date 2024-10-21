@@ -41,7 +41,8 @@ local function relayout()
 		local hr = props.height/ maxh;
 		local outw = hr > wr and maxh * ar or maxw;
 		local outh = hr < wr and maxw / ar or maxh;
-		shader_setup(active[i].vid, "simple", gconfig_get("overlay_shader"));
+		shader_setup(active[i].vid,
+			gconfig_get("overlay_shader_group"), gconfig_get("overlay_shader"), "active");
 		resize_image(active[i].vid, outw, outh);
 		move_image(active[i].vid, cx, cy);
 		cy = cy + outh;
@@ -62,6 +63,40 @@ local function delete_overlay(ind)
 	relayout();
 end
 
+-- slightly ugly layering violation, target/slice has a set of options and we
+-- have no way of appending ourselves to that, so the slice handler checks if
+-- this tool is there and, if so, exposes it that way.
+function tools_overlay_add(vid, wnd)
+	local new = {
+		name = "overlay_hnd",
+		vid = vid,
+		own = function(ctx, v) return v == vid; end,
+-- on click, locate source window and switch to that one (if alive)
+		click = function()
+			for i,v in ipairs(active_display().windows) do
+				if (v == wnd) then
+					active_display():switch_ws(v.space);
+					v:select();
+					return;
+				end
+			end
+		end,
+		over = function()
+			blend_image(vid, 1.0);
+		end,
+		out = function()
+			blend_image(vid, gconfig_get("overlay_opacity"));
+		end,
+	};
+
+-- share the backend, append and place/show
+	mouse_addlistener(new, {"click", "over", "out"});
+
+	table.insert(active, new);
+	show_image(vid);
+	relayout();
+end
+
 local function add_overlay(wnd)
 -- don't permit overallocation of space
 	if (#active >= math.floor(1.0 / gconfig_get("overlay_size"))) then
@@ -74,39 +109,14 @@ local function add_overlay(wnd)
 		return;
 	end
 
-	local new = {
-		name = "overlay_hnd",
-		vid = overlay,
-		own = function(ctx, vid) return vid == overlay; end,
--- on click, locate source window and switch to that one (if alive)
-		click = function()
-			for i,v in ipairs(active_display().windows) do
-				if (v == wnd) then
-					active_display():switch_ws(v.space);
-					v:select();
-					return;
-				end
-			end
-		end,
-		over = function()
-			blend_image(overlay, 1.0);
-		end,
-		out = function()
-			blend_image(overlay, gconfig_get("overlay_opacity"));
-		end,
-	};
-
--- share the backend, append and place/show
-	mouse_addlistener(new, {"click", "over", "out"});
 	image_sharestorage(wnd.canvas, overlay);
-	table.insert(active, new);
-	show_image(overlay);
-	relayout();
+	tools_overlay_add(overlay, wnd)
 end
 
 -- config system hooks so the values get saved
 gconfig_register("overlay_opacity", 1.0);
 gconfig_register("overlay_corner", "left");
+gconfig_register("overlay_shader_group", "simple");
 gconfig_register("overlay_shader", "noalpha");
 gconfig_register("overlay_size", 0.1);
 
@@ -154,10 +164,11 @@ local overlay_cfg = {
 		return gconfig_get("overlay_shader");
 	end,
 	set = function()
-		return shader_list({"effect", "simple"});
+		return shader_list({"effect", "simple", "ui"});
 	end,
 	handler = function(ctx, val)
-		local key, dom = shader_getkey(val, {"effect", "simple"});
+		local key, dom = shader_getkey(val, {"effect", "simple", "ui"});
+		gconfig_set("overlay_shader_group", dom);
 		gconfig_set("overlay_shader", key);
 	end
 },

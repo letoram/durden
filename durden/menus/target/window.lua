@@ -1092,13 +1092,21 @@ return {
 		label = "Slice",
 		kind = "value",
 		description = "Slice out a window canvas region into a new window",
-		set = {"Active", "Passive", "Active-Dynamic", "Passive-Dynamic"},
+		set = function()
+			local res =
+				{"Active", "Passive", "Active-Dynamic", "Passive-Dynamic"}
+			if tools_overlay_add then
+				table.insert(res, "Overlay")
+			end
+			return res
+		end,
 		eval = function() return not mouse_blocked(); end,
 		external_block = true,
 		handler = function(ctx, val)
 			local wnd = active_display().selected;
 			local dyn = val == "Active-Dynamic" or val == "Passive-Dynamic"
 			local act = val == "Active" or val == "Active-Dynamic"
+			local olay = val == "Overlay"
 
 			suppl_wnd_slice(active_display().selected,
 			function(cwin, t, l, d, r, w, h)
@@ -1113,6 +1121,13 @@ return {
 -- the crop region accordingly so that it is centered around the mouse
 -- cursor
 				setup_slice_wnd(cwin, wnd, dyn, w, h);
+
+				if olay then
+					local vid = null_surface(32, 32)
+					image_sharestorage(cwin.canvas, vid)
+					cwin:destroy()
+					tools_overlay_add(vid, wnd)
+				end
 			end);
 		end
 	},

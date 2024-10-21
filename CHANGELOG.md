@@ -1,5 +1,7 @@
 # 0.7.0 (ongoing):
 
+* reworked initial setup to query preferences
+
 * global/audio extended with toggles for spatial audio and device reassignment
 
 * new tool: typer (global/input/text)
@@ -85,6 +87,8 @@ minor:
 * statusbar cpath popcount incorrectly reset in some cases causing binding failures and visual glitches
 
 * overlay tool updated to respect statusbar size and side orientations
+
+* added slice to overlay tool option for window slicing
 
 * default HUD sort order split into two, one for browse/ and one for other paths
 
