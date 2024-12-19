@@ -7,6 +7,14 @@ local log, fmt = suppl_add_logfn("tools");
 local tts_in_echo;
 local read_tui_row;
 
+local reset_target_checked =
+function(vid)
+	if not valid_vid(vid, TYPE_FRAMESERVER) then
+		return
+	end
+	reset_target(vid)
+end
+
 local labels =
 {
 	no_wnd = "no window selected ",
@@ -94,7 +102,7 @@ local speak_voice
 local function read_binding_helper(set)
 	if not set then
 		if speak_voice then
-			reset_target(speak_voice.vid)
+			reset_target_checked(speak_voice.vid)
 		end
 		speak_voice = nil
 		return
@@ -219,7 +227,7 @@ local function speak_message(voice, prefix, msg, reset)
 -- speak if the voice isn't dead, flush before if desired
 	if valid_vid(voice.vid) then
 		if reset then
-			reset_target(voice.vid)
+			reset_target_checked(voice.vid)
 		end
 		target_input(voice.vid, prefix .. msg)
 	end
@@ -627,7 +635,7 @@ local function voice_menu(voice, action)
 			bar.custom_bindings[reset_bind] =
 				function(ictx)
 					voice:beep()
-					reset_target(voice.vid)
+					reset_target_checked(voice.vid)
 				end
 		end
 
@@ -684,7 +692,7 @@ local function voice_menu(voice, action)
 					old_step(lbar, i, key, anchor, ofs, w, mh)
 				end
 				if key and key ~= lastmsg and key ~= ".." then
-					reset_target(voice.vid)
+					reset_target_checked(voice.vid)
 					voice:message("", key, true)
 					lastmsg = key
 				end
@@ -1373,7 +1381,7 @@ local function get_voice_opts(v)
 		handler = function()
 			v:beep()
 			log(fmt("tts:kind=reset"))
-			reset_target(v.vid)
+			reset_target_checked(v.vid)
 		end
 	});
 	table.insert(ent,
