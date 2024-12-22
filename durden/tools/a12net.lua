@@ -22,6 +22,10 @@ local function gen_dhandler(mode)
 		if status.kind == "terminated" then
 			log(fmt("discover:mode=%s:terminated:reason=%s", mode, status.last_words));
 			delete_image(source);
+			notification_add("networking", nil,
+				string.format("Discover (%s) died", mode),
+				status.last_words, 2, "/global/tools/networking/discover")
+
 			if active_kind[mode] and active_kind[mode].button then
 				active_kind[mode].button:destroy();
 			end
@@ -410,8 +414,9 @@ local function gen_discover_menu(v)
 end
 
 local function get_active_menu()
-	local keys = {"passive", "sweep", "brodcast", "test"};
+	local keys = {"passive", "sweep", "broadcast", "test"};
 	local res = {};
+
 	for _,v in ipairs(keys) do
 		if active_kind[v] then
 			table.insert(res,
