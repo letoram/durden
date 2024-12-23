@@ -549,7 +549,7 @@ local function cursortag(fn)
 						local id = string.split(v.path, "/")
 						id = string.sub(id[#id], -76)
 						if nbio then
-							open_nonblock(dst.external, true, id, nbio)
+							open_nonblock(dst.external, false, id, nbio)
 						else
 							warning("browse: couldn't open " .. v.path)
 						end
