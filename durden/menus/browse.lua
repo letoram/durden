@@ -33,7 +33,7 @@ local function open_image(wnd, name, fn)
 	)
 end
 
-local function load_decode(arg)
+function browse_load_decode(arg, in_file_tag, in_file)
 	return function(wnd, name, fn)
 		local aid
 		wnd.pending_vid, aid =
@@ -45,17 +45,23 @@ local function load_decode(arg)
 						wnd.pending_vid = nil
 					end
 
+				elseif status.kind == "bchunkstate" then
+					open_nonblock(source, false, in_file_tag, in_file)
+
 -- need to propagate current window density, colour space, ...
 				elseif status.kind == "preroll" then
 					target_displayhint(source,
 						wnd.width, wnd.height, wnd.dispmask, wnd:displaytable(wnd, wnd.wm.disptbl))
 
 				elseif status.kind == "resized" then
-					delete_image(wnd.external)
+					if valid_vid(wnd.external) then
+						delete_image(wnd.external)
+					end
 					wnd.external = source
 					image_sharestorage(source, wnd.canvas)
 					audio_gain(aid, gconfig_get("global_gain") * wnd.gain)
 					target_updatehandler(source, extevh_default)
+					extevh_default(source, status)
 				end
 			end
 		)
@@ -237,7 +243,7 @@ local function pdfwnd(fn, path, tracker)
 
 	if (valid_vid(vid)) then
 		local wnd = durden_launch(vid, "", fn);
-		make_playlist(wnd, fn, tracker, load_decode("protocol=pdf"));
+		make_playlist(wnd, fn, tracker, browse_load_decode("protocol=pdf"));
 		durden_devicehint(vid);
 	else
 		active_display():message("decode- frameserver broken or out-of-resources");
@@ -250,7 +256,7 @@ local function decwnd(fn, path, tracker)
 
 	if (valid_vid(vid)) then
 		local wnd = durden_launch(vid, "", fn);
-		make_playlist(wnd, fn, tracker, load_decode(""))
+		make_playlist(wnd, fn, tracker, browse_load_decode(""))
 		durden_devicehint(vid);
 	else
 		active_display():message("decode- frameserver broken or out-of-resources");

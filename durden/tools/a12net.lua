@@ -36,7 +36,7 @@ local function gen_dhandler(mode)
 			return;
 		end
 
-		if mode == "passive" then
+		if mode == "passive" or mode == "sweep" then
 			if status.multipart then
 				pending_multipart = status;
 				return;
@@ -81,7 +81,7 @@ local function gen_dhandler(mode)
 			end
 
 -- probe is net_open in ? mode with the specified tag and a host override
-			if kb.probed < #kb.tags then
+			if mode == "passive" and kb.probed < #kb.tags then
 				kb.probed = kb.probed + 1;
 				log(fmt("probe:tag=%s:source=%s", kb.tags[kb.probed], kb.name));
 
@@ -181,6 +181,63 @@ function a12net_list_tags(role)
 	return res;
 end
 
+local function dir_data_handler(arg, closure)
+	local eof
+
+	arg.instate.input:read(
+		function(line, alive)
+			table.insert(arg.instate.buffer, line)
+			if not alive then
+				die = true
+			end
+		end
+	)
+
+	if die then
+		log(fmt("net:directory_index:over:items=%s", #arg.instate.buffer))
+		arg.instate.input:close()
+		local header = table.remove(arg.instate.buffer, 1)
+		if header then
+			local harg = string.unpack_shmif_argstr(header)
+			if not harg.directory_index then
+				log(fmt("net:kind=error:bad_index=%s", header))
+				return false
+			end
+
+-- future revisions should have keywords, type and other metadata here
+			local set = {}
+			for i,v in ipairs(arg.instate.buffer) do
+				local file = string.unpack_shmif_argstr(v)
+				if file.file then
+					table.insert(set, file.file)
+				end
+			end
+
+			closure(set)
+		end
+
+		return false
+	end
+
+	return true
+end
+
+local function synch_index(source, arg, closure)
+	log("net:kind=status:directory_index:fetch")
+	local inf = open_nonblock(source, false, ".index")
+	if not inf then
+		log("net:kind=error:directory_index:open_fail")
+		return
+	end
+
+	inf:lf_strip(true, "\n")
+	arg.instate = {input = inf, buffer = {}}
+
+	inf:data_handler(function()
+		return dir_data_handler(arg, closure)
+	end)
+end
+
 local function add_discover(mode, vid)
 	if not valid_vid(vid) then
 		log("discover:deep:launch fail");
@@ -273,6 +330,145 @@ local function attach_source(dir, v)
 	message_target(dir.vid, "|<" .. v.pubk);
 end
 
+local function gen_decode_action(dir, name)
+	local nbio = open_nonblock(dir.vid, false, name)
+
+	local aid
+	_, aid =
+	launch_decode(fn, "protocol=media",
+		function(source, status)
+			if status.kind == "terminated" then
+				if wnd then
+					wnd:destroy()
+				else
+					delete_image(source)
+				end
+			elseif status.kind == "bchunkstate" then
+				open_nonblock(source, false, name, nbio)
+
+			elseif status.kind == "resized" then
+				local wnd = durden_launch(source, "dir", dir.path)
+				audio_gain(aid, gconfig_get("global_gain") * wnd.gain)
+				target_updatehandler(source, extevh_default)
+				extevh_default(source, status)
+				if wnd.ws_attach then
+					wnd:ws_attach()
+				end
+			end
+		end
+	)
+end
+
+-- this is just monkey patched in from menus/browse.lua
+local function gen_cursortag_action(dir, name)
+	local ms = mouse_state()
+	local ct = ms.cursortag
+
+-- we or someone else?
+	if ct and ct.ref ~= "brower" then
+		active_display():cancellation()
+		ct = nil
+	end
+
+-- most of this should move to clipboard.lua or so and be shared as a
+-- stack to allow mixing content in the stack
+	local fontstr, _ = active_display():font_resfn()
+	if not ct then
+		local tag = render_text({fontstr, "Placeholder"})
+
+		mouse_cursortag("browser", {},
+		function(dst, accept, src)
+-- draw the cursortag information, can swap with icon here if needed
+-- other possible accept to check for is our own buttons, to drag and
+-- drop from the one server to the other.
+			if accept == nil then
+				return dst and valid_vid(dst.external, TYPE_FRAMESERVER)
+
+			elseif accept == false then
+				for _, v in ipairs(src) do
+					v.nbio:close()
+				end
+				return
+			end
+
+-- accept, i.e. initiate the transfer pairing
+			for _,v in ipairs(src) do
+				local nbio, id
+
+				if v.path then
+					nbio = open_nonblock(v.path, false)
+					id = string.split(v.path, "/")
+					id = string.sub(id[#id], -76)
+
+				elseif v.name then
+					nbio = open_nonblock(dir.vid, false, v.name)
+					id = v.name
+				end
+
+				if nbio then
+					open_nonblock(dst.external, false, name, nbio)
+				else
+					warning("browse: couldn't open " .. v.path)
+				end
+			end
+		end, tag)
+
+		ct = ms.cursortag
+	end
+
+	if not table.find_key_i(ct.src, "name", name) then
+		table.insert(ct.src, {name = name})
+		local suffix = #ct.src > 1 and " Files" or " File"
+		render_text(ct.vid, {fontstr, tostring(#ct.src) .. suffix})
+	end
+end
+
+local function gen_action_menu(dir, set, fn)
+	local menu = {}
+	for i,v in ipairs(set) do
+		table.insert(menu, {
+			name = "run_ " .. tostring(i),
+			label = v,
+			kind = "action",
+			handler =
+			function()
+				fn(dir, v)
+			end
+		})
+	end
+	return menu
+end
+
+local function popup_file_menu(dir, set)
+	local menu = {
+		{
+			name = "open",
+			label = "Open",
+			description = "Open the file in a designated viewer",
+			kind = "action",
+			submenu = true,
+			handler =
+			function()
+				return gen_action_menu(dir, set, gen_decode_action)
+			end
+		},
+		{
+			name = "cursortag",
+			label = "Cursortag",
+			description = "Attach the file to the cursor",
+			kind = "action",
+			submenu = true,
+			handler =
+			function()
+				return gen_action_menu(dir, set, gen_cursortag_action)
+			end
+		}
+	}
+
+	local x, y = mouse_xy()
+	uimap_popup(menu, x, y)
+end
+
 local function get_dirmenu(k,v)
 	local res = {
 		{
@@ -304,6 +500,30 @@ local function get_dirmenu(k,v)
 		eval = function() return false; end,
 		handler = function() end
 	});
+
+	table.insert(res, {
+		name = "files",
+		label = "Files",
+		kind = "action",
+		description = "Access files in the private directory store",
+		handler = function()
+			synch_index(k, active_dir[k],
+				function(set)
+					popup_file_menu(active_dir[k], set)
+				end
+			)
+		end
+	})
+
+	table.insert(res, {
+		name = "sep_del_2",
+		kind = "action",
+		label = "--------",
+		eval = function() return false; end,
+		separator = true,
+		handler = function()
+		end
+	})
 
 -- there should also be the option to directly source it
 	for i,v in ipairs(active_dir[k].dirs) do
@@ -409,6 +629,24 @@ local function gen_discover_menu(v)
 			end
 		}
 	};
+
+-- add the 'openables'
+	for i,v in pairs(known_beacon) do
+		if not v.sink then
+			for _, tag in ipairs(v.tags) do
+				table.insert(res,
+					{
+						name = "open_tag_" .. #res,
+						label = tag .. v.directory and "/" or "",
+						kind = "action",
+						handler = function()
+							dispatch_symbol("/global/open/a12/connect=@" .. tag)
+						end
+					}
+				)
+			end
+		end
+	end
 
 	return res;
 end
@@ -620,7 +858,7 @@ local function dir_list_trigger(status, dir, key, host)
 	dir.known = true;
 end
 
-local function get_dir_cbh(key, host)
+local function get_dir_cbh(key, host, arg)
 	return
 	function(source, status)
 		if status.kind == "terminated" then
@@ -632,6 +870,9 @@ local function get_dir_cbh(key, host)
 			end
 			active_dir[source] = nil;
 
+-- we have a new connection, grab our .index of files to integrate with browser
+		elseif status.kind == "registered" and arg.fetch_index then
+--			synch_index(source, arg)
 --
 -- Should track launch / expected, as well as progress on the transfer, the
 -- other special thing here is that state management is split in two,
@@ -650,6 +891,7 @@ local function get_dir_cbh(key, host)
 				end
 			end
 
+	-- discovered a change to the directory set of linked connectiond
 		elseif status.kind == "state" then
 			if status.source then
 				if status.name then
@@ -681,8 +923,8 @@ local function get_dir_cbh(key, host)
 
 		elseif status.kind == "streamstatus" then
 
--- completion progress of appl-download (relevant until segment_request)
---  show as mouse cursor, button progress, ...
+-- completion progress of appl-download (relevant until segment_request) show
+-- as mouse cursor, button progress, ...
 
 		elseif status.kind == "bchunkstate" then
 			local tbl = string.split(status.extensions, ";");
@@ -724,7 +966,15 @@ local function gen_a12dir()
 			hint = "(host or @tag)",
 			helpsel = function()
 	-- this should also cover discovered results
-				return {"arcan.divergent-desktop.org"};
+				local set = {}
+				for k,v in pairs(known_beacon) do
+					for _,tag in ipairs(v.tags) do
+						table.insert(set, "@" .. tag)
+					end
+				end
+				table.sort(set)
+				table.insert(set, "arcan.divergent-desktop.org")
+				return set
 			end,
 			handler =
 			function(ctx, val)
@@ -732,11 +982,20 @@ local function gen_a12dir()
 					return;
 				end
 
-				local vid = net_open(val, get_dir_cbh(nil, val));
+				local arg = {
+					appls = {},
+					sources = {},
+					dirs = {},
+					files = {},
+					path = val,
+					fetch_index = string.sub(val, 1, 1) == "@"
+				};
+
+				local vid = net_open(val, get_dir_cbh(nil, val, arg));
 				if valid_vid(vid) then
 					target_flags(vid, TARGET_BLOCKADOPT);
 					image_tracetag(vid, "net_discover");
-					active_dir[vid] = {appls = {}, sources = {}, dirs = {}, path = val};
+					active_dir[vid] = arg
 				end
 			end
 		},
