@@ -103,8 +103,14 @@ local function hide_tgt(wnd, tgt)
 
 	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
 		setup_sbar(wnd, tgt);
-	else
-		warning("unknown hide target: " .. tgt);
+
+	elseif tgt == "desktop-icon" then
+		local ad = active_display().icons
+
+		if not ad then
+			warning("icon-group-hide:no-desktop-icon")
+			return
+		end
 	end
 end
 
@@ -136,7 +142,13 @@ menus_register("global", "settings/wspaces/float",
 	description = "Chose where the window hide option will compress the window",
 	initial = gconfig_get("advfloat_hide"),
 	label = "Hide Target",
-	set = {"disabled", "statusbar-left", "statusbar-right", "desktop-icon"},
+	set = function()
+		local set = {"disabled", "statusbar-left", "statusbar-right"}
+		if gconfig_get("bgicons_enable") then
+			table.insert(set, "desktop-icon")
+		end
+		return set
+	end,
 	handler = function(ctx, val)
 		gconfig_set("advfloat_hide", val);
 	end

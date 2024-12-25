@@ -14,6 +14,7 @@
 -- spawnctl : intercept and regulate initial window position and size
 -- minimize : minimize- target controls
 -- bginput  : input handlers for the wallpaper image (if one is set)
+-- icons    : desktop icon support
 --
 
 local floatmenu = {
@@ -45,6 +46,7 @@ system_load("tools/advfloat/cactions.lua")();
 system_load("tools/advfloat/minimize.lua")();
 system_load("tools/advfloat/spawnctl.lua")();
 system_load("tools/advfloat/bginput.lua")();
+system_load("tools/advfloat/bgicons.lua")();
 
 local workspace_menu = {
 {
