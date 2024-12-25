@@ -269,8 +269,8 @@ return {
 				wnd.ofs_x, wnd.ofs_y, wnd.pad_left, wnd.pad_top, space.x, space.y));
 
 -- need to send where the anchor is, not where the current position is
-			if not wnd.x11_move_block then
-				target_input(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
+			if not wnd.x11_move_block and valid_vid(wnd.external) then
+				message_target(wnd.external, string.format("kind=move:x=%d:y=%d", rx, ry));
 			end
 		end);
 		wnd:add_handler("resize",
