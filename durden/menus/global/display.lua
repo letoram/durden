@@ -463,6 +463,12 @@ local function gen_disp_menu(disp)
 			dispatch_symbol_bind(
 				function(path)
 					dispatch_user_message("");
+					if not path then
+						active_display():set_background();
+						active_display(false, true).background = nil;
+						return;
+					end
+
 					local ln, kind = resource(path);
 					if (kind ~= "file") then
 						active_display():set_background();
