@@ -198,6 +198,7 @@ local function query_input(state, stepfn)
 				set = {"Durden (M1+M2)", "Mouse Only"},
 				handler = function(ctx, val)
 					if val == "Durden (M1+M2)" then
+						gconfig_set("meta_lock", "m2")
 						rebind_meta(state, stepfn)
 					end
 
@@ -278,6 +279,12 @@ local function query_visual(state)
 --  no decorations
 --  no padding
 --  no animations
+--
+--  if tiling:
+--  ----------
+--     then also remove titlebars
+--     and merge titlebar into statusbar
+--     and autohide statusbar
 --
 
 	state.visual_menus = {

@@ -853,7 +853,12 @@ local function tiler_statusbar_update(wm)
 			"sbar_item_bg", "sbar_item",
 			resolve_vsymbol(wm, gconfig_get("sbar_lockbutton_symbol"), sbsz),
 			pad, wm.font_resfn, sbsz, nil,
-			mouse_handler_factory.statusbar_icon(wm, "", "")
+			{
+				click =
+				function(btn)
+					dispatch_toggle()
+				end
+			}
 		)
 		lockbtn:set_alt("input lock")
 		lockbtn.lockstate = true;
