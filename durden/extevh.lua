@@ -371,6 +371,11 @@ local function apply_split_position(wnd, vid, cookie, split, position)
 end
 
 local function cursor_handler(wnd, source, status)
+	if not wnd.custom_cursor then
+		delete_image(source)
+		return
+	end
+
 	if status.kind == "resized" then
 		resize_image(source, status.width, status.height);
 
