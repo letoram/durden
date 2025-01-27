@@ -1592,16 +1592,25 @@ function mouse_select_begin(vid, constrain)
 		mouse_select_end();
 	end
 
+	local label = render_text("")
+
 	mstate.in_select = {
 		x = mstate.x,
 		y = mstate.y,
 		vid = vid,
+		label = label,
 		hidden = mstate.hidden,
 		autodelete = {},
 		autohide = mstate.autohide,
 		lockvid = mstate.lockvid,
 		lockfun = mstate.lockfun
 	};
+	link_image(label, vid, ANCHOR_C)
+	image_inherit_order(label, true)
+	order_image(label, 1)
+	show_image(label)
+	image_mask_clear(label, MASK_OPACITY)
+
 	mstate.autohide = false;
 
 	mouse_show();
@@ -1640,6 +1649,10 @@ function mouse_select_begin(vid, constrain)
 		end
 		move_image(vid, x1, y1);
 		resize_image(vid, w, h);
+
+		local _, _, lw, _ = render_text(mstate.in_select.label,
+			string.format("(%.0f, %.0f, +%0.f, +%.0f)", x1, y1, w, h))
+		move_image(mstate.in_select.label, -0.5 * lw, 0)
 	end
 
 	return true;
