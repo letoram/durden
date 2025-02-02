@@ -3323,6 +3323,7 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 	res.destroy = function(pop)
 		tiler_debug(wnd.wm,
 			string.format("popup_destroyed:name=%s:index=%d", wnd.name, res.index));
+		res.dead = true
 
 		delete_image(vid);
 		mouse_droplistener(pop);
@@ -3360,7 +3361,7 @@ local function wnd_popup(wnd, vid, chain, destroy_cb)
 		blend_image(vid, 0.0, gconfig_get("animation"));
 	end
 
-	res.reposition = function(pop, x1, y1, x2, y2, bias, chain)
+	res.reposition = function(pop, x1, y1, x2, y2, bias)
 		if (wnd.crop_values) then
 			x1 = x1 - wnd.crop_values[2];
 			y1 = y1 - wnd.crop_values[1];

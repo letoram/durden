@@ -154,7 +154,8 @@ end
 
 local function overlay_mouse_handler(wnd, vid, cookie)
 	local mh = {};
-	function mh.drag(ctx, dx, dy)
+
+	function mh.drag(ctx, _, dx, dy)
 		if dispatch_meta() then
 			if not ctx.embed_drag then
 				ctx.embed_drag = {0, 0};
@@ -162,18 +163,41 @@ local function overlay_mouse_handler(wnd, vid, cookie)
 			ctx.embed_drag[1] = ctx.embed_drag[1] + dx;
 			ctx.embed_drag[2] = ctx.embed_drag[2] + dy;
 			shader_setup(vid, "ui", "regmark");
+			return
+-- since we have a drag handler motion gets consumed when drag is initiated
+		else
+			local mx, my = mouse_xy()
+			mh.motion(ctx, nil, mx, my)
 		end
 	end
 
-	function mh.motion(ctx)
+-- motion only gives us world-space coordinates
+	function mh.motion(ctx, _, x, y)
 		if dispatch_meta() then
 			if not ctx.embed_highlight then
 				shader_setup(vid, "ui", "regmark")
 				ctx.embed_highlight = true
 			end
-		elseif ctx.embed_highlight then
+			return
+		end
+
+		if ctx.embed_highlight then
 			image_shader(vid, "DEFAULT")
 			ctx.embed_highlight = false
+		end
+
+		if valid_vid(vid, TYPE_FRAMESERVER) then
+			local props = image_surface_resolve(vid)
+			target_input(vid,
+				{
+					kind = "analog",
+					mouse = true,
+					relative = false,
+					devid = 0,
+					subid = 2,
+					samples = {x - props.x, 0, y - props.y, 0}
+				}
+			)
 		end
 	end
 
@@ -188,8 +212,18 @@ local function overlay_mouse_handler(wnd, vid, cookie)
 		end
 	end
 
-	function mh.press()
+	function mh.button(_, _, ind, pressed, x, y)
 		wnd:select();
+		if not dispatch_meta() and valid_vid(vid, TYPE_FRAMESERVER) then
+			print("send press", pressed, ind)
+			target_input(vid, {
+				active = pressed,
+				devid = 0,
+				subid = ind,
+				mouse = true,
+				kind = "digital"
+			})
+		end
 	end
 
 	function mh.out()
@@ -244,7 +278,7 @@ local function overlay_detach(ol)
 
 -- but override the scalemode default while afsrv_decode lacks the ability to
 -- hint which scalemode it actually desires
-	cw.scalemode = "client";
+	cw.scalemode = "aspect";
 
 	cw:add_handler(
 	"destroy",
@@ -424,6 +458,49 @@ local function cursor_handler(wnd, source, status)
 
 end
 
+local function popup_handler(wnd, vid, ev)
+	local pop = wnd:add_popup(vid)
+	pop:reposition(ev.xofs, ev.yofs, ev.xofs, ev.yofs, 0)
+
+	return
+	function(source, status)
+		if pop.dead then
+			client_log(fmt("popup:kind=error:status=backing_destroyed"))
+			return
+		end
+
+		if status.kind == "terminated" then
+			pop:destroy()
+
+		elseif status.kind == "resized" then
+			resize_image(source, status.width, status.height)
+			pop:show()
+
+-- reanchor position
+		elseif status.kind == "viewport" then
+			pop:reposition(
+				status.rel_x, status.rel_y,
+				status.rel_x + status.anchor_w,
+				status.rel_y + status.anchor_h,
+				status.edge
+			)
+
+-- request a chain of popups
+		elseif status.kind == "segment_request" then
+			if status.segkind ~= "popup" then
+				client_log(fmt("popup:kind=error:status=popups only allowed other popups"))
+				return
+			end
+
+-- and just attach
+			local vid = accept_target(ev.width, ev.height, function() end)
+			if valid_vid(vid) then
+				target_updatehandler(vid, popup_handler(pop, vid, ev));
+			end
+		end
+	end
+end
+
 local function default_reqh(wnd, source, ev)
 	local opts = {}
 	local normal = {
@@ -444,14 +521,16 @@ local function default_reqh(wnd, source, ev)
 -- early out if the type is not permitted
 	if (wnd.allowed_segments and
 		not table.find_i(wnd.allowed_segments, ev.segkind)) then
-		client_log("segreq:name=" .. wnd.name ..
-			":kind=" .. ev.segkind .. ":state=rejected");
+		client_log(fmt(
+			"segreq:name=%s:kind=%s:state=rejected", wnd.name, ev.segkind))
 		return;
 	end
 
 -- clients want to negotiate a connection on behalf of a new process,
 	if (ev.segkind == "handover") then
-		local hover, _, cookie = accept_target(32, 32, function(source, stat) end);
+		local hover, _, cookie =
+			accept_target(ev.width, ev.height, function(source, stat) end);
+
 		if (not valid_vid(hover)) then
 			client_log("segreq:name=" .. wnd.name .. ":kind=handover:state=oom");
 			return;
@@ -464,6 +543,15 @@ local function default_reqh(wnd, source, ev)
 
 		if not opts.block then
 			durden_launch(hover, "", "external", nil, opts);
+		end
+
+-- popups don't get assigned a window, give it a special handler that triggers
+-- the actual attachment on first frame and anchors based on viewport
+	elseif (ev.segkind == "popup") then
+		client_log("segreq:popup:width=%d:height=%d", ev.width, ev.height)
+		local vid = accept_target(ev.width, ev.height, function() end)
+		if valid_vid(vid) then
+			target_updatehandler(vid, popup_handler(wnd, vid, ev));
 		end
 
 -- special handling, cursor etc. maybe we should permit subtype handler override
