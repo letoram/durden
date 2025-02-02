@@ -125,7 +125,7 @@ local kbd_menu = {
 			end
 
 			if type(ios) == "userdata" then
-				open_nonblock(active_display().selected.external, true, "xkb", ios);
+				open_nonblock(active_display().selected.external, false, "xkb", ios);
 			end
 		end
 	}
