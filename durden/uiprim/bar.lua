@@ -7,6 +7,9 @@
 -- Missing:
 --  [ ] autosize bar to buttons + pad
 --
+local bar_relayout_horiz
+local bar_relayout_vert
+
 local function btn_clamp(btn, w, h)
 -- done with label, figure out new button size including padding and minimum
 	if (btn.minw and btn.minw > 0 and w < btn.minw) then
@@ -347,7 +350,7 @@ local function bar_dimensions(bar)
 				w = w + v.real_w;
 			else
 				local bw, bh = v:dimensions();
-				w = w + v:dimensions();
+				w = w + bw;
 				h = h < bh and bh or h;
 			end
 		end
@@ -356,7 +359,8 @@ local function bar_dimensions(bar)
 	return w, h;
 end
 
-local function bar_relayout_horiz(bar)
+bar_relayout_horiz =
+function(bar)
 	local width = bar.width;
 
 	if bar:is_compact() then
@@ -478,7 +482,8 @@ end
 -- Just a modified version of relayout_horiz, any changes there should be
 -- replicated here. While they look to be sharing much code, actually having a
 -- shared base and cover invariants was even messier.
-local function bar_relayout_vert(bar)
+bar_relayout_vert =
+function(bar)
 	reset_image_transform(bar.anchor);
 	resize_image(bar.anchor,
 		bar.width, bar.height, bar.anim_time, bar.anim_func);
@@ -866,6 +871,8 @@ local function bar_show(bar, key)
 end
 
 local function bar_move(bar, newx, newy, time, interp)
+	bar.x = newx
+	bar.y = newy
 	move_image(bar.anchor, newx, newy, time, interp);
 end
 
@@ -920,7 +927,60 @@ local function bar_iter(bar)
 	end
 end
 
+local function move_bar_unhide(bar)
+	if not bar.in_autohide then
+		return
+	end
+
+	local at = gconfig_get("animation")
+	local _, lm = reset_image_transform(at)
+	bar.in_autohide = false
+	move_image(
+		bar.anchor,
+		bar.x - bar.autohide_dx, bar.y - bar.autohide_dy,
+		at - lm
+	)
+	bar.autohide_cur = bar.autohide_base
+end
+
+local function move_bar_hide(bar)
+-- based on position to center, pick a direction to move
+	if bar.in_autohide then
+		return
+	end
+
+	local at = gconfig_get("animation")
+	local _, lm = reset_image_transform(at)
+	bar.in_autohide = true
+	move_image(
+		bar.anchor,
+		bar.x, bar.y,
+		at - lm
+	)
+	local props = image_surface_resolve(bar.anchor)
+	bar.autohide_cur = nil
+end
+
 local function bar_tick(bar)
+-- if bar has autohide enabled, first check if mouse is over the bar
+-- as most of the bar is buttons and those have discrete handlers
+	local mx, my = mouse_xy()
+	if image_hit(bar.anchor, mx, my) then
+		if not bar.in_autohide then
+			bar.autohide_cur = bar.autohide_base
+		else
+			move_bar_unhide(bar)
+		end
+	else
+-- time to hide? decrement and trigger if reached
+		if not bar.in_autohide and bar.autohide_cur then
+			bar.autohide_cur = bar.autohide_cur - 1
+			if bar.autohide_cur == 0 then
+				move_bar_hide(bar)
+			end
+		end
+	end
+
 	for i in bar_iter(bar) do
 		i:tick();
 	end
@@ -995,6 +1055,30 @@ local function bar_impostor_swap(tbar)
 	end
 end
 
+local function bar_autohide(bar, time, dx, dy)
+	if bar.in_autohide then
+		if time == 0 then
+			bar.in_autohide = false
+			move_bar_unhide(bar)
+			bar.autohide_cur = nil
+			return
+		end
+	end
+
+	if time == 0 then
+		bar.autohide_base = nil
+		bar.autohide_cur = nil
+		return
+	end
+
+	bar.autohide_base = time
+	bar.autohide_cur = time
+	bar.autohide_pad = pad
+	bar.autohide_dx = dx
+	bar.autohide_dy = dy
+	move_bar_hide(bar)
+end
+
 local function bar_impostor_destroy(tbar)
 	if (not valid_vid(tbar.impostor_vid)) then
 		return;
@@ -1064,7 +1148,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 -- the same code is used for multiple UI components with different settings
 	if keyprefix then
 		compact = gconfig_get(keyprefix .. "_compact");
-		sidepad = gconfig_get(keyprefix .. "_sidepad");
+		sidepad = gconfig_get(keyprefix .. "_sidepad") or 0;
 		color = gconfig_get(keyprefix .. "_color");
 	end
 
@@ -1077,6 +1161,8 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 		height = height,
 		compact = compact,
 		sidepad = sidepad,
+		x = 0,
+		y = 0,
 
 -- split the bar into three groups, left and right take priority,
 -- while the center area act as 'fill'.
@@ -1095,6 +1181,7 @@ function uiprim_bar(anchor, anchorp, width, height, shdrtgt, mouseh, keyprefix)
 		hide_buttons = bar_buttons_hide,
 		show_buttons = bar_buttons_show,
 		switch_group = bar_group,
+		autohide = bar_autohide,
 
 -- variations of resizing the bar, updating all state and relayouting
 		resize = bar_resize,

@@ -312,9 +312,10 @@ return {
 	sbar_dspace = 0,
 	sbar_rspace = 0,
 	sbar_tshadow = 8,
-	sbar_lshadow = 5,
+	sbar_lshadow = 8,
 	sbar_dshadow = 8,
-	sbar_rshadow = 5,
+	sbar_rshadow = 8,
+	sbar_centered = true,
 	sbar_popup_pad = 4,
 	sbar_shadow = "soft",
 	sbar_shadow_color = {0, 0, 0},
@@ -332,7 +333,8 @@ return {
 	sbar_lblcolor = "dynamic", -- or specific: "\\#ffff00",
 	sbar_prefixcolor = "dynamic", -- "\\#ffffff ",
 	sbar_compact = false, -- shrink the statusbar to fit only the contents
-	sbar_sidepad = 0,
+	sbar_sizepct = 100,
+	sbar_autohide = 0,
 
 -- titlebar
 	tbar_sz = 12, -- dynamically recalculated on font changes

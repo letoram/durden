@@ -10,7 +10,7 @@ local function swallow_menu(wnd)
 			local swallow = wnd.swallow_window
 
 -- user lingered on the menu and the window died in the background
-			if not swallow then
+			if not swallow or not swallow.show then
 				return
 			end
 

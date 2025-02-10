@@ -583,8 +583,8 @@ local function update_sbar_shadow(wm)
 		method = gconfig_get("sbar_shadow")
 	};
 
-	local w, h = sb:dimensions();
-	suppl_region_shadow(sb, w, h, opts);
+	local props = image_surface_resolve(sb.anchor)
+	suppl_region_shadow(sb, props.width, props.height, opts);
 end
 
 local function prune_missing_known(wm, list)
@@ -642,10 +642,12 @@ local function tiler_statusbar_update(wm)
 	local pad_r = 0;
 	local pad_t = 0;
 	local pad_d = 0;
+	local autohide = gconfig_get("sbar_autohide")
 
 -- consider visibility (fullscreen, or HUD mode affects it)
 	local space = wm:active_space();
-	local sb_invisible = space.mode == "fullscreen";
+	local sb_invisible = space.mode == "fullscreen"
+
 	if (gconfig_get("sbar_visible") == "hud") then
 		sb_invisible = not tiler_lbar_isactive();
 	elseif (gconfig_get("sbar_visible") == "hidden") then
@@ -654,10 +656,9 @@ local function tiler_statusbar_update(wm)
 	else
 		bar_base = sbar_geth(wm);
 	end
-
 	wm.statusbar[sb_invisible and "hide" or "show"](wm.statusbar);
 
-	if (not sb_invisible) then
+	if not sb_invisible and autohide == 0 then
 		pad_l = math.floor(gconfig_get("sbar_lspace") * wm.scalef);
 		pad_r = math.floor(gconfig_get("sbar_rspace") * wm.scalef);
 		pad_t = math.floor(gconfig_get("sbar_tspace") * wm.scalef);
@@ -666,6 +667,16 @@ local function tiler_statusbar_update(wm)
 
 	local pad_h = pad_l + pad_r;
 	local pad_v = pad_t + pad_d;
+	local hide_base = 0
+
+-- on autohide, ignore the pad calculations so effective_size are full
+	local bar_ofs = 0
+	hide_base = bar_base
+
+	if autohide > 0 then
+		bar_base = 0
+		bar_ofs = 2
+	end
 
 -- Update background color and alpha
 	local r, g, b = unpack(gconfig_get("sbar_color"));
@@ -675,44 +686,84 @@ local function tiler_statusbar_update(wm)
 
 -- positioning etc. still needs the current size of the statusbar
 	local pos = gconfig_get("sbar_position");
+	local size = gconfig_get("sbar_sizepct");
+	local bar_hide_dx = 0
+	local bar_hide_dy = 0
 
+-- lots of metrics in this one,
+--
+-- the wm anchor concern where all normal windows etc. are created from
+-- and excludes the region occupied by the statusbar. The statusbar region
+-- is excluded from that calculation if it is set to autohide.
+--
+-- this is also tracked by yoffset and xoffset.
+--
+-- the statusbar has its size, but also an optional padding region in
+-- tldr (and t+d = v, l+r = h) to add 'space' around it.
+--
+-- that padding region is ignored in autohide (as it wouldn't make sense there)
+--
+-- for autohad we also need a few pixels visible for mouse hit detection to
+-- trigger its hide/unhide action (bar_ofs).
+--
 	if (pos == "top") then
-		wm.yoffset = bar_base + pad_v;
+		local pad_w = math.floor((wm.width - (wm.width * 0.01 * size)) * 0.5)
+		if autohide > 0 then
+			wm.yoffset = 0
+			wm.effective_height = wm.height
+			wm.statusbar:move(xpos + pad_w + pad_l, -hide_base + bar_ofs + pad_t);
+			move_image(wm.anchor, 0, wm.yoffset)
+		else
+			wm.yoffset = hide_base + pad_v;
+			wm.effective_height = wm.height - wm.yoffset;
+			wm.statusbar:move(xpos + pad_w + pad_h, pad_t)
+			move_image(wm.anchor, 0, wm.yoffset)
+		end
+
 		wm.xoffset = 0;
 		wm.effective_width = wm.width;
-		wm.effective_height = wm.height - wm.yoffset;
 		wm.ylimit = wm.height;
 		wm.xlimit = wm.width;
-		wm.statusbar:move(pad_l, pad_t);
 		wm.statusbar:set_horizontal();
-		move_image(wm.anchor, 0, bar_base + pad_t);
-		move_image(wm.order_anchor, 0, -bar_base - pad_t);
-		wm.statusbar:resize(wm.width - pad_h, bar_base);
+		wm.statusbar:resize(wm.width - 2 * pad_w, hide_base);
+		bar_hide_dx = 0
+		bar_hide_dy = -(hide_base - bar_ofs)
 
 	elseif (pos == "left") then
-		wm.yoffset = 0;
-		wm.xoffset = bar_base + pad_l;
+		local cap_h = math.floor((wm.height - (wm.height * 0.01 * size)) * 0.5)
+		if autohide > 0 then
+			wm.xoffset = 0
+			wm.effective_width = wm.width
+			wm.statusbar:move(-hide_base + bar_ofs + pad_l, pad_t + cap_h);
+		else
+			wm.yoffset = 0;
+			wm.xoffset = hide_base + pad_h;
+			wm.statusbar:move(pad_l, pad_t + cap_h);
+		end
+
 		wm.xlimit = wm.width;
 		wm.ylimit = wm.height;
 		wm.effective_width = wm.width - wm.xoffset;
 		wm.effective_height = wm.height;
-		wm.statusbar:move(pad_l, pad_t);
 		wm.statusbar:set_vertical();
+		wm.statusbar:resize(hide_base, wm.height - 2 * cap_h - pad_v);
 		move_image(wm.anchor, wm.xoffset, 0);
-		move_image(wm.order_anchor, -bar_base - pad_h, 0);
-		wm.statusbar:resize(bar_base, wm.height - pad_v);
+		bar_hide_dx = -(hide_base - bar_ofs)
+		bar_hide_dy = 0
 
 	elseif (pos == "right") then
+		local cap_h = math.floor((wm.height - (wm.height * 0.01 * size)) * 0.5)
 		wm.yoffset = 0;
 		wm.xoffset = 0;
 		wm.xlimit = wm.width - bar_base - pad_h;
 		wm.effective_width = wm.xlimit;
 		wm.effective_height = wm.height;
 		wm.statusbar:set_vertical();
-		wm.statusbar:move(wm.xlimit + pad_l, pad_t);
+		wm.statusbar:move(wm.xlimit + pad_l - bar_ofs, pad_t + cap_h);
 		move_image(wm.anchor, 0, 0);
-		move_image(wm.order_anchor, 0, 0);
-		wm.statusbar:resize(bar_base, wm.height - pad_v);
+		wm.statusbar:resize(hide_base, wm.height - 2 * cap_h - pad_v);
+		bar_hide_dx = hide_base - bar_ofs
+		bar_hide_dy = 0
 
 	else -- "down"
 		wm.yoffset = 0;
@@ -721,12 +772,16 @@ local function tiler_statusbar_update(wm)
 		wm.effective_height = wm.height - bar_base - pad_v;
 		wm.ylimit = wm.effective_height;
 		wm.xlimit = wm.width;
-		move_image(wm.anchor, 0, 0);
-		move_image(wm.order_anchor, 0, 0);
-		wm.statusbar:move(xpos, wm.effective_height + pad_t);
 		wm.statusbar:set_horizontal();
-		wm.statusbar:resize(wm.width - pad_h, bar_base);
+		move_image(wm.anchor, 0, 0);
+		local pad_w = math.floor((wm.width - (wm.width * 0.01 * size)) * 0.5)
+		wm.statusbar:resize(wm.width - 2 * pad_w, hide_base);
+		wm.statusbar:move(xpos + pad_w, wm.effective_height + pad_t - bar_ofs);
+		bar_hide_dx = 0
+		bar_hide_dy = (hide_base - bar_ofs)
 	end
+
+	wm.statusbar:autohide(autohide, bar_hide_dx, bar_hide_dy)
 
 -- same tactic to hiding the ws buttons, this should probably be refactored
 -- entirely to use the display-button tactic of iterating and removing the
@@ -1548,6 +1603,8 @@ local function drop_fullscreen(space)
 	space.hook_block = nil;
 
 	sbar_show(space.wm);
+
+
 	workspace_activate(space, true);
 
 -- re-send the original displayhint as fullscreen has different hint
@@ -2006,10 +2063,10 @@ local function workspace_set(space, mode)
 	end
 
 -- relayout the space to match new constraints, and reflect changes in statusbar
-	space:resize();
 	if (space.wm.spaces[space.wm.space_ind]) then
 		tiler_statusbar_update(space.wm);
 	end
+	space:resize();
 
 	if post_closure then
 		post_closure();
@@ -4358,7 +4415,7 @@ end
 local function wnd_ws_attach(res, from_hook)
 	local wm = res.wm;
 -- attach to specific parent or 'swallow' (which is attach + hide)
-	local as_child = gconfig_get("tile_insert_child") == "child";
+	local as_child = gconfig_get("tile_insert_child") == "child" and res.attach_parent
 	local dstindex = 1;
 
 -- request to attach to parent, but this has a UAF risk should the parent
@@ -4383,7 +4440,7 @@ local function wnd_ws_attach(res, from_hook)
 		tiler_debug(wm, tiler_fmt("attach_swallow:x=%d:y=%d", res.defer_x, res.defer_y));
 
 -- or attach as child to a specific window?
-	elseif as_child and res.attach_parent then
+	elseif as_child then
 		dstindex = res.attach_parent.space_ind;
 
 -- or just use a default workspace (spawn target)
@@ -4425,9 +4482,10 @@ local function wnd_ws_attach(res, from_hook)
 			end
 		end
 
--- if we are tiled and the intended space is full based on cap,
--- find a new empty one and switch to it.
-	elseif gconfig_get("tile_breadth_cap") > 0 then
+-- if we are tiled and the intended space is full based on cap, find a new
+-- empty one and switch to it unless we also want to attach as child to a
+-- current parent.
+	elseif gconfig_get("tile_breadth_cap") > 0 and not as_child then
 		local dspace = res.wm.spaces[dstindex]
 
 		if dspace and dspace.mode == "tile" and
@@ -5117,10 +5175,10 @@ local function wnd_scroll_report(wnd, yprog, ysize, xprog, xsize)
 	end
 
 	wnd.got_scroll = {yprog, ysize, xprog, xsize}
-	tiler_debug(wnd.wm,
-		tiler_fmt("scroll:yprog=%f:ysize=%f:xprog=%f:xsize=%f",
-		yprog or 0, ysize or 0, xprog or 0, xsize or 0)
-	)
+--	tiler_debug(wnd.wm,
+--		tiler_fmt("scroll:yprog=%f:ysize=%f:xprog=%f:xsize=%f",
+-- 	 yprog or 0, ysize or 0, xprog or 0, xsize or 0)
+--	)
 	run_event(wnd, "scroll_state", true, wnd.got_scroll);
 end
 
@@ -6116,6 +6174,7 @@ function tiler_create(width, height, opts)
 	res.min_height = 32;
 	image_tracetag(res.anchor, "tiler_anchor");
 	image_tracetag(res.order_anchor, "tiler_order_anchor");
+	image_mask_clear(res.order_anchor, MASK_POSITION);
 
 	order_image(res.order_anchor, 2);
 	show_image({res.anchor, res.order_anchor});

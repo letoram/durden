@@ -899,6 +899,7 @@ return {
 	border = build_border,
 	canvas = build_canvas,
 	titlebar = build_titlebar,
+	statusbar = build_statusbar,
 	statusbar_icon = build_statusbar_icon,
 	statusbar_wsicon = build_statusbar_wsicon,
 	statusbar_addicon = build_statusbar_addicon,

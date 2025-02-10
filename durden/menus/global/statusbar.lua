@@ -369,6 +369,19 @@ return {
 		end
 	},
 	{
+		name = "centered",
+		label = "Centered",
+		kind = "value",
+		description = "Center the statusbar (with compact or reduced width)",
+		set = {LBL_YES, LBL_NO, LBL_FLIP},
+		initial = function()
+			return gconfig_get("sbar_centered") and LBL_YES or LBL_NO;
+		end,
+		handler = suppl_flip_handler("sbar_centered", function()
+			gconfig_statusbar_rebuild();
+		end)
+	},
+	{
 		name = "color",
 		label = "Color",
 		kind = "value",
@@ -440,16 +453,34 @@ return {
 		end
 	},
 	{
-		name = "sidepad",
-		label = "Sidepad",
+		name = "autohide",
+		label = "Autohide",
 		kind = "value",
-		description = "Px to insert to the left and right edge or the bar",
-		initial = function()
-			return gconfig_get("sbar_sidepad");
-		end,
+		description = "Number of 25Hz ticks before the statusbar hides",
+		hint = "(0: disable, 1..25)",
 		validator = gen_valid_num(0, 100),
-		handler = function()
-			gconfig_set(ctx, "sbar_sidepad", tonumber(val));
+		handler = function(ctx, val)
+			gconfig_set("sbar_autohide", tonumber(val))
+			for disp in all_tilers_iter() do
+				disp:tile_update()
+			end
+		end
+	},
+	{
+		name = "size",
+		label = "Size",
+		kind = "value",
+		description = "% of width (horizontal) or height (vertical)",
+		initial = function()
+			return gconfig_get("sbar_sizepct");
+		end,
+		validator = gen_valid_num(20, 100),
+		handler = function(ctx, val)
+			gconfig_set("sbar_sizepct", tonumber(val));
+			gconfig_statusbar_rebuild();
+			for disp in all_tilers_iter() do
+				disp:tile_update();
+			end
 		end
 	},
 	{
