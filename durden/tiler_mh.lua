@@ -634,6 +634,12 @@ local function build_titlebar(wnd)
 -- register for windows that we are passing
 			if not wnd.in_drag_move then
 				wnd:set_drag_move();
+-- warp for drag if we come here from the titlebar
+				if not wnd.show_titlebar then
+					local tgt_x = wnd.x + 0.5 * wnd.width
+					local tgt_y = wnd.y + 0.5 * wnd.height
+					mouse_absinput_masked(tgt_x, tgt_y, true);
+				end
 			end
 
 			if wnd.maximized then
