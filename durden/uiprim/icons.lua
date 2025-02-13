@@ -88,10 +88,25 @@ local function icon_at(res, x, y)
 end
 
 local function get_subset(res, sel)
-	local sx = sel.x1 + res.viewport[1]
-	local sy = sel.y1 + res.viewport[2]
-	local sx2 = sx + (sel.x2 - sel.x1)
-	local sy2 = sy + (sel.y2 - sel.y1)
+	local x1 = sel.x1
+	local y1 = sel.y1
+	local x2 = sel.x2
+	local y2 = sel.y2
+
+	if x1 > x2 then
+		x1 = sel.x2
+		x2 = sel.x1
+	end
+
+	if y1 > y2 then
+		y1 = sel.y2
+		y2 = sel.y1
+	end
+
+	local sx = x1 + res.viewport[1]
+	local sy = y1 + res.viewport[2]
+	local sx2 = sx + (x2 - x1)
+	local sy2 = sy + (y2 - y1)
 
 	local set = {}
 	for _, v in ipairs(res.icons) do
@@ -271,7 +286,7 @@ local function add_icon(icongroup, name, opts)
 	return icon
 end
 
-local function resize_view(self)
+local function resize_view(self, w, h)
 -- trigger relayouting
 end
 
@@ -378,26 +393,22 @@ local function mouse_drag(res, dx, dy)
 		local mx, my = mouse_xy()
 		local sel = res.selector
 
-		mx = mx - ap.x
-		my = my - ap.y
-		if mx > sel.x2 then
-			sel.x2 = mx
-		elseif mx < sel.x1 then
-			sel.x1 = mx
-		end
+		sel.x2 = sel.x2 + dx
+		sel.y2 = sel.y2 + dy
 
-		if my > sel.y2 then
-			sel.y2 = my
-		elseif my < sel.y1 then
-			sel.y1 = my
-		end
+		local w = math.abs(sel.x2 - sel.x1)
+		local h = math.abs(sel.y2 - sel.y1)
 
-		local w = sel.x2 - sel.x1
-		local h = sel.y2 - sel.y1
-		print(w, h)
+		resize_image(
+			sel.vid,
+			w > 0 and w or 1,
+			h > 0 and h or 1
+		)
 
-		resize_image(sel.vid, w > 0 and w or 1, h > 0 and h or 1)
-		move_image(sel.vid, sel.x1, sel.y1)
+		move_image(sel.vid,
+			sel.x1 < sel.x2 and sel.x1 or sel.x2,
+			sel.y1 < sel.y2 and sel.y1 or sel.y2
+		)
 		update_selector_bounds(res)
 		return
 	end
@@ -435,9 +446,11 @@ local function mouse_click(res, x, y)
 	local icon = icon_at(res, x, y)
 
 --  if modifier is held we shouldn't reset the set
-	for _, v in ipairs(res.icons) do
-		if icon ~= v then
-			v:deselect()
+	if not res.check_modifiers() then
+		for _, v in ipairs(res.icons) do
+			if icon ~= v then
+				v:deselect()
+			end
 		end
 	end
 
@@ -470,11 +483,18 @@ local function mouse_press(res, x, y)
 		y1 = y,
 		x2 = x,
 		y2 = y,
-		vid = color_surface(1, 1, 127, 127, 127)
+		vid = fill_surface(1, 1, unpack(res.selector_color))
 	}
+
+	if res.selection_shader then
+		res.selection_shader(res.selector.vid)
+	end
+
 	link_image(res.selector.vid, res.clipping_anchor)
 	image_mask_set(res.selector.vid, MASK_UNPICKABLE)
 	image_clip_on(res.selector.vid, CLIP_SHALLOW, res.clipping_anchor)
+	image_inherit_order(res.selector.vid, true)
+	order_image(res.selector.vid, 2)
 	blend_image(res.selector.vid, 0.5)
 	return
 end
@@ -491,6 +511,20 @@ end
 local function scaled_region_set(res)
 -- swap out for a quadtree like representation when N goes large
 	return res.icons
+end
+
+local function destroy_view(res)
+	for i=#res.icons,1,-1 do
+		res.icons[i]:destroy()
+	end
+	delete_image(res.position_anchor)
+	local keys = {}
+	for k,v in pairs(res) do
+		table.insert(keys, k)
+	end
+	for i,v in ipairs(keys) do
+		res[v] = nil
+	end
 end
 
 local function rescale(res)
@@ -542,6 +576,11 @@ function(w, h, opts)
 		allow_zoom = opts.allow_zoom,
 		animation_speed = opts.animation_speed or 25,
 		add = add_icon,
+		destroy = destroy_view,
+		selector_color = opts.selector_color or {127, 127, 127},
+		check_modifiers = opts.check_modifiers or function() end,
+		click_through = opts.click_through or function() end,
+		selection_shader = opts.selection_shader,
 		grid = {
 			snap = opts.grid_snap,
 			w = opts.grid_w or 64,
@@ -563,13 +602,11 @@ function(w, h, opts)
 		if lx then
 			local ap = image_surface_resolve(res.clipping_anchor)
 			lx = (lx - ap.x) * old_scale
-			print("position", lx - ap.x, ly - ap.y)
 
 			lx = ctx.viewport[1] + (lx - ap.x) * old_scale
 			ly = ctx.viewport[2] + (ly - ap.y) * old_scale
 			ctx.viewport[1] = lx - 0.5 * ctx.width * res.scalef
 			ctx.viewport[2] = ly - 0.5 * ctx.width * res.scalef
-			print(ctx.viewport[1], ctx.viewport[2])
 			move_image(ctx.position_anchor, ctx.viewport[1], ctx.viewport[2])
 		end
 
@@ -644,6 +681,7 @@ function(w, h, opts)
 				local icon = icon_at(res, x, y)
 				if not icon then
 					res.drag_zoom = not res.drag_zoom
+					res.click_through(MOUSE_RBUTTON, x, y)
 				else
 					mouse_click(res, x, y)
 				end

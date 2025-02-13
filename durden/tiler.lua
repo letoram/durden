@@ -4389,7 +4389,7 @@ local function wnd_suggest_size(wnd)
 	elseif space.mode == "float" then
 	end
 
-	return wm.effective_width * 0.3, wm.effective_height * 0.3;
+	return wm.effective_width * 0.25, wm.effective_height * 0.25;
 end
 
 local function find_leaf(node, depth)
@@ -5177,7 +5177,7 @@ local function wnd_scroll_report(wnd, yprog, ysize, xprog, xsize)
 	wnd.got_scroll = {yprog, ysize, xprog, xsize}
 --	tiler_debug(wnd.wm,
 --		tiler_fmt("scroll:yprog=%f:ysize=%f:xprog=%f:xsize=%f",
--- 	 yprog or 0, ysize or 0, xprog or 0, xsize or 0)
+--		yprog or 0, ysize or 0, xprog or 0, xsize or 0)
 --	)
 	run_event(wnd, "scroll_state", true, wnd.got_scroll);
 end
