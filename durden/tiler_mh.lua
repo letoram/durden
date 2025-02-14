@@ -326,6 +326,16 @@ local function build_border(wnd)
 		end
 	end,
 
+	button =
+	function(ctx)
+-- fake trigger 'same-select' so we don't accidentally 'warp'
+		if wnd.wm.selected and wnd.wm.selected ~= wnd then
+			wnd.wm.selected:deselect()
+			wnd.wm.selected = wnd
+			wnd:select()
+		end
+	end,
+
 	over = function(ctx)
 		return ctx.motion;
 	end,
@@ -369,7 +379,7 @@ local function build_border(wnd)
 	end
 	};
 
-	mouse_addlistener(table, {"motion", "out", "over", "drag", "drop"});
+	mouse_addlistener(table, {"motion", "button", "out", "over", "drag", "drop"});
 	return table;
 end
 
