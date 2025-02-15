@@ -18,8 +18,9 @@ local wsicons = {}
 --   double-click or single-rclick to trigger
 --   drag and drop receiver to drag icons from browser or files from clients
 --   load/store current set
---   controls for settings (e.g. size, unlock panning)
+--   controls for settings
 --      -> forward into spawn_iconview as opts
+--
 --   keyboard controls (move selection, delection, trigger) (need input capture)
 --   minimize to non-persistent icon
 --   hover to show full text if cropped
@@ -30,10 +31,10 @@ local wsicons = {}
 --   workspace/display controls
 --   stateful images
 --   non-uniform sizes
+--   bind to named window (essentially becomes folders)
 --
-
 -- active options:
---  show label
+--  toggle label
 --  status-symbol (window, alert)
 --
 -- 1. load icons from key config
@@ -43,12 +44,27 @@ local wsicons = {}
 --    [label = ..]
 --
 
-local function build_icon(v)
+function bgicons_build_icon(v)
 	local icons = active_display().icons
-	return icons:add(v.name)
 
--- use the icon manager to request image source
--- unpack
+	if type(v.trigger) == "string" then
+		local sym = v.trigger
+		v.trigger_path = sym
+		v.trigger = function()
+			dispatch_symbol(sym)
+		end
+	end
+
+	if type(v.alt_trigger) == "string" then
+		local sym = v.alt_trigger
+		v.alt_trigger_path = sym
+		v.trigger = dispatch_symbol(sym)
+	end
+
+-- use the icon manager to request image source unless factory is defined
+
+	local icon = icons:add(v.name or "missing_name", v)
+	return icon
 end
 
 local function disable_all()
@@ -65,7 +81,7 @@ local function synch_all()
 		return
 	end
 
-	icons.icon_w = gconfig_register("bgicon_size_px") * ad.scalef
+	icons.icon_w = gconfig_get("bgicon_size_px") * ad.scalef
 	icons.icon_h = ad.icons.icon_w
 	icons.allow_pan = gconfig_get("bgicon_pan")
 	icons.allow_zoom = gconfig_get("bgicon_zoom")
@@ -170,6 +186,9 @@ local iconmenu = {
 		label = "Icon Size",
 		description = "Set the default unit pixel size for the icons at 1x scale",
 		kind = "value",
+		initial = function()
+			return gconfig_get("bgicon_size_px")
+		end,
 		validator = gen_valid_num(16, 256),
 		hint = "(16..256)",
 		handler =
@@ -185,10 +204,11 @@ local iconmenu = {
 		description = "Set the default unit pixel size for grid alignment",
 		kind = "value",
 		initial = function()
-			return gconfig_get("bgicon_size_px")
+			return gconfig_get("bgicon_grid_px")
 		end,
 		hint = "(16..256)",
 		validator = gen_valid_num(16, 256),
+		handler =
 		function(ctx, val)
 			local num = tonumber(val)
 			gconfig_set("bgicon_grid_px", num)
@@ -196,14 +216,15 @@ local iconmenu = {
 		end
 	},
 	{
-		name = "grid_align_toggle",
+		name = "grid_snap_toggle",
 		label = "Grid Snap",
+		kind = "value",
 		description = "Set if icon drag should force align to grid",
 		set = {LBL_YES, LBL_NO, LBL_FLIP},
 		initial = function()
-			return gconfig_get("bgicon_enable") and LBL_YES or LBL_NO;
+			return gconfig_get("bgicon_grid_snap") and LBL_YES or LBL_NO;
 		end,
-		handler = suppl_flip_handler("bgicon_enable",
+		handler = suppl_flip_handler("bgicon_grid_snap",
 			function(state)
 				synch_all()
 			end

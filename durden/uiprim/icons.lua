@@ -14,7 +14,6 @@
 --    -> these three should be enough for wmaker like behavior
 --
 -- Durden integrations:
---  minimize target
 --  exticon target
 --
 -- ZUI part
@@ -166,14 +165,19 @@ local function add_icon(icongroup, name, opts)
 -- find free- allocation goes here, unless it is autoarranged
 	local x = 0
 	local y = 0
+	local factory = opts.factory
+	if not factory then
+		factory =
+		function(w, h)
+			return fill_surface(w, h,
+				math.random(127, 255),
+				math.random(127, 255),
+				math.random(127, 255)
+			)
+		end
+	end
 
 	local icon = {
-		vid = fill_surface(
-			opts.w or icongroup.icon_w, opts.icon_h or icongroup.icon_h,
-			math.random(127, 255),
-			math.random(127, 255),
-			math.random(127, 255)
-		),
 		drag = function(li, dx, dy)
 			if not li.last_position then
 				li.last_position = {li.x1, li.y1, li.x2, li.x2}
@@ -202,14 +206,30 @@ local function add_icon(icongroup, name, opts)
 		y1 = y,
 		x2 = x + w,
 		y2 = y + h,
-		delete = function(icon)
+		destroy = function(icon)
+			icongroup.selected[icon] = nil
+			delete_image(icon.vid)
+			for i,v in ipairs(icongroup.icons) do
+				if v == icon then
+					table.remove(icongroup.icons, i)
+					break
+				end
+			end
 		end,
+		trigger = opts.trigger or function() end,
+		alt_trigger = opts.alt_trigger or function() end,
 		reraster = opts.reraster or icon_reraster,
 		format = opts.format or "\\f,28",
 		label = opts.label or "",
 		activate = opts.action,
 		context = opts.context
 	}
+
+	icon.vid =
+		factory(
+			opts.w or icongroup.icon_w,
+			opts.icon_h or icongroup.icon_h
+		)
 
 	icon.draw_label =
 	function(icon)
@@ -243,10 +263,6 @@ local function add_icon(icongroup, name, opts)
 		end
 
 		icongroup.selected[icon] = icon
--- restack
---		table.remove(icongroup.icons, icon.index)
---		table.insert(icongroup.icons, icon)
---		icon.index = #icongroup.icons
 		order_image(icon.vid, 3)
 
 -- attach selection geometry
@@ -278,8 +294,6 @@ local function add_icon(icongroup, name, opts)
 -- this has the caveat of the 64k cap, though possibly not that much of a concern
 -- outside of a well populated ZUI where the order and visible set should be
 -- quadtreed anyhow.
-	icon.index = #icongroup.icons + 1
-	order_image(icon.vid, icon.index)
 	table.insert(icongroup.icons, icon)
 
 	icon:draw_label()
@@ -440,6 +454,13 @@ end
 
 local function mouse_dblclick(res, x, y)
 	local icon = icon_at(res, x, y)
+	if not icon then
+		return
+	end
+
+	if type(icon.trigger) == "function" then
+		icon:trigger()
+	end
 end
 
 local function mouse_click(res, x, y)

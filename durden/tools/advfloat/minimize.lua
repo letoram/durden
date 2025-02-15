@@ -1,5 +1,6 @@
 -- apply the hide- target config (tgt) defined as part of 'advfloat_hide'
 gconfig_register("advfloat_hide", "statusbar-left");
+local log, fmt = suppl_add_logfn("tools")
 
 -- needed by the statusbar resolve function to handle size changes
 local function resolve_icon(wnd)
@@ -12,6 +13,54 @@ local function resolve_icon(wnd)
 	end
 end
 
+local function restore_wnd(wnd, props)
+	local wm = wnd.wm
+	wnd.show = wnd.old_show
+	wnd.old_show = nil
+	wnd:drop_handler("destroy", wnd.bgicon_destroy)
+	wnd.bgicon_destroy = nil
+	wnd.wm:switch_ws(wnd.space)
+
+	if #wm.on_wnd_hide > 0 then
+		for i,v in ipairs(wm.on_wnd_hide) do
+			v(wm, wnd, props.x, props.y, props.width, props.height, false)
+		end
+	else
+		wnd:show()
+		wnd:select()
+	end
+
+	wnd.space:resize()
+end
+
+local function setup_icon(wnd, icon)
+	wnd.bgicon_destroy =
+	function()
+		icon:destroy()
+	end
+
+-- out of band- show (via menus or bindings)
+	wnd.old_show = wnd.show
+	wnd.show =
+	function(wnd)
+		restore_wnd(wnd, image_surface_resolve(icon.vid))
+	end
+
+	wnd:add_handler("destroy", on_destroy)
+	wnd:deselect()
+
+-- respect flair hooks for animation
+	if #wnd.wm.on_wnd_hide > 0 then
+		local props = image_surface_resolve(icon.vid)
+		for k,v in ipairs(wm.on_wnd_hide) do
+			v(wm, wnd, props.x, props.y, props.width, props.height, true)
+		end
+	else
+		wnd:hide()
+		wnd.space:resize()
+	end
+end
+
 local function setup_sbar(wnd, tgt)
 	local wm = wnd.wm;
 	local pad = gconfig_get("sbar_tpad") * wm.scalef;
@@ -19,7 +68,7 @@ local function setup_sbar(wnd, tgt)
 	local btn;
 
 	local on_destroy;
-	on_destroy =
+	wnd.bgicon_destroy =
 	function()
 		if (btn) then
 			wnd.minimize_btn = nil;
@@ -28,29 +77,17 @@ local function setup_sbar(wnd, tgt)
 	end
 
 	local cbase = wm.statusbar.base;
-	local old_show = wnd.show;
+	wnd.old_show = wnd.show;
 	btn = wm.statusbar:add_button(str, "sbar_item_bg",
 		"sbar_item", resolve_icon(wnd), pad,
 		wm.font_resfn, cbase, cbase,
 		{
 		click =
 		function()
-			local props = image_surface_resolve(btn.bg);
-			wnd.minimize_btn = nil;
-			wnd.show = old_show;
-			wnd:drop_handler("destroy", on_destroy);
-			btn:destroy();
-			wnd.wm:switch_ws(wnd.space);
-			wnd:select();
-			if (#wm.on_wnd_hide > 0) then
-				for k,v in ipairs(wm.on_wnd_hide) do
-					v(wm, wnd, props.x, props.y, props.width, props.height, false);
-				end
-			else
-				wnd:show();
-				wnd:select();
-			end
-			wnd.space:resize();
+			local props = image_surface_resolve(btn.bg)
+			wnd.minimize_btn = nil
+			restore_wnd(wnd, props)
+			btn:destroy()
 		end,
 		hover = function(btn, _, x, y, on)
 			local vid = null_surface(32, 32);
@@ -62,8 +99,8 @@ local function setup_sbar(wnd, tgt)
 
 -- not enough VIDs to build the button, indicative of leak
 	if (not btn) then
-		warning("hide-to-button: creation failed");
-		return;
+		log("tool=advfloat:kind=error:button creation failed")
+		return
 	end
 
 -- override this so we drop the icon if the window show is triggered by some other
@@ -71,27 +108,27 @@ local function setup_sbar(wnd, tgt)
 	wnd.show =
 	function(wnd)
 		if (btn.bg) then
-			btn:click();
+			btn:click()
 		else
-			wnd.show = old_show;
-			old_show(wnd);
+			wnd.show = wnd.old_show;
+			wnd:show(wnd)
 		end
-	end;
+	end
 
 -- safeguard against window being destroyed while hidden
-	wnd:add_handler("destroy", on_destroy);
-	wnd:deselect();
-	wnd.minimize_btn = btn;
+	wnd:add_handler("destroy", on_destroy)
+	wnd:deselect()
+	wnd.minimize_btn = btn
 
 -- event handler registered? (flair tool)
-	if (#wm.on_wnd_hide > 0) then
-		local props = image_surface_resolve(btn.bg);
+	if #wm.on_wnd_hide > 0 then
+		local props = image_surface_resolve(btn.bg)
 		for k,v in ipairs(wm.on_wnd_hide) do
-			v(wm, wnd, props.x, props.y, props.width, props.height, true);
+			v(wm, wnd, props.x, props.y, props.width, props.height, true)
 		end
 	else
-		wnd:hide();
-		wnd.space:resize();
+		wnd:hide()
+		wnd.space:resize()
 	end
 end
 
@@ -103,15 +140,32 @@ local function hide_tgt(wnd, tgt)
 
 	if (tgt == "statusbar-left" or tgt == "statusbar-right") then
 		setup_sbar(wnd, tgt);
-
-	elseif tgt == "desktop-icon" then
-		local ad = active_display().icons
-
-		if not ad then
-			warning("icon-group-hide:no-desktop-icon")
-			return
-		end
+		return
 	end
+
+-- desktop-icon:
+	local icon
+	icon = {
+		name = wnd.name .. "_bgicon",
+		label = wnd.title,
+		factory =
+		function(w, h)
+			return wnd:iconify({size = w})
+		end,
+		trigger = function()
+			restore_wnd(wnd)
+			icon:destroy()
+		end
+	}
+
+	icon = bgicons_build_icon(icon)
+	if not icon then
+		log("tool=advfloat:kind=error:message=no icons active")
+		hide_tgt(wnd, "statusbar-left")
+		return
+	end
+
+	setup_icon(wnd, icon)
 end
 
 menus_register("target", "window",
@@ -144,7 +198,7 @@ menus_register("global", "settings/wspaces/float",
 	label = "Hide Target",
 	set = function()
 		local set = {"disabled", "statusbar-left", "statusbar-right"}
-		if gconfig_get("bgicons_enable") then
+		if gconfig_get("bgicon_enable") then
 			table.insert(set, "desktop-icon")
 		end
 		return set
