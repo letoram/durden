@@ -965,6 +965,16 @@ local function bar_tick(bar)
 -- if bar has autohide enabled, first check if mouse is over the bar
 -- as most of the bar is buttons and those have discrete handlers
 	local mx, my = mouse_xy()
+
+-- active_display() calls here are a layering violation, but better
+-- than other workarounds for now, but basically we need to see that
+-- the bar we tick matches the current active display so we don't
+-- trigger autohide on other monitors.
+	local ad = active_display()
+	if ad.statusbar ~= bar then
+		return
+	end
+
 	if image_hit(bar.anchor, mx, my) then
 		if not bar.in_autohide then
 			bar.autohide_cur = bar.autohide_base
