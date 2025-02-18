@@ -7,6 +7,8 @@ gconfig_register("bgicon_grid_snap", true)
 gconfig_register("bgicon_enable", false)
 gconfig_register("bgicon_zoom", false)
 gconfig_register("bgicon_pan", false)
+gconfig_register("bgicon_font_sz", 8)
+gconfig_register("bgicon_bias_side", "right")
 
 local wsicons = {}
 -- load / unpack keys into wsicons
@@ -14,8 +16,6 @@ local wsicons = {}
 --
 -- [bringup]
 --
---   regular icon with single color factory
---   double-click or single-rclick to trigger
 --   drag and drop receiver to drag icons from browser or files from clients
 --   load/store current set
 --   controls for settings
@@ -46,6 +46,9 @@ local wsicons = {}
 
 function bgicons_build_icon(v)
 	local icons = active_display().icons
+	if not icons then
+		log("kind=warning:display_no_icons")
+	end
 
 	if type(v.trigger) == "string" then
 		local sym = v.trigger
@@ -87,21 +90,49 @@ local function synch_all()
 	icons.allow_zoom = gconfig_get("bgicon_zoom")
 	icons.grid.snap = gconfig_get("bgicon_grid_snap")
 	icons.grid.w = gconfig_get("bgicon_grid_px") * ad.scalef
+	icons.grid.h = gconfig_get("bgicon_grid_px") * ad.scalef
 	icons.border = gconfig_get("bgicon_border_px") * ad.scalef
+	icons.grid.bias = gconfig_get("bgicon_bias_side")
 
 -- trigger the resize/realign
 	icons:resize(ad.effective_width, ad.effective_height)
 end
 
-local function enable_all()
-	local ad = active_display()
+local function add_fileref_icon(v)
+	local name = string.split(v, "/")
+	name = name[#name]
+	if not name then
+		return
+	end
+
+-- suppl_valid_vsymbol("icon_file") OR
+-- unicode symbol for font with 0x_ OR
+-- some vallback
+	local icon = {
+		name = "fileref_bgicon",
+		label = name,
+		factory =
+		function(w, h)
+			return color_surface(w, h, 127, 127, 0)
+		end,
+		trigger = "/browse/" .. v,
+		alt_trigger =
+		function()
+-- popup context menu
+		end
+	}
+
+	bgicons_build_icon(icon)
+end
+
+local function enable_display(ad)
 	if ad.icons then
 		return
 	end
 
 	log("kind=status:enable_desktop_icons")
 
-	ad.icons =
+	local icons =
 	uiprim_icon_spawn(
 		ad.width, ad.height,
 		{
@@ -137,9 +168,55 @@ local function enable_all()
 
 -- need to anchor to ws.anchor and swap when workspace is supposed to
 -- switch
-	mouse_addlistener(ad.icons.mouse)
-	link_image(ad.icons.clipping_anchor, ad.anchor)
-	order_image(ad.icons.clipping_anchor, 4)
+	local om = icons.mouse.motion
+	local oc = icons.mouse.click
+
+	icons.mouse.motion =
+	function(...)
+		local ms = mouse_state()
+		if ms.cursortag then
+		end
+		om(...)
+	end
+
+	icons.mouse.click =
+	function(...)
+		local ms = mouse_state()
+
+-- Handling drag / drop is a bit special, if the origin is the browser we can
+-- create a reference, then add context menu options for copying, generating
+-- preview or indexing.
+--
+-- If the source is a window, we will need a backing directory (configure)
+-- and possibly popup a type selector if there is announced bchunkstate info.
+--
+-- This is also limited in the sense that we don't have the _tui bgcopy
+-- function exposed. This should be added to arcan as another overloaded form
+-- of open_nonblock with the source userdata provided, map to
+-- arcan_shmif_bgcopy and set the progress pipe to the returned userdata.
+--
+-- the cursortag has a handler that takes (wnd:dst, accept:bool, table:src)
+-- but we don't want to trigger it but rather handle it specifically.
+--
+		if ms.cursortag then
+			if ms.cursortag.ref == "browser" then
+				for i,v in ipairs(ms.cursortag.src) do
+					add_fileref_icon("shared" .. v.path)
+				end
+
+				active_display():cancellation()
+			end
+		end
+
+		if ad.selected then
+			ad.selected:deselect()
+		end
+		oc(...)
+	end
+
+	mouse_addlistener(icons.mouse)
+	link_image(icons.clipping_anchor, ad.anchor)
+	order_image(icons.clipping_anchor, 4)
 
 -- get set from key_value store, encode as packed shmif-arg in value
 --
@@ -150,6 +227,7 @@ local function enable_all()
 --     source (to icon-manager)
 --
 
+	ad.icons = icons
 	for _, v in ipairs(wsicons) do
 		local icn = build_icon(v)
 	end
@@ -159,8 +237,18 @@ local function disable_all()
 	active_display().icons:destroy()
 end
 
+-- we can't just enumerate all displays for positioning and anchoring
+-- right now as we might be in the storm of initial display adding and
+-- be called from within the existing iterator, add the enabler as a
+-- timer.
+local function enable_all()
+	for disp in all_tilers_iter() do
+		enable_display(disp)
+	end
+end
+
 if gconfig_get("bgicon_enable") then
-	enable_all()
+	timer_add_periodic("bgicon", 1, true, enable_all)
 end
 
 local iconmenu = {
@@ -194,7 +282,21 @@ local iconmenu = {
 		handler =
 		function(ctx, val)
 			local num = tonumber(val)
-			gconfig_set("bgicon_size_px", val)
+			gconfig_set("bgicon_size_px", num)
+			synch_all()
+		end
+	},
+	{
+		name = "bias_side",
+		label = "Grow Side",
+		description = "Set the bias for positioning new icons and display resize alignment",
+		kind = "value",
+		set = {"left", "right", "top", "bottom"},
+		initial = function()
+			return gconfig_get("bgicon_bias_side")
+		end,
+		handler = function(ctx, val)
+			gconfig_set("bgicon_bias_side", val)
 			synch_all()
 		end
 	},
