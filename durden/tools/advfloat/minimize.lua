@@ -52,8 +52,8 @@ local function setup_icon(wnd, icon)
 -- respect flair hooks for animation
 	if #wnd.wm.on_wnd_hide > 0 then
 		local props = image_surface_resolve(icon.vid)
-		for k,v in ipairs(wm.on_wnd_hide) do
-			v(wm, wnd, props.x, props.y, props.width, props.height, true)
+		for k,v in ipairs(wnd.wm.on_wnd_hide) do
+			v(wnd.wm, wnd, props.x, props.y, props.width, props.height, true)
 		end
 	else
 		wnd:hide()
@@ -153,7 +153,8 @@ local function hide_tgt(wnd, tgt)
 			return wnd:iconify({size = w})
 		end,
 		trigger = function()
-			restore_wnd(wnd)
+			local props = image_surface_resolve(icon.vid)
+			restore_wnd(wnd, props)
 			icon:destroy()
 		end
 	}
