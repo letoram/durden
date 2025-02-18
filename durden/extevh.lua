@@ -470,6 +470,7 @@ local function popup_handler(wnd, vid, ev)
 		end
 
 		if status.kind == "terminated" then
+			client_log("popup:terminated")
 			pop:destroy()
 
 		elseif status.kind == "resized" then
@@ -639,6 +640,7 @@ end
 
 function extevh_clipboard(wnd, source, status)
 	if (status.kind == "terminated") then
+		client_log("clipboard:terminated")
 		delete_image(source);
 		if (wnd) then
 			wnd.clipboard = nil;
@@ -967,6 +969,7 @@ end
 
 defhtbl["terminated"] =
 function(wnd, source, stat)
+	client_log(fmt("kind=terminated:vid=%d:last_words=%s", source, stat.last_words))
 	EVENT_SYNCH[source] = nil;
 
 -- FIXME: check if the terminated window is the one intended when
