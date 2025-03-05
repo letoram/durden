@@ -306,7 +306,7 @@ local function gen_disp_menu(disp)
 		kind = "action",
 		description = "Move input focus to this display",
 		handler = function()
-			display_cycle_active(disp)
+			display_switch_active(disp)
 		end
 		},
 		{

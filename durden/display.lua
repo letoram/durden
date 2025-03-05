@@ -259,6 +259,18 @@ local function switch_active_display(ind)
 	set_mouse_scalef();
 end
 
+function display_switch_active(tbl)
+	if tbl.orphan or tbl.disabled then
+		return
+	end
+	for i,v in ipairs(displays) do
+		if v == tbl then
+			switch_active_display(i)
+			return
+		end
+	end
+end
+
 function display_output_table(name)
 	local disp
 	local outtbl = {
