@@ -4440,7 +4440,7 @@ local function wnd_ws_attach(res, from_hook)
 		tiler_debug(wm, tiler_fmt("attach_swallow:x=%d:y=%d", res.defer_x, res.defer_y));
 
 -- or attach as child to a specific window?
-	elseif as_child then
+	elseif as_child and res.attach_parent then
 		dstindex = res.attach_parent.space_ind;
 
 -- or just use a default workspace (spawn target)
