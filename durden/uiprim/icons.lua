@@ -118,9 +118,9 @@ local function get_subset(res, sel)
 	return set
 end
 
-local function grid_align(maxw, maxh, gw, gh, x, y)
+local function grid_align(maxw, maxh, gw, gh, x, y, bias_x, bias_y)
 -- nearest kgrid-aligned col
-	local lc = math.floor(x / gw) * gw
+	local lc = bias_x(x / gw) * gw
 	local hc = lc + gw
 	lc = (x - lc < hc - x) and lc or hc
 	while lc + gw > maxw do
@@ -128,7 +128,7 @@ local function grid_align(maxw, maxh, gw, gh, x, y)
 	end
 
 -- nearest grid_aligned row
-	local lr = math.floor(y / gh) * gh
+	local lr = bias_y(y / gh) * gh
 	local hr = lr + gh
 	lr = (y - lr < hr - y) and lr or hr
 	while hr + gh > maxh do
@@ -301,6 +301,14 @@ local function add_icon(icongroup, name, opts)
 end
 
 local function resize_view(self, w, h)
+-- if the grid has grown or shrunk, shift icons based on delta first
+-- then realign and resolve conflicts based on bias direction
+
+	if self.grid.snap then
+		for i,v in ipairs(self.icons) do
+
+		end
+	end
 -- trigger relayouting
 end
 
@@ -337,7 +345,9 @@ local function realign_item(li)
 			res.width, res.height,
 			res.grid.w * res.scalef, res.grid.h * res.scalef,
 			li.x1,
-			li.y1
+			li.y1,
+			li.last_position[1] >= li.x1 and math.floor or math.ceil,
+			li.last_position[2] >= li.y1 and math.floor or math.ceil
 		)
 
 -- check so it's not occupied
@@ -461,6 +471,9 @@ local function mouse_dblclick(res, x, y)
 	if type(icon.trigger) == "function" then
 		icon:trigger()
 	end
+end
+
+local function mouse_motion()
 end
 
 local function mouse_click(res, x, y)
@@ -598,6 +611,7 @@ function(w, h, opts)
 		animation_speed = opts.animation_speed or 25,
 		add = add_icon,
 		destroy = destroy_view,
+		icon_at = icon_at,
 		selector_color = opts.selector_color or {127, 127, 127},
 		check_modifiers = opts.check_modifiers or function() end,
 		click_through = opts.click_through or function() end,
@@ -685,7 +699,7 @@ function(w, h, opts)
 
 			button =
 			function(_, _, index, active, x, y)
-				if not active then
+				if not active or not res.allow_zoom then
 					return
 				end
 
@@ -707,6 +721,9 @@ function(w, h, opts)
 					mouse_click(res, x, y)
 				end
 			end,
+
+-- don't need it for now
+			motion = mouse_motion,
 
 			click =
 			function(_, _, x, y)
