@@ -24,6 +24,19 @@ if [ ! -d "$arcan_applbase/$applname" ]; then
 	ln -s "/usr/share/$applname/$applname" "$arcan_applbase/$applname"
 fi
 
+# setup lash if cat9 is found
+if [ ! -d "$arcan_base/lash" ]; then
+	mkdir -p "$arcan_base/lash"
+	if [ -d "/usr/local/share/cat9" ]; then
+		ln -s "/usr/local/share/cat9/cat9" "$arcan_base/lash/cat9"
+		ln -s "/usr/local/share/cat9/cat9.lua" "$arcan_base/lash/default.lua"
+
+	elif [ -d "/usr/share/cat9" ]; then
+		ln -s "/usr/share/cat9/cat9" "$arcan_base/lash/cat9"
+		ln -s "/usr/share/cat9/cat9.lua" "$arcan_base/lash/default.lua"
+	fi
+fi
+
 if [ ! -d "$arcan_applout/$applname" ]; then
 	mkdir -p "$arcan_applout/$applname"
 fi
