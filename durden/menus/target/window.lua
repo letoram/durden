@@ -916,6 +916,21 @@ return {
 		handler = border_table
 	},
 	{
+		name = "toggle",
+		label = "Toggle Hide/Show",
+		description = "Switch window from visible to hidden or hidden to visible",
+		kind = "action",
+		handler = function()
+			local wnd = active_display().selected
+			if wnd.hidden then
+				wnd:show()
+			else
+				wnd:hide()
+			end
+			wnd.space:resize()
+		end
+	},
+	{
 		name = "hide",
 		label = "Hide",
 		description = "Detach window from the window visibility/layouting hierarchy",

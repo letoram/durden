@@ -137,6 +137,9 @@ minor:
 * added breadth cap option for tiled modes (global/config/workspaces/tile/breadth_cap)
   when exceeded will try and find new fitting workspace for attaching window
 
+* added visibility toggle (target/window/toggle), mainly to combine with `group_tag`
+  for /windows/group/window/toggle to have a window-set tagging system
+
 # 0.6.0 - 0.6.1
 * universal open/save:
 Clients that announce support for global open/save via bchunk-hints
