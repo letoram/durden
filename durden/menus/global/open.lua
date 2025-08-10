@@ -196,7 +196,12 @@ local function launch(str, cfg, tag)
 		mode = LAUNCH_EXTERNAL;
 	end
 
-	local vid = launch_target(str, cfg, mode, def_handler);
+-- this does not set an eventhandler here, we won't miss anything though as
+-- durden_launch will check _FRAMESERVER type then route to extevh_register_window
+-- which will set a default handler (target_updatehandler) once and possibly change
+-- later on the register event when we know the type.
+	local vid = launch_target(str, cfg, mode, nil);
+
 -- if this is external, we should also have an 'on return' hook
 -- though this might come indirectly as a display-reset event might
 -- arrive to reset input state tracking etc.
